@@ -4,7 +4,7 @@ Standalone script to generate elevation views with debug output
 Does not require Blender/bpy
 """
 import sys
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
 # Import only non-Blender modules
 from config import GLOBAL_CONFIG

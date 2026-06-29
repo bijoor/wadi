@@ -9,9 +9,9 @@ import os
 import math
 import mathutils
 
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
-TEXTURES_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/textures"
+TEXTURES_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/textures"
 
 # Find texture files
 def find_texture_file(base_path):
@@ -33,7 +33,7 @@ print()
 
 # Build house
 print("Building house...")
-exec(open('/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/konkan_house_config.py').read())
+exec(open('/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/konkan_house_config.py').read())
 build_house(use_explosion=False)
 print("✓ House built\n")
 
@@ -263,7 +263,7 @@ rot_quat = direction.to_track_quat('-Z', 'Y')
 camera_obj.rotation_euler = rot_quat.to_euler()
 
 scene.camera = camera_obj
-OUTPUT_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/docs/realistic_perspectives"
+OUTPUT_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/docs/realistic_perspectives"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 output_path = os.path.join(OUTPUT_DIR, "final_texture_test.png")
 scene.render.filepath = output_path

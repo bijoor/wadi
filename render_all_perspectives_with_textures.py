@@ -10,9 +10,9 @@ import math
 import mathutils
 
 # Add script directory to path
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
-TEXTURES_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/textures"
+TEXTURES_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/textures"
 
 # Auto-detect texture format
 def find_texture_file(base_path):
@@ -39,7 +39,7 @@ os.makedirs(TEXTURES_DIR, exist_ok=True)
 
 # STEP 1: Build the house
 print("STEP 1: Building house model...")
-exec(open('/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/konkan_house_config.py').read())
+exec(open('/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/konkan_house_config.py').read())
 build_house(use_explosion=False)
 print("✓ House built")
 
@@ -329,7 +329,7 @@ camera_views = [
     }
 ]
 
-OUTPUT_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/docs/realistic_perspectives"
+OUTPUT_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/docs/realistic_perspectives"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 render_count = 0

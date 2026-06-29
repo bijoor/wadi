@@ -4,7 +4,7 @@
 
 1. **Open Blender UI**:
    ```bash
-   open "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/house-model.blend"
+   open "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/house-model.blend"
    ```
 
 2. **Download Materials** (if not already downloaded):
@@ -24,7 +24,7 @@
 
 5. **Run the render script**:
    ```bash
-   cd "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew"
+   cd "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender"
    ./apply_materials.sh
    ```
 

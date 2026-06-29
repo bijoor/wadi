@@ -4,7 +4,7 @@ Regenerate combined SVGs without requiring Blender
 Run this after making changes to individual floor plans or elevations
 """
 import sys
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
 from config import GLOBAL_CONFIG
 

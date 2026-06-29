@@ -63,7 +63,7 @@ def test_crop(image_path, edge_threshold=150, content_ratio=0.02):
             break
 
 # Test with actual file
-test_file = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/docs/realistic_perspectives/front_left_corner.png"
+test_file = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/docs/realistic_perspectives/front_left_corner.png"
 print("Testing with default settings:")
 test_crop(test_file)
 

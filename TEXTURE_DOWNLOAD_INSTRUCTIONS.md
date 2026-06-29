@@ -10,7 +10,7 @@ The script will work immediately with **enhanced procedural materials** even wit
 
 The folder has already been created at:
 ```
-/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/textures/
+/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/textures/
 ```
 
 ## Step 2: Download Laterite Stone Texture

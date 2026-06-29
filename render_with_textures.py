@@ -11,14 +11,14 @@ import math
 import mathutils
 
 # Add script directory to path
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
 # =============================================================================
 # TEXTURE CONFIGURATION
 # Place your texture images in the textures/ folder and update these paths
 # =============================================================================
 
-TEXTURES_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/textures"
+TEXTURES_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/textures"
 
 # Laterite wall texture (download from freepik.com or 3dtextures.me)
 # Supported formats: .jpg, .jpeg, .png, .webp, .tga, .tiff, .bmp
@@ -60,7 +60,7 @@ print(f"Texture directory: {TEXTURES_DIR}")
 
 # STEP 1: Build the house
 print("\nSTEP 1: Building house model...")
-exec(open('/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/konkan_house_config.py').read())
+exec(open('/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/konkan_house_config.py').read())
 build_house(use_explosion=False)
 print("✓ House built")
 
@@ -425,7 +425,7 @@ test_view = {
     "lens": 24
 }
 
-OUTPUT_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/docs/realistic_perspectives"
+OUTPUT_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/docs/realistic_perspectives"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 print(f"\nRendering test view: {test_view['description']}")

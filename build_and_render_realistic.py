@@ -13,7 +13,7 @@ import sys
 import os
 
 # Add script directory to path
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
 print("\n" + "="*70)
 print("STEP 1: BUILDING HOUSE MODEL")
@@ -21,7 +21,7 @@ print("="*70)
 print()
 
 # Import and execute the house configuration to build the model
-exec(open('/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/konkan_house_config.py').read())
+exec(open('/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/konkan_house_config.py').read())
 
 # Build the house without explosion
 build_house(use_explosion=False)
@@ -471,7 +471,7 @@ print("STEP 3: RENDERING")
 print("="*70)
 print()
 
-output_path = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/docs/realistic_render.png"
+output_path = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/docs/realistic_render.png"
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
 scene = bpy.context.scene

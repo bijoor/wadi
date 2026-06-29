@@ -4,7 +4,7 @@ Standalone script to generate the four pillar/slab structural elevation SVGs
 (front, back, left, right). Does not require Blender/bpy.
 """
 import sys
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
 from config import GLOBAL_CONFIG
 from svg_2d import generate_all_pillar_elevations

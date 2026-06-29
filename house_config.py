@@ -3,7 +3,7 @@
 # ============================================================================
 
 import sys
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 from konkan_house_lib import GLOBAL_CONFIG
 
 # Override default config values

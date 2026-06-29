@@ -122,7 +122,7 @@ def auto_crop_image(image_path, output_path=None, edge_threshold=150, content_ra
     return True
 
 def main():
-    input_dir = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew/docs/realistic_perspectives"
+    input_dir = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/docs/realistic_perspectives"
 
     # List of rendered perspective views
     views = [

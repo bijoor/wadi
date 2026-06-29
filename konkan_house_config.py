@@ -11,7 +11,7 @@ import importlib
 
 # Add the directory containing this script to the path
 # This allows importing konkan_house_lib.py from the same folder
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
 # Force reload all modules to ensure we're using the latest code
 # Order matters: reload dependencies first
