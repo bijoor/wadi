@@ -138,8 +138,8 @@
 <rect x="187.5" y="187.0" width="60" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="88.5" y="52.0" width="10" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="173.5" y="52.0" width="10" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
-<line x1="-30" y1="59.0" x2="135.0" y2="-24.47587711336712" stroke="#8B4513" stroke-width="3"/>
-<line x1="135.0" y1="-24.47587711336712" x2="300" y2="59.0" stroke="#8B4513" stroke-width="3"/>
+<line x1="-36" y1="59.0" x2="135.0" y2="-27.40227264476232" stroke="#8B4513" stroke-width="3"/>
+<line x1="135.0" y1="-27.40227264476232" x2="306" y2="59.0" stroke="#8B4513" stroke-width="3"/>
 <g class="dimension">
   <line x1="300" y1="252.0" x2="300" y2="152.0" stroke="#000" stroke-width="0.5"/>
   <line x1="270" y1="252.0" x2="300" y2="252.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>

@@ -1,60 +1,1487 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1840" height="660" viewBox="0 0 1840 660">
-<title>Roof Sections</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="1784" height="6900.989898989899" viewBox="0 0 1784 6900.989898989899">
+<title>Hip Roof — Slope Views &amp; Framing</title>
 <defs>
   <marker id="arr" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
     <path d="M0,0 L10,5 L0,10 z" fill="#0066cc"/>
   </marker>
   <style>text { font-family: -apple-system, Arial, sans-serif; }</style>
 </defs>
-<rect width="1840" height="660" fill="#fafafa"/>
-<text x="920.0" y="32" text-anchor="middle" font-size="22" font-weight="bold" fill="#222">Roof Dimensions — Hip Roof</text>
-<g transform="translate(0,50)">
-<g transform="translate(0,0)">
-<rect x="0" y="0" width="900" height="600" fill="white" stroke="#bbb" stroke-width="1"/>
-<text x="450.0" y="42" text-anchor="middle" font-size="20" font-weight="600" fill="#222">SECTION A–A : TRANSVERSE (across ridge)</text>
-<line x1="246.50000000000003" y1="520" x2="450.0" y2="420.7464182268472" stroke="#8B4513" stroke-width="3"/>
-<line x1="450.0" y1="420.7464182268472" x2="653.5" y2="520" stroke="#8B4513" stroke-width="3"/>
-<line x1="246.50000000000003" y1="523.7" x2="450.0" y2="424.4464182268472" stroke="#8B4513" stroke-width="3"/>
-<line x1="450.0" y1="424.4464182268472" x2="653.5" y2="523.7" stroke="#8B4513" stroke-width="3"/>
-<line x1="246.50000000000003" y1="520" x2="246.50000000000003" y2="590" stroke="#0066cc" stroke-width="0.7"/>
-<line x1="653.5" y1="520" x2="653.5" y2="590" stroke="#0066cc" stroke-width="0.7"/>
-<line x1="246.50000000000003" y1="580" x2="653.5" y2="580" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
-<text x="450.0" y="574" text-anchor="middle" font-size="13" fill="#0066cc">33'</text>
-<line x1="246.50000000000003" y1="520" x2="186.50000000000003" y2="520" stroke="#0066cc" stroke-width="0.7"/>
-<line x1="450.0" y1="420.7464182268472" x2="186.50000000000003" y2="420.7464182268472" stroke="#0066cc" stroke-width="0.7" stroke-dasharray="4,3"/>
-<line x1="196.50000000000003" y1="520" x2="196.50000000000003" y2="420.7464182268472" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
-<text x="190.50000000000003" y="470.3732091134236" text-anchor="end" font-size="13" fill="#0066cc">h = 8' 1"</text>
-<text x="340.25" y="462.3732091134236" text-anchor="end" font-size="12" fill="#444">26.0°</text>
-<text x="340.25" y="482.3732091134236" text-anchor="end" font-size="11" fill="#444">18' 4"</text>
-<text x="559.75" y="462.3732091134236" text-anchor="start" font-size="12" fill="#444">26.0°</text>
-<text x="559.75" y="482.3732091134236" text-anchor="start" font-size="11" fill="#444">18' 4"</text>
-</g>
-<g transform="translate(940,0)">
-<rect x="0" y="0" width="900" height="600" fill="white" stroke="#bbb" stroke-width="1"/>
-<text x="450.0" y="42" text-anchor="middle" font-size="20" font-weight="600" fill="#222">SECTION B–B : LONGITUDINAL (along ridge)</text>
-<line x1="135.50000000000006" y1="520" x2="357.5" y2="420.7464182268472" stroke="#8B4513" stroke-width="3"/>
-<line x1="357.5" y1="420.7464182268472" x2="542.5" y2="420.7464182268472" stroke="#8B4513" stroke-width="3"/>
-<line x1="542.5" y1="420.7464182268472" x2="764.5" y2="520" stroke="#8B4513" stroke-width="3"/>
-<line x1="135.50000000000006" y1="523.7" x2="357.5" y2="424.4464182268472" stroke="#8B4513" stroke-width="3"/>
-<line x1="357.5" y1="424.4464182268472" x2="542.5" y2="424.4464182268472" stroke="#8B4513" stroke-width="3"/>
-<line x1="542.5" y1="424.4464182268472" x2="764.5" y2="523.7" stroke="#8B4513" stroke-width="3"/>
-<line x1="135.50000000000006" y1="520" x2="135.50000000000006" y2="590" stroke="#0066cc" stroke-width="0.7"/>
-<line x1="764.5" y1="520" x2="764.5" y2="590" stroke="#0066cc" stroke-width="0.7"/>
-<line x1="135.50000000000006" y1="580" x2="764.5" y2="580" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
-<text x="450.0" y="574" text-anchor="middle" font-size="13" fill="#0066cc">51'</text>
-<line x1="357.5" y1="420.7464182268472" x2="357.5" y2="380.7464182268472" stroke="#0066cc" stroke-width="0.7"/>
-<line x1="542.5" y1="420.7464182268472" x2="542.5" y2="380.7464182268472" stroke="#0066cc" stroke-width="0.7"/>
-<line x1="357.5" y1="390.7464182268472" x2="542.5" y2="390.7464182268472" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
-<text x="450.0" y="384.7464182268472" text-anchor="middle" font-size="13" fill="#0066cc">ridge = 15'</text>
-<line x1="135.50000000000006" y1="535" x2="357.5" y2="535" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
-<text x="246.50000000000003" y="531" text-anchor="middle" font-size="11" fill="#0066cc">18'</text>
-<line x1="542.5" y1="535" x2="764.5" y2="535" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
-<text x="653.5" y="531" text-anchor="middle" font-size="11" fill="#0066cc">18'</text>
-<text x="242.50000000000003" y="466.3732091134236" text-anchor="end" font-size="12" fill="#444">24.1°</text>
-<text x="242.50000000000003" y="484.3732091134236" text-anchor="end" font-size="11" fill="#444">19' 9"</text>
-<text x="657.5" y="466.3732091134236" text-anchor="start" font-size="12" fill="#444">24.1°</text>
-<text x="657.5" y="484.3732091134236" text-anchor="start" font-size="11" fill="#444">19' 9"</text>
-</g>
-</g>
+<rect width="1784" height="6900.989898989899" fill="#fafafa"/>
+<text x="892.0" y="34" text-anchor="middle" font-size="22" font-weight="bold" fill="#222">Hip Roof — Slope Views &amp; Framing</text>
+<rect x="30" y="90" width="1724" height="1080" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="30" y="90" width="1724" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="892.0" y="117" text-anchor="middle" font-size="18" font-weight="600" fill="#222">ROOF PLAN — Top View (framing layout)</text>
+<defs>
+<clipPath id="topfv_N"><polygon points="455.7,213.0 1028.3,213.0 742.0,517.7"/></clipPath>
+<clipPath id="topfv_S"><polygon points="455.7,1087.0 742.0,782.3 1028.3,1087.0"/></clipPath>
+<clipPath id="topfv_W"><polygon points="455.7,213.0 742.0,517.7 742.0,782.3 455.7,1087.0"/></clipPath>
+<clipPath id="topfv_E"><polygon points="1028.3,213.0 1028.3,1087.0 742.0,782.3 742.0,517.7"/></clipPath>
+</defs>
+<polygon points="455.7,213.0 1028.3,213.0 742.0,517.7" fill="#f8ecd8" fill-opacity="0.7" stroke="none"/>
+<polygon points="455.7,1087.0 742.0,782.3 1028.3,1087.0" fill="#f8ecd8" fill-opacity="0.7" stroke="none"/>
+<polygon points="455.7,213.0 742.0,517.7 742.0,782.3 455.7,1087.0" fill="#f8ecd8" fill-opacity="0.7" stroke="none"/>
+<polygon points="1028.3,213.0 1028.3,1087.0 742.0,782.3 742.0,517.7" fill="#f8ecd8" fill-opacity="0.7" stroke="none"/>
+<line x1="455.7" y1="223.0" x2="742.0" y2="223.0" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="273.3" x2="742.0" y2="273.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="323.5" x2="742.0" y2="323.5" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="373.7" x2="742.0" y2="373.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="424.0" x2="742.0" y2="424.0" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="474.2" x2="742.0" y2="474.2" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="524.4" x2="742.0" y2="524.4" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="574.7" x2="742.0" y2="574.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="624.9" x2="742.0" y2="624.9" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="675.1" x2="742.0" y2="675.1" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="725.3" x2="742.0" y2="725.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="775.6" x2="742.0" y2="775.6" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="825.8" x2="742.0" y2="825.8" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="876.0" x2="742.0" y2="876.0" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="926.3" x2="742.0" y2="926.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="976.5" x2="742.0" y2="976.5" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="1026.7" x2="742.0" y2="1026.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="455.7" y1="1077.0" x2="742.0" y2="1077.0" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="1028.3" y1="223.0" x2="742.0" y2="223.0" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="273.3" x2="742.0" y2="273.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="323.5" x2="742.0" y2="323.5" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="373.7" x2="742.0" y2="373.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="424.0" x2="742.0" y2="424.0" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="474.2" x2="742.0" y2="474.2" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="524.4" x2="742.0" y2="524.4" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="574.7" x2="742.0" y2="574.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="624.9" x2="742.0" y2="624.9" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="675.1" x2="742.0" y2="675.1" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="725.3" x2="742.0" y2="725.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="775.6" x2="742.0" y2="775.6" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="825.8" x2="742.0" y2="825.8" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="876.0" x2="742.0" y2="876.0" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="926.3" x2="742.0" y2="926.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="976.5" x2="742.0" y2="976.5" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="1026.7" x2="742.0" y2="1026.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="1028.3" y1="1077.0" x2="742.0" y2="1077.0" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="465.7" y1="213.0" x2="465.7" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="516.0" y1="213.0" x2="516.0" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="566.2" y1="213.0" x2="566.2" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="616.4" y1="213.0" x2="616.4" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="666.7" y1="213.0" x2="666.7" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="716.9" y1="213.0" x2="716.9" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="767.1" y1="213.0" x2="767.1" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="817.3" y1="213.0" x2="817.3" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="867.6" y1="213.0" x2="867.6" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="917.8" y1="213.0" x2="917.8" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="968.0" y1="213.0" x2="968.0" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="1018.3" y1="213.0" x2="1018.3" y2="517.7" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="465.7" y1="1087.0" x2="465.7" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="516.0" y1="1087.0" x2="516.0" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="566.2" y1="1087.0" x2="566.2" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="616.4" y1="1087.0" x2="616.4" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="666.7" y1="1087.0" x2="666.7" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="716.9" y1="1087.0" x2="716.9" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="767.1" y1="1087.0" x2="767.1" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="817.3" y1="1087.0" x2="817.3" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="867.6" y1="1087.0" x2="867.6" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="917.8" y1="1087.0" x2="917.8" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="968.0" y1="1087.0" x2="968.0" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="1018.3" y1="1087.0" x2="1018.3" y2="782.3" stroke="#8B4513" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="470.7" y1="213.0" x2="470.7" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="1013.3" y1="213.0" x2="1013.3" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="485.8" y1="213.0" x2="485.8" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="998.2" y1="213.0" x2="998.2" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="500.8" y1="213.0" x2="500.8" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="983.2" y1="213.0" x2="983.2" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="515.9" y1="213.0" x2="515.9" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="968.1" y1="213.0" x2="968.1" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="530.9" y1="213.0" x2="530.9" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="953.1" y1="213.0" x2="953.1" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="546.0" y1="213.0" x2="546.0" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="938.0" y1="213.0" x2="938.0" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="561.0" y1="213.0" x2="561.0" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="923.0" y1="213.0" x2="923.0" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="576.1" y1="213.0" x2="576.1" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="907.9" y1="213.0" x2="907.9" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="591.1" y1="213.0" x2="591.1" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="892.9" y1="213.0" x2="892.9" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="606.2" y1="213.0" x2="606.2" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="877.8" y1="213.0" x2="877.8" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="621.2" y1="213.0" x2="621.2" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="862.8" y1="213.0" x2="862.8" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="636.3" y1="213.0" x2="636.3" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="847.7" y1="213.0" x2="847.7" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="651.3" y1="213.0" x2="651.3" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="832.7" y1="213.0" x2="832.7" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="666.4" y1="213.0" x2="666.4" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="817.6" y1="213.0" x2="817.6" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="681.4" y1="213.0" x2="681.4" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="802.6" y1="213.0" x2="802.6" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="696.5" y1="213.0" x2="696.5" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="787.5" y1="213.0" x2="787.5" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="711.5" y1="213.0" x2="711.5" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="772.5" y1="213.0" x2="772.5" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="726.6" y1="213.0" x2="726.6" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="757.4" y1="213.0" x2="757.4" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="741.6" y1="213.0" x2="741.6" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_W)"/>
+<line x1="742.4" y1="213.0" x2="742.4" y2="1087.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_E)"/>
+<line x1="455.7" y1="228.2" x2="1028.3" y2="228.2" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="1071.8" x2="1028.3" y2="1071.8" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="243.4" x2="1028.3" y2="243.4" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="1056.6" x2="1028.3" y2="1056.6" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="258.7" x2="1028.3" y2="258.7" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="1041.3" x2="1028.3" y2="1041.3" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="273.9" x2="1028.3" y2="273.9" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="1026.1" x2="1028.3" y2="1026.1" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="289.1" x2="1028.3" y2="289.1" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="1010.9" x2="1028.3" y2="1010.9" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="304.3" x2="1028.3" y2="304.3" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="995.7" x2="1028.3" y2="995.7" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="319.5" x2="1028.3" y2="319.5" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="980.5" x2="1028.3" y2="980.5" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="334.8" x2="1028.3" y2="334.8" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="965.2" x2="1028.3" y2="965.2" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="350.0" x2="1028.3" y2="350.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="950.0" x2="1028.3" y2="950.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="365.2" x2="1028.3" y2="365.2" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="934.8" x2="1028.3" y2="934.8" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="380.4" x2="1028.3" y2="380.4" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="919.6" x2="1028.3" y2="919.6" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="395.7" x2="1028.3" y2="395.7" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="904.3" x2="1028.3" y2="904.3" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="410.9" x2="1028.3" y2="410.9" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="889.1" x2="1028.3" y2="889.1" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="426.1" x2="1028.3" y2="426.1" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="873.9" x2="1028.3" y2="873.9" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="441.3" x2="1028.3" y2="441.3" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="858.7" x2="1028.3" y2="858.7" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="456.5" x2="1028.3" y2="456.5" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="843.5" x2="1028.3" y2="843.5" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="471.8" x2="1028.3" y2="471.8" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="828.2" x2="1028.3" y2="828.2" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="487.0" x2="1028.3" y2="487.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="813.0" x2="1028.3" y2="813.0" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="502.2" x2="1028.3" y2="502.2" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="797.8" x2="1028.3" y2="797.8" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="455.7" y1="517.4" x2="1028.3" y2="517.4" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_N)"/>
+<line x1="455.7" y1="782.6" x2="1028.3" y2="782.6" stroke="#4a8fbf" stroke-width="2.790549169859515" clip-path="url(#topfv_S)"/>
+<line x1="742.0" y1="517.7" x2="742.0" y2="782.3" stroke="#5a3a17" stroke-width="8.371647509578544"/>
+<line x1="742.0" y1="517.7" x2="455.7" y2="213.0" stroke="#5a3a17" stroke-width="8.371647509578544"/>
+<line x1="742.0" y1="517.7" x2="1028.3" y2="213.0" stroke="#5a3a17" stroke-width="8.371647509578544"/>
+<line x1="742.0" y1="782.3" x2="455.7" y2="1087.0" stroke="#5a3a17" stroke-width="8.371647509578544"/>
+<line x1="742.0" y1="782.3" x2="1028.3" y2="1087.0" stroke="#5a3a17" stroke-width="8.371647509578544"/>
+<line x1="455.7" y1="517.7" x2="1028.3" y2="517.7" stroke="#8b0000" stroke-width="2.8" opacity="0.85"/>
+<circle cx="742.0" cy="517.7" r="8" fill="white" stroke="#8b0000" stroke-width="1.2"/>
+<text x="742.0" y="521.7" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T1</text>
+<line x1="455.7" y1="650.0" x2="1028.3" y2="650.0" stroke="#8b0000" stroke-width="2.8" opacity="0.85"/>
+<circle cx="742.0" cy="650.0" r="8" fill="white" stroke="#8b0000" stroke-width="1.2"/>
+<text x="742.0" y="654.0" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T2</text>
+<line x1="455.7" y1="782.3" x2="1028.3" y2="782.3" stroke="#8b0000" stroke-width="2.8" opacity="0.85"/>
+<circle cx="742.0" cy="782.3" r="8" fill="white" stroke="#8b0000" stroke-width="1.2"/>
+<text x="742.0" y="786.3" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T3</text>
+<line x1="1028.3" y1="517.7" x2="1058.3" y2="517.7" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="3,2"/>
+<line x1="1028.3" y1="650.0" x2="1058.3" y2="650.0" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="3,2"/>
+<line x1="1028.3" y1="782.3" x2="1058.3" y2="782.3" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="3,2"/>
+<line x1="1054.3" y1="517.7" x2="1054.3" y2="650.0" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1060.3" y="587.9" text-anchor="start" font-size="11" fill="#0066cc">7' 11"</text>
+<line x1="1054.3" y1="650.0" x2="1054.3" y2="782.3" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1060.3" y="720.1" text-anchor="start" font-size="11" fill="#0066cc">7' 11"</text>
+<polygon points="516.0,273.3 968.0,273.3 968.0,1026.7 516.0,1026.7" fill="none" stroke="#1e5aa6" stroke-width="5.6" opacity="0.85"/>
+<text x="980.0" y="650.0" text-anchor="start" font-size="11" font-weight="600" fill="#1e5aa6">Ring beam (27'×45')</text>
+<line x1="629.0" y1="517.7" x2="629.0" y2="273.3" stroke="#8a4a1a" stroke-width="5.6" opacity="0.85"/>
+<line x1="629.0" y1="782.3" x2="629.0" y2="1026.7" stroke="#8a4a1a" stroke-width="5.6" opacity="0.85"/>
+<line x1="742.0" y1="517.7" x2="742.0" y2="273.3" stroke="#8a4a1a" stroke-width="5.6" opacity="0.85"/>
+<line x1="742.0" y1="782.3" x2="742.0" y2="1026.7" stroke="#8a4a1a" stroke-width="5.6" opacity="0.85"/>
+<line x1="855.0" y1="517.7" x2="855.0" y2="273.3" stroke="#8a4a1a" stroke-width="5.6" opacity="0.85"/>
+<line x1="855.0" y1="782.3" x2="855.0" y2="1026.7" stroke="#8a4a1a" stroke-width="5.6" opacity="0.85"/>
+<polygon points="455.7,213.0 1028.3,213.0 1028.3,1087.0 455.7,1087.0" fill="none" stroke="#4a8fbf" stroke-width="2.0" opacity="0.55"/>
+<polygon points="457.1,214.4 1026.9,214.4 1026.9,1085.6 457.1,1085.6" fill="none" stroke="#404040" stroke-width="2.0" opacity="0.55"/>
+<polygon points="455.7,213.0 1028.3,213.0 1028.3,1087.0 455.7,1087.0" fill="none" stroke="#222" stroke-width="1.0"/>
+<rect x="100" y="280" width="335.6896551724138" height="268" fill="#ffffff" fill-opacity="0.92" stroke="#888" stroke-width="1"/>
+<text x="110" y="296" font-size="12" font-weight="700" fill="#222">KEY</text>
+<line x1="110" y1="315.0" x2="144" y2="315.0" stroke="#8B4513" stroke-width="2.790549169859515"/>
+<text x="152" y="319.0" text-anchor="start" font-size="12" fill="#222">2"×4"×2 mm HSS RAFTER @ 36" OC</text>
+<line x1="110" y1="341.0" x2="144" y2="341.0" stroke="#4a8fbf" stroke-width="2.790549169859515"/>
+<text x="152" y="345.0" text-anchor="start" font-size="12" fill="#222">2"×1"×1.6 mm HSS PURLIN (flat) @ 12" OC</text>
+<line x1="110" y1="367.0" x2="144" y2="367.0" stroke="#5a3a17" stroke-width="8.371647509578544"/>
+<text x="152" y="371.0" text-anchor="start" font-size="12" fill="#222">6"×3"×2 mm HSS RIDGE / HIP</text>
+<line x1="110" y1="393.0" x2="144" y2="393.0" stroke="#8b0000" stroke-width="2.790549169859515"/>
+<text x="152" y="397.0" text-anchor="start" font-size="12" fill="#222">FINK TRUSS × 3 — 2"×4"×3 mm HSS, 27' span</text>
+<line x1="110" y1="419.0" x2="144" y2="419.0" stroke="#1e5aa6" stroke-width="5.58109833971903"/>
+<text x="152" y="423.0" text-anchor="start" font-size="12" fill="#222">RING BEAM 27'×45' — 4"×2"×3 mm HSS @ wall top</text>
+<line x1="110" y1="445.0" x2="144" y2="445.0" stroke="#8a4a1a" stroke-width="5.58109833971903"/>
+<text x="152" y="449.0" text-anchor="start" font-size="12" fill="#222">HIP-END BEAMS × 6 — 4"×2"×2 mm HSS</text>
+<line x1="110" y1="471.0" x2="144" y2="471.0" stroke="#4a8fbf" stroke-width="1.8"/>
+<text x="152" y="475.0" text-anchor="start" font-size="12" fill="#222">6" × 1.2 mm GI PANI PATTI (outer eave band)</text>
+<line x1="110" y1="497.0" x2="144" y2="497.0" stroke="#404040" stroke-width="1.8"/>
+<text x="152" y="501.0" text-anchor="start" font-size="12" fill="#222">1"×1"×3 mm L-CHANNEL (inboard of Pani Patti)</text>
+<text x="152" y="527.0" text-anchor="start" font-size="12" fill="#222">(all widths drawn to scale — 1 pixel ≈ 0.72")</text>
+<line x1="120" y1="242" x2="120" y2="198" stroke="#333" stroke-width="1" marker-end="url(#arr)"/>
+<text x="120" y="194" text-anchor="middle" font-size="12" font-weight="600" fill="#222">N</text>
+<rect x="30" y="1194" width="850" height="500" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="30" y="1194" width="850" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="455.0" y="1221" text-anchor="middle" font-size="18" font-weight="600" fill="#222">PERSPECTIVE — Structural frame (isometric)</text>
+<line x1="518.5" y1="1288.0" x2="759.8" y2="1427.3" stroke="#b48a5a" stroke-width="0.8" opacity="0.55" stroke-dasharray="4,3"/>
+<line x1="759.8" y1="1427.3" x2="391.5" y2="1640.0" stroke="#b48a5a" stroke-width="0.8" opacity="0.55" stroke-dasharray="4,3"/>
+<line x1="391.5" y1="1640.0" x2="150.2" y2="1500.7" stroke="#b48a5a" stroke-width="0.8" opacity="0.55" stroke-dasharray="4,3"/>
+<line x1="150.2" y1="1500.7" x2="518.5" y2="1288.0" stroke="#b48a5a" stroke-width="0.8" opacity="0.55" stroke-dasharray="4,3"/>
+<line x1="510.7" y1="1363.9" x2="399.3" y2="1428.2" stroke="#a17545" stroke-width="1.0" opacity="0.7"/>
+<line x1="510.7" y1="1363.9" x2="518.5" y2="1288.0" stroke="#a17545" stroke-width="0.8" opacity="0.55" stroke-dasharray="4,3"/>
+<line x1="510.7" y1="1363.9" x2="759.8" y2="1427.3" stroke="#a17545" stroke-width="0.8" opacity="0.55" stroke-dasharray="4,3"/>
+<line x1="399.3" y1="1428.2" x2="391.5" y2="1640.0" stroke="#a17545" stroke-width="0.8" opacity="0.55" stroke-dasharray="4,3"/>
+<line x1="399.3" y1="1428.2" x2="150.2" y2="1500.7" stroke="#a17545" stroke-width="0.8" opacity="0.55" stroke-dasharray="4,3"/>
+<line x1="518.5" y1="1306.5" x2="709.0" y2="1416.5" stroke="#1e5aa6" stroke-width="2.4" opacity="0.95"/>
+<line x1="709.0" y1="1416.5" x2="391.5" y2="1599.8" stroke="#1e5aa6" stroke-width="2.4" opacity="0.95"/>
+<line x1="391.5" y1="1599.8" x2="201.0" y2="1489.8" stroke="#1e5aa6" stroke-width="2.4" opacity="0.95"/>
+<line x1="201.0" y1="1489.8" x2="518.5" y2="1306.5" stroke="#1e5aa6" stroke-width="2.4" opacity="0.95"/>
+<line x1="463.1" y1="1393.5" x2="566.1" y2="1334.0" stroke="#8a4a1a" stroke-width="1.6" opacity="1.0"/>
+<line x1="351.6" y1="1457.8" x2="248.6" y2="1517.3" stroke="#8a4a1a" stroke-width="1.6" opacity="1.0"/>
+<line x1="510.7" y1="1421.0" x2="613.8" y2="1361.5" stroke="#8a4a1a" stroke-width="1.6" opacity="1.0"/>
+<line x1="399.3" y1="1485.3" x2="296.2" y2="1544.8" stroke="#8a4a1a" stroke-width="1.6" opacity="1.0"/>
+<line x1="558.4" y1="1448.5" x2="661.4" y2="1389.0" stroke="#8a4a1a" stroke-width="1.6" opacity="1.0"/>
+<line x1="446.9" y1="1512.8" x2="343.9" y2="1572.3" stroke="#8a4a1a" stroke-width="1.6" opacity="1.0"/>
+<line x1="415.5" y1="1366.0" x2="510.7" y2="1363.9" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
+<line x1="510.7" y1="1363.9" x2="606.0" y2="1476.0" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
+<line x1="415.5" y1="1366.0" x2="606.0" y2="1476.0" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
+<line x1="510.7" y1="1363.9" x2="510.7" y2="1421.0" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="510.7" y1="1363.9" x2="463.1" y2="1393.5" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="510.7" y1="1363.9" x2="558.4" y2="1448.5" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="463.1" y1="1364.9" x2="463.1" y2="1393.5" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="558.4" y1="1419.9" x2="558.4" y2="1448.5" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<circle cx="415.5" cy="1366.0" r="2.0" fill="#8b0000"/>
+<circle cx="463.1" cy="1393.5" r="2.0" fill="#8b0000"/>
+<circle cx="510.7" cy="1421.0" r="2.0" fill="#8b0000"/>
+<circle cx="558.4" cy="1448.5" r="2.0" fill="#8b0000"/>
+<circle cx="606.0" cy="1476.0" r="2.0" fill="#8b0000"/>
+<circle cx="463.1" cy="1364.9" r="2.0" fill="#8b0000"/>
+<circle cx="510.7" cy="1363.9" r="2.0" fill="#8b0000"/>
+<circle cx="558.4" cy="1419.9" r="2.0" fill="#8b0000"/>
+<circle cx="510.7" cy="1363.9" r="9" fill="white" stroke="#8b0000" stroke-width="1.2"/>
+<text x="510.7" y="1367.9" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T1</text>
+<line x1="359.7" y1="1398.1" x2="455.0" y2="1396.0" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
+<line x1="455.0" y1="1396.0" x2="550.3" y2="1508.1" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
+<line x1="359.7" y1="1398.1" x2="550.3" y2="1508.1" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
+<line x1="455.0" y1="1396.0" x2="455.0" y2="1453.1" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="455.0" y1="1396.0" x2="407.4" y2="1425.6" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="455.0" y1="1396.0" x2="502.6" y2="1480.6" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="407.4" y1="1397.1" x2="407.4" y2="1425.6" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="502.6" y1="1452.1" x2="502.6" y2="1480.6" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<circle cx="359.7" cy="1398.1" r="2.0" fill="#8b0000"/>
+<circle cx="407.4" cy="1425.6" r="2.0" fill="#8b0000"/>
+<circle cx="455.0" cy="1453.1" r="2.0" fill="#8b0000"/>
+<circle cx="502.6" cy="1480.6" r="2.0" fill="#8b0000"/>
+<circle cx="550.3" cy="1508.1" r="2.0" fill="#8b0000"/>
+<circle cx="407.4" cy="1397.1" r="2.0" fill="#8b0000"/>
+<circle cx="455.0" cy="1396.0" r="2.0" fill="#8b0000"/>
+<circle cx="502.6" cy="1452.1" r="2.0" fill="#8b0000"/>
+<circle cx="455.0" cy="1396.0" r="9" fill="white" stroke="#8b0000" stroke-width="1.2"/>
+<text x="455.0" y="1400.0" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T2</text>
+<line x1="304.0" y1="1430.3" x2="399.3" y2="1428.2" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
+<line x1="399.3" y1="1428.2" x2="494.5" y2="1540.3" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
+<line x1="304.0" y1="1430.3" x2="494.5" y2="1540.3" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
+<line x1="399.3" y1="1428.2" x2="399.3" y2="1485.3" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="399.3" y1="1428.2" x2="351.6" y2="1457.8" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="399.3" y1="1428.2" x2="446.9" y2="1512.8" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="351.6" y1="1429.3" x2="351.6" y2="1457.8" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<line x1="446.9" y1="1484.3" x2="446.9" y2="1512.8" stroke="#c25050" stroke-width="1.2" opacity="1.0"/>
+<circle cx="304.0" cy="1430.3" r="2.0" fill="#8b0000"/>
+<circle cx="351.6" cy="1457.8" r="2.0" fill="#8b0000"/>
+<circle cx="399.3" cy="1485.3" r="2.0" fill="#8b0000"/>
+<circle cx="446.9" cy="1512.8" r="2.0" fill="#8b0000"/>
+<circle cx="494.5" cy="1540.3" r="2.0" fill="#8b0000"/>
+<circle cx="351.6" cy="1429.3" r="2.0" fill="#8b0000"/>
+<circle cx="399.3" cy="1428.2" r="2.0" fill="#8b0000"/>
+<circle cx="446.9" cy="1484.3" r="2.0" fill="#8b0000"/>
+<circle cx="399.3" cy="1428.2" r="9" fill="white" stroke="#8b0000" stroke-width="1.2"/>
+<text x="399.3" y="1432.2" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T3</text>
+<text x="639.2" y="1372.7" text-anchor="middle" font-size="13" font-weight="600" fill="#333">N</text>
+<text x="270.8" y="1585.3" text-anchor="middle" font-size="13" font-weight="600" fill="#333">S</text>
+<text x="334.3" y="1409.3" text-anchor="middle" font-size="13" font-weight="600" fill="#333">W</text>
+<text x="575.7" y="1548.7" text-anchor="middle" font-size="13" font-weight="600" fill="#333">E</text>
+<text x="60" y="1264" font-size="11" font-weight="600" fill="#8b0000">■ Fink truss × 3</text>
+<text x="60" y="1280" font-size="11" font-weight="600" fill="#1e5aa6">■ Ring beam (27' × 45')</text>
+<text x="60" y="1296" font-size="11" font-weight="600" fill="#8a4a1a">■ Hip-end beams × 6</text>
+<text x="60" y="1312" font-size="10" fill="#666">(roof shell dashed for context)</text>
+<rect x="904" y="1194" width="850" height="238.0" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="904" y="1194" width="850" height="36" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="1329.0" y="1218" text-anchor="middle" font-size="16" font-weight="600" fill="#222">SECTION A–A : TRANSVERSE (perpendicular to ridge) — TRUSS PROFILE</text>
+<path d="M 1141.4 1372.0 L 1516.6 1372.0 L 1329.0 1280.5 Z" fill="#e8ceb0" stroke="#8B4513" stroke-width="2"/>
+<line x1="1141.3971984954944" y1="1372.0" x2="1105.3971984954944" y2="1372.0" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="3,3"/>
+<line x1="1329.0" y1="1280.5" x2="1105.3971984954944" y2="1280.5" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="3,3"/>
+<line x1="1111.3971984954944" y1="1372.0" x2="1111.3971984954944" y2="1280.5" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1105.3971984954944" y="1326.25" text-anchor="end" font-size="11" fill="#0066cc">h = 8' 4"</text>
+<line x1="1141.3971984954944" y1="1372.0" x2="1141.3971984954944" y2="1410.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1516.6028015045056" y1="1372.0" x2="1516.6028015045056" y2="1410.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1141.3971984954944" y1="1404.0" x2="1516.6028015045056" y2="1404.0" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1329.0" y="1399.0" text-anchor="middle" font-size="11" fill="#0066cc">34' 2"</text>
+<text x="1149.3971984954944" y="1366.0" text-anchor="start" font-size="11" fill="#333">26.0°</text>
+<text x="1508.6028015045056" y="1366.0" text-anchor="end" font-size="11" fill="#333">26.0°</text>
+<text x="1329.0" y="1295.5" text-anchor="middle" font-size="11" fill="#333">128.0°</text>
+<text x="1742" y="1248" text-anchor="end" font-size="12" font-weight="600" fill="#8B4513">PITCH: 26.0°</text>
+<line x1="1180.9" y1="1357.4" x2="1329.0" y2="1280.5" stroke="#8b0000" stroke-width="2.4"/>
+<line x1="1329.0" y1="1280.5" x2="1477.1" y2="1357.4" stroke="#8b0000" stroke-width="2.4"/>
+<line x1="1180.9" y1="1357.4" x2="1477.1" y2="1357.4" stroke="#8b0000" stroke-width="2.4"/>
+<line x1="1329.0" y1="1280.5" x2="1329.0" y2="1357.4" stroke="#8b0000" stroke-width="1.4" opacity="0.9"/>
+<line x1="1329.0" y1="1280.5" x2="1254.9" y2="1357.4" stroke="#8b0000" stroke-width="1.4" opacity="0.9"/>
+<line x1="1329.0" y1="1280.5" x2="1403.1" y2="1357.4" stroke="#8b0000" stroke-width="1.4" opacity="0.9"/>
+<line x1="1254.9" y1="1318.9" x2="1254.9" y2="1357.4" stroke="#8b0000" stroke-width="1.4" opacity="0.9"/>
+<line x1="1403.1" y1="1318.9" x2="1403.1" y2="1357.4" stroke="#8b0000" stroke-width="1.4" opacity="0.9"/>
+<circle cx="1180.9" cy="1357.4" r="2.0" fill="#8b0000"/>
+<circle cx="1254.9" cy="1357.4" r="2.0" fill="#8b0000"/>
+<circle cx="1329.0" cy="1357.4" r="2.0" fill="#8b0000"/>
+<circle cx="1403.1" cy="1357.4" r="2.0" fill="#8b0000"/>
+<circle cx="1477.1" cy="1357.4" r="2.0" fill="#8b0000"/>
+<circle cx="1254.9" cy="1318.9" r="2.0" fill="#8b0000"/>
+<circle cx="1329.0" cy="1280.5" r="2.0" fill="#8b0000"/>
+<circle cx="1403.1" cy="1318.9" r="2.0" fill="#8b0000"/>
+<rect x="1178.9" y="1355.4" width="4.0" height="4.0" fill="#1e5aa6" stroke="#1e5aa6"/>
+<rect x="1475.1" y="1355.4" width="4.0" height="4.0" fill="#1e5aa6" stroke="#1e5aa6"/>
+<text x="1742.0" y="1262.0" text-anchor="end" font-size="11" fill="#8b0000">Fink × 3 — 27' × 7' rise, bottom chord on ring beam</text>
+<text x="1742.0" y="1276.0" text-anchor="end" font-size="11" fill="#1e5aa6">Ring beam at wall top (16" above eave)</text>
+<rect x="904" y="1456.0" width="850" height="238.0" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="904" y="1456.0" width="850" height="36" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="1329.0" y="1480.0" text-anchor="middle" font-size="16" font-weight="600" fill="#222">SECTION B–B : LONGITUDINAL (along ridge) — TRUSS LOCATIONS</text>
+<path d="M 1042.7 1634.0 L 1615.3 1634.0 L 1415.7 1542.5 L 1242.3 1542.5 Z" fill="#e8ceb0" stroke="#8B4513" stroke-width="2"/>
+<line x1="1042.6588819141757" y1="1634.0" x2="1006.6588819141757" y2="1634.0" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="3,3"/>
+<line x1="1329.0" y1="1542.5" x2="1006.6588819141757" y2="1542.5" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="3,3"/>
+<line x1="1012.6588819141757" y1="1634.0" x2="1012.6588819141757" y2="1542.5" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1006.6588819141757" y="1588.25" text-anchor="end" font-size="11" fill="#0066cc">h = 8' 4"</text>
+<line x1="1042.6588819141757" y1="1634.0" x2="1042.6588819141757" y2="1672.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1615.3411180858243" y1="1634.0" x2="1615.3411180858243" y2="1672.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1042.6588819141757" y1="1666.0" x2="1615.3411180858243" y2="1666.0" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1329.0" y="1661.0" text-anchor="middle" font-size="11" fill="#0066cc">52' 2"</text>
+<line x1="1242.3296998897313" y1="1542.5" x2="1242.3296998897313" y2="1518.5" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1415.6703001102687" y1="1542.5" x2="1415.6703001102687" y2="1518.5" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1242.3296998897313" y1="1524.5" x2="1415.6703001102687" y2="1524.5" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1329.0" y="1519.5" text-anchor="middle" font-size="11" fill="#0066cc">ridge = 15' 10"</text>
+<text x="1050.6588819141757" y="1628.0" text-anchor="start" font-size="11" fill="#333">24.6°</text>
+<text x="1607.3411180858243" y="1628.0" text-anchor="end" font-size="11" fill="#333">24.6°</text>
+<text x="1248.3296998897313" y="1556.5" text-anchor="start" font-size="11" fill="#333">155.4°</text>
+<text x="1409.6703001102687" y="1556.5" text-anchor="end" font-size="11" fill="#333">155.4°</text>
+<text x="1742" y="1510.0" text-anchor="end" font-size="12" font-weight="600" fill="#8B4513">PITCH: 24.6°</text>
+<line x1="1082.2" y1="1619.4" x2="1575.8" y2="1619.4" stroke="#1e5aa6" stroke-width="2.6" opacity="0.95"/>
+<text x="1090.2" y="1615.4" text-anchor="start" font-size="10" fill="#1e5aa6" font-weight="600">Ring beam</text>
+<line x1="1242.3" y1="1542.5" x2="1242.3" y2="1619.4" stroke="#8b0000" stroke-width="2.0" opacity="0.85"/>
+<circle cx="1242.3" cy="1542.5" r="2.8" fill="#8b0000"/>
+<circle cx="1242.3" cy="1619.4" r="2.8" fill="#8b0000"/>
+<text x="1242.3" y="1536.5" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T1</text>
+<line x1="1329.0" y1="1542.5" x2="1329.0" y2="1619.4" stroke="#8b0000" stroke-width="2.0" opacity="0.85"/>
+<circle cx="1329.0" cy="1542.5" r="2.8" fill="#8b0000"/>
+<circle cx="1329.0" cy="1619.4" r="2.8" fill="#8b0000"/>
+<text x="1329.0" y="1536.5" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T2</text>
+<line x1="1415.7" y1="1542.5" x2="1415.7" y2="1619.4" stroke="#8b0000" stroke-width="2.0" opacity="0.85"/>
+<circle cx="1415.7" cy="1542.5" r="2.8" fill="#8b0000"/>
+<circle cx="1415.7" cy="1619.4" r="2.8" fill="#8b0000"/>
+<text x="1415.7" y="1536.5" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T3</text>
+<line x1="1435.7" y1="1542.5" x2="1435.7" y2="1619.4" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1439.7" y="1584.9" text-anchor="start" font-size="10" fill="#0066cc">rise 7'</text>
+<line x1="1435.7" y1="1619.4" x2="1435.7" y2="1634.0" stroke="#0066cc" stroke-width="0.7" stroke-dasharray="3,2"/>
+<text x="1439.7" y="1630.7" text-anchor="start" font-size="9" fill="#666">wall top 16"</text>
+<line x1="1242.3" y1="1528.5" x2="1242.3" y2="1524.5" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="2,2"/>
+<line x1="1329.0" y1="1528.5" x2="1329.0" y2="1524.5" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="2,2"/>
+<line x1="1415.7" y1="1528.5" x2="1415.7" y2="1524.5" stroke="#0066cc" stroke-width="0.5" stroke-dasharray="2,2"/>
+<line x1="1242.3" y1="1520.5" x2="1329.0" y2="1520.5" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1285.7" y="1516.5" text-anchor="middle" font-size="10" fill="#0066cc">7' 11"</text>
+<line x1="1329.0" y1="1520.5" x2="1415.7" y2="1520.5" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1372.3" y="1516.5" text-anchor="middle" font-size="10" fill="#0066cc">7' 11"</text>
+<text x="1742.0" y="1524.0" text-anchor="end" font-size="11" fill="#8b0000">3 common (Fink) trusses shown</text>
+<rect x="30" y="1718" width="850" height="620" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="30" y="1718" width="850" height="46" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="455.0" y="1749" text-anchor="middle" font-size="18" font-weight="600" fill="#222">MAIN SLOPES — W &amp; E (trapezoid, identical pair)</text>
+<line x1="148.41" y1="2154.80" x2="761.59" y2="2154.80" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="160.08" y1="2142.61" x2="749.92" y2="2142.61" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="171.74" y1="2130.41" x2="738.26" y2="2130.41" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="183.41" y1="2118.22" x2="726.59" y2="2118.22" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="195.07" y1="2106.03" x2="714.93" y2="2106.03" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="206.74" y1="2093.83" x2="703.26" y2="2093.83" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="218.40" y1="2081.64" x2="691.60" y2="2081.64" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="230.07" y1="2069.45" x2="679.93" y2="2069.45" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="241.73" y1="2057.25" x2="668.27" y2="2057.25" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="253.39" y1="2045.06" x2="656.61" y2="2045.06" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="265.06" y1="2032.87" x2="644.94" y2="2032.87" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="276.72" y1="2020.67" x2="633.28" y2="2020.67" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="288.39" y1="2008.48" x2="621.61" y2="2008.48" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="300.05" y1="1996.28" x2="609.95" y2="1996.28" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="311.72" y1="1984.09" x2="598.28" y2="1984.09" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="323.38" y1="1971.90" x2="586.62" y2="1971.90" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="335.05" y1="1959.70" x2="574.95" y2="1959.70" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="346.71" y1="1947.51" x2="563.29" y2="1947.51" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="358.37" y1="1935.32" x2="551.63" y2="1935.32" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="144.07" y1="2166.99" x2="144.07" y2="2159.35" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="180.65" y1="2166.99" x2="180.65" y2="2121.11" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="217.23" y1="2166.99" x2="217.23" y2="2082.87" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="253.81" y1="2166.99" x2="253.81" y2="2044.63" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="290.39" y1="2166.99" x2="290.39" y2="2006.39" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="326.97" y1="2166.99" x2="326.97" y2="1968.15" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="363.55" y1="2166.99" x2="363.55" y2="1935.01" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="400.13" y1="2166.99" x2="400.13" y2="1935.01" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="436.71" y1="2166.99" x2="436.71" y2="1935.01" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="473.29" y1="2166.99" x2="473.29" y2="1935.01" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="509.87" y1="2166.99" x2="509.87" y2="1935.01" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="546.45" y1="2166.99" x2="546.45" y2="1935.01" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="583.03" y1="2166.99" x2="583.03" y2="1968.15" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="619.61" y1="2166.99" x2="619.61" y2="2006.39" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="656.19" y1="2166.99" x2="656.19" y2="2044.63" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="692.77" y1="2166.99" x2="692.77" y2="2082.87" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="729.35" y1="2166.99" x2="729.35" y2="2121.11" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="765.93" y1="2166.99" x2="765.93" y2="2159.35" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<path d="M 136.75 2166.99 L 773.25 2166.99 L 551.33 1935.01 L 358.67 1935.01 Z" fill="none" stroke="#8B4513" stroke-width="3"/>
+<line x1="136.75" y1="2166.9935479925575" x2="136.75" y2="2216.9935479925575" stroke="#0066cc" stroke-width="0.6"/>
+<line x1="773.25" y1="2166.9935479925575" x2="773.25" y2="2216.9935479925575" stroke="#0066cc" stroke-width="0.6"/>
+<line x1="136.75" y1="2208.9935479925575" x2="773.25" y2="2208.9935479925575" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="455.0" y="2202.9935479925575" text-anchor="middle" font-size="12" fill="#0066cc">eave = 52' 2"</text>
+<line x1="358.6714559386973" y1="1935.006452007442" x2="358.6714559386973" y2="1903.006452007442" stroke="#0066cc" stroke-width="0.6"/>
+<line x1="551.3285440613026" y1="1935.006452007442" x2="551.3285440613026" y2="1903.006452007442" stroke="#0066cc" stroke-width="0.6"/>
+<line x1="358.6714559386973" y1="1911.006452007442" x2="551.3285440613026" y2="1911.006452007442" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="455.0" y="1905.006452007442" text-anchor="middle" font-size="12" fill="#0066cc">ridge = 15' 10"</text>
+<line x1="773.25" y1="2166.9935479925575" x2="813.25" y2="2166.9935479925575" stroke="#0066cc" stroke-width="0.6" stroke-dasharray="3,3"/>
+<line x1="551.3285440613026" y1="1935.006452007442" x2="813.25" y2="1935.006452007442" stroke="#0066cc" stroke-width="0.6" stroke-dasharray="3,3"/>
+<line x1="805.25" y1="2166.9935479925575" x2="805.25" y2="1935.006452007442" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="811.25" y="2051.0" text-anchor="start" font-size="11" fill="#0066cc">height = 19'</text>
+<text x="239.71072796934865" y="2051.0" text-anchor="end" font-size="10" fill="#555">hip = 26' 4"</text>
+<text x="144.75" y="2160.9935479925575" text-anchor="start" font-size="11" fill="#333">46.3°</text>
+<text x="765.25" y="2160.9935479925575" text-anchor="end" font-size="11" fill="#333">46.3°</text>
+<text x="364.6714559386973" y="1949.006452007442" text-anchor="start" font-size="11" fill="#333">133.7°</text>
+<text x="545.3285440613026" y="1949.006452007442" text-anchor="end" font-size="11" fill="#333">133.7°</text>
+<text x="455.0" y="1784" text-anchor="middle" font-size="15" font-weight="600" fill="#8B4513">ROOF PITCH: 26.0°</text>
+<text x="455.0" y="1802" text-anchor="middle" font-size="13" fill="#333">AREA: 647 sft per face   (× 2 = 1294 sft)</text>
+<text x="870" y="1784" text-anchor="end" font-size="11" fill="#333">18 rafters @ 36" OC</text>
+<text x="870" y="1799" text-anchor="end" font-size="11" fill="#333">19 purlins @ 12" OC</text>
+<rect x="904" y="1718" width="850" height="620" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="904" y="1718" width="850" height="46" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="1329.0" y="1749" text-anchor="middle" font-size="18" font-weight="600" fill="#222">HIP ENDS — N &amp; S (triangle, identical pair)</text>
+<line x1="1130.91" y1="2160.86" x2="1527.09" y2="2160.86" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1141.32" y1="2148.67" x2="1516.68" y2="2148.67" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1151.74" y1="2136.48" x2="1506.26" y2="2136.48" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1162.15" y1="2124.28" x2="1495.85" y2="2124.28" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1172.57" y1="2112.09" x2="1485.43" y2="2112.09" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1182.98" y1="2099.90" x2="1475.02" y2="2099.90" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1193.40" y1="2087.70" x2="1464.60" y2="2087.70" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1203.81" y1="2075.51" x2="1454.19" y2="2075.51" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1214.23" y1="2063.32" x2="1443.77" y2="2063.32" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1224.64" y1="2051.12" x2="1433.36" y2="2051.12" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1235.06" y1="2038.93" x2="1422.94" y2="2038.93" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1245.47" y1="2026.73" x2="1412.53" y2="2026.73" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1255.89" y1="2014.54" x2="1402.11" y2="2014.54" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1266.30" y1="2002.35" x2="1391.70" y2="2002.35" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1276.72" y1="1990.15" x2="1381.28" y2="1990.15" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1287.13" y1="1977.96" x2="1370.87" y2="1977.96" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1297.55" y1="1965.77" x2="1360.45" y2="1965.77" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1307.96" y1="1953.57" x2="1350.04" y2="1953.57" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1318.38" y1="1941.38" x2="1339.62" y2="1941.38" stroke="#4a8fbf" stroke-width="0.7" opacity="0.75"/>
+<line x1="1127.81" y1="2173.06" x2="1127.81" y2="2164.49" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1164.39" y1="2173.06" x2="1164.39" y2="2121.66" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1200.97" y1="2173.06" x2="1200.97" y2="2078.84" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1237.55" y1="2173.06" x2="1237.55" y2="2036.01" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1274.13" y1="2173.06" x2="1274.13" y2="1993.18" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1310.71" y1="2173.06" x2="1310.71" y2="1950.36" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1347.29" y1="2173.06" x2="1347.29" y2="1950.36" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1383.87" y1="2173.06" x2="1383.87" y2="1993.18" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1420.45" y1="2173.06" x2="1420.45" y2="2036.01" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1457.03" y1="2173.06" x2="1457.03" y2="2078.84" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1493.61" y1="2173.06" x2="1493.61" y2="2121.66" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<line x1="1530.19" y1="2173.06" x2="1530.19" y2="2164.49" stroke="#666" stroke-width="0.9" opacity="0.9"/>
+<path d="M 1120.49 2173.06 L 1537.51 2173.06 L 1329.00 1928.94 Z" fill="none" stroke="#8B4513" stroke-width="3"/>
+<line x1="1120.4913793103449" y1="2173.05664710254" x2="1120.4913793103449" y2="2223.05664710254" stroke="#0066cc" stroke-width="0.6"/>
+<line x1="1537.5086206896551" y1="2173.05664710254" x2="1537.5086206896551" y2="2223.05664710254" stroke="#0066cc" stroke-width="0.6"/>
+<line x1="1120.4913793103449" y1="2215.05664710254" x2="1537.5086206896551" y2="2215.05664710254" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1329.0" y="2209.05664710254" text-anchor="middle" font-size="12" fill="#0066cc">eave = 34' 2"</text>
+<line x1="1537.5086206896551" y1="2173.05664710254" x2="1577.5086206896551" y2="2173.05664710254" stroke="#0066cc" stroke-width="0.6" stroke-dasharray="3,3"/>
+<line x1="1329.0" y1="1928.94335289746" x2="1577.5086206896551" y2="1928.94335289746" stroke="#0066cc" stroke-width="0.6" stroke-dasharray="3,3"/>
+<line x1="1569.5086206896551" y1="2173.05664710254" x2="1569.5086206896551" y2="1928.94335289746" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1575.5086206896551" y="2051.0" text-anchor="start" font-size="11" fill="#0066cc">height = 20'</text>
+<text x="1216.7456896551726" y="2051.0" text-anchor="end" font-size="10" fill="#555">hip = 26' 4"</text>
+<text x="1128.4913793103449" y="2167.05664710254" text-anchor="start" font-size="11" fill="#333">49.5°</text>
+<text x="1529.5086206896551" y="2167.05664710254" text-anchor="end" font-size="11" fill="#333">49.5°</text>
+<text x="1329.0" y="1943.94335289746" text-anchor="middle" font-size="11" fill="#333">81.0°</text>
+<text x="1329.0" y="1784" text-anchor="middle" font-size="15" font-weight="600" fill="#8B4513">ROOF PITCH: 24.6°</text>
+<text x="1329.0" y="1802" text-anchor="middle" font-size="13" fill="#333">AREA: 342 sft per face   (× 2 = 685 sft)</text>
+<text x="1744" y="1784" text-anchor="end" font-size="11" fill="#333">12 rafters @ 36" OC</text>
+<text x="1744" y="1799" text-anchor="end" font-size="11" fill="#333">20 purlins @ 12" OC</text>
+<rect x="30" y="2362" width="1724" height="240" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="30" y="2362" width="1724" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="892.0" y="2390" text-anchor="middle" font-size="18" font-weight="600" fill="#222">FRAMING DETAIL — Metal Pipe Cross Sections</text>
+<rect x="228.88" y="2530.0" width="16.0" height="32.0" fill="#c8a377" stroke="#8B4513" stroke-width="2"/>
+<rect x="229.5099212598425" y="2530.6299212598424" width="14.740157480314961" height="30.74015748031496" fill="white" stroke="#8B4513" stroke-width="0.8"/>
+<text x="236.88" y="2622" text-anchor="middle" font-size="14" font-weight="600" fill="#222">RAFTER</text>
+<text x="236.88" y="2640" text-anchor="middle" font-size="12" fill="#333">2"×4"×2mm @ 36" OC</text>
+<line x1="228.88" y1="2562" x2="228.88" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="244.88" y1="2562" x2="244.88" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="228.88" y1="2577" x2="244.88" y2="2577" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="236.88" y="2573" text-anchor="middle" font-size="10" fill="#0066cc">2"</text>
+<line x1="228.88" y1="2530.0" x2="207.88" y2="2530.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="228.88" y1="2562" x2="207.88" y2="2562" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="213.88" y1="2530.0" x2="213.88" y2="2562" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="207.88" y="2546.0" text-anchor="end" font-size="10" fill="#0066cc">4"</text>
+<rect x="504.72" y="2554.0" width="16.0" height="8.0" fill="#a8c9e0" stroke="#4a8fbf" stroke-width="2"/>
+<rect x="505.22393700787404" y="2554.503937007874" width="14.992125984251969" height="6.9921259842519685" fill="white" stroke="#4a8fbf" stroke-width="0.8"/>
+<text x="512.72" y="2622" text-anchor="middle" font-size="14" font-weight="600" fill="#222">PURLIN</text>
+<text x="512.72" y="2640" text-anchor="middle" font-size="12" fill="#333">2"×1"×1.6mm @ 12" OC (flat)</text>
+<line x1="504.72" y1="2562" x2="504.72" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="520.72" y1="2562" x2="520.72" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="504.72" y1="2577" x2="520.72" y2="2577" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="512.72" y="2573" text-anchor="middle" font-size="10" fill="#0066cc">2"</text>
+<line x1="504.72" y1="2554.0" x2="483.72" y2="2554.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="504.72" y1="2562" x2="483.72" y2="2562" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="489.72" y1="2554.0" x2="489.72" y2="2562" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="483.72" y="2558.0" text-anchor="end" font-size="10" fill="#0066cc">1"</text>
+<rect x="764.5600000000001" y="2538.0" width="48.0" height="24.0" fill="#a6764a" stroke="#5a3a17" stroke-width="2"/>
+<rect x="765.1899212598425" y="2538.6299212598424" width="46.74015748031496" height="22.74015748031496" fill="white" stroke="#5a3a17" stroke-width="0.8"/>
+<text x="788.5600000000001" y="2622" text-anchor="middle" font-size="14" font-weight="600" fill="#222">RIDGE</text>
+<text x="788.5600000000001" y="2640" text-anchor="middle" font-size="12" fill="#333">6"×3"×2mm (central + 4 hip)</text>
+<line x1="764.5600000000001" y1="2562" x2="764.5600000000001" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="812.5600000000001" y1="2562" x2="812.5600000000001" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="764.5600000000001" y1="2577" x2="812.5600000000001" y2="2577" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="788.5600000000001" y="2573" text-anchor="middle" font-size="10" fill="#0066cc">6"</text>
+<line x1="764.5600000000001" y1="2538.0" x2="743.5600000000001" y2="2538.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="764.5600000000001" y1="2562" x2="743.5600000000001" y2="2562" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="749.5600000000001" y1="2538.0" x2="749.5600000000001" y2="2562" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="743.5600000000001" y="2550.0" text-anchor="end" font-size="10" fill="#0066cc">3"</text>
+<rect x="1064.1999999999998" y="2514.0" width="0.4" height="48.0" fill="#a8c9e0" stroke="#4a8fbf" stroke-width="2"/>
+<text x="1064.3999999999999" y="2622" text-anchor="middle" font-size="14" font-weight="600" fill="#222">PANI PATTI</text>
+<text x="1064.3999999999999" y="2640" text-anchor="middle" font-size="12" fill="#333">6" × 1.2 mm GI strip (bottom flush with rafter bottom)</text>
+<line x1="1064.1999999999998" y1="2562" x2="1064.1999999999998" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1064.6" y1="2562" x2="1064.6" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1064.1999999999998" y1="2577" x2="1064.6" y2="2577" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1064.3999999999999" y="2573" text-anchor="middle" font-size="10" fill="#0066cc">0.05"</text>
+<line x1="1064.1999999999998" y1="2514.0" x2="1043.1999999999998" y2="2514.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1064.1999999999998" y1="2562" x2="1043.1999999999998" y2="2562" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1049.1999999999998" y1="2514.0" x2="1049.1999999999998" y2="2562" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1043.1999999999998" y="2538.0" text-anchor="end" font-size="10" fill="#0066cc">6.0"</text>
+<polygon points="1336.2,2562.0 1344.2,2562.0 1344.2,2554.0 1343.3,2554.0 1343.3,2561.1 1336.2,2561.1" fill="#7a7a80" stroke="#404040" stroke-width="2" stroke-linejoin="miter"/>
+<text x="1340.24" y="2622" text-anchor="middle" font-size="14" font-weight="600" fill="#222">EAVE L-CHANNEL</text>
+<text x="1340.24" y="2640" text-anchor="middle" font-size="12" fill="#333">1"×1"×3mm on top of Pani Patti</text>
+<line x1="1336.24" y1="2562" x2="1336.24" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1344.24" y1="2562" x2="1344.24" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1336.24" y1="2577" x2="1344.24" y2="2577" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1340.24" y="2573" text-anchor="middle" font-size="10" fill="#0066cc">1"</text>
+<line x1="1336.24" y1="2554.0" x2="1315.24" y2="2554.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1336.24" y1="2562" x2="1315.24" y2="2562" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1321.24" y1="2554.0" x2="1321.24" y2="2562" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1315.24" y="2558.0" text-anchor="end" font-size="10" fill="#0066cc">1"</text>
+<rect x="1604.0800000000002" y="2554.0" width="24.0" height="8.0" fill="#a6764a" stroke="#5a3a17" stroke-width="2"/>
+<rect x="1604.5839370078743" y="2554.503937007874" width="22.992125984251967" height="6.9921259842519685" fill="white" stroke="#5a3a17" stroke-width="0.8"/>
+<text x="1616.0800000000002" y="2622" text-anchor="middle" font-size="14" font-weight="600" fill="#222">BARGE PIPE</text>
+<text x="1616.0800000000002" y="2640" text-anchor="middle" font-size="12" fill="#333">3"×1"×1.6mm welded to purlin ends</text>
+<line x1="1604.0800000000002" y1="2562" x2="1604.0800000000002" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1628.0800000000002" y1="2562" x2="1628.0800000000002" y2="2583" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1604.0800000000002" y1="2577" x2="1628.0800000000002" y2="2577" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1616.0800000000002" y="2573" text-anchor="middle" font-size="10" fill="#0066cc">3"</text>
+<line x1="1604.0800000000002" y1="2554.0" x2="1583.0800000000002" y2="2554.0" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1604.0800000000002" y1="2562" x2="1583.0800000000002" y2="2562" stroke="#0066cc" stroke-width="0.5"/>
+<line x1="1589.0800000000002" y1="2554.0" x2="1589.0800000000002" y2="2562" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="1583.0800000000002" y="2558.0" text-anchor="end" font-size="10" fill="#0066cc">1"</text>
+<rect x="30" y="2626" width="1724" height="1219.0" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="30" y="2626" width="1724" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="892.0" y="2653" text-anchor="middle" font-size="18" font-weight="600" fill="#222">EAVE CROSS SECTION — hand-drawn detail (docs/roof-cross-section.svg)</text>
+<svg x="30" y="2666" width="1724" height="1179.0" viewBox="0 0 297 210" preserveAspectRatio="xMidYMid meet">
+
+  <defs
+     id="defs1">
+    <marker
+       id="arr"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path1" />
+    </marker>
+    <marker
+       id="marker2"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path2" />
+    </marker>
+    <marker
+       id="marker3"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path3" />
+    </marker>
+    <marker
+       id="marker4"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path4" />
+    </marker>
+    <marker
+       id="marker5"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path5" />
+    </marker>
+    <marker
+       id="marker6"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path6" />
+    </marker>
+    <marker
+       id="marker7"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path7" />
+    </marker>
+    <marker
+       id="marker8"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path8" />
+    </marker>
+    <marker
+       id="marker9"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path9" />
+    </marker>
+    <marker
+       id="marker10"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path10" />
+    </marker>
+    <marker
+       id="marker11"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path11" />
+    </marker>
+    <marker
+       id="marker12"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path12" />
+    </marker>
+    <marker
+       id="marker13"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path13" />
+    </marker>
+    <marker
+       id="marker14"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path14" />
+    </marker>
+    <marker
+       id="marker15"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path15" />
+    </marker>
+    <marker
+       id="marker16"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path16" />
+    </marker>
+  </defs>
+  <g
+     id="layer1">
+    <rect
+       x="42.212021"
+       y="117.65289"
+       width="166.89915"
+       height="7.9375"
+       fill="#c8a377"
+       stroke="#8b4513"
+       stroke-width="0.363974"
+       id="rect340" />
+    <rect
+       x="61.975784"
+       y="113.65884"
+       width="7.9375"
+       height="3.96875"
+       fill="#a8c9e0"
+       stroke="#4a8fbf"
+       stroke-width="0.396875"
+       id="rect342" />
+    <rect
+       x="109.68077"
+       y="113.68414"
+       width="7.9375"
+       height="3.96875"
+       fill="#a8c9e0"
+       stroke="#4a8fbf"
+       stroke-width="0.396875"
+       id="rect344" />
+    <rect
+       x="157.30577"
+       y="113.68414"
+       width="7.9375"
+       height="3.96875"
+       fill="#a8c9e0"
+       stroke="#4a8fbf"
+       stroke-width="0.396875"
+       id="rect346" />
+    <polygon
+       points="1145.2,2787.8 1132,2787.8 1132,2786 1147,2786 1147,2801 1145.2,2801 "
+       fill="#7a7a80"
+       stroke="#404040"
+       stroke-width="1"
+       stroke-linejoin="round"
+       id="polygon348"
+       transform="matrix(0.26458333,0,0,-0.26458333,-94.3162,851.56696)" />
+    <polygon
+       points="622,2801 613,2801 613,2790.5 631,2790.5 631,2801 763,2801 763,2790.5 781,2790.5 781,2801 772,2801 772,2816 622,2816 "
+       fill="#f0e6d2"
+       stroke="#8a6f3f"
+       stroke-width="1"
+       stroke-linejoin="round"
+       id="polygon349"
+       transform="matrix(0.26458333,0,0,0.26458333,-94.57756,-627.41377)" />
+    <polygon
+       points="802,2801 793,2801 793,2790.5 811,2790.5 811,2801 943,2801 943,2790.5 961,2790.5 961,2801 952,2801 952,2816 802,2816 "
+       fill="#f0e6d2"
+       stroke="#8a6f3f"
+       stroke-width="1"
+       stroke-linejoin="round"
+       id="polygon350"
+       transform="matrix(0.26458333,0,0,0.26458333,-94.57756,-627.41377)" />
+    <polygon
+       points="982,2801 973,2801 973,2790.5 991,2790.5 991,2801 1123,2801 1123,2790.5 1141,2790.5 1141,2801 1132,2801 1132,2816 982,2816 "
+       fill="#f0e6d2"
+       stroke="#8a6f3f"
+       stroke-width="1"
+       stroke-linejoin="round"
+       id="polygon351"
+       transform="matrix(0.26458333,0,0,0.26458333,-94.57756,-627.41377)" />
+    <path
+       id="polyline351"
+       style="fill:none;stroke:#8a9099;stroke-width:0.529167;stroke-linecap:round;stroke-linejoin:round"
+       d="m 63.643271,110.90601 h 3.96875 4.7625 l 0.79375,2.77813 h 33.337499 l 0.79375,-2.77813 h 4.7625 l 0.39688,1.40229 h 2.38125 l 0.39687,-1.40229 h 4.7625 l 0.79375,2.77813 h 33.3375 l 0.79375,-2.77813 h 4.7625 l 0.39687,1.40229 h 2.38125 l 0.39688,-1.40229 h 4.7625 l 0.79375,2.77813 h 33.3375 l 0.79375,-2.77813 h 4.7625 0.87474 v -1.46174" />
+    <line
+       x1="161.27452"
+       y1="112.30832"
+       x2="161.27452"
+       y2="147.28622"
+       stroke="#8a9099"
+       stroke-width="0.15875"
+       id="line351" />
+    <text
+       x="161.27452"
+       y="148.87372"
+       text-anchor="middle"
+       font-size="2.91042px"
+       font-weight="600"
+       fill="#8a9099"
+       id="text351"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">MEMBRANE — depression pressed into gap so tile lip seats</text>
+    <line
+       x1="66.024521"
+       y1="89.815704"
+       x2="66.024521"
+       y2="99.672592"
+       stroke="#0066cc"
+       stroke-width="0.132292"
+       stroke-dasharray="3, 2"
+       id="line354" />
+    <line
+       x1="113.64952"
+       y1="96.909576"
+       x2="113.64952"
+       y2="103.78874"
+       stroke="#0066cc"
+       stroke-width="0.132292"
+       stroke-dasharray="3, 2"
+       id="line355" />
+    <line
+       x1="161.27452"
+       y1="96.909576"
+       x2="161.27452"
+       y2="103.78874"
+       stroke="#0066cc"
+       stroke-width="0.132292"
+       stroke-dasharray="3, 2"
+       id="line356" />
+    <line
+       x1="208.89952"
+       y1="89.815704"
+       x2="208.89952"
+       y2="99.672592"
+       stroke="#0066cc"
+       stroke-width="0.132292"
+       stroke-dasharray="3, 2"
+       id="line357" />
+    <line
+       x1="66.024521"
+       y1="89.501251"
+       x2="113.64952"
+       y2="89.501251"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line358" />
+    <text
+       x="89.837021"
+       y="88.178329"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text358"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">12&quot; (305 mm) purlin OC</text>
+    <line
+       x1="113.64952"
+       y1="89.501251"
+       x2="161.27452"
+       y2="89.501251"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line359" />
+    <text
+       x="137.46202"
+       y="88.178329"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text359"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">12&quot; (305 mm) purlin OC</text>
+    <line
+       x1="161.27452"
+       y1="89.501251"
+       x2="208.89952"
+       y2="89.501251"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line360" />
+    <text
+       x="185.08702"
+       y="88.178329"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text360"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">12&quot; (305 mm) purlin OC</text>
+    <g
+       id="g544"
+       transform="matrix(0.26201127,-0.03680265,0.03680265,0.26201127,-194.10501,-593.63943)">
+      <line
+         x1="607"
+         y1="2749.6001"
+         x2="847"
+         y2="2749.6001"
+         stroke="#8b4513"
+         stroke-width="0.8"
+         marker-start="url(#arr)"
+         marker-end="url(#arr)"
+         id="line361" />
+      <text
+         x="727"
+         y="2745.6001"
+         text-anchor="middle"
+         font-size="11px"
+         font-weight="600"
+         fill="#8b4513"
+         id="text361"
+         style="font-family:'-apple-system', Arial, sans-serif">Tile length 16&quot; (406 mm) — Indicotto 16×10</text>
+    </g>
+    <line
+       x1="42.212021"
+       y1="131.41122"
+       x2="58.087021"
+       y2="131.41122"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line363" />
+    <text
+       x="50.149521"
+       y="135.11539"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text363"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">RAFTER 4&quot;×2&quot; × 2 mm HSS (side profile)</text>
+    <line
+       x1="109.68077"
+       y1="137.23206"
+       x2="117.61827"
+       y2="137.23206"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line364" />
+    <text
+       x="113.64952"
+       y="140.93622"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text364"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">2&quot; wide flat purlin (2×1×1.6 mm HSS)</text>
+    <line
+       x1="56.234936"
+       y1="117.65289"
+       x2="56.234936"
+       y2="113.68414"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line365" />
+    <text
+       x="54.647438"
+       y="116.72685"
+       text-anchor="end"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text365"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">1&quot;</text>
+    <line
+       x1="137.46202"
+       y1="125.59039"
+       x2="137.46202"
+       y2="153.10706"
+       stroke="#8a6f3f"
+       stroke-width="0.15875"
+       id="line366" />
+    <text
+       x="137.46202"
+       y="154.69455"
+       text-anchor="middle"
+       font-size="2.91042px"
+       font-weight="600"
+       fill="#8a6f3f"
+       id="text366"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">CEILING TILE — Nutical Plain 12×8 (between purlins, tabs curl over purlin tops)</text>
+    <line
+       x1="133.49327"
+       y1="107.91621"
+       x2="133.49327"
+       y2="90.136215"
+       stroke="#8b4513"
+       stroke-width="0.15875"
+       id="line367" />
+    <path
+       id="line368"
+       style="stroke:#0066cc;stroke-width:0.264583;marker-start:url(#arr);marker-end:url(#arr)"
+       d="M 215.24952,125.00822 V 111.14361" />
+    <text
+       x="216.83702"
+       y="114.74248"
+       text-anchor="start"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text368"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583"><tspan
+         id="tspan543"
+         x="216.83702"
+         y="114.74248"
+         style="stroke-width:0.264583">6&quot; x 1&quot; Pani Patti</tspan><tspan
+         id="tspan544"
+         x="216.83702"
+         y="118.38051"
+         style="stroke-width:0.264583">(bottom aligned to rafter)</tspan></text>
+    <line
+       x1="208.89952"
+       y1="130.88205"
+       x2="208.89952"
+       y2="141.46539"
+       stroke="#666666"
+       stroke-width="0.15875"
+       id="line369" />
+    <text
+       x="208.89952"
+       y="143.05289"
+       text-anchor="middle"
+       font-size="2.91042px"
+       font-weight="600"
+       fill="#404040"
+       id="text369"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">EAVE ASSEMBLY — Pani Patti (GI water-protector) + 1&quot;×1&quot;×3 mm L-channel (L-channel top aligned to purlin top)</text>
+    <text
+       x="23.550152"
+       y="110.08449"
+       text-anchor="start"
+       font-size="3.175px"
+       font-weight="600"
+       fill="#333333"
+       id="text370"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">↖ up-slope (ridge)</text>
+    <text
+       x="205.69135"
+       y="101.41066"
+       text-anchor="end"
+       font-size="3.175px"
+       font-weight="600"
+       fill="#333333"
+       id="text371"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">eave ↘</text>
+    <text
+       x="141.22305"
+       y="81.229279"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#666666"
+       id="text372"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">drawn slope-flat for clarity • actual pitch 26.0° (main slope)</text>
+    <path
+       id="polygon542"
+       style="fill:#d8bb94;stroke:#8b4513;stroke-width:0.264583;stroke-linejoin:round"
+       d="m 129.65823,96.825713 0.19487,2.16082 -14.56561,1.977707 0.35648,3.95277 -2.36212,0.31927 -0.35647,-3.95271 -46.061315,6.2262 0.499065,5.53378 -2.36143,0.21299 -0.499067,-5.53378 0.986427,-2.16115 z" />
+    <path
+       id="path543"
+       style="fill:#d8bb94;stroke:#8b4513;stroke-width:0.264583;stroke-linejoin:round"
+       d="m 226.35368,103.59113 -0.0377,2.16927 -14.69366,0.40629 -0.0689,3.96819 -2.38276,0.0644 0.069,-3.96814 -46.46321,1.25698 -0.0965,5.5554 -2.37066,-0.0411 0.0965,-5.5554 1.21222,-2.04304 z" />
+    <rect
+       x="-125.59039"
+       y="209.53966"
+       width="15.055188"
+       height="2.0406518"
+       fill="#a8c9e0"
+       stroke="#4a8fbf"
+       stroke-width="0.396875"
+       id="rect543"
+       transform="rotate(-90)" />
+    <path
+       id="path544"
+       style="fill:#d8bb94;stroke:#8b4513;stroke-width:0.264583;stroke-linejoin:round"
+       d="m 177.36007,96.997693 0.18892,2.16135 -14.57103,1.937517 0.34557,3.95372 -2.363,0.31276 -0.34556,-3.95369 -46.07832,6.09907 0.48379,5.53513 -2.362,0.20646 -0.4838,-5.53514 0.99239,-2.15839 z" />
+  </g>
+</svg>
+<rect x="30" y="3868.9898989898993" width="1724" height="400" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="30" y="3868.9898989898993" width="1724" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="892.0" y="3896.9898989898993" text-anchor="middle" font-size="18" font-weight="600" fill="#222">FINK TRUSS ELEVATION — bottom chord on ring beam (× 3 identical trusses)</text>
+<text x="732.0" y="3927.0" text-anchor="middle" font-size="13" font-weight="600" fill="#8b0000">FINK TRUSS × 3 — transverse, spans 27' × rise 7'</text>
+<line x1="354.3" y1="4145.1" x2="732.0" y2="3949.0" stroke="#8b0000" stroke-width="3.0"/>
+<line x1="732.0" y1="3949.0" x2="1109.7" y2="4145.1" stroke="#8b0000" stroke-width="3.0"/>
+<line x1="354.3" y1="4145.1" x2="1109.7" y2="4145.1" stroke="#8b0000" stroke-width="3.0"/>
+<line x1="732.0" y1="3949.0" x2="732.0" y2="4145.1" stroke="#c25050" stroke-width="1.8"/>
+<line x1="732.0" y1="3949.0" x2="543.1" y2="4145.1" stroke="#c25050" stroke-width="1.8"/>
+<line x1="732.0" y1="3949.0" x2="920.9" y2="4145.1" stroke="#c25050" stroke-width="1.8"/>
+<line x1="543.1" y1="4047.0" x2="543.1" y2="4145.1" stroke="#c25050" stroke-width="1.8"/>
+<line x1="920.9" y1="4047.0" x2="920.9" y2="4145.1" stroke="#c25050" stroke-width="1.8"/>
+<circle cx="354.3" cy="4145.1" r="2.7" fill="#8b0000"/>
+<circle cx="543.1" cy="4145.1" r="2.7" fill="#8b0000"/>
+<circle cx="732.0" cy="4145.1" r="2.7" fill="#8b0000"/>
+<circle cx="920.9" cy="4145.1" r="2.7" fill="#8b0000"/>
+<circle cx="1109.7" cy="4145.1" r="2.7" fill="#8b0000"/>
+<circle cx="543.1" cy="4047.0" r="2.7" fill="#8b0000"/>
+<circle cx="732.0" cy="3949.0" r="2.7" fill="#8b0000"/>
+<circle cx="920.9" cy="4047.0" r="2.7" fill="#8b0000"/>
+<line x1="354.3" y1="4185.1" x2="1109.7" y2="4185.1" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="732.0" y="4179.1" text-anchor="middle" font-size="12" fill="#0066cc">Bottom chord = 27'</text>
+<line x1="702.0" y1="3949.0" x2="702.0" y2="4145.1" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
+<text x="696.0" y="4051.0" text-anchor="end" font-size="11" fill="#0066cc">h = 7'</text>
+<text x="523.1" y="4039.0" text-anchor="middle" font-size="12" fill="#8b0000" font-weight="600">Top chord 15' 3"</text>
+<text x="742.0" y="4051.0" text-anchor="start" font-size="11" fill="#c25050">King post 7'</text>
+<text x="629.6" y="4051.0" text-anchor="end" font-size="10" fill="#c25050">diag 9' 9"</text>
+<text x="549.1" y="4100.0" text-anchor="start" font-size="10" fill="#c25050">vert 3' 6"</text>
+<text x="379.3" y="4139.1" text-anchor="start" font-size="11" fill="#444">26°</text>
+<text x="1464" y="3928.9898989898993" font-size="11" fill="#8b0000" font-weight="600">FINK TRUSS × 3 (identical)</text>
+<text x="1464" y="3944.9898989898993" font-size="11" fill="#333">Chord (2"×4"×3 mm) each: 57' 5"</text>
+<text x="1464" y="3960.9898989898993" font-size="11" fill="#333">Web (2"×2"×2 mm) each: 33' 6"</text>
+<text x="1464" y="3976.9898989898993" font-size="11" fill="#333"></text>
+<text x="1464" y="3992.9898989898993" font-size="11" fill="#8b0000" font-weight="600">Total for 3 trusses:</text>
+<text x="1464" y="4008.9898989898993" font-size="11" fill="#333">Chord total: 172' 3"</text>
+<text x="1464" y="4024.9898989898993" font-size="11" fill="#333">Web total: 100' 5"</text>
+<text x="1464" y="4040.9898989898993" font-size="11" fill="#333"></text>
+<text x="1464" y="4056.9898989898993" font-size="11" fill="#1e5aa6" font-weight="600">RING BEAM (27'×45')</text>
+<text x="1464" y="4072.9898989898993" font-size="11" fill="#333">4"×2"×3 mm perimeter: 144'</text>
+<text x="1464" y="4088.9898989898993" font-size="11" fill="#333"></text>
+<text x="1464" y="4104.989898989899" font-size="11" fill="#8a4a1a" font-weight="600">HIP-END BEAMS × 6</text>
+<text x="1464" y="4120.989898989899" font-size="11" fill="#333">4"×2"×2 mm total: 87' 7"</text>
+<rect x="30" y="4292.989898989899" width="1724" height="1180" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="30" y="4292.989898989899" width="1724" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="892.0" y="4320.989898989899" text-anchor="middle" font-size="18" font-weight="600" fill="#222">MATERIALS TAKEOFF — Verification of Quantities</text>
+<line x1="60" y1="4362.989898989899" x2="1724" y2="4362.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="4380.989898989899" font-size="12" font-weight="600" fill="#222">Member</text>
+<text x="290" y="4380.989898989899" font-size="12" font-weight="600" fill="#222">HSS section × wall</text>
+<text x="500" y="4380.989898989899" font-size="12" font-weight="600" fill="#222">Pieces</text>
+<text x="650" y="4380.989898989899" font-size="12" font-weight="600" fill="#222">Total linear</text>
+<text x="810" y="4380.989898989899" font-size="12" font-weight="600" fill="#222">Max piece</text>
+<text x="950" y="4380.989898989899" font-size="12" font-weight="600" fill="#222">Notes</text>
+<line x1="60" y1="4386.989898989899" x2="1724" y2="4386.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="4404.989898989899" font-size="12" fill="#333">Rafter</text>
+<text x="290" y="4404.989898989899" font-size="12" fill="#333">2"×4"×2mm</text>
+<text x="500" y="4404.989898989899" font-size="12" fill="#333">60</text>
+<text x="650" y="4404.989898989899" font-size="12" fill="#333">659' 1"</text>
+<text x="810" y="4404.989898989899" font-size="12" fill="#333">19'</text>
+<text x="950" y="4404.989898989899" font-size="12" fill="#333">@ 36" OC, sum of individual lengths</text>
+<text x="70" y="4428.989898989899" font-size="12" fill="#333">Purlin</text>
+<text x="290" y="4428.989898989899" font-size="12" fill="#333">2"×1"×1.6mm</text>
+<text x="500" y="4428.989898989899" font-size="12" fill="#333">78</text>
+<text x="650" y="4428.989898989899" font-size="12" fill="#333">1907'</text>
+<text x="810" y="4428.989898989899" font-size="12" fill="#333">50' 3"</text>
+<text x="950" y="4428.989898989899" font-size="12" fill="#333">@ 12" OC, sum of individual lengths</text>
+<text x="70" y="4452.989898989899" font-size="12" fill="#333">Central ridge</text>
+<text x="290" y="4452.989898989899" font-size="12" fill="#333">6"×3"×2mm</text>
+<text x="500" y="4452.989898989899" font-size="12" fill="#333">1</text>
+<text x="650" y="4452.989898989899" font-size="12" fill="#333">15' 10"</text>
+<text x="810" y="4452.989898989899" font-size="12" fill="#333">15' 10"</text>
+<text x="950" y="4452.989898989899" font-size="12" fill="#333">Top ridge = configured ridge_length</text>
+<text x="70" y="4476.989898989899" font-size="12" fill="#333">Hip ridges</text>
+<text x="290" y="4476.989898989899" font-size="12" fill="#333">6"×3"×2mm</text>
+<text x="500" y="4476.989898989899" font-size="12" fill="#333">4</text>
+<text x="650" y="4476.989898989899" font-size="12" fill="#333">105' 4"</text>
+<text x="810" y="4476.989898989899" font-size="12" fill="#333">26' 4"</text>
+<text x="950" y="4476.989898989899" font-size="12" fill="#333">4 diagonals from ridge endpoints to eave corners</text>
+<text x="70" y="4500.989898989899" font-size="12" fill="#333">Pani Patti</text>
+<text x="290" y="4500.989898989899" font-size="12" fill="#333">6"×1.2 mm GI</text>
+<text x="500" y="4500.989898989899" font-size="12" fill="#333">4</text>
+<text x="650" y="4500.989898989899" font-size="12" fill="#333">172' 8"</text>
+<text x="810" y="4500.989898989899" font-size="12" fill="#333">52' 2"</text>
+<text x="950" y="4500.989898989899" font-size="12" fill="#333">Water-protector strip along entire eave perimeter</text>
+<text x="70" y="4524.989898989899" font-size="12" fill="#333">Eave L-channel</text>
+<text x="290" y="4524.989898989899" font-size="12" fill="#333">1"×1"×3mm</text>
+<text x="500" y="4524.989898989899" font-size="12" fill="#333">4</text>
+<text x="650" y="4524.989898989899" font-size="12" fill="#333">172' 8"</text>
+<text x="810" y="4524.989898989899" font-size="12" fill="#333">52' 2"</text>
+<text x="950" y="4524.989898989899" font-size="12" fill="#333">1"×1"×3mm angle on top of Pani Patti</text>
+<text x="70" y="4548.989898989899" font-size="12" fill="#333">Barge pipe</text>
+<text x="290" y="4548.989898989899" font-size="12" fill="#333">3"×1"×1.6mm</text>
+<text x="500" y="4548.989898989899" font-size="12" fill="#333">0</text>
+<text x="650" y="4548.989898989899" font-size="12" fill="#333">0</text>
+<text x="810" y="4548.989898989899" font-size="12" fill="#333">—</text>
+<text x="950" y="4548.989898989899" font-size="12" fill="#333">N/A for hip roof (no free edges); include if adjacent to non-adjoining section</text>
+<text x="70" y="4572.989898989899" font-size="12" fill="#333">Ridge angle</text>
+<text x="290" y="4572.989898989899" font-size="12" fill="#333">1"×1"×3mm</text>
+<text x="500" y="4572.989898989899" font-size="12" fill="#333">—</text>
+<text x="650" y="4572.989898989899" font-size="12" fill="#333">—</text>
+<text x="810" y="4572.989898989899" font-size="12" fill="#333">—</text>
+<text x="950" y="4572.989898989899" font-size="12" fill="#333">Only if roof width isn't a clean tile multiple (supports cut top tiles)</text>
+<text x="70" y="4596.989898989899" font-size="12" fill="#333">Corner double angle</text>
+<text x="290" y="4596.989898989899" font-size="12" fill="#333">1"×1"×3mm</text>
+<text x="500" y="4596.989898989899" font-size="12" fill="#333">4 × 2</text>
+<text x="650" y="4596.989898989899" font-size="12" fill="#333">210' 8"</text>
+<text x="810" y="4596.989898989899" font-size="12" fill="#333">26' 4"</text>
+<text x="950" y="4596.989898989899" font-size="12" fill="#333">Doubled — 2 legs along each of the 4 hip ridges to support cut ceiling tiles</text>
+<text x="70" y="4620.989898989899" font-size="12" fill="#333">Truss top chord</text>
+<text x="290" y="4620.989898989899" font-size="12" fill="#333">2"×4"×3mm</text>
+<text x="500" y="4620.989898989899" font-size="12" fill="#333">6</text>
+<text x="650" y="4620.989898989899" font-size="12" fill="#333">91' 3"</text>
+<text x="810" y="4620.989898989899" font-size="12" fill="#333">15' 3"</text>
+<text x="950" y="4620.989898989899" font-size="12" fill="#333">Fink truss — 2 sloping top chords per truss × 3 trusses</text>
+<text x="70" y="4644.989898989899" font-size="12" fill="#333">Truss bottom chord</text>
+<text x="290" y="4644.989898989899" font-size="12" fill="#333">2"×4"×3mm</text>
+<text x="500" y="4644.989898989899" font-size="12" fill="#333">3</text>
+<text x="650" y="4644.989898989899" font-size="12" fill="#333">81'</text>
+<text x="810" y="4644.989898989899" font-size="12" fill="#333">27'</text>
+<text x="950" y="4644.989898989899" font-size="12" fill="#333">Horizontal tie beam × 3 trusses</text>
+<text x="70" y="4668.989898989899" font-size="12" fill="#333">Truss king post</text>
+<text x="290" y="4668.989898989899" font-size="12" fill="#333">2"×2"×2mm</text>
+<text x="500" y="4668.989898989899" font-size="12" fill="#333">3</text>
+<text x="650" y="4668.989898989899" font-size="12" fill="#333">21'</text>
+<text x="810" y="4668.989898989899" font-size="12" fill="#333">7'</text>
+<text x="950" y="4668.989898989899" font-size="12" fill="#333">Central vertical post — peak to bottom-chord centre</text>
+<text x="70" y="4692.989898989899" font-size="12" fill="#333">Truss web diagonals</text>
+<text x="290" y="4692.989898989899" font-size="12" fill="#333">2"×2"×2mm</text>
+<text x="500" y="4692.989898989899" font-size="12" fill="#333">6</text>
+<text x="650" y="4692.989898989899" font-size="12" fill="#333">58' 5"</text>
+<text x="810" y="4692.989898989899" font-size="12" fill="#333">9' 9"</text>
+<text x="950" y="4692.989898989899" font-size="12" fill="#333">Peak to bottom-chord panel points (2 per truss)</text>
+<text x="70" y="4716.989898989899" font-size="12" fill="#333">Truss web verticals</text>
+<text x="290" y="4716.989898989899" font-size="12" fill="#333">2"×2"×2mm</text>
+<text x="500" y="4716.989898989899" font-size="12" fill="#333">6</text>
+<text x="650" y="4716.989898989899" font-size="12" fill="#333">21'</text>
+<text x="810" y="4716.989898989899" font-size="12" fill="#333">3' 6"</text>
+<text x="950" y="4716.989898989899" font-size="12" fill="#333">Top-chord panel points to bottom-chord panel points (2 per truss)</text>
+<text x="70" y="4740.989898989899" font-size="12" fill="#333">Ring beam</text>
+<text x="290" y="4740.989898989899" font-size="12" fill="#333">4"×2"×3mm</text>
+<text x="500" y="4740.989898989899" font-size="12" fill="#333">4</text>
+<text x="650" y="4740.989898989899" font-size="12" fill="#333">144'</text>
+<text x="810" y="4740.989898989899" font-size="12" fill="#333">45'</text>
+<text x="950" y="4740.989898989899" font-size="12" fill="#333">Perimeter tie at wall top (27' × 45' frame, 16" above eave)</text>
+<text x="70" y="4764.989898989899" font-size="12" fill="#333">Hip-end beam</text>
+<text x="290" y="4764.989898989899" font-size="12" fill="#333">4"×2"×2mm</text>
+<text x="500" y="4764.989898989899" font-size="12" fill="#333">6</text>
+<text x="650" y="4764.989898989899" font-size="12" fill="#333">87' 7"</text>
+<text x="810" y="4764.989898989899" font-size="12" fill="#333">14' 7"</text>
+<text x="950" y="4764.989898989899" font-size="12" fill="#333">3 per hip end (× 2 ends) — corner truss to N/S wall</text>
+<line x1="60" y1="4780.989898989899" x2="1724" y2="4780.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="4800.989898989899" font-size="14" font-weight="600" fill="#222">How the quantities were computed</text>
+<text x="70" y="4822.989898989899" font-size="12" fill="#333" font-weight="600">Inputs (from the config):</text>
+<text x="70" y="4837.989898989899" font-size="12" fill="#333">  • Eave bounding box: 34' 2" × 52' 2" (perimeter 172' 8")</text>
+<text x="70" y="4852.989898989899" font-size="12" fill="#333">  • Main slope pitch: 26.0°   |   Hip-end pitch: 24.6°   |   Ridge height above eave h = 8' 4"</text>
+<text x="70" y="4867.989898989899" font-size="12" fill="#333">  • Rafter spacing: 36"   |   Purlin spacing: 12"</text>
+<text x="70" y="4882.989898989899" font-size="12" fill="#333">  • Slope L (perpendicular height on the slope face): main = 19', hip end = 20'</text>
+<text x="70" y="4897.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="4912.989898989899" font-size="12" fill="#333">Rafters — per slope, rafter count = floor(eave / spacing) + 1; each rafter's length</text>
+<text x="70" y="4927.989898989899" font-size="12" fill="#333">is the perpendicular distance from its position on the eave up to either the top edge</text>
+<text x="70" y="4942.989898989899" font-size="12" fill="#333">(central ridge, on the trapezoidal main slopes) or to a hip ridge (on the triangular</text>
+<text x="70" y="4957.989898989899" font-size="12" fill="#333">hip ends, and near the corners of the main slopes).</text>
+<text x="70" y="4972.989898989899" font-size="12" fill="#333">   W slope: 18 rafters, total 215' 9"  (longest 19')</text>
+<text x="70" y="4987.989898989899" font-size="12" fill="#333">   E slope: 18 rafters, total 215' 9"  (longest 19')</text>
+<text x="70" y="5002.989898989899" font-size="12" fill="#333">   N slope: 12 rafters, total 113' 10"  (longest 18' 3")</text>
+<text x="70" y="5017.989898989899" font-size="12" fill="#333">   S slope: 12 rafters, total 113' 10"  (longest 18' 3")</text>
+<text x="70" y="5032.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 60 rafters, 659' 1"</text>
+<text x="70" y="5047.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="5062.989898989899" font-size="12" fill="#333">Purlins — placed every 12" starting 12" above the eave (the y=0 row is the eave-edge</text>
+<text x="70" y="5077.989898989899" font-size="12" fill="#333">pipe, counted separately). At height y, each purlin spans between the two hip ridges:</text>
+<text x="70" y="5092.989898989899" font-size="12" fill="#333">L(y) = eave − 2·d_hip·y/height   (for the triangular hip ends, d_hip = eave/2).</text>
+<text x="70" y="5107.989898989899" font-size="12" fill="#333">   W slope: 19 purlins, total 628' 3"  (longest 50' 3")</text>
+<text x="70" y="5122.989898989899" font-size="12" fill="#333">   E slope: 19 purlins, total 628' 3"  (longest 50' 3")</text>
+<text x="70" y="5137.989898989899" font-size="12" fill="#333">   N slope: 20 purlins, total 325' 3"  (longest 32' 6")</text>
+<text x="70" y="5152.989898989899" font-size="12" fill="#333">   S slope: 20 purlins, total 325' 3"  (longest 32' 6")</text>
+<text x="70" y="5167.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 78 purlins, 1907'</text>
+<text x="70" y="5182.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="5197.989898989899" font-size="12" fill="#333">Central ridge — 1 piece, length = ridge_length = 15' 10".</text>
+<text x="70" y="5212.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="5227.989898989899" font-size="12" fill="#333">Hip ridges — 4 pieces (one per corner). Each is the 3-D diagonal from a ridge</text>
+<text x="70" y="5242.989898989899" font-size="12" fill="#333">endpoint to an eave corner:  L = √((eave_x_east−eave_x_west)/2)² + d_hip² + h²)</text>
+<text x="70" y="5257.989898989899" font-size="12" fill="#333" font-weight="600">                                 = 26' 4"  each   |   Total: 4 × 26' 4" = 105' 4"</text>
+<text x="70" y="5272.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="5287.989898989899" font-size="12" fill="#333">Eave edge — one continuous run around the eave bounding box:</text>
+<text x="70" y="5302.989898989899" font-size="12" fill="#333" font-weight="600">   2 × (34' 2" + 52' 2") = 172' 8"</text>
+<rect x="30" y="5496.989898989899" width="1724" height="460" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="30" y="5496.989898989899" width="1724" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="892.0" y="5524.989898989899" text-anchor="middle" font-size="18" font-weight="600" fill="#222">CONSOLIDATED PROCUREMENT LIST — Totals by Material Spec</text>
+<line x1="60" y1="5566.989898989899" x2="1724" y2="5566.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="5584.989898989899" font-size="12" font-weight="600" fill="#222">Material spec</text>
+<text x="380" y="5584.989898989899" font-size="12" font-weight="600" fill="#222">Members using this spec</text>
+<text x="930" y="5584.989898989899" font-size="12" font-weight="600" fill="#222">Total pieces</text>
+<text x="1080" y="5584.989898989899" font-size="12" font-weight="600" fill="#222">Total linear</text>
+<line x1="60" y1="5588.989898989899" x2="1724" y2="5588.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="5604.989898989899" font-size="12" font-weight="600" fill="#222">HSS 2"×4"×2 mm</text>
+<text x="380" y="5604.989898989899" font-size="11" fill="#444">Rafters (60× 659' 1")</text>
+<text x="930" y="5604.989898989899" font-size="12" fill="#333">60</text>
+<text x="1080" y="5604.989898989899" font-size="12" font-weight="700" fill="#0a4">659' 1"</text>
+<text x="70" y="5626.989898989899" font-size="12" font-weight="600" fill="#222">HSS 2"×1"×1.6 mm</text>
+<text x="380" y="5626.989898989899" font-size="11" fill="#444">Purlins (78× 1907')</text>
+<text x="930" y="5626.989898989899" font-size="12" fill="#333">78</text>
+<text x="1080" y="5626.989898989899" font-size="12" font-weight="700" fill="#0a4">1907'</text>
+<text x="70" y="5648.989898989899" font-size="12" font-weight="600" fill="#222">HSS 6"×3"×2 mm</text>
+<text x="380" y="5648.989898989899" font-size="11" fill="#444">Central ridge (1× 15' 10"), Hip ridges (4× 105' 4")</text>
+<text x="930" y="5648.989898989899" font-size="12" fill="#333">5</text>
+<text x="1080" y="5648.989898989899" font-size="12" font-weight="700" fill="#0a4">121' 1"</text>
+<text x="70" y="5670.989898989899" font-size="12" font-weight="600" fill="#222">HSS 4"×2"×3 mm</text>
+<text x="380" y="5670.989898989899" font-size="11" fill="#444">Ring beam (4× 144')</text>
+<text x="930" y="5670.989898989899" font-size="12" fill="#333">4</text>
+<text x="1080" y="5670.989898989899" font-size="12" font-weight="700" fill="#0a4">144'</text>
+<text x="70" y="5692.989898989899" font-size="12" font-weight="600" fill="#222">HSS 4"×2"×2 mm</text>
+<text x="380" y="5692.989898989899" font-size="11" fill="#444">Hip-end beams (6× 87' 7")</text>
+<text x="930" y="5692.989898989899" font-size="12" fill="#333">6</text>
+<text x="1080" y="5692.989898989899" font-size="12" font-weight="700" fill="#0a4">87' 7"</text>
+<text x="70" y="5714.989898989899" font-size="12" font-weight="600" fill="#222">HSS 2"×4"×3 mm</text>
+<text x="380" y="5714.989898989899" font-size="11" fill="#444">Truss top chords (6× 91' 3"), Truss bottom chords (3× 81')</text>
+<text x="930" y="5714.989898989899" font-size="12" fill="#333">9</text>
+<text x="1080" y="5714.989898989899" font-size="12" font-weight="700" fill="#0a4">172' 3"</text>
+<text x="70" y="5736.989898989899" font-size="12" font-weight="600" fill="#222">HSS 2"×2"×2 mm</text>
+<text x="380" y="5736.989898989899" font-size="11" fill="#444">Truss king posts (3× 21'), Truss web diagonals (6× 58' 5"), Truss web verticals (6× 21')</text>
+<text x="930" y="5736.989898989899" font-size="12" fill="#333">15</text>
+<text x="1080" y="5736.989898989899" font-size="12" font-weight="700" fill="#0a4">100' 5"</text>
+<text x="70" y="5758.989898989899" font-size="12" font-weight="600" fill="#222">GI strip 6"×1.2 mm</text>
+<text x="380" y="5758.989898989899" font-size="11" fill="#444">Pani Patti (4× 172' 8")</text>
+<text x="930" y="5758.989898989899" font-size="12" fill="#333">4</text>
+<text x="1080" y="5758.989898989899" font-size="12" font-weight="700" fill="#0a4">172' 8"</text>
+<text x="70" y="5780.989898989899" font-size="12" font-weight="600" fill="#222">L-angle 1"×1"×3 mm</text>
+<text x="380" y="5780.989898989899" font-size="11" fill="#444">Eave L-channel (4× 172' 8"), Corner double angle (hips) (8× 210' 8")</text>
+<text x="930" y="5780.989898989899" font-size="12" fill="#333">12</text>
+<text x="1080" y="5780.989898989899" font-size="12" font-weight="700" fill="#0a4">383' 4"</text>
+<line x1="60" y1="5794.989898989899" x2="1724" y2="5794.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="5826.989898989899" font-size="14" font-weight="600" fill="#222">Grand totals by material family</text>
+<text x="90" y="5846.989898989899" font-size="12" fill="#333">• HSS: <tspan font-weight="700" fill="#0a4">3191' 6"</tspan></text>
+<text x="90" y="5864.989898989899" font-size="12" fill="#333">• GI strip: <tspan font-weight="700" fill="#0a4">172' 8"</tspan></text>
+<text x="90" y="5882.989898989899" font-size="12" fill="#333">• L-angle: <tspan font-weight="700" fill="#0a4">383' 4"</tspan></text>
+<rect x="30" y="5980.989898989899" width="1724" height="890" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
+<rect x="30" y="5980.989898989899" width="1724" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
+<text x="892.0" y="6008.989898989899" text-anchor="middle" font-size="18" font-weight="600" fill="#222">TILE ROOFING — Procured (Nuvocotto Invoice #12, 27-Apr-2026)</text>
+<text x="70" y="6050.989898989899" font-size="14" font-weight="600" fill="#222">Roof surface area (measured on the slope face)</text>
+<text x="70" y="6072.989898989899" font-size="12" fill="#333">   Main slope (trapezoid): ½·(52' 2" + 15' 10")·19' = 647 sft × 2 faces = 1294 sft</text>
+<text x="70" y="6088.989898989899" font-size="12" fill="#333">   Hip end   (triangle):  ½·34' 2"·20' = 342 sft × 2 faces = 685 sft</text>
+<text x="70" y="6108.989898989899" font-size="12" font-weight="600" fill="#222">   Total roof surface = 1978 sft   |   with 10% waste allowance = 2176 sft</text>
+<text x="70" y="6220.989898989899" font-size="14" font-weight="600" fill="#222">Items procured — for the contractor to reconcile against site delivery</text>
+<line x1="60" y1="6242.989898989899" x2="1724" y2="6242.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="6258.989898989899" font-size="12" font-weight="600" fill="#222">Item</text>
+<text x="340" y="6258.989898989899" font-size="12" font-weight="600" fill="#222">Tile size</text>
+<text x="490" y="6258.989898989899" font-size="12" font-weight="600" fill="#222">Qty (Nos)</text>
+<text x="580" y="6258.989898989899" font-size="12" font-weight="600" fill="#222">Rate (₹)</text>
+<text x="690" y="6258.989898989899" font-size="12" font-weight="600" fill="#222">Amount (₹)</text>
+<text x="830" y="6258.989898989899" font-size="12" font-weight="600" fill="#222">Notes</text>
+<line x1="60" y1="6264.989898989899" x2="1724" y2="6264.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="6280.989898989899" font-size="12" fill="#333">Indicotto rooftile 16×10</text>
+<text x="340" y="6280.989898989899" font-size="12" fill="#333">406 × 254 mm</text>
+<text x="490" y="6280.989898989899" font-size="12" fill="#333">4,150</text>
+<text x="580" y="6280.989898989899" font-size="12" fill="#333">48.50</text>
+<text x="690" y="6280.989898989899" font-size="12" fill="#333">201,275.00</text>
+<text x="830" y="6280.989898989899" font-size="12" fill="#333">main pantile — 1.33 tiles/sft</text>
+<text x="70" y="6302.989898989899" font-size="12" fill="#333">Ceiling Tile 12×8 (Nutical Plain)</text>
+<text x="340" y="6302.989898989899" font-size="12" fill="#333">305 × 203 mm</text>
+<text x="490" y="6302.989898989899" font-size="12" fill="#333">4,700</text>
+<text x="580" y="6302.989898989899" font-size="12" fill="#333">30.00</text>
+<text x="690" y="6302.989898989899" font-size="12" fill="#333">141,000.00</text>
+<text x="830" y="6302.989898989899" font-size="12" fill="#333">flat under-ceiling — 1.5 tiles/sft</text>
+<text x="70" y="6324.989898989899" font-size="12" fill="#333">Ridge tiles</text>
+<text x="340" y="6324.989898989899" font-size="12" fill="#333">per 1 running ft</text>
+<text x="490" y="6324.989898989899" font-size="12" fill="#333">100</text>
+<text x="580" y="6324.989898989899" font-size="12" fill="#333">70.00</text>
+<text x="690" y="6324.989898989899" font-size="12" fill="#333">7,000.00</text>
+<text x="830" y="6324.989898989899" font-size="12" fill="#333">central ridge + 4 hip diagonals</text>
+<text x="70" y="6346.989898989899" font-size="12" fill="#333">Semi glass tile 16×10</text>
+<text x="340" y="6346.989898989899" font-size="12" fill="#333">406 × 254 mm</text>
+<text x="490" y="6346.989898989899" font-size="12" fill="#333">12</text>
+<text x="580" y="6346.989898989899" font-size="12" fill="#333">220.00</text>
+<text x="690" y="6346.989898989899" font-size="12" fill="#333">2,640.00</text>
+<text x="830" y="6346.989898989899" font-size="12" fill="#333">specialty — small qty for details</text>
+<line x1="60" y1="6362.989898989899" x2="1724" y2="6362.989898989899" stroke="#333" stroke-width="1"/>
+<text x="580" y="6374.989898989899" font-size="12" fill="#333" >Sub-total (8,962 items):</text>
+<text x="800" y="6374.989898989899" font-size="12" fill="#333" text-anchor="end" >₹ 351,915.00</text>
+<text x="580" y="6392.989898989899" font-size="12" fill="#333" >Delivery charges:</text>
+<text x="800" y="6392.989898989899" font-size="12" fill="#333" text-anchor="end" >₹ 70,000.00</text>
+<text x="580" y="6410.989898989899" font-size="12" fill="#333" >IGST @ 12%:</text>
+<text x="800" y="6410.989898989899" font-size="12" fill="#333" text-anchor="end" >₹ 50,629.80</text>
+<text x="580" y="6428.989898989899" font-size="12" fill="#333" font-weight="600">GRAND TOTAL:</text>
+<text x="800" y="6428.989898989899" font-size="12" fill="#333" text-anchor="end" font-weight="600">₹ 472,544.80</text>
+<text x="70" y="6460.989898989899" font-size="14" font-weight="600" fill="#222">Design cross-check &amp; contractor notes</text>
+<text x="70" y="6480.989898989899" font-size="12" fill="#b00" font-weight="600">ASSUMPTIONS (per Quote #92-2585, 15-Apr-2026):</text>
+<text x="70" y="6495.989898989899" font-size="12" fill="#333">• Indicotto rooftile: 16" × 10" (406 × 254 mm), 1.33 tiles/sft.</text>
+<text x="70" y="6510.989898989899" font-size="12" fill="#333">  16" tile − 4" (100 mm) overlap = 12" purlin OC.</text>
+<text x="70" y="6525.989898989899" font-size="12" fill="#333">• Ceiling Tile 12×8 (Nutical Plain): 12" × 8" (305 × 203 mm),</text>
+<text x="70" y="6540.989898989899" font-size="12" fill="#333">  1.5 tiles/sft. 12" dim spans purlin-centre to purlin-centre.</text>
+<text x="70" y="6555.989898989899" font-size="12" fill="#333">• Ridge tiles: sold per 1 running foot of ridge.</text>
+<text x="70" y="6570.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="6585.989898989899" font-size="12" fill="#333">• Indicotto: 1978 sft × 1.33 × 10% waste = 2,894. Ordered 4,150 → +1,256 (+43% margin).</text>
+<text x="70" y="6600.989898989899" font-size="12" fill="#333">• Ceiling: 1978 sft × 1.5 × 10% waste = 3,264. Ordered 4,700 → +1,436 (+44% margin).</text>
+<text x="70" y="6615.989898989899" font-size="12" fill="#333">• Ridge: 15' 10" central + 4 × 26' 4" hips = 121 ft;</text>
+<text x="70" y="6630.989898989899" font-size="12" fill="#b00" font-weight="600">   +10% waste = 133 ft. Ordered 100 ft → -33 (-25% SHORT).</text>
+<text x="70" y="6645.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="6660.989898989899" font-size="12" fill="#b00" font-weight="600">ACTION — order 33 additional running feet of ridge cap:</text>
+<text x="70" y="6675.989898989899" font-size="12" fill="#b00" font-weight="600">   33 × ₹70.00 = ₹2,310.00;  with 12% IGST ≈ ₹2,587.20.</text>
+<text x="70" y="6690.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="6705.989898989899" font-size="12" fill="#333">• Order was originally sized for the earlier two-face gable design,</text>
+<text x="70" y="6720.989898989899" font-size="12" fill="#333">  which had a longer central ridge but no hip ridges. Moving to hip</text>
+<text x="70" y="6735.989898989899" font-size="12" fill="#333">  shortened the central ridge (55'→15') but added 4 hip ridges of</text>
+<text x="70" y="6750.989898989899" font-size="12" fill="#333">  ~26' each. The 100 ft order is short by that delta.</text>
+<text x="70" y="6765.989898989899" font-size="12" fill="#333">• Tile margins (+1,256 (+43% margin), +1,436 (+44% margin)) also stem from the</text>
+<text x="70" y="6780.989898989899" font-size="12" fill="#333">  earlier larger gable surface. Confirm with contractor whether the</text>
+<text x="70" y="6795.989898989899" font-size="12" fill="#333">  surplus is for outbuildings or should be treated as excess.</text>
+<text x="932.0" y="6480.989898989899" font-size="12" fill="#b00" font-weight="600">CONSTRUCTION DETAILS (per Santosh Roofing video):</text>
+<text x="932.0" y="6495.989898989899" font-size="12" fill="#333">• RIDGE: sealed with Top Flex UV tape, then ridge tiles laid without</text>
+<text x="932.0" y="6510.989898989899" font-size="12" fill="#333">  cement mortar — the sealed tape holds them and stays watertight.</text>
+<text x="932.0" y="6525.989898989899" font-size="12" fill="#333">• VALLEY: 3" gap held between the two tile fields (straight-line cut).</text>
+<text x="932.0" y="6540.989898989899" font-size="12" fill="#333">  Metal strip + cement seal the gap and channel water down; paint to match.</text>
+<text x="932.0" y="6555.989898989899" font-size="12" fill="#333">• BARGE: sealed with cement mortar for clean, waterproof edges.</text>
+<text x="932.0" y="6570.989898989899" font-size="12" fill="#333">• WALL JUNCTIONS: self-adhesive easy-flash ~5" up the wall and 5" onto</text>
+<text x="932.0" y="6585.989898989899" font-size="12" fill="#333">  the tile; silicone bead along the top edge of the flashing.</text>
+<text x="932.0" y="6600.989898989899" font-size="12" fill="#333">  Silicone at every gap around pipe penetrations.</text>
+<text x="932.0" y="6615.989898989899" font-size="12" fill="#333">• WATER CHANNELS: brackets sit in the gap above the Pani Patti, PVC</text>
+<text x="932.0" y="6630.989898989899" font-size="12" fill="#333">  channels drop into the brackets, downpipe carries water to ground.</text>
+<text x="932.0" y="6645.989898989899" font-size="12" fill="#333"></text>
+<text x="932.0" y="6660.989898989899" font-size="12" fill="#b00" font-weight="600">SITE RULES:</text>
+<text x="932.0" y="6675.989898989899" font-size="12" fill="#333">• NEVER step between two ceiling tiles — the tile has low strength on</text>
+<text x="932.0" y="6690.989898989899" font-size="12" fill="#333">  its own and will crack; step only where a purlin is underneath.</text>
+<text x="932.0" y="6705.989898989899" font-size="12" fill="#333">• Check every ceiling tile for cracks BEFORE the membrane goes on —</text>
+<text x="932.0" y="6720.989898989899" font-size="12" fill="#333">  a broken tile is hard to reach once membrane + top tile are down.</text>
+<text x="932.0" y="6735.989898989899" font-size="12" fill="#333">• Anchor bolts embedded 6–8" into footing; deeper footing = more stability.</text>
+<text x="932.0" y="6750.989898989899" font-size="12" fill="#333">• Column base plate welded onto the projecting rebar (2" projection)</text>
+<text x="932.0" y="6765.989898989899" font-size="12" fill="#333">  for a permanent, non-pull-out joint.</text>
+<text x="932.0" y="6780.989898989899" font-size="12" fill="#333">• Flood-test the whole roof at the end for leaks. Do NOT walk on wet</text>
+<text x="932.0" y="6795.989898989899" font-size="12" fill="#333">  tiles — they are extremely slippery when wet.</text>
+<text x="932.0" y="6810.989898989899" font-size="12" fill="#333"></text>
+<text x="932.0" y="6825.989898989899" font-size="12" fill="#333">• Roof pitch: main slopes 26.0°, hip ends 24.6° (both above 20° min).</text>
+<text x="932.0" y="6840.989898989899" font-size="12" fill="#333">• Hip-end pitch is shallow for Konkan monsoon intensity. Give flashing</text>
+<text x="932.0" y="6855.989898989899" font-size="12" fill="#333">  and underlay at the four hip ridges extra attention.</text>
 </svg>

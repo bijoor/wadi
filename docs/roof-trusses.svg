@@ -1,0 +1,530 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <marker
+       id="arr"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path1" />
+    </marker>
+    <marker
+       id="marker2"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path2" />
+    </marker>
+    <marker
+       id="marker3"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path3" />
+    </marker>
+    <marker
+       id="marker4"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path4" />
+    </marker>
+    <marker
+       id="arr-2"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path1-4" />
+    </marker>
+    <marker
+       id="marker2-6"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path2-7" />
+    </marker>
+    <marker
+       id="marker3-5"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path3-5" />
+    </marker>
+    <marker
+       id="marker4-0"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path4-5" />
+    </marker>
+    <clipPath
+       id="topfv_W">
+      <polygon
+         points="742,517.7 742,782.3 455.7,1087 455.7,213 "
+         id="polygon5" />
+    </clipPath>
+    <clipPath
+       id="topfv_N">
+      <polygon
+         points="1028.3,213 742,517.7 455.7,213 "
+         id="polygon3" />
+    </clipPath>
+    <clipPath
+       id="topfv_E">
+      <polygon
+         points="1028.3,1087 742,782.3 742,517.7 1028.3,213 "
+         id="polygon6" />
+    </clipPath>
+    <clipPath
+       id="topfv_S">
+      <polygon
+         points="742,782.3 1028.3,1087 455.7,1087 "
+         id="polygon4" />
+    </clipPath>
+    <clipPath
+       id="topfv_N-6">
+      <polygon
+         points="742,517.7 455.7,213 1028.3,213 "
+         id="polygon3-5" />
+    </clipPath>
+    <marker
+       id="arr-1"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path1-1" />
+    </marker>
+    <marker
+       id="marker2-2"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path2-6" />
+    </marker>
+  </defs>
+  <g
+     id="layer1">
+    <path
+       id="path32"
+       style="fill:none;stroke:#222222;stroke-width:0.264583;stroke-dasharray:0.529167, 0.264583;stroke-dashoffset:0"
+       d="M 94.197475,6.6582803 165.81534,41.32613" />
+    <path
+       style="fill:none;stroke:#4a8fbf;stroke-width:0.738333;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 22.252436,41.326131 H 165.81534"
+       id="path10" />
+    <polygon
+       points="455.7,1087 455.7,213 1028.3,213 1028.3,1087 "
+       fill="none"
+       stroke="#222222"
+       stroke-width="1"
+       id="polygon153"
+       transform="matrix(0.26458333,0,0,0.26458333,-101.91777,0.16963496)"
+       style="stroke-dasharray:2, 1;stroke-dashoffset:0" />
+    <g
+       id="g10"
+       transform="translate(1.4549362,11.546719)">
+      <line
+         x1="470.70001"
+         y1="213"
+         x2="470.70001"
+         y2="1087"
+         stroke="#4a8fbf"
+         stroke-width="2.79055"
+         clip-path="url(#topfv_W)"
+         id="line70"
+         transform="matrix(0.26458333,0,0,0.26458333,-103.37271,-11.377083)" />
+      <line
+         x1="1013.3"
+         y1="213"
+         x2="1013.3"
+         y2="1087"
+         stroke="#4a8fbf"
+         stroke-width="2.79055"
+         clip-path="url(#topfv_E)"
+         id="line71"
+         transform="matrix(0.26458333,0,0,0.26458333,-103.37271,-11.377083)" />
+      <line
+         x1="455.70001"
+         y1="228.2"
+         x2="1028.3"
+         y2="228.2"
+         stroke="#4a8fbf"
+         stroke-width="2.79055"
+         clip-path="url(#topfv_N)"
+         id="line108"
+         transform="matrix(0.26458333,0,0,0.26458333,-103.37271,-11.377083)" />
+      <line
+         x1="455.70001"
+         y1="1071.8"
+         x2="1028.3"
+         y2="1071.8"
+         stroke="#4a8fbf"
+         stroke-width="2.79055"
+         clip-path="url(#topfv_S)"
+         id="line109"
+         transform="matrix(0.26458333,0,0,0.26458333,-103.37271,-11.377083)" />
+    </g>
+    <path
+       style="fill:none;stroke:#8b4513;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 22.998374,137.14446 H 165.80774"
+       id="path12" />
+    <line
+       x1="94.403053"
+       y1="137.14435"
+       x2="94.403053"
+       y2="207.15309"
+       stroke="#5a3a17"
+       stroke-width="2.215"
+       id="line148"
+       style="stroke:#b3b3b3" />
+    <path
+       style="fill:none;stroke:#8b4513;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 22.998374,207.1532 H 165.80774"
+       id="path13" />
+    <path
+       style="fill:none;stroke:#b3b3b3;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:1.05833, 0.529167;stroke-dashoffset:0;stroke-opacity:1"
+       d="M 170.15327,56.525887 94.403057,137.14446"
+       id="path15" />
+    <path
+       style="fill:none;stroke:#b3b3b3;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:1.05833, 0.529167;stroke-dashoffset:0;stroke-opacity:1"
+       d="m 18.652847,56.525889 75.75021,80.618571"
+       id="path16" />
+    <path
+       style="fill:none;stroke:#b3b3b3;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:1.05833, 0.529167;stroke-dashoffset:0;stroke-opacity:1"
+       d="M 169.96045,287.95292 94.210239,207.33438"
+       id="path17" />
+    <path
+       style="fill:none;stroke:#b3b3b3;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:1.05833, 0.529167;stroke-dashoffset:0;stroke-opacity:1"
+       d="M 18.460024,287.95292 94.210239,207.33438"
+       id="path18" />
+    <path
+       style="fill:none;stroke:#8b4513;stroke-width:0.529166;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 94.403057,60.916716 V 137.25605"
+       id="path19" />
+    <path
+       style="fill:none;stroke:#8b4513;stroke-width:0.529166;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 56.792535,60.916716 V 137.25605"
+       id="path20" />
+    <path
+       style="fill:none;stroke:#8b4513;stroke-width:0.529166;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 132.01358,60.547553 V 136.88689"
+       id="path21" />
+    <path
+       style="fill:none;stroke:#8b4513;stroke-width:0.529166;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 94.282002,207.1532 v 76.33931"
+       id="path22" />
+    <path
+       style="fill:none;stroke:#8b4513;stroke-width:0.529166;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 56.67148,207.1532 v 76.33931"
+       id="path23" />
+    <path
+       style="fill:none;stroke:#8b4513;stroke-width:0.529166;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 131.89252,206.78404 v 76.33931"
+       id="path24" />
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="69.836777"
+       y="137.0071"
+       id="text27"><tspan
+         id="tspan27"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="69.836777"
+         y="137.0071">Truss 1</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="67.546013"
+       y="171.92841"
+       id="text28"><tspan
+         id="tspan28"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="67.546013"
+         y="171.92841">Truss 2</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="67.517792"
+       y="206.84972"
+       id="text29"><tspan
+         id="tspan29"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="67.517792"
+         y="206.84972">Truss 3</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="184.07918"
+       y="72.560242"
+       id="text31"><tspan
+         id="tspan31"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="184.07918"
+         y="72.560242">Rectangular Frame</tspan></text>
+    <path
+       style="fill:none;stroke:#8b4513;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 22.998375,172.14883 H 165.80774"
+       id="path31" />
+    <line
+       x1="18.555685"
+       y1="43.257809"
+       x2="94.197472"
+       y2="6.6582799"
+       stroke="#8b0000"
+       stroke-width="0.79375"
+       id="line408"
+       style="fill:none;stroke:#222222;stroke-width:0.264583;stroke-dasharray:0.529167, 0.264583;stroke-dashoffset:0" />
+    <path
+       id="line409"
+       style="fill:none;stroke:#222222;stroke-width:0.264583;stroke-dasharray:0.529167, 0.264583;stroke-dashoffset:0"
+       d="M 94.197475,6.6582803 169.80806,43.257805" />
+    <line
+       x1="22.252436"
+       y1="41.326134"
+       x2="165.81534"
+       y2="41.326134"
+       stroke="#8b0000"
+       stroke-width="0.79375"
+       id="line410" />
+    <path
+       id="line411"
+       style="stroke:#c25050;stroke-width:0.47625"
+       d="M 94.197475,6.6582803 V 41.326131" />
+    <path
+       id="line412"
+       style="stroke:#c25050;stroke-width:0.47625"
+       d="M 94.197475,6.6582803 56.376579,40.899191" />
+    <path
+       id="line413"
+       style="stroke:#c25050;stroke-width:0.47625"
+       d="M 94.197475,6.6582803 131.98712,41.326131" />
+    <line
+       x1="56.376579"
+       y1="24.958044"
+       x2="56.376579"
+       y2="41.26836"
+       stroke="#c25050"
+       stroke-width="0.47625"
+       id="line414" />
+    <path
+       id="line415"
+       style="stroke:#c25050;stroke-width:0.47625"
+       d="M 131.98712,24.958043 V 41.326131" />
+    <ellipse
+       cx="22.54796"
+       cy="41.326134"
+       fill="#8b0000"
+       id="circle415"
+       style="stroke-width:0.264583"
+       rx="0.84393752"
+       ry="0.83744669" />
+    <ellipse
+       cx="56.376579"
+       cy="40.899193"
+       fill="#8b0000"
+       id="circle416"
+       style="stroke-width:0.264583"
+       rx="0.84393752"
+       ry="0.83744669" />
+    <ellipse
+       cx="94.197472"
+       cy="41.326134"
+       fill="#8b0000"
+       id="circle417"
+       style="stroke-width:0.264583"
+       rx="0.84393752"
+       ry="0.83744669" />
+    <ellipse
+       cx="131.98712"
+       cy="41.326134"
+       fill="#8b0000"
+       id="circle418"
+       style="stroke-width:0.264583"
+       rx="0.84393752"
+       ry="0.83744669" />
+    <ellipse
+       cx="165.81534"
+       cy="41.326134"
+       fill="#8b0000"
+       id="circle419"
+       style="stroke-width:0.264583"
+       rx="0.84393752"
+       ry="0.83744669" />
+    <ellipse
+       cx="56.376579"
+       cy="24.958044"
+       fill="#8b0000"
+       id="circle420"
+       style="stroke-width:0.264583"
+       rx="0.84393752"
+       ry="0.83744669" />
+    <ellipse
+       cx="94.197472"
+       cy="6.6582799"
+       fill="#8b0000"
+       id="circle421"
+       style="stroke-width:0.264583"
+       rx="0.84393752"
+       ry="0.83744669" />
+    <ellipse
+       cx="131.98712"
+       cy="24.958044"
+       fill="#8b0000"
+       id="circle422"
+       style="stroke-width:0.264583"
+       rx="0.84393752"
+       ry="0.83744669" />
+    <path
+       id="line31"
+       style="stroke:#8b0000;stroke-width:0.79375"
+       d="M 22.54796,41.32613 94.197475,6.6582803" />
+    <path
+       id="line32"
+       style="fill:none;stroke:#222222;stroke-width:0.264583;stroke-dasharray:0.529167, 0.264583;stroke-dashoffset:0"
+       d="M 18.555685,43.257805 H 169.80806" />
+    <path
+       id="path33"
+       style="stroke:#8b0000;stroke-width:0.79375"
+       d="M 165.81534,41.32613 94.197475,6.6582803" />
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="131.49243"
+       y="17.510406"
+       id="text33"><tspan
+         id="tspan33"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="131.49243"
+         y="17.510406">Trusses</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="50.584927"
+       y="112.90482"
+       id="text34"><tspan
+         id="tspan34"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="50.584927"
+         y="112.90482">Beam 1</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="87.372673"
+       y="114.18365"
+       id="text35"><tspan
+         id="tspan35"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="87.372673"
+         y="114.18365">Beam 2</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="125.45992"
+       y="112.90482"
+       id="text36"><tspan
+         id="tspan36"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="125.45992"
+         y="112.90482">Beam 3</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="50.584927"
+       y="232.59387"
+       id="text37"><tspan
+         id="tspan37"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="50.584927"
+         y="232.59387">Beam 4</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="87.372673"
+       y="233.8727"
+       id="text38"><tspan
+         id="tspan38"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="87.372673"
+         y="233.8727">Beam 5</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:bold;font-size:3.52778px;line-height:1.25;font-family:Impact;-inkscape-font-specification:'Impact Bold';font-variant-ligatures:none;text-align:center;text-anchor:middle;stroke-width:0.264583"
+       x="125.45992"
+       y="232.59387"
+       id="text39"><tspan
+         id="tspan39"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';stroke-width:0.264583"
+         x="125.45992"
+         y="232.59387">Beam 6</tspan></text>
+  </g>
+</svg>

@@ -938,17 +938,142 @@ HOUSE_CONFIG = {
                 {
                     'type': 'hip_roof',
                     'ridge_axis': 'y',
-                    'eave_x_west': -30,     # 3 ft overhang west of plot (x=0)
-                    'eave_x_east': 300,     # 3 ft overhang east of plot (x=270)
-                    'eave_y_north': -30,    # 5 ft overhang north of plot (y=0)
-                    'eave_y_south': 480,    # 5 ft overhang south of plot (y=450)
+                    'eave_x_west': -36,     # 3.6 ft symmetric overhang W
+                    'eave_x_east': 306,     # 3.6 ft symmetric overhang E
+                    'eave_y_north': -36,    # 3.6 ft symmetric overhang N (matches E-W)
+                    'eave_y_south': 486,    # 3.6 ft symmetric overhang S (matches E-W)
                     'eave_z': -5,
                     'slope_angle_ew': 26,   # E and W trapezoidal main slopes
                     'slope_angle_ns': 26,   # N and S triangular hip ends
-                    'ridge_length': 150,  # uncomment to override slope_angle_ns
+                    'ridge_length': 158,  # tuned so hip-end slope L = 20 tile rows exactly
                     # Exploded-view-only Z lift (ignored in normal view). Lifts
                     # the roof above the rest of the floor in the exploded GLB.
                     'explosion_offset': 250,
+                    # Framing config — used by roof_plan.svg. All members are
+                    # METAL PIPES (hollow rectangular sections). Dimensions in
+                    # inches; wall_mm is the pipe wall thickness in millimetres.
+                    #  * Rafters: perpendicular to ridge, from eave to ridge.
+                    #  * Purlins: parallel to ridge, run across rafters.
+                    #  * Ridge (central + hip ridges): the peak line and the 4
+                    #    diagonal ridges from ridge endpoints to eave corners.
+                    #  * Eave edge: Pani Patti (folded metal water-protector
+                    #    strip) + 1"×1"×3mm L-channel angle support fixed on
+                    #    top, with the L-channel's top aligned to the top of
+                    #    the purlins. Together they hold the bottom tile
+                    #    course at the correct level and shed water off the
+                    #    eave. Per site video (Santosh Roofing).
+                    #  * Barge pipe: 3"×1"×1.6mm HSS welded to purlin ends
+                    #    at free roof edges (no adjoining section), bottom
+                    #    flush with the purlin bottom.
+                    #  * Ridge angle: 1"×1"×3mm L-angle at the top ridge to
+                    #    support tiles cut at the top when roof width isn't a
+                    #    clean multiple of tile size.
+                    #  * Corner double angle: 1"×1"×3mm doubled L-angle at
+                    #    panel corners to support cut ceiling tiles.
+                    #  * Main beam: 8"×4"×4mm HSS pipes forming the structural
+                    #    spine (two per span, ~3 ft OC).
+                    #  * Supporting truss: 4"×8"×4mm HSS mid-span truss where
+                    #    extra strength is needed.
+                    'framing': {
+                        # Rafter mounted ON-EDGE (stiff axis vertical):
+                        # cross section is 2" wide × 4" tall.
+                        'rafter_size_in': [2, 4],
+                        'rafter_wall_mm': 2,            # (1.5 mm alternative available)
+                        'rafter_spacing_in': 36,        # centre-to-centre (3 ft)
+                        'purlin_size_in': [2, 1],       # 2" wide × 1" tall HSS (flat)
+                        'purlin_wall_mm': 1.6,          # per site video
+                        'purlin_spacing_in': 12,        # centre-to-centre (1 ft)
+                        'ridge_size_in': [6, 3],        # 6" wide × 3" tall HSS
+                        'ridge_wall_mm': 2,
+                        # Legacy alias — kept so existing SVG code still runs
+                        # until the eave-edge is fully replaced by pani_patti
+                        # + eave_L_channel below.
+                        'eave_edge_size_in': [1, 2],
+                        'eave_edge_wall_mm': 1.5,
+                        # ---- New members per Santosh Roofing video ----
+                        'pani_patti': {
+                            'material': 'GI sheet',
+                            'thickness_mm': 1.2,          # nominal, verify on site
+                            # Total face height at the eave = rafter (4) +
+                            # purlin (1) + 1" extra above purlin top = 6".
+                            'height_in': 6.0,
+                            'note': 'folded water-protector strip along the eave',
+                        },
+                        'eave_L_channel_size_in': [1, 1],  # 1" × 1" L-angle
+                        'eave_L_channel_wall_mm': 3,
+                        'barge_pipe_size_in': [3, 1],     # 3" tall × 1" wide HSS
+                        'barge_pipe_wall_mm': 1.6,
+                        'ridge_angle_size_in': [1, 1],    # 1" × 1" L-angle at top ridge
+                        'ridge_angle_wall_mm': 3,
+                        'corner_double_angle_size_in': [1, 1],
+                        'corner_double_angle_wall_mm': 3,
+                        'main_beam_size_in': [8, 4],      # 8" × 4" HSS spine
+                        'main_beam_wall_mm': 4,
+                        'main_beam_spacing_in': 36,       # ~3 ft centre-to-centre
+                        'supporting_truss_size_in': [4, 8],  # 4" × 8" HSS truss
+                        'supporting_truss_wall_mm': 4,
+                        # ---- Common Fink (W) trusses in the ridge zone ----
+                        # Section A-A profile: 34'2" bottom chord × 8'4" rise,
+                        # 26° pitch. 4 common trusses at 4' OC, distributed
+                        # symmetrically across the 15'9" ridge length.
+                        # Members:
+                        #   - chords (top + bottom): 2"×4"×3 mm HSS on-edge
+                        #   - king post + W diagonals: 2"×2"×2 mm HSS
+                        # Panel points at 1/4 and 3/4 of the bottom chord.
+                        # ---- House footprint (walls) — inset from eave ----
+                        # The eave outline is 34'2" × 52'2". The house walls
+                        # form a smaller rectangle inside, with the roof
+                        # overhanging on all four sides.
+                        'house_footprint_ft': [27.0, 45.0],  # [transverse, longitudinal]
+                        # Wall-top height above the eave line (parapet upstand
+                        # under the roof structure). Ring beam sits here.
+                        'wall_top_above_eave_ft': 1.333,     # 1' 4"
+                        # ---- Common Fink trusses ----
+                        # 3 trusses (per user drawing): at N ridge endpoint,
+                        # ridge centre, and S ridge endpoint. Each truss's
+                        # BOTTOM CHORD sits on the ring beam (at wall-top
+                        # height), so its span = house transverse width (27')
+                        # and rise = ridge_h − wall_top = 8'4" − 1'4" = 7'0".
+                        'truss': {
+                            'type': 'fink',
+                            'count': 3,
+                            'positions': ['n_ridge_end', 'ridge_center', 's_ridge_end'],
+                            'chord_size_in': [2, 4],
+                            'chord_wall_mm': 3,
+                            'web_size_in': [2, 2],
+                            'web_wall_mm': 2,
+                            'panel_ratio_bottom': 0.25,
+                            'include_king_post': True,
+                            'note': '3 Fink trusses — bottom chord on ring beam, span = house transverse width',
+                        },
+                        # ---- Ring beam (rectangular frame around walls) ----
+                        # Perimeter tie beam at wall-top level, sits on the walls.
+                        'ring_beam': {
+                            'size_in': [4, 2],
+                            'wall_mm': 3,
+                            'note': 'Perimeter ring beam at wall top — 27×45 rectangle at 1\'4" above eave',
+                        },
+                        # ---- Hip-end beams ----
+                        # 6 beams (3 at each hip end) running longitudinally
+                        # from the corresponding corner truss (Truss 1 or 3) to
+                        # the N/S wall of the ring-beam frame. Spaced across the
+                        # 27' transverse width.
+                        'hip_end_beam': {
+                            'count_per_end': 3,
+                            'size_in': [4, 2],
+                            'wall_mm': 2,
+                            'note': 'Longitudinal beams at wall level, from corner trusses to N/S walls',
+                        },
+                        # ---- Membrane between ceiling and roof tiles ----
+                        'membrane': {
+                            'material': 'thermal + waterproof fabric',
+                            'sealing_tape': 'RBD / aluminium-butyl',
+                            'overlap_horizontal_in': 12,  # 1 foot
+                            'overlap_vertical_in': 8,
+                            'barge_extension_in': 2,
+                            'note': 'depression pressed at each ceiling-tile gap so tile lip seats',
+                        },
+                    },
                     'material': 'roof',
                 },
 

@@ -64,9 +64,49 @@ def render_cards_html():
     return "\n".join(parts)
 
 
+def read_svg_aspect(svg_path):
+    """Return height / width of the SVG's viewBox (or width/height attrs).
+    Used so the roof-plan page can be sized to the SVG's own aspect ratio
+    and the drawing scales to fit the page width instead of being
+    letterboxed inside a landscape frame."""
+    import re
+    try:
+        with open(svg_path, 'r', encoding='utf-8') as f:
+            head = f.read(4096)
+    except OSError:
+        return 3.87  # sensible fallback
+    m = re.search(r'viewBox\s*=\s*"([^"]+)"', head)
+    if m:
+        parts = m.group(1).split()
+        if len(parts) == 4:
+            _, _, vw, vh = parts
+            try:
+                return float(vh) / float(vw)
+            except ValueError:
+                pass
+    mw = re.search(r'\swidth\s*=\s*"(\d+(?:\.\d+)?)"', head)
+    mh = re.search(r'\sheight\s*=\s*"(\d+(?:\.\d+)?)"', head)
+    if mw and mh:
+        try:
+            return float(mh.group(1)) / float(mw.group(1))
+        except ValueError:
+            pass
+    return 3.87
+
+
 def build_html():
     today = datetime.date.today().isoformat()
     hero = "realistic_perspectives/eye_level_front.png"
+
+    # Roof plan is very portrait (~1:3.87). Compute a matching page height
+    # so the SVG scales to fit page width without letterboxing.
+    roof_aspect = read_svg_aspect(os.path.join(DOCS_DIR, "roof_plan.svg"))
+    page_margin_mm = 12
+    roof_page_w_mm = 297  # A3 short side
+    roof_content_w_mm = roof_page_w_mm - 2 * page_margin_mm
+    # +25mm buffer above the SVG height to leave room for the h2 heading
+    # and its border/margin without pushing the SVG onto a second page.
+    roof_page_h_mm = roof_content_w_mm * roof_aspect + 2 * page_margin_mm + 25
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -75,6 +115,7 @@ def build_html():
 <title>Konkan House — E/W Roof Variant</title>
 <style>
   @page {{ size: A3 landscape; margin: 12mm; }}
+  @page roofplan {{ size: {roof_page_w_mm}mm {roof_page_h_mm:.1f}mm; margin: {page_margin_mm}mm; }}
   html, body {{ margin: 0; padding: 0; font-family: -apple-system, Arial, sans-serif; color: #222; }}
   .page {{ page-break-after: always; height: calc(297mm - 24mm); display: flex; flex-direction: column; }}
   .page:last-child {{ page-break-after: auto; }}
@@ -90,6 +131,12 @@ def build_html():
   /* Drawing pages: SVG fills the available space */
   .drawing {{ flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }}
   .drawing img {{ max-width: 100%; max-height: 100%; object-fit: contain; }}
+
+  /* Roof-plan page uses a custom-tall page sized to the SVG aspect */
+  .page {{ page: auto; }}
+  .page.roof-page {{ page: roofplan; height: auto; }}
+  .roof-page .drawing {{ flex: initial; display: block; }}
+  .roof-page .drawing img {{ display: block; width: 100%; height: auto; max-width: none; max-height: none; object-fit: unset; }}
 
   /* Render grid */
   .grid {{ flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 10pt; min-height: 0; }}
@@ -117,7 +164,7 @@ def build_html():
   <div class="drawing"><img src="elevations_combined.svg" alt="Combined elevations"></div>
 </section>
 
-<section class="page">
+<section class="page roof-page">
   <h2>Roof — Dimensioned Cross Sections</h2>
   <div class="drawing"><img src="roof_plan.svg" alt="Roof sections"></div>
 </section>

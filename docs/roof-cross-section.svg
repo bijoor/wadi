@@ -1,0 +1,592 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="297mm"
+   height="210mm"
+   viewBox="0 0 297 210"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <marker
+       id="arr"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path1" />
+    </marker>
+    <marker
+       id="marker2"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path2" />
+    </marker>
+    <marker
+       id="marker3"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path3" />
+    </marker>
+    <marker
+       id="marker4"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path4" />
+    </marker>
+    <marker
+       id="marker5"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path5" />
+    </marker>
+    <marker
+       id="marker6"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path6" />
+    </marker>
+    <marker
+       id="marker7"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path7" />
+    </marker>
+    <marker
+       id="marker8"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path8" />
+    </marker>
+    <marker
+       id="marker9"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path9" />
+    </marker>
+    <marker
+       id="marker10"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path10" />
+    </marker>
+    <marker
+       id="marker11"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path11" />
+    </marker>
+    <marker
+       id="marker12"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path12" />
+    </marker>
+    <marker
+       id="marker13"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path13" />
+    </marker>
+    <marker
+       id="marker14"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path14" />
+    </marker>
+    <marker
+       id="marker15"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path15" />
+    </marker>
+    <marker
+       id="marker16"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#0066cc"
+         id="path16" />
+    </marker>
+  </defs>
+  <g
+     id="layer1">
+    <rect
+       x="42.212021"
+       y="117.65289"
+       width="166.89915"
+       height="7.9375"
+       fill="#c8a377"
+       stroke="#8b4513"
+       stroke-width="0.363974"
+       id="rect340" />
+    <rect
+       x="61.975784"
+       y="113.65884"
+       width="7.9375"
+       height="3.96875"
+       fill="#a8c9e0"
+       stroke="#4a8fbf"
+       stroke-width="0.396875"
+       id="rect342" />
+    <rect
+       x="109.68077"
+       y="113.68414"
+       width="7.9375"
+       height="3.96875"
+       fill="#a8c9e0"
+       stroke="#4a8fbf"
+       stroke-width="0.396875"
+       id="rect344" />
+    <rect
+       x="157.30577"
+       y="113.68414"
+       width="7.9375"
+       height="3.96875"
+       fill="#a8c9e0"
+       stroke="#4a8fbf"
+       stroke-width="0.396875"
+       id="rect346" />
+    <polygon
+       points="1145.2,2787.8 1132,2787.8 1132,2786 1147,2786 1147,2801 1145.2,2801 "
+       fill="#7a7a80"
+       stroke="#404040"
+       stroke-width="1"
+       stroke-linejoin="round"
+       id="polygon348"
+       transform="matrix(0.26458333,0,0,-0.26458333,-94.3162,851.56696)" />
+    <polygon
+       points="622,2801 613,2801 613,2790.5 631,2790.5 631,2801 763,2801 763,2790.5 781,2790.5 781,2801 772,2801 772,2816 622,2816 "
+       fill="#f0e6d2"
+       stroke="#8a6f3f"
+       stroke-width="1"
+       stroke-linejoin="round"
+       id="polygon349"
+       transform="matrix(0.26458333,0,0,0.26458333,-94.57756,-627.41377)" />
+    <polygon
+       points="802,2801 793,2801 793,2790.5 811,2790.5 811,2801 943,2801 943,2790.5 961,2790.5 961,2801 952,2801 952,2816 802,2816 "
+       fill="#f0e6d2"
+       stroke="#8a6f3f"
+       stroke-width="1"
+       stroke-linejoin="round"
+       id="polygon350"
+       transform="matrix(0.26458333,0,0,0.26458333,-94.57756,-627.41377)" />
+    <polygon
+       points="982,2801 973,2801 973,2790.5 991,2790.5 991,2801 1123,2801 1123,2790.5 1141,2790.5 1141,2801 1132,2801 1132,2816 982,2816 "
+       fill="#f0e6d2"
+       stroke="#8a6f3f"
+       stroke-width="1"
+       stroke-linejoin="round"
+       id="polygon351"
+       transform="matrix(0.26458333,0,0,0.26458333,-94.57756,-627.41377)" />
+    <path
+       id="polyline351"
+       style="fill:none;stroke:#8a9099;stroke-width:0.529167;stroke-linecap:round;stroke-linejoin:round"
+       d="m 63.643271,110.90601 h 3.96875 4.7625 l 0.79375,2.77813 h 33.337499 l 0.79375,-2.77813 h 4.7625 l 0.39688,1.40229 h 2.38125 l 0.39687,-1.40229 h 4.7625 l 0.79375,2.77813 h 33.3375 l 0.79375,-2.77813 h 4.7625 l 0.39687,1.40229 h 2.38125 l 0.39688,-1.40229 h 4.7625 l 0.79375,2.77813 h 33.3375 l 0.79375,-2.77813 h 4.7625 0.87474 v -1.46174" />
+    <line
+       x1="161.27452"
+       y1="112.30832"
+       x2="161.27452"
+       y2="147.28622"
+       stroke="#8a9099"
+       stroke-width="0.15875"
+       id="line351" />
+    <text
+       x="161.27452"
+       y="148.87372"
+       text-anchor="middle"
+       font-size="2.91042px"
+       font-weight="600"
+       fill="#8a9099"
+       id="text351"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">MEMBRANE — depression pressed into gap so tile lip seats</text>
+    <line
+       x1="66.024521"
+       y1="89.815704"
+       x2="66.024521"
+       y2="99.672592"
+       stroke="#0066cc"
+       stroke-width="0.132292"
+       stroke-dasharray="3, 2"
+       id="line354" />
+    <line
+       x1="113.64952"
+       y1="96.909576"
+       x2="113.64952"
+       y2="103.78874"
+       stroke="#0066cc"
+       stroke-width="0.132292"
+       stroke-dasharray="3, 2"
+       id="line355" />
+    <line
+       x1="161.27452"
+       y1="96.909576"
+       x2="161.27452"
+       y2="103.78874"
+       stroke="#0066cc"
+       stroke-width="0.132292"
+       stroke-dasharray="3, 2"
+       id="line356" />
+    <line
+       x1="208.89952"
+       y1="89.815704"
+       x2="208.89952"
+       y2="99.672592"
+       stroke="#0066cc"
+       stroke-width="0.132292"
+       stroke-dasharray="3, 2"
+       id="line357" />
+    <line
+       x1="66.024521"
+       y1="89.501251"
+       x2="113.64952"
+       y2="89.501251"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line358" />
+    <text
+       x="89.837021"
+       y="88.178329"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text358"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">12&quot; (305 mm) purlin OC</text>
+    <line
+       x1="113.64952"
+       y1="89.501251"
+       x2="161.27452"
+       y2="89.501251"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line359" />
+    <text
+       x="137.46202"
+       y="88.178329"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text359"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">12&quot; (305 mm) purlin OC</text>
+    <line
+       x1="161.27452"
+       y1="89.501251"
+       x2="208.89952"
+       y2="89.501251"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line360" />
+    <text
+       x="185.08702"
+       y="88.178329"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text360"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">12&quot; (305 mm) purlin OC</text>
+    <g
+       id="g544"
+       transform="matrix(0.26201127,-0.03680265,0.03680265,0.26201127,-194.10501,-593.63943)">
+      <line
+         x1="607"
+         y1="2749.6001"
+         x2="847"
+         y2="2749.6001"
+         stroke="#8b4513"
+         stroke-width="0.8"
+         marker-start="url(#arr)"
+         marker-end="url(#arr)"
+         id="line361" />
+      <text
+         x="727"
+         y="2745.6001"
+         text-anchor="middle"
+         font-size="11px"
+         font-weight="600"
+         fill="#8b4513"
+         id="text361"
+         style="font-family:'-apple-system', Arial, sans-serif">Tile length 16&quot; (406 mm) — Indicotto 16×10</text>
+    </g>
+    <line
+       x1="42.212021"
+       y1="131.41122"
+       x2="58.087021"
+       y2="131.41122"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line363" />
+    <text
+       x="50.149521"
+       y="135.11539"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text363"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">RAFTER 4&quot;×2&quot; × 2 mm HSS (side profile)</text>
+    <line
+       x1="109.68077"
+       y1="137.23206"
+       x2="117.61827"
+       y2="137.23206"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line364" />
+    <text
+       x="113.64952"
+       y="140.93622"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text364"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">2&quot; wide flat purlin (2×1×1.6 mm HSS)</text>
+    <line
+       x1="56.234936"
+       y1="117.65289"
+       x2="56.234936"
+       y2="113.68414"
+       stroke="#0066cc"
+       stroke-width="0.264583"
+       marker-start="url(#arr)"
+       marker-end="url(#arr)"
+       id="line365" />
+    <text
+       x="54.647438"
+       y="116.72685"
+       text-anchor="end"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text365"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">1&quot;</text>
+    <line
+       x1="137.46202"
+       y1="125.59039"
+       x2="137.46202"
+       y2="153.10706"
+       stroke="#8a6f3f"
+       stroke-width="0.15875"
+       id="line366" />
+    <text
+       x="137.46202"
+       y="154.69455"
+       text-anchor="middle"
+       font-size="2.91042px"
+       font-weight="600"
+       fill="#8a6f3f"
+       id="text366"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">CEILING TILE — Nutical Plain 12×8 (between purlins, tabs curl over purlin tops)</text>
+    <line
+       x1="133.49327"
+       y1="107.91621"
+       x2="133.49327"
+       y2="90.136215"
+       stroke="#8b4513"
+       stroke-width="0.15875"
+       id="line367" />
+    <path
+       id="line368"
+       style="stroke:#0066cc;stroke-width:0.264583;marker-start:url(#arr);marker-end:url(#arr)"
+       d="M 215.24952,125.00822 V 111.14361" />
+    <text
+       x="216.83702"
+       y="114.74248"
+       text-anchor="start"
+       font-size="2.91042px"
+       fill="#0066cc"
+       id="text368"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583"><tspan
+         id="tspan543"
+         x="216.83702"
+         y="114.74248"
+         style="stroke-width:0.264583">6&quot; x 1&quot; Pani Patti</tspan><tspan
+         id="tspan544"
+         x="216.83702"
+         y="118.38051"
+         style="stroke-width:0.264583">(bottom aligned to rafter)</tspan></text>
+    <line
+       x1="208.89952"
+       y1="130.88205"
+       x2="208.89952"
+       y2="141.46539"
+       stroke="#666666"
+       stroke-width="0.15875"
+       id="line369" />
+    <text
+       x="208.89952"
+       y="143.05289"
+       text-anchor="middle"
+       font-size="2.91042px"
+       font-weight="600"
+       fill="#404040"
+       id="text369"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">EAVE ASSEMBLY — Pani Patti (GI water-protector) + 1&quot;×1&quot;×3 mm L-channel (L-channel top aligned to purlin top)</text>
+    <text
+       x="23.550152"
+       y="110.08449"
+       text-anchor="start"
+       font-size="3.175px"
+       font-weight="600"
+       fill="#333333"
+       id="text370"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">↖ up-slope (ridge)</text>
+    <text
+       x="205.69135"
+       y="101.41066"
+       text-anchor="end"
+       font-size="3.175px"
+       font-weight="600"
+       fill="#333333"
+       id="text371"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">eave ↘</text>
+    <text
+       x="141.22305"
+       y="81.229279"
+       text-anchor="middle"
+       font-size="2.91042px"
+       fill="#666666"
+       id="text372"
+       style="font-family:'-apple-system', Arial, sans-serif;stroke-width:0.264583">drawn slope-flat for clarity • actual pitch 26.0° (main slope)</text>
+    <path
+       id="polygon542"
+       style="fill:#d8bb94;stroke:#8b4513;stroke-width:0.264583;stroke-linejoin:round"
+       d="m 129.65823,96.825713 0.19487,2.16082 -14.56561,1.977707 0.35648,3.95277 -2.36212,0.31927 -0.35647,-3.95271 -46.061315,6.2262 0.499065,5.53378 -2.36143,0.21299 -0.499067,-5.53378 0.986427,-2.16115 z" />
+    <path
+       id="path543"
+       style="fill:#d8bb94;stroke:#8b4513;stroke-width:0.264583;stroke-linejoin:round"
+       d="m 226.35368,103.59113 -0.0377,2.16927 -14.69366,0.40629 -0.0689,3.96819 -2.38276,0.0644 0.069,-3.96814 -46.46321,1.25698 -0.0965,5.5554 -2.37066,-0.0411 0.0965,-5.5554 1.21222,-2.04304 z" />
+    <rect
+       x="-125.59039"
+       y="209.53966"
+       width="15.055188"
+       height="2.0406518"
+       fill="#a8c9e0"
+       stroke="#4a8fbf"
+       stroke-width="0.396875"
+       id="rect543"
+       transform="rotate(-90)" />
+    <path
+       id="path544"
+       style="fill:#d8bb94;stroke:#8b4513;stroke-width:0.264583;stroke-linejoin:round"
+       d="m 177.36007,96.997693 0.18892,2.16135 -14.57103,1.937517 0.34557,3.95372 -2.363,0.31276 -0.34556,-3.95369 -46.07832,6.09907 0.48379,5.53513 -2.362,0.20646 -0.4838,-5.53514 0.99239,-2.15839 z" />
+  </g>
+</svg>
