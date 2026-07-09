@@ -877,6 +877,11 @@ def generate_floor_plan_svg(floor_config: dict, output_path: str = None,
                 min_y = min(min_y, obj['start_y'], obj['end_y'])
                 max_y = max(max_y, obj['start_y'], obj['end_y'])
 
+    # No bounded 2-D objects on this floor (e.g. loft floor whose only
+    # object is the hip_roof) — nothing to plan.
+    if min_x == float('inf') or max_x == float('-inf'):
+        return ''
+
     # Add margin (extra at top for title and dimensions)
     dim_config = GLOBAL_CONFIG['dimensions']
     base_margin = 20
@@ -1792,8 +1797,10 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                 else:
                     continue
 
-                # Place beam at floor slab level (beams support the slab from below)
-                beam_z = slab_z
+                # Place beam at floor slab level, plus any user-supplied
+                # lift (e.g. a ring beam at the top of the floor's walls).
+                # z_offset_ft is in feet (10 units / ft in this codebase).
+                beam_z = slab_z + float(obj.get('z_offset_ft', 0.0)) * 10.0
 
                 objects_to_draw.append({
                     'type': 'beam',

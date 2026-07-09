@@ -543,6 +543,68 @@ HOUSE_CONFIG = {
                     'length': 8,
                 },
 
+                # ---------- Ring beams on top of the first-floor walls ----------
+                # Previously configured on floor 2 (the loft). Moved here
+                # so they group with the "First floor" layer in the web
+                # viewer. z_offset_ft = 9.8 = slab (0.8') + wall (9') so
+                # the beam bottom lands at the top of the wall.
+                {
+                    'type': 'beam',
+                    'x': 0,
+                    'y': 0,
+                    'width': 270,
+                    'length': 8,
+                    'z_offset_ft': 9.8,
+                },
+                {
+                    'type': 'beam',
+                    'x': 0,
+                    'y': 80,
+                    'width': 270,
+                    'length': 12,
+                    'z_offset_ft': 9.8,
+                },
+                {
+                    'type': 'beam',
+                    'x': 0,
+                    'y': 196,
+                    'width': 270,
+                    'length': 8,
+                    'z_offset_ft': 9.8,
+                },
+                {
+                    'type': 'beam',
+                    'x': 0,
+                    'y': 290,
+                    'width': 270,
+                    'length': 12,
+                    'z_offset_ft': 9.8,
+                },
+                {
+                    'type': 'beam',
+                    'x': 0,
+                    'y': 438,
+                    'width': 270,
+                    'length': 12,
+                    'z_offset_ft': 9.8,
+                },
+                {
+                    'type': 'beam',
+                    'x': 0,
+                    'y': 0,
+                    'width': 8,
+                    'length': 450,
+                    'z_offset_ft': 9.8,
+                },
+                {
+                    'type': 'beam',
+                    'x': 262,
+                    'y': 0,
+                    'width': 8,
+                    'length': 450,
+                    'z_offset_ft': 9.8,
+                },
+
                 # Rooms - only create exterior walls, not shared partition walls
                 {
                     'type': 'room',
@@ -867,55 +929,12 @@ HOUSE_CONFIG = {
                 #     'width': 84,
                 #     'length': 92,
                 # },
-                {
-                    'type': 'beam',
-                    'x': 0,
-                    'y': 0,
-                    'width': 270,
-                    'length': 8,
-                },
-                {
-                    'type': 'beam',
-                    'x': 0,
-                    'y': 80,
-                    'width': 270,
-                    'length': 12,
-                },
-                {
-                    'type': 'beam',
-                    'x': 0,
-                    'y': 196,
-                    'width': 270,
-                    'length': 8,
-                },
-                {
-                    'type': 'beam',
-                    'x': 0,
-                    'y': 290,
-                    'width': 270,
-                    'length': 12,
-                },
-                {
-                    'type': 'beam',
-                    'x': 0,
-                    'y': 438,
-                    'width': 270,
-                    'length': 12,
-                },
-                {
-                    'type': 'beam',
-                    'x': 0,
-                    'y': 0,
-                    'width': 8,
-                    'length': 450,
-                },
-                {
-                    'type': 'beam',
-                    'x': 262,
-                    'y': 0,
-                    'width': 8,
-                    'length': 450,
-                },
+                # Ring beams that sit on top of the first-floor walls have
+                # been moved into the first-floor config (with
+                # z_offset_ft = 9.8) so the layer grouping in the web
+                # viewer treats them as part of "First floor" instead of
+                # "Roof shell". Only the hip roof itself lives on this
+                # (loft) floor now.
 
                 # ============================================================
                 # ROOF — pick ONE (comment out the other)

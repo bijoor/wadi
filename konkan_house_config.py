@@ -107,6 +107,7 @@ def build_floor(floor_config: dict):
                     length=obj['length'],
                     floor_number=floor_num,
                     thickness=obj.get('thickness'),
+                    z_offset_ft=obj.get('z_offset_ft', 0.0),
                     material_name=obj.get('material', 'beam'),
                     name=obj.get('name')
                 )

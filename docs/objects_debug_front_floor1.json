@@ -68,6 +68,20 @@
     {
       "type": "beam",
       "name": "Beam_",
+      "depth": -438,
+      "priority": 0,
+      "x": 0,
+      "width": 270,
+      "height": 8,
+      "z": 236.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
       "depth": -330,
       "priority": 0,
       "x": 262,
@@ -104,6 +118,20 @@
           "sill_height": null
         }
       ]
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": -290,
+      "priority": 0,
+      "x": 0,
+      "width": 270,
+      "height": 8,
+      "z": 236.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
     },
     {
       "type": "wall",
@@ -200,6 +228,34 @@
       ]
     },
     {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": -196,
+      "priority": 0,
+      "x": 0,
+      "width": 270,
+      "height": 8,
+      "z": 236.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": -80,
+      "priority": 0,
+      "x": 0,
+      "width": 270,
+      "height": 8,
+      "z": 236.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
       "type": "wall",
       "name": "Bedroom_2_north",
       "depth": -80,
@@ -250,6 +306,48 @@
           "sill_height": 5
         }
       ]
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": 0,
+      "priority": 0,
+      "x": 0,
+      "width": 270,
+      "height": 8,
+      "z": 236.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": 0,
+      "priority": 0,
+      "x": 0,
+      "width": 8,
+      "height": 8,
+      "z": 236.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": 0,
+      "priority": 0,
+      "x": 262,
+      "width": 8,
+      "height": 8,
+      "z": 236.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
     },
     {
       "type": "floor_slab",

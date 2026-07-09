@@ -692,6 +692,7 @@ def create_floor_slab(x: float, y: float, width: float, length: float,
 def create_beam(x: float, y: float, width: float, length: float,
                 floor_number: int = 0,
                 thickness: Optional[float] = None,
+                z_offset_ft: float = 0.0,
                 material_name: str = 'beam',
                 name: Optional[str] = None) -> bpy.types.Object:
     """
@@ -703,6 +704,13 @@ def create_beam(x: float, y: float, width: float, length: float,
         length: Length in Y direction (input units)
         floor_number: Which floor (0=ground, 1=first, etc.)
         thickness: Beam vertical thickness (input units), uses wall_thickness if None
+        z_offset_ft: Vertical offset (feet) of the beam's BOTTOM above
+                     the floor's Z base (i.e. above the level where the
+                     floor slab starts). Default 0 keeps the historical
+                     behaviour (beam sits at the floor base, doubling as
+                     part of the slab). Use e.g. `floor_height` to place
+                     the beam at the TOP of that floor's walls (a ring
+                     beam / lintel supporting the roof above).
         material_name: Material to apply
         name: Optional custom name for the beam
 
@@ -720,6 +728,8 @@ def create_beam(x: float, y: float, width: float, length: float,
     # Keep in units until inkscape_to_blender converts to meters
     explosion_factor = GLOBAL_CONFIG.get('explosion_factor', 0.0)
     z_offset_units = get_floor_z_offset(floor_number, explosion_factor) / to_meters(1.0)  # Convert meters back to units
+    # Optional user-supplied lift above the floor base (in feet — 10 units per foot)
+    z_offset_units += float(z_offset_ft) * 10.0
     center_z_units = z_offset_units + thickness / 2
 
     location = inkscape_to_blender(center_x, center_y, center_z_units)

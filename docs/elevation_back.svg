@@ -126,9 +126,9 @@
 <rect x="0.0" y="76.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="262.0" y="76.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="8" y="168.0" width="254" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="70.0" width="270" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
 <rect x="262" y="168.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="168.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
-<rect x="0" y="70.0" width="270" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="70.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
 <rect x="262" y="70.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="276.0" width="270" height="8.0" fill="#808080" stroke="#000" stroke-width="0.5"/>
