@@ -938,17 +938,40 @@ HOUSE_CONFIG = {
                 {
                     'type': 'hip_roof',
                     'ridge_axis': 'y',
-                    'eave_x_west': -36,     # 3.6 ft symmetric overhang W
-                    'eave_x_east': 306,     # 3.6 ft symmetric overhang E
-                    'eave_y_north': -36,    # 3.6 ft symmetric overhang N (matches E-W)
-                    'eave_y_south': 486,    # 3.6 ft symmetric overhang S (matches E-W)
-                    'eave_z': -5,
-                    'slope_angle_ew': 26,   # E and W trapezoidal main slopes
-                    'slope_angle_ns': 26,   # N and S triangular hip ends
-                    'ridge_length': 158,  # tuned so hip-end slope L = 20 tile rows exactly
-                    # Exploded-view-only Z lift (ignored in normal view). Lifts
-                    # the roof above the rest of the floor in the exploded GLB.
-                    'explosion_offset': 250,
+                    # --- Primary controls (everything else is derived from
+                    # these + house_footprint_ft + floor_heights + wall_top) ---
+                    #  ridge_h_ft — ridge height above wall_top
+                    #  min_overhang_ft — smallest allowed roof extension past
+                    #                    any wall (the critical side gets
+                    #                    exactly this; others get more)
+                    #  trusses.positions — first and last are ridge endpoints;
+                    #                       structurally anchored to pillar rows
+                    'ridge_h_ft':        7.0,
+                    'min_overhang_ft':   2.5,
+                    'trusses': {
+                        'type': 'fink',
+                        # T1 over pillar row A (y=86.225),
+                        # T2 over pillar row B (W/E pillars at y=200),
+                        # T3 over pillar row C (y=296).
+                        'positions': [86.225, 200, 296],
+                        'chord_size_in': [2, 4],
+                        'chord_wall_mm': 3,
+                        'web_size_in': [2, 2],
+                        'web_wall_mm': 2,
+                        'panel_ratio_bottom': 0.25,
+                        'include_king_post': True,
+                        'note': '3 Fink trusses aligned to pillar rows for direct load transfer',
+                    },
+                    # Exploded-view-only Z lifts (ignored in normal view):
+                    #   frame_explosion_offset — lift of the metal-frame
+                    #                            members above the loft.
+                    #   explosion_offset       — lift of the roof SHELL.
+                    # Keep shell > frame so the shell sits further from the
+                    # frame in the exploded GLB.
+                    'frame_explosion_offset': 250,
+                    'explosion_offset':       500,
+                    # Enable the metal-frame member generation in the GLB.
+                    'show_frame_3d': True,
                     # Framing config — used by roof_plan.svg. All members are
                     # METAL PIPES (hollow rectangular sections). Dimensions in
                     # inches; wall_mm is the pipe wall thickness in millimetres.
@@ -1025,27 +1048,9 @@ HOUSE_CONFIG = {
                         # form a smaller rectangle inside, with the roof
                         # overhanging on all four sides.
                         'house_footprint_ft': [27.0, 45.0],  # [transverse, longitudinal]
-                        # Wall-top height above the eave line (parapet upstand
-                        # under the roof structure). Ring beam sits here.
-                        'wall_top_above_eave_ft': 1.333,     # 1' 4"
-                        # ---- Common Fink trusses ----
-                        # 3 trusses (per user drawing): at N ridge endpoint,
-                        # ridge centre, and S ridge endpoint. Each truss's
-                        # BOTTOM CHORD sits on the ring beam (at wall-top
-                        # height), so its span = house transverse width (27')
-                        # and rise = ridge_h − wall_top = 8'4" − 1'4" = 7'0".
-                        'truss': {
-                            'type': 'fink',
-                            'count': 3,
-                            'positions': ['n_ridge_end', 'ridge_center', 's_ridge_end'],
-                            'chord_size_in': [2, 4],
-                            'chord_wall_mm': 3,
-                            'web_size_in': [2, 2],
-                            'web_wall_mm': 2,
-                            'panel_ratio_bottom': 0.25,
-                            'include_king_post': True,
-                            'note': '3 Fink trusses — bottom chord on ring beam, span = house transverse width',
-                        },
+                        # Note: wall_top_above_eave_ft and framing.truss are
+                        # DERIVED — see hip_roof.trusses (above) and the
+                        # runtime output of roof_geometry.derive_for_house().
                         # ---- Ring beam (rectangular frame around walls) ----
                         # Perimeter tie beam at wall-top level, sits on the walls.
                         'ring_beam': {
@@ -1062,7 +1067,12 @@ HOUSE_CONFIG = {
                             'count_per_end': 3,
                             'size_in': [4, 2],
                             'wall_mm': 2,
-                            'note': 'Longitudinal beams at wall level, from corner trusses to N/S walls',
+                            # When True, also runs the same 3 longitudinal
+                            # beams BETWEEN adjacent trusses (T1↔T2, T2↔T3),
+                            # so the ring beam is continuously braced along
+                            # the transverse dimension across the ridge zone.
+                            'extend_between_trusses': True,
+                            'note': 'Longitudinal beams at wall level, from corner trusses to N/S walls (+ between trusses when extend_between_trusses)',
                         },
                         # ---- Membrane between ceiling and roof tiles ----
                         'membrane': {

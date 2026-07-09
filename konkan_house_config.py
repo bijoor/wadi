@@ -190,21 +190,70 @@ def build_floor(floor_config: dict):
                 )
 
             elif obj_type == 'hip_roof':
+                # Reduced config schema: derive eave positions, eave_z,
+                # slopes, ridge_h from ridge_h_ft + min_overhang_ft +
+                # trusses.positions before handing to the Blender builder.
+                from roof_geometry import (
+                    derive_hip_roof_geometry, compute_top_floor_wall_top_z,
+                )
+                _framing = obj.get('framing', {})
+                _house_ft = _framing.get('house_footprint_ft', [27.0, 45.0])
+                if 'beam_offset_ft' in obj:
+                    _beam_off = obj['beam_offset_ft'] * 10.0
+                else:
+                    _beam_off = float(GLOBAL_CONFIG.get('wall_thickness', 8))
+                _wall_top_z = compute_top_floor_wall_top_z(
+                    floor_num, GLOBAL_CONFIG, beam_offset=_beam_off)
+                _derived = derive_hip_roof_geometry(
+                    obj, _wall_top_z,
+                    _house_ft[0] * 10.0, _house_ft[1] * 10.0,
+                    ridge_axis=obj.get('ridge_axis', 'y'))
+                # Express eave_z RELATIVE to the loft-slab bottom (the
+                # anchor `create_hip_roof` uses when it adds floor_z_offset
+                # from get_floor_z_offset). That way create_hip_roof handles
+                # the ×10 scaling AND the exploded-view floor shift itself,
+                # matching what create_beam/create_wall do — so the roof
+                # sits at the same Blender scale as the beams below it.
+                from roof_geometry import compute_top_floor_wall_top_z
+                # Loft-slab bottom (raw units, non-exploded) = plinth +
+                # Σ(slab + wall for floors below roof's floor). This matches
+                # what `create_hip_roof` reads via get_floor_z_offset — we
+                # subtract it out of the absolute eave_z so create_hip_roof
+                # can add its own (possibly exploded) floor_z_offset back.
+                _loft_slab_bottom_raw = compute_top_floor_wall_top_z(
+                    floor_num, GLOBAL_CONFIG, beam_offset=0.0)
+                _eave_rel_to_loft = _derived['eave_z'] - _loft_slab_bottom_raw
                 create_hip_roof(
-                    eave_x_west=obj['eave_x_west'],
-                    eave_x_east=obj['eave_x_east'],
-                    eave_y_north=obj['eave_y_north'],
-                    eave_y_south=obj['eave_y_south'],
-                    eave_z=obj['eave_z'],
-                    slope_angle=obj.get('slope_angle'),
-                    slope_angle_ns=obj.get('slope_angle_ns'),
-                    slope_angle_ew=obj.get('slope_angle_ew'),
-                    ridge_length=obj.get('ridge_length'),
+                    eave_x_west=_derived['eave_x_west'],
+                    eave_x_east=_derived['eave_x_east'],
+                    eave_y_north=_derived['eave_y_north'],
+                    eave_y_south=_derived['eave_y_south'],
+                    eave_z=_eave_rel_to_loft,
+                    slope_angle_ns=_derived['slope_angle_ns_n'],   # Blender only
+                    slope_angle_ew=_derived['slope_angle_ew'],     # supports one
+                    ridge_y_start=_derived['ridge_y_start'],
+                    ridge_y_end=_derived['ridge_y_end'],
                     ridge_axis=obj.get('ridge_axis', 'y'),
                     material_name=obj.get('material', 'roof'),
                     floor_number=floor_num,
                     explosion_offset=obj.get('explosion_offset', 0.0),
                 )
+
+                # ---- Build the metal frame as individual box members ----
+                if obj.get('show_frame_3d', False):
+                    from roof_frame import compute_frame_members
+                    _members = compute_frame_members(HOUSE_CONFIG, GLOBAL_CONFIG)
+                    # In exploded view the frame inherits the cumulative
+                    # explosion factors of the floors below it, then adds
+                    # its OWN frame_explosion_offset (independent from the
+                    # roof-shell's own explosion_offset).
+                    _frame_lift = 0.0
+                    if GLOBAL_CONFIG.get('use_explosion', False):
+                        _factors_f = GLOBAL_CONFIG.get('explosion_factors', {}) or {}
+                        for _f in range(floor_num):
+                            _frame_lift += float(_factors_f.get(_f, 0))
+                        _frame_lift += float(obj.get('frame_explosion_offset', 0.0))
+                    create_roof_frame_3d(_members, frame_z_lift=_frame_lift)
 
             else:
                 print(f"Warning: Unknown object type '{obj_type}' - skipping")
@@ -295,17 +344,20 @@ def build_house(use_explosion=False):
                     max_z = max(max_z, obj.get('ridge_z', max_z))
                     roof_found = True
                 elif obj.get('type') == 'hip_roof':
-                    import math
-                    span_x = obj['eave_x_east'] - obj['eave_x_west']
-                    span_y = obj['eave_y_south'] - obj['eave_y_north']
-                    uniform = obj.get('slope_angle')
-                    ang_ew = obj.get('slope_angle_ew', uniform)
-                    ang_ns = obj.get('slope_angle_ns', uniform)
-                    if obj.get('ridge_axis', 'y') == 'y':
-                        h = (span_x / 2.0) * math.tan(math.radians(ang_ew))
+                    from roof_geometry import derive_hip_roof_geometry, compute_top_floor_wall_top_z
+                    _framing = obj.get('framing', {})
+                    _house_ft = _framing.get('house_footprint_ft', [27.0, 45.0])
+                    if 'beam_offset_ft' in obj:
+                        _beam_off = obj['beam_offset_ft'] * 10.0
                     else:
-                        h = (span_y / 2.0) * math.tan(math.radians(ang_ns))
-                    max_z = max(max_z, obj['eave_z'] + h)
+                        _beam_off = float(GLOBAL_CONFIG.get('wall_thickness', 8))
+                    _wall_top_z = compute_top_floor_wall_top_z(
+                        floor_config['floor_number'], GLOBAL_CONFIG, beam_offset=_beam_off)
+                    _d = derive_hip_roof_geometry(
+                        obj, _wall_top_z,
+                        _house_ft[0] * 10.0, _house_ft[1] * 10.0,
+                        ridge_axis=obj.get('ridge_axis', 'y'))
+                    max_z = max(max_z, _d['eave_z'] + _d['ridge_h'] + _d['wall_top_above_eave'])
                     roof_found = True
 
     bounds = {

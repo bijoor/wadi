@@ -1242,6 +1242,10 @@ def create_hip_roof(eave_x_west: float, eave_x_east: float,
                     slope_angle_ns: float = None,
                     slope_angle_ew: float = None,
                     ridge_length: float = None,
+                    ridge_y_start: float = None,
+                    ridge_y_end: float = None,
+                    ridge_x_start: float = None,
+                    ridge_x_end: float = None,
                     ridge_axis: str = 'y',
                     material_name: str = 'roof',
                     thickness: float = None,
@@ -1308,52 +1312,61 @@ def create_hip_roof(eave_x_west: float, eave_x_east: float,
 
     if ridge_axis == 'y':
         # Ridge runs along Y. EW = main (sets ridge height h); NS = hip end.
+        # ridge_y_start/ridge_y_end are absolute Y coords and take precedence
+        # over ridge_length (symmetric) and slope_angle (fully symmetric) —
+        # they allow the two hip ends to be different sizes.
         h = (span_x / 2.0) * tan_ew
         ridge_z_abs = eave_z_abs + h
         ridge_x = (eave_x_west + eave_x_east) / 2.0
 
-        if ridge_length is not None:
-            d_hip = (span_y - ridge_length) / 2.0
-            if d_hip > 0:
-                derived_ns = math.degrees(math.atan(h / d_hip))
-                if abs(derived_ns - slope_angle_ns) > 0.1:
-                    print(f"  hip_roof: ridge_length override → NS slope angle "
-                          f"is {derived_ns:.1f}° (input {slope_angle_ns}° ignored)")
+        if ridge_y_start is not None and ridge_y_end is not None:
+            _rs = ridge_y_start
+            _re = ridge_y_end
         else:
-            d_hip = h / tan_ns
-
-        ridge_y_start = eave_y_north + d_hip
-        ridge_y_end = eave_y_south - d_hip
-        if ridge_y_end < ridge_y_start:
+            if ridge_length is not None:
+                d_hip = (span_y - ridge_length) / 2.0
+                if d_hip > 0:
+                    derived_ns = math.degrees(math.atan(h / d_hip))
+                    if abs(derived_ns - slope_angle_ns) > 0.1:
+                        print(f"  hip_roof: ridge_length override → NS slope angle "
+                              f"is {derived_ns:.1f}° (input {slope_angle_ns}° ignored)")
+            else:
+                d_hip = h / tan_ns
+            _rs = eave_y_north + d_hip
+            _re = eave_y_south - d_hip
+        if _re < _rs:
             mid = (eave_y_north + eave_y_south) / 2.0
-            ridge_y_start = ridge_y_end = mid
+            _rs = _re = mid
 
-        n_ridge = (ridge_x, ridge_y_start, ridge_z_abs)
-        s_ridge = (ridge_x, ridge_y_end, ridge_z_abs)
+        n_ridge = (ridge_x, _rs, ridge_z_abs)
+        s_ridge = (ridge_x, _re, ridge_z_abs)
     else:
         # Ridge runs along X. NS = main; EW = hip end.
         h = (span_y / 2.0) * tan_ns
         ridge_z_abs = eave_z_abs + h
         ridge_y = (eave_y_north + eave_y_south) / 2.0
 
-        if ridge_length is not None:
-            d_hip = (span_x - ridge_length) / 2.0
-            if d_hip > 0:
-                derived_ew = math.degrees(math.atan(h / d_hip))
-                if abs(derived_ew - slope_angle_ew) > 0.1:
-                    print(f"  hip_roof: ridge_length override → EW slope angle "
-                          f"is {derived_ew:.1f}° (input {slope_angle_ew}° ignored)")
+        if ridge_x_start is not None and ridge_x_end is not None:
+            _rs = ridge_x_start
+            _re = ridge_x_end
         else:
-            d_hip = h / tan_ew
-
-        ridge_x_start = eave_x_west + d_hip
-        ridge_x_end = eave_x_east - d_hip
-        if ridge_x_end < ridge_x_start:
+            if ridge_length is not None:
+                d_hip = (span_x - ridge_length) / 2.0
+                if d_hip > 0:
+                    derived_ew = math.degrees(math.atan(h / d_hip))
+                    if abs(derived_ew - slope_angle_ew) > 0.1:
+                        print(f"  hip_roof: ridge_length override → EW slope angle "
+                              f"is {derived_ew:.1f}° (input {slope_angle_ew}° ignored)")
+            else:
+                d_hip = h / tan_ew
+            _rs = eave_x_west + d_hip
+            _re = eave_x_east - d_hip
+        if _re < _rs:
             mid = (eave_x_west + eave_x_east) / 2.0
-            ridge_x_start = ridge_x_end = mid
+            _rs = _re = mid
 
-        n_ridge = (ridge_x_start, ridge_y, ridge_z_abs)
-        s_ridge = (ridge_x_end, ridge_y, ridge_z_abs)
+        n_ridge = (_rs, ridge_y, ridge_z_abs)
+        s_ridge = (_re, ridge_y, ridge_z_abs)
 
     # 6 bottom anchor points (eave corners + 2 ridge endpoints), then 6 top
     # anchor points offset by thickness in z. inkscape_to_blender flips Y.
@@ -1420,16 +1433,156 @@ def create_hip_roof(eave_x_west: float, eave_x_east: float,
     add_to_collection(roof_obj, 'Roof')
 
     floor_info = f" on floor {floor_number} (z_offset={floor_z_offset:.1f})" if floor_number is not None else ""
-    if ridge_axis == 'y':
-        ridge_len = max(0.0, span_y - 2 * d_hip)
-    else:
-        ridge_len = max(0.0, span_x - 2 * d_hip)
+    # Derive ridge length from the resolved ridge endpoints (_rs / _re),
+    # which are set on both the symmetric d_hip path and the asymmetric
+    # ridge_y_start/ridge_y_end override path.
+    ridge_len = max(0.0, _re - _rs)
     print(f"✓ Created hip roof{floor_info}: axis={ridge_axis}, "
           f"NS={slope_angle_ns}°, EW={slope_angle_ew}°, ridge_z={ridge_z_abs:.1f}, "
           f"ridge_length={ridge_len:.1f}, "
           f"eave bbox=({eave_x_west:.1f},{eave_y_north:.1f})→({eave_x_east:.1f},{eave_y_south:.1f})")
 
     return roof_obj
+
+
+def create_roof_frame_3d(members, frame_z_lift: float = 0.0,
+                         material_name: str = 'steel_hss',
+                         collection_name: str = 'Roof_Frame') -> int:
+    """Build every metal-frame member of the hip roof.
+
+    Args:
+        members: list of dicts from `roof_frame.compute_frame_members`.
+                 Each has p0, p1 in RAW world units (matching eave_z /
+                 wall_top_z convention), section_in [w_in, d_in], wall_mm.
+        frame_z_lift: RAW-units lift applied to every member's Z (used to
+                 separate the frame from the loft in exploded view).
+        material_name: shared material for all frame members.
+        collection_name: top-level Blender collection.
+
+    Returns:
+        Number of members successfully created.
+    """
+    import mathutils
+    import math
+
+    IN_PER_UNIT = 12.0 / 10.0
+
+    # ---- Shared material: dark grey metallic HSS steel ----
+    if material_name not in bpy.data.materials:
+        mat = bpy.data.materials.new(material_name)
+        mat.use_nodes = True
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf is not None:
+            bsdf.inputs['Base Color'].default_value = (0.28, 0.30, 0.34, 1.0)
+            if 'Metallic' in bsdf.inputs:
+                bsdf.inputs['Metallic'].default_value = 0.85
+            if 'Roughness' in bsdf.inputs:
+                bsdf.inputs['Roughness'].default_value = 0.35
+        mat.diffuse_color = (0.28, 0.30, 0.34, 1.0)
+    mat = bpy.data.materials[material_name]
+
+    # ---- Collection ----
+    if collection_name not in bpy.data.collections:
+        col = bpy.data.collections.new(collection_name)
+        bpy.context.scene.collection.children.link(col)
+    col = bpy.data.collections[collection_name]
+
+    z_axis = mathutils.Vector((0, 0, 1))
+    count = 0
+    for m in members:
+        p0 = m['p0']; p1 = m['p1']
+        dx, dy, dz = p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]
+        length_u = math.sqrt(dx * dx + dy * dy + dz * dz)
+        if length_u < 0.01:
+            continue
+
+        # Cross-section in world units (section_in given in inches)
+        w_in, d_in = m['section_in']
+        w_u = w_in / IN_PER_UNIT
+        d_u = d_in / IN_PER_UNIT
+
+        # Midpoint (with lift applied to z)
+        mx = (p0[0] + p1[0]) / 2.0
+        my = (p0[1] + p1[1]) / 2.0
+        mz_raw = (p0[2] + p1[2]) / 2.0 + frame_z_lift
+
+        # Blender location — pass raw units (all of x, y, z); the
+        # inkscape_to_blender helper applies to_meters (×0.1) internally.
+        # This matches how create_beam / create_wall pass their z values.
+        location = inkscape_to_blender(mx, my, mz_raw)
+
+        # Create a default (size=2) cube, scale to member dimensions,
+        # rotate, position. Matches create_box's convention: default cube
+        # has vertices at ±1, so scale = dim/2 yields dim total length.
+        bpy.ops.mesh.primitive_cube_add(location=location)
+        obj = bpy.context.active_object
+        obj.name = m.get('name', f"{m['kind']}_{count}")
+
+        if m.get('axis_aligned'):
+            # Axis-aligned box (e.g. pani patti): the member runs along
+            # either X or Y with a fixed through-wall thickness and a
+            # vertical height. No rotation is applied — we set explicit
+            # Blender-space dimensions from the raw p0→p1 span.
+            thk_u = float(m.get('thickness_u', w_u))
+            h_u = float(m.get('height_u', d_u))
+            if abs(dx) >= abs(dy):
+                sx = to_meters(abs(dx)) / 2.0    # along X = member length
+                sy = to_meters(thk_u) / 2.0      # through-wall
+            else:
+                sx = to_meters(thk_u) / 2.0
+                sy = to_meters(abs(dy)) / 2.0
+            sz = to_meters(h_u) / 2.0
+            obj.scale = (sx, sy, sz)
+            obj.rotation_mode = 'QUATERNION'
+            obj.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
+        else:
+            # Direction — Blender flips Y sign, so mirror dy accordingly.
+            # We construct a full orthonormal frame [X', Y', Z'] so the
+            # cross-section orientation is consistent for every member:
+            #   Z' = member direction (length along it)
+            #   X' = horizontal, perpendicular to the member's horizontal
+            #        projection (this is where the section's WIDTH sits)
+            #   Y' = Z' × X' = the roof-normal direction (DEPTH sits here)
+            # Using `z_axis.rotation_difference` alone picks the shortest
+            # arc, which for E-W members leaves width in the vertical XZ
+            # plane while N-S members put it in X — producing visibly
+            # different apparent thicknesses in the top view.
+            dir_blender = mathutils.Vector((dx, -dy, dz)).normalized()
+            horiz = mathutils.Vector((dir_blender.x, dir_blender.y, 0.0))
+            if horiz.length < 1e-4:
+                # Vertical member — width axis is arbitrary; pick X.
+                width_dir = mathutils.Vector((1.0, 0.0, 0.0))
+            else:
+                horiz.normalize()
+                # 90° CCW in the XY plane gives the horizontal perpendicular.
+                width_dir = mathutils.Vector((-horiz.y, horiz.x, 0.0)).normalized()
+            depth_dir = dir_blender.cross(width_dir).normalized()
+            rot_matrix = mathutils.Matrix((
+                (width_dir.x, depth_dir.x, dir_blender.x),
+                (width_dir.y, depth_dir.y, dir_blender.y),
+                (width_dir.z, depth_dir.z, dir_blender.z),
+            ))
+            obj.scale = (to_meters(w_u) / 2.0,
+                         to_meters(d_u) / 2.0,
+                         to_meters(length_u) / 2.0)
+            obj.rotation_mode = 'QUATERNION'
+            obj.rotation_quaternion = rot_matrix.to_quaternion()
+
+        # Assign material
+        if len(obj.data.materials) == 0:
+            obj.data.materials.append(mat)
+        else:
+            obj.data.materials[0] = mat
+
+        # Move into target collection (unlink from wherever it landed)
+        for c in list(obj.users_collection):
+            c.objects.unlink(obj)
+        col.objects.link(obj)
+        count += 1
+
+    print(f"✓ Created {count} roof-frame members in collection '{collection_name}'")
+    return count
+
 
 # ============================================================================
 # SCENE SETUP

@@ -49,6 +49,7 @@ from blender_3d import (
     apply_openings_to_walls,
     create_gable_roof,
     create_hip_roof,
+    create_roof_frame_3d,
 
     # Scene management
     clear_scene,
@@ -125,6 +126,7 @@ __all__ = [
     'apply_openings_to_walls',
     'create_gable_roof',
     'create_hip_roof',
+    'create_roof_frame_3d',
     'clear_scene',
     'setup_camera_and_lighting',
     'configure_render',

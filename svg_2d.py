@@ -1433,6 +1433,20 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
     plinth_config = house_config.get('plinth', {})
     floors = house_config.get('floors', [])
 
+    # Derive hip_roof geometry (idempotent) so downstream code that reads
+    # eave_x_*, eave_y_*, eave_z, slope_angle_* on the roof dict works.
+    try:
+        from roof_geometry import derive_for_house
+        _derived_roof = derive_for_house(house_config, GLOBAL_CONFIG)
+        if _derived_roof is not None:
+            for _floor in house_config.get('floors', []):
+                for _obj in _floor.get('objects', []):
+                    if _obj.get('type') == 'hip_roof':
+                        for _k, _v in _derived_roof.items():
+                            _obj.setdefault(_k, _v)
+    except Exception:
+        pass  # legacy hip_roof configs continue to work
+
     # Get building dimensions for checking exterior walls
     building_width = plinth_config.get('width', 0)   # X dimension
     building_length = plinth_config.get('length', 0)  # Y dimension
@@ -2202,42 +2216,55 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                     eave_xe = obj['eave_x_east']
                     eave_yn = obj['eave_y_north']
                     eave_ys = obj['eave_y_south']
-                    eave_z_rel = obj['eave_z']
                     slope_uniform = obj.get('slope_angle')
                     slope_ns = obj.get('slope_angle_ns', slope_uniform)
                     slope_ew = obj.get('slope_angle_ew', slope_uniform)
                     roof_thickness_val = GLOBAL_CONFIG.get('roof_thickness', 8)
 
-                    eave_z_abs = current_z + eave_z_rel
+                    # eave_z is now ABSOLUTE (from ground = 0), computed by
+                    # roof_geometry.derive_for_house. Use it directly.
+                    eave_z_abs = obj['eave_z']
                     span_x_h = eave_xe - eave_xw
                     span_y_h = eave_ys - eave_yn
                     tan_ns_h = math.tan(math.radians(slope_ns))
                     tan_ew_h = math.tan(math.radians(slope_ew))
 
                     ridge_length_override = obj.get('ridge_length')
+                    ridge_ys_override = obj.get('ridge_y_start')
+                    ridge_ye_override = obj.get('ridge_y_end')
+                    ridge_xs_override = obj.get('ridge_x_start')
+                    ridge_xe_override = obj.get('ridge_x_end')
                     if ridge_axis_h == 'y':
-                        # EW = main (sets h); NS = hip end (sets d_hip)
+                        # EW = main (sets h); NS = hip end (may be asymmetric).
                         h_h = (span_x_h / 2.0) * tan_ew_h
-                        if ridge_length_override is not None:
-                            d_hip_h = (span_y_h - ridge_length_override) / 2.0
+                        if ridge_ys_override is not None and ridge_ye_override is not None:
+                            ridge_y_s = ridge_ys_override
+                            ridge_y_e = ridge_ye_override
                         else:
-                            d_hip_h = h_h / tan_ns_h
+                            if ridge_length_override is not None:
+                                d_hip_h = (span_y_h - ridge_length_override) / 2.0
+                            else:
+                                d_hip_h = h_h / tan_ns_h
+                            ridge_y_s = eave_yn + d_hip_h
+                            ridge_y_e = eave_ys - d_hip_h
                         ridge_x_pos = (eave_xw + eave_xe) / 2.0
-                        ridge_y_s = eave_yn + d_hip_h
-                        ridge_y_e = eave_ys - d_hip_h
                         if ridge_y_e < ridge_y_s:
                             mid_y = (eave_yn + eave_ys) / 2.0
                             ridge_y_s = ridge_y_e = mid_y
                     else:
                         # NS = main; EW = hip end
                         h_h = (span_y_h / 2.0) * tan_ns_h
-                        if ridge_length_override is not None:
-                            d_hip_h = (span_x_h - ridge_length_override) / 2.0
+                        if ridge_xs_override is not None and ridge_xe_override is not None:
+                            ridge_x_s = ridge_xs_override
+                            ridge_x_e = ridge_xe_override
                         else:
-                            d_hip_h = h_h / tan_ew_h
+                            if ridge_length_override is not None:
+                                d_hip_h = (span_x_h - ridge_length_override) / 2.0
+                            else:
+                                d_hip_h = h_h / tan_ew_h
+                            ridge_x_s = eave_xw + d_hip_h
+                            ridge_x_e = eave_xe - d_hip_h
                         ridge_y_pos = (eave_yn + eave_ys) / 2.0
-                        ridge_x_s = eave_xw + d_hip_h
-                        ridge_x_e = eave_xe - d_hip_h
                         if ridge_x_e < ridge_x_s:
                             mid_x = (eave_xw + eave_xe) / 2.0
                             ridge_x_s = ridge_x_e = mid_x
@@ -4090,6 +4117,16 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         print("⚠ generate_roof_sections_svg: no hip_roof found in config")
         return None
 
+    # Derive everything from the reduced controls in the roof config. The
+    # helper is idempotent — calling it repeatedly is safe.
+    from roof_geometry import derive_for_house
+    _derived = derive_for_house(house_config, GLOBAL_CONFIG)
+    if _derived is not None:
+        # Merge derived keys into the roof dict so downstream code that
+        # reads eave_x_*, eave_y_*, eave_z, slope_angle_* just works.
+        for _k, _v in _derived.items():
+            roof.setdefault(_k, _v)
+
     ridge_axis = roof.get('ridge_axis', 'y')
     eave_xw = roof['eave_x_west']
     eave_xe = roof['eave_x_east']
@@ -4121,71 +4158,119 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     span_x = eave_xe - eave_xw
     span_y = eave_ys - eave_yn
 
+    # Asymmetric hip endpoints (optional): if the config specifies
+    # ridge_y_start/ridge_y_end (for ridge_axis='y') or ridge_x_start/end
+    # (for ridge_axis='x'), the two hip ends can be different widths.
+    ridge_y_start_override = roof.get('ridge_y_start')
+    ridge_y_end_override = roof.get('ridge_y_end')
+    ridge_x_start_override = roof.get('ridge_x_start')
+    ridge_x_end_override = roof.get('ridge_x_end')
+
     if ridge_axis == 'y':
         h = (span_x / 2.0) * math.tan(math.radians(slope_ew))
-        if ridge_length_override is not None:
-            d_hip = max(0.0, (span_y - ridge_length_override) / 2.0)
-            actual_ns = math.degrees(math.atan(h / d_hip)) if d_hip > 0 else 90.0
+        if ridge_y_start_override is not None and ridge_y_end_override is not None:
+            d_hip_n = max(0.0, ridge_y_start_override - eave_yn)
+            d_hip_s = max(0.0, eave_ys - ridge_y_end_override)
+        elif ridge_length_override is not None:
+            _hd = max(0.0, (span_y - ridge_length_override) / 2.0)
+            d_hip_n = d_hip_s = _hd
         else:
-            d_hip = h / math.tan(math.radians(slope_ns))
-            actual_ns = slope_ns
-        ridge_length = max(0.0, span_y - 2 * d_hip)
+            _hd = h / math.tan(math.radians(slope_ns))
+            d_hip_n = d_hip_s = _hd
+        actual_ns_n = math.degrees(math.atan(h / d_hip_n)) if d_hip_n > 0 else 90.0
+        actual_ns_s = math.degrees(math.atan(h / d_hip_s)) if d_hip_s > 0 else 90.0
+        ridge_length = max(0.0, span_y - d_hip_n - d_hip_s)
+        # Legacy alias — use where a single value suffices (average).
+        d_hip = (d_hip_n + d_hip_s) / 2.0
 
         main_perp_h = h / math.sin(math.radians(slope_ew))
-        main_slant = math.sqrt(d_hip ** 2 + main_perp_h ** 2)
-        hip_perp_h = math.sqrt(d_hip ** 2 + h ** 2)  # = h / sin(actual_ns)
-        hip_slant = math.sqrt((span_x / 2.0) ** 2 + hip_perp_h ** 2)
+        # Corner rafter length depends on which hip end (N or S). We keep
+        # `main_slant` as the LONGER of the two so any code sizing panels
+        # to fit uses the worst case.
+        main_slant_n = math.sqrt(d_hip_n ** 2 + main_perp_h ** 2)
+        main_slant_s = math.sqrt(d_hip_s ** 2 + main_perp_h ** 2)
+        main_slant = max(main_slant_n, main_slant_s)
+        hip_perp_h_n = math.sqrt(d_hip_n ** 2 + h ** 2)
+        hip_perp_h_s = math.sqrt(d_hip_s ** 2 + h ** 2)
+        hip_slant_n = math.sqrt((span_x / 2.0) ** 2 + hip_perp_h_n ** 2)
+        hip_slant_s = math.sqrt((span_x / 2.0) ** 2 + hip_perp_h_s ** 2)
+        # Legacy aliases (use larger for panel sizing / worst case)
+        hip_perp_h = max(hip_perp_h_n, hip_perp_h_s)
+        hip_slant = max(hip_slant_n, hip_slant_s)
 
         slopes = [
             {'code': 'W', 'title': 'WEST SLOPE (main, trapezoid)',
              'base': span_y, 'top': ridge_length,
              'perp_h': main_perp_h, 'slant': main_slant,
-             'pitch': slope_ew, 'is_tri': False},
+             'pitch': slope_ew, 'is_tri': False,
+             'd_hip_left': d_hip_n, 'd_hip_right': d_hip_s},
             {'code': 'E', 'title': 'EAST SLOPE (main, trapezoid)',
              'base': span_y, 'top': ridge_length,
              'perp_h': main_perp_h, 'slant': main_slant,
-             'pitch': slope_ew, 'is_tri': False},
+             'pitch': slope_ew, 'is_tri': False,
+             'd_hip_left': d_hip_n, 'd_hip_right': d_hip_s},
             {'code': 'N', 'title': 'NORTH SLOPE (hip end, triangle)',
              'base': span_x, 'top': 0.0,
-             'perp_h': hip_perp_h, 'slant': hip_slant,
-             'pitch': actual_ns, 'is_tri': True},
+             'perp_h': hip_perp_h_n, 'slant': hip_slant_n,
+             'pitch': actual_ns_n, 'is_tri': True,
+             'd_hip': d_hip_n},
             {'code': 'S', 'title': 'SOUTH SLOPE (hip end, triangle)',
              'base': span_x, 'top': 0.0,
-             'perp_h': hip_perp_h, 'slant': hip_slant,
-             'pitch': actual_ns, 'is_tri': True},
+             'perp_h': hip_perp_h_s, 'slant': hip_slant_s,
+             'pitch': actual_ns_s, 'is_tri': True,
+             'd_hip': d_hip_s},
         ]
     else:
         h = (span_y / 2.0) * math.tan(math.radians(slope_ns))
-        if ridge_length_override is not None:
-            d_hip = max(0.0, (span_x - ridge_length_override) / 2.0)
-            actual_ew = math.degrees(math.atan(h / d_hip)) if d_hip > 0 else 90.0
+        if ridge_x_start_override is not None and ridge_x_end_override is not None:
+            d_hip_w = max(0.0, ridge_x_start_override - eave_xw)
+            d_hip_e = max(0.0, eave_xe - ridge_x_end_override)
+        elif ridge_length_override is not None:
+            _hd = max(0.0, (span_x - ridge_length_override) / 2.0)
+            d_hip_w = d_hip_e = _hd
         else:
-            d_hip = h / math.tan(math.radians(slope_ew))
-            actual_ew = slope_ew
-        ridge_length = max(0.0, span_x - 2 * d_hip)
+            _hd = h / math.tan(math.radians(slope_ew))
+            d_hip_w = d_hip_e = _hd
+        actual_ew_w = math.degrees(math.atan(h / d_hip_w)) if d_hip_w > 0 else 90.0
+        actual_ew_e = math.degrees(math.atan(h / d_hip_e)) if d_hip_e > 0 else 90.0
+        ridge_length = max(0.0, span_x - d_hip_w - d_hip_e)
+        d_hip = (d_hip_w + d_hip_e) / 2.0
+        # For ridge_axis='x', map to same variable names used below.
+        d_hip_n = d_hip_w  # dummy alias (unused in x-ridge path)
+        d_hip_s = d_hip_e
 
         main_perp_h = h / math.sin(math.radians(slope_ns))
-        main_slant = math.sqrt(d_hip ** 2 + main_perp_h ** 2)
-        hip_perp_h = math.sqrt(d_hip ** 2 + h ** 2)
-        hip_slant = math.sqrt((span_y / 2.0) ** 2 + hip_perp_h ** 2)
+        main_slant_n = math.sqrt(d_hip_w ** 2 + main_perp_h ** 2)
+        main_slant_s = math.sqrt(d_hip_e ** 2 + main_perp_h ** 2)
+        main_slant = max(main_slant_n, main_slant_s)
+        hip_perp_h_n = math.sqrt(d_hip_w ** 2 + h ** 2)
+        hip_perp_h_s = math.sqrt(d_hip_e ** 2 + h ** 2)
+        hip_slant_n = math.sqrt((span_y / 2.0) ** 2 + hip_perp_h_n ** 2)
+        hip_slant_s = math.sqrt((span_y / 2.0) ** 2 + hip_perp_h_s ** 2)
+        hip_perp_h = max(hip_perp_h_n, hip_perp_h_s)
+        hip_slant = max(hip_slant_n, hip_slant_s)
 
         slopes = [
             {'code': 'N', 'title': 'NORTH SLOPE (main, trapezoid)',
              'base': span_x, 'top': ridge_length,
              'perp_h': main_perp_h, 'slant': main_slant,
-             'pitch': slope_ns, 'is_tri': False},
+             'pitch': slope_ns, 'is_tri': False,
+             'd_hip_left': d_hip_w, 'd_hip_right': d_hip_e},
             {'code': 'S', 'title': 'SOUTH SLOPE (main, trapezoid)',
              'base': span_x, 'top': ridge_length,
              'perp_h': main_perp_h, 'slant': main_slant,
-             'pitch': slope_ns, 'is_tri': False},
+             'pitch': slope_ns, 'is_tri': False,
+             'd_hip_left': d_hip_w, 'd_hip_right': d_hip_e},
             {'code': 'W', 'title': 'WEST SLOPE (hip end, triangle)',
              'base': span_y, 'top': 0.0,
-             'perp_h': hip_perp_h, 'slant': hip_slant,
-             'pitch': actual_ew, 'is_tri': True},
+             'perp_h': hip_perp_h_n, 'slant': hip_slant_n,
+             'pitch': actual_ew_w, 'is_tri': True,
+             'd_hip': d_hip_w},
             {'code': 'E', 'title': 'EAST SLOPE (hip end, triangle)',
              'base': span_y, 'top': 0.0,
-             'perp_h': hip_perp_h, 'slant': hip_slant,
-             'pitch': actual_ew, 'is_tri': True},
+             'perp_h': hip_perp_h_s, 'slant': hip_slant_s,
+             'pitch': actual_ew_e, 'is_tri': True,
+             'd_hip': d_hip_e},
         ]
 
     # ---------- Layout ----------
@@ -4209,8 +4294,8 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     materials_panel_h = 1180  # includes Pani Patti/L-ch/barge/angles/5 Fink + 6 long-truss rows
     consolidated_panel_h = 460  # procurement summary grouped by HSS/GI spec
     truss_panel_h = 400        # single Fink truss elevation (transverse, wall-to-wall)
-    persp_row_h = 500            # perspective (left) + 2 stacked sections (right)
-    section_h = (persp_row_h - row_gap) / 2  # 238
+    persp_row_h = 620            # perspective (left) + 2 stacked sections (right)
+    section_h = (persp_row_h - row_gap) / 2  # 298
     top_view_h = 1080            # framing plan (top-down): tall to accommodate portrait roof
     # Structure: title(40) + area section (2 lines now, reaches y0+128),
     # table_y fixed at y0+240, headers + 4 data rows + 4 totals push
@@ -4225,9 +4310,14 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     external_eave_panel_w = canvas_w - 2 * outer_pad
     external_eave_panel_h = external_eave_panel_w * (210.0 / 297.0)
     # Top view panel + single row of slope panels (one per identical pair).
+    # Extra slope-panel row is inserted when the hip ends are asymmetric.
+    _asym_extra_h = 0
+    _hips_asym = (abs(slopes[2]['pitch'] - slopes[3]['pitch']) > 0.1)
+    if _hips_asym:
+        _asym_extra_h = panel_h + row_gap
     canvas_h = (canvas_title_h + outer_pad + top_view_h + row_gap +
                 persp_row_h + row_gap +
-                panel_h + row_gap + framing_panel_h + row_gap +
+                panel_h + row_gap + _asym_extra_h + framing_panel_h + row_gap +
                 external_eave_panel_h + row_gap +
                 truss_panel_h + row_gap +
                 materials_panel_h + row_gap +
@@ -4272,8 +4362,12 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
             top_left = (cx, top_y)
             top_right = (cx, top_y)
         else:
-            top_left = (cx - top_px / 2, top_y)
-            top_right = (cx + top_px / 2, top_y)
+            # Asymmetric main slope: top corners inset by d_hip_left/right
+            # (measured from bl/br in world units).
+            _dL = slope.get('d_hip_left', (base - top) / 2.0)
+            _dR = slope.get('d_hip_right', (base - top) / 2.0)
+            top_left = (bot_left[0] + _dL * scale, top_y)
+            top_right = (bot_right[0] - _dR * scale, top_y)
 
         s = ''
         # Panel background + border + title bar
@@ -4417,24 +4511,32 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                 base_corner_deg = math.degrees(math.atan(perp_h / (base / 2.0)))
                 apex_deg = 180.0 - 2.0 * base_corner_deg
                 top_corner_deg = 0.0
+                base_corner_deg_L = base_corner_deg_R = base_corner_deg
+                top_corner_deg_L = top_corner_deg_R = top_corner_deg
             else:
-                d_hip_flat = (base - top) / 2.0
-                if d_hip_flat > 0:
-                    base_corner_deg = math.degrees(math.atan(perp_h / d_hip_flat))
-                else:
-                    base_corner_deg = 90.0
-                top_corner_deg = 180.0 - base_corner_deg
+                _dL = slope.get('d_hip_left', (base - top) / 2.0)
+                _dR = slope.get('d_hip_right', (base - top) / 2.0)
+                base_corner_deg_L = (math.degrees(math.atan(perp_h / _dL))
+                                     if _dL > 0 else 90.0)
+                base_corner_deg_R = (math.degrees(math.atan(perp_h / _dR))
+                                     if _dR > 0 else 90.0)
+                base_corner_deg = (base_corner_deg_L + base_corner_deg_R) / 2.0
+                top_corner_deg_L = 180.0 - base_corner_deg_L
+                top_corner_deg_R = 180.0 - base_corner_deg_R
+                top_corner_deg = (top_corner_deg_L + top_corner_deg_R) / 2.0
                 apex_deg = 0.0
         else:
             base_corner_deg = apex_deg = top_corner_deg = 0.0
+            base_corner_deg_L = base_corner_deg_R = 0.0
+            top_corner_deg_L = top_corner_deg_R = 0.0
 
         # Corner angle labels (interior angles of the drawn shape).
         s += (f'<text x="{bot_left[0] + 8}" y="{baseline_y - 6}" '
               f'text-anchor="start" font-size="11" fill="#333">'
-              f'{base_corner_deg:.1f}°</text>\n')
+              f'{base_corner_deg_L:.1f}°</text>\n')
         s += (f'<text x="{bot_right[0] - 8}" y="{baseline_y - 6}" '
               f'text-anchor="end" font-size="11" fill="#333">'
-              f'{base_corner_deg:.1f}°</text>\n')
+              f'{base_corner_deg_R:.1f}°</text>\n')
         if is_tri:
             s += (f'<text x="{top_left[0]}" y="{top_y + 15}" '
                   f'text-anchor="middle" font-size="11" fill="#333">'
@@ -4442,10 +4544,10 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         else:
             s += (f'<text x="{top_left[0] + 6}" y="{top_y + 14}" '
                   f'text-anchor="start" font-size="11" fill="#333">'
-                  f'{top_corner_deg:.1f}°</text>\n')
+                  f'{top_corner_deg_L:.1f}°</text>\n')
             s += (f'<text x="{top_right[0] - 6}" y="{top_y + 14}" '
                   f'text-anchor="end" font-size="11" fill="#333">'
-                  f'{top_corner_deg:.1f}°</text>\n')
+                  f'{top_corner_deg_R:.1f}°</text>\n')
 
         # Roof pitch — angle of the roof surface with the horizontal in 3D.
         # NOT an interior angle of the drawing; label prominently near the top.
@@ -5177,7 +5279,14 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         top = slope['top']
         perp_h = slope['perp_h']
         is_tri = slope['is_tri']
-        d_hip_flat = (base - top) / 2.0 if not is_tri else base / 2.0
+        # Asymmetric main-slope trapezoids expose d_hip_left / d_hip_right;
+        # fall back to symmetric (base - top) / 2 if absent.
+        if is_tri:
+            d_hip_L = slope.get('d_hip', base / 2.0)
+            d_hip_R = d_hip_L
+        else:
+            d_hip_L = slope.get('d_hip_left', (base - top) / 2.0)
+            d_hip_R = slope.get('d_hip_right', (base - top) / 2.0)
 
         # Rafters — same offset/count as the drawing loop
         n_r = int(base / rafter_spacing_u) + 1
@@ -5187,7 +5296,7 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         for i in range(n_r):
             xf = first_off + i * rafter_spacing_u
             if is_tri or top <= 0:
-                if perp_h <= 0 or d_hip_flat <= 0:
+                if perp_h <= 0 or d_hip_L <= 0:
                     L = 0.0
                 elif xf < base / 2.0:
                     L = perp_h * xf / (base / 2.0)
@@ -5196,14 +5305,16 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                 else:
                     L = perp_h
             else:
-                if perp_h <= 0 or d_hip_flat <= 0:
+                # Trapezoid main slope with potentially asymmetric hip
+                # cutoffs on left/right.
+                if perp_h <= 0 or (d_hip_L <= 0 and d_hip_R <= 0):
                     L = perp_h
-                elif d_hip_flat <= xf <= (base - d_hip_flat):
+                elif d_hip_L <= xf <= (base - d_hip_R):
                     L = perp_h
-                elif xf < d_hip_flat:
-                    L = perp_h * xf / d_hip_flat
+                elif xf < d_hip_L:
+                    L = perp_h * xf / d_hip_L if d_hip_L > 0 else perp_h
                 else:
-                    L = perp_h * (base - xf) / d_hip_flat
+                    L = perp_h * (base - xf) / d_hip_R if d_hip_R > 0 else perp_h
             rafter_lens.append(L)
 
         # Purlins — same y positions as the drawing loop. Skip i=0 (that row
@@ -5217,7 +5328,8 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
             elif is_tri or top <= 0:
                 L = base * (1 - y / perp_h)
             else:
-                L = base - 2 * d_hip_flat * y / perp_h
+                # Asymmetric taper: left/right insets grow independently
+                L = base - (d_hip_L + d_hip_R) * y / perp_h
             if L > 0.5:
                 purlin_lens.append(L)
 
@@ -5244,8 +5356,13 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         'purlin_total': sum(q['purlin_total'] for q in slope_qty.values()),
         'purlin_max': max(q['purlin_max'] for q in slope_qty.values()) if slope_qty else 0,
     }
-    hip_slant = slopes[0]['slant']  # same value on every slope (shared edge)
-    hip_ridges_total = 4 * hip_slant
+    # Hip ridges: 2 diagonals go from each ridge endpoint down to the two
+    # corresponding eave corners. For an asymmetric roof N and S hips have
+    # different lengths.
+    hip_slant_n_val = hip_slant_n
+    hip_slant_s_val = hip_slant_s
+    hip_slant = max(hip_slant_n_val, hip_slant_s_val)   # legacy alias
+    hip_ridges_total = 2 * hip_slant_n_val + 2 * hip_slant_s_val
     central_ridge_total = ridge_length
     # Use the SAME rounded display value as the individual dimensions —
     # ensures that 2·(span_x + span_y) on the sheet adds up when a reader
@@ -5270,22 +5387,40 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     # Convert ft → world units (1 unit = 0.1 ft)
     house_trans_u = house_ft[0] * 10.0
     house_long_u = house_ft[1] * 10.0
-    # Inset from eave on each side (assumed symmetric)
+    # Inset from eave on each side. Transverse (W/E) stays symmetric; the
+    # longitudinal (N/S) side can be asymmetric — house origin sits at the
+    # N wall (ridge_axis='y') or W wall (ridge_axis='x').
     if ridge_axis == 'y':
         wall_inset_trans = (span_x - house_trans_u) / 2.0
-        wall_inset_long = (span_y - house_long_u) / 2.0
+        wall_inset_long_n = -eave_yn                  # N wall at world_y=0
+        wall_inset_long_s = eave_ys - house_long_u    # S wall at world_y=house_long_u
+        wall_inset_long = (wall_inset_long_n + wall_inset_long_s) / 2.0
     else:
         wall_inset_trans = (span_y - house_trans_u) / 2.0
-        wall_inset_long = (span_x - house_long_u) / 2.0
-    wall_top_above_eave_ft = framing.get('wall_top_above_eave_ft', 1.333)
+        wall_inset_long_n = -eave_xw
+        wall_inset_long_s = eave_xe - house_long_u
+        wall_inset_long = (wall_inset_long_n + wall_inset_long_s) / 2.0
+    # wall_top_above_eave is now DERIVED (see roof_geometry). Kept on the
+    # roof dict by derive_for_house; fall back to legacy framing key.
+    wall_top_above_eave_ft = roof.get(
+        'wall_top_above_eave_ft',
+        framing.get('wall_top_above_eave_ft', 1.333))
     wall_top_u = wall_top_above_eave_ft * 10.0
-    # Effective truss geometry (bottom chord sits on ring beam at wall top):
+    # Central ridge beam depth (vertical dimension). The truss sits BELOW the
+    # ridge — its peak meets the ridge beam's bottom face, not the roof peak.
+    ridge_depth_u = ridge_size_in[1] / IN_PER_UNIT
+    ridge_width_u = ridge_size_in[0] / IN_PER_UNIT
+    # Effective truss geometry (bottom chord sits on ring beam at wall top,
+    # peak sits at ridge_beam_bottom = h − ridge_depth):
     truss_effective_span_u = house_trans_u          # 27 ft in world units
-    truss_effective_rise_u = h - wall_top_u         # ridge_h − wall_top
+    truss_effective_rise_u = h - wall_top_u - ridge_depth_u
 
     # ---------- Fink trusses on the ring beam ----------
-    truss_cfg = framing.get('truss', {})
-    truss_count = int(truss_cfg.get('count', 0))
+    # Truss config now lives directly on the hip_roof (trusses are part of
+    # the roof structure). Fall back to legacy `framing.truss` for
+    # backward compat during migration.
+    truss_cfg = roof.get('trusses') or framing.get('truss', {})
+    truss_count = int(truss_cfg.get('count', len(truss_cfg.get('positions', []))))
     if truss_count > 0 and truss_effective_rise_u > 0:
         _panel_ratio = truss_cfg.get('panel_ratio_bottom', 0.25)
         # Per-truss member lengths — using the WALL-level span and
@@ -5310,25 +5445,31 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         truss_chord_total_each = 0.0
         truss_web_total_each = 0.0
 
-    # Truss positions along the ridge — at N ridge endpoint, ridge centre, and
-    # S ridge endpoint (per user drawing). Fallback to even distribution if
-    # positions list is not provided.
+    # Truss positions along the ridge. Config `positions` may be a list of
+    # either named strings ('n_ridge_end', 'ridge_center', 's_ridge_end')
+    # or absolute world-Y (or world-X) coords — the numeric form lets us
+    # align trusses with pillar rows independently of the ridge geometry.
     truss_positions_cfg = truss_cfg.get('positions', [])
     if ridge_axis == 'y':
-        _n_ridge_end = eave_yn + d_hip
-        _s_ridge_end = eave_ys - d_hip
-        _ridge_center = (_n_ridge_end + _s_ridge_end) / 2.0
+        _n_ridge_end = eave_yn + d_hip_n
+        _s_ridge_end = eave_ys - d_hip_s
     else:
-        _n_ridge_end = eave_xw + d_hip
-        _s_ridge_end = eave_xe - d_hip
-        _ridge_center = (_n_ridge_end + _s_ridge_end) / 2.0
+        _n_ridge_end = eave_xw + d_hip_w
+        _s_ridge_end = eave_xe - d_hip_e
+    _ridge_center = (_n_ridge_end + _s_ridge_end) / 2.0
     _pos_map = {
         'n_ridge_end': _n_ridge_end,
         'ridge_center': _ridge_center,
         's_ridge_end': _s_ridge_end,
     }
+
+    def _resolve_pos(p):
+        if isinstance(p, (int, float)):
+            return float(p)
+        return _pos_map.get(p, _ridge_center)
+
     if truss_positions_cfg and len(truss_positions_cfg) == truss_count:
-        truss_y_positions = [_pos_map.get(p, _ridge_center) for p in truss_positions_cfg]
+        truss_y_positions = [_resolve_pos(p) for p in truss_positions_cfg]
     else:
         # Fallback: even spacing across the ridge
         if truss_count > 1:
@@ -5356,30 +5497,49 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     hip_beam_count_per_end = int(hip_beam_cfg.get('count_per_end', 3))
     hip_beam_size = hip_beam_cfg.get('size_in', [4, 2])
     hip_beam_wall = hip_beam_cfg.get('wall_mm', 2)
+    hip_beam_between_trusses = bool(
+        hip_beam_cfg.get('extend_between_trusses', False))
+    # Sum of ridge-zone bay lengths (T1→T2, T2→T3, …) — only used when
+    # `extend_between_trusses` is on; the same `count_per_end` beams are
+    # replicated at each bx position across every gap.
+    hip_beam_bay_total_len = 0.0
+    hip_beam_bay_count = 0
     if truss_count >= 2 and ridge_axis == 'y':
         # Distance from N corner truss (T1) to N wall of ring frame
-        _n_wall_y = eave_yn + wall_inset_long
-        _s_wall_y = eave_ys - wall_inset_long
+        _n_wall_y = eave_yn + wall_inset_long_n
+        _s_wall_y = eave_ys - wall_inset_long_s
         _t1_y = truss_y_positions[0]
         _tN_y = truss_y_positions[-1]
         hip_beam_n_len = abs(_t1_y - _n_wall_y)   # ridge-endpoint down to N wall
         hip_beam_s_len = abs(_tN_y - _s_wall_y)
         hip_beam_avg_len = (hip_beam_n_len + hip_beam_s_len) / 2.0
+        if hip_beam_between_trusses:
+            _bay_span = sum(abs(truss_y_positions[j + 1] - truss_y_positions[j])
+                            for j in range(len(truss_y_positions) - 1))
+            hip_beam_bay_total_len = _bay_span * hip_beam_count_per_end
+            hip_beam_bay_count = (len(truss_y_positions) - 1) * hip_beam_count_per_end
     elif truss_count >= 2:  # ridge_axis == 'x'
-        _w_wall_x = eave_xw + wall_inset_long
-        _e_wall_x = eave_xe - wall_inset_long
+        _w_wall_x = eave_xw + wall_inset_long_n
+        _e_wall_x = eave_xe - wall_inset_long_s
         _t1_x = truss_y_positions[0]
         _tN_x = truss_y_positions[-1]
         hip_beam_n_len = abs(_t1_x - _w_wall_x)
         hip_beam_s_len = abs(_tN_x - _e_wall_x)
         hip_beam_avg_len = (hip_beam_n_len + hip_beam_s_len) / 2.0
+        if hip_beam_between_trusses:
+            _bay_span = sum(abs(truss_y_positions[j + 1] - truss_y_positions[j])
+                            for j in range(len(truss_y_positions) - 1))
+            hip_beam_bay_total_len = _bay_span * hip_beam_count_per_end
+            hip_beam_bay_count = (len(truss_y_positions) - 1) * hip_beam_count_per_end
     else:
         hip_beam_n_len = 0.0
         hip_beam_s_len = 0.0
         hip_beam_avg_len = 0.0
-    # Total hip beam material = both ends × count-per-end × individual length
-    hip_beam_total_len = (hip_beam_n_len + hip_beam_s_len) * hip_beam_count_per_end
-    hip_beam_total_count = 2 * hip_beam_count_per_end
+    # Total hip beam material = both ends × count-per-end × individual length,
+    # plus the between-truss bays if that flag is on.
+    hip_beam_total_len = ((hip_beam_n_len + hip_beam_s_len) * hip_beam_count_per_end
+                         + hip_beam_bay_total_len)
+    hip_beam_total_count = 2 * hip_beam_count_per_end + hip_beam_bay_count
 
     # ---- Longitudinal-truss compatibility stubs ----
     # The longitudinal truss concept was replaced by the ring beam + hip
@@ -5740,11 +5900,16 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
              f'{dim_text(central_ridge_total)}',
              f'{dim_text(central_ridge_total)}',
              'Top ridge = configured ridge_length'),
-            ('Hip ridges', _sect(ridge_size_in, ridge_wall_mm),
-             '4',
-             f'{dim_text(hip_ridges_total)}',
-             f'{dim_text(hip_slant)}',
-             '4 diagonals from ridge endpoints to eave corners'),
+            ('Hip ridges (N)', _sect(ridge_size_in, ridge_wall_mm),
+             '2',
+             f'{dim_text(2 * hip_slant_n_val)}',
+             f'{dim_text(hip_slant_n_val)}',
+             '2 diagonals from N ridge endpoint to N eave corners'),
+            ('Hip ridges (S)', _sect(ridge_size_in, ridge_wall_mm),
+             '2',
+             f'{dim_text(2 * hip_slant_s_val)}',
+             f'{dim_text(hip_slant_s_val)}',
+             '2 diagonals from S ridge endpoint to S eave corners'),
         ]
 
         # ---- Eave assembly members (Pani Patti + L-channel + optional) ----
@@ -5834,12 +5999,17 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
 
         # ---- Hip-end beams ----
         if hip_beam_total_count > 0:
+            _hb_note = f'{hip_beam_count_per_end} per hip end (× 2 ends) — corner truss to N/S wall'
+            if hip_beam_between_trusses and hip_beam_bay_count > 0:
+                _n_bays = len(truss_y_positions) - 1
+                _hb_note += (f'; extended through {_n_bays} ridge-zone '
+                             f'bay(s) — continuous N wall → S wall')
             rows += [
                 ('Hip-end beam', _sect(hip_beam_size, hip_beam_wall),
                  f'{hip_beam_total_count}',
                  f'{dim_text(hip_beam_total_len)}',
                  f'{dim_text(max(hip_beam_n_len, hip_beam_s_len))}',
-                 f'{hip_beam_count_per_end} per hip end (× 2 ends) — corner truss to N/S wall'),
+                 _hb_note),
             ]
         row_y = table_y + row_h + 18
         for row in rows:
@@ -5908,8 +6078,9 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         lines.append(('Hip ridges — 4 pieces (one per corner). Each is the 3-D diagonal from a ridge',
                       False))
         lines.append(('endpoint to an eave corner:  L = √((eave_x_east−eave_x_west)/2)² + d_hip² + h²)', False))
-        lines.append((f'                                 = {dim_text(hip_slant)}  each   '
-                      f'|   Total: 4 × {dim_text(hip_slant)} = {dim_text(hip_ridges_total)}',
+        lines.append((f'   N pair: 2 × {dim_text(hip_slant_n_val)} = {dim_text(2 * hip_slant_n_val)}   '
+                      f'|   S pair: 2 × {dim_text(hip_slant_s_val)} = {dim_text(2 * hip_slant_s_val)}   '
+                      f'|   Total: {dim_text(hip_ridges_total)}',
                       True))
         lines.append(('', False))
         lines.append(('Eave edge — one continuous run around the eave bounding box:', False))
@@ -6365,12 +6536,12 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         eave_z_ref = roof.get('eave_z', 0)
         if ridge_axis == 'y':
             ridge_x_pos = (eave_xw + eave_xe) / 2.0
-            r_y_start = eave_yn + d_hip
-            r_y_end = eave_ys - d_hip
+            r_y_start = eave_yn + d_hip_n
+            r_y_end = eave_ys - d_hip_s
         else:
             ridge_y_pos = (eave_yn + eave_ys) / 2.0
-            r_x_start = eave_xw + d_hip
-            r_x_end = eave_xe - d_hip
+            r_x_start = eave_xw + d_hip_w
+            r_x_end = eave_xe - d_hip_e
 
         world_w = span_x
         world_h = span_y
@@ -6528,20 +6699,24 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                       f'clip-path="url(#{cid}_E)"/>\n')
 
             # Hip end purlins: parallel to X (horizontal in plan), stepping in Y.
-            hip_pitch = slopes[2]['pitch']
-            hip_step_plan = purlin_spacing_u * math.cos(math.radians(hip_pitch))
-            n_hip = int(d_hip / hip_step_plan)
-            for i in range(1, n_hip + 1):
-                # N hip: y from eave_yn toward apex
-                y_n = eave_yn + i * hip_step_plan
+            # N and S hip pitches may differ (asymmetric roof) — each side
+            # gets its own step size and purlin count.
+            hip_pitch_n = slopes[2]['pitch']
+            hip_pitch_s = slopes[3]['pitch']
+            hip_step_n = purlin_spacing_u * math.cos(math.radians(hip_pitch_n))
+            hip_step_s = purlin_spacing_u * math.cos(math.radians(hip_pitch_s))
+            n_hip_n = int(d_hip_n / hip_step_n) if hip_step_n > 0 else 0
+            n_hip_s = int(d_hip_s / hip_step_s) if hip_step_s > 0 else 0
+            for i in range(1, n_hip_n + 1):
+                y_n = eave_yn + i * hip_step_n
                 p1 = T(eave_xw, y_n)
                 p2 = T(eave_xe, y_n)
                 s += (f'<line x1="{p1[0]:.1f}" y1="{p1[1]:.1f}" '
                       f'x2="{p2[0]:.1f}" y2="{p2[1]:.1f}" '
                       f'stroke="{purlin_stroke}" stroke-width="{purlin_w}" '
                       f'clip-path="url(#{cid}_N)"/>\n')
-                # S hip: mirror
-                y_s = eave_ys - i * hip_step_plan
+            for i in range(1, n_hip_s + 1):
+                y_s = eave_ys - i * hip_step_s
                 p1 = T(eave_xw, y_s)
                 p2 = T(eave_xe, y_s)
                 s += (f'<line x1="{p1[0]:.1f}" y1="{p1[1]:.1f}" '
@@ -6629,11 +6804,11 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         if ridge_axis == 'y':
             rb_xw = eave_xw + wall_inset_trans
             rb_xe = eave_xe - wall_inset_trans
-            rb_yn = eave_yn + wall_inset_long
-            rb_ys = eave_ys - wall_inset_long
+            rb_yn = eave_yn + wall_inset_long_n
+            rb_ys = eave_ys - wall_inset_long_s
         else:
-            rb_xw = eave_xw + wall_inset_long
-            rb_xe = eave_xe - wall_inset_long
+            rb_xw = eave_xw + wall_inset_long_n
+            rb_xe = eave_xe - wall_inset_long_s
             rb_yn = eave_yn + wall_inset_trans
             rb_ys = eave_ys - wall_inset_trans
         rb_nw = T(rb_xw, rb_yn)
@@ -6655,7 +6830,10 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
 
         # ---- Hip-end beams ----
         # 3 beams per hip end running N-S from corner truss to the N/S wall.
-        # Spaced evenly across the 27' transverse width.
+        # Spaced evenly across the 27' transverse width. When
+        # `extend_between_trusses` is on, the same 3 beams also span each
+        # ridge-zone bay (T1↔T2, T2↔T3, …) so the frame is continuously
+        # braced from N wall to S wall.
         if hip_beam_total_count > 0 and ridge_axis == 'y' and truss_count >= 2:
             hip_beam_stroke = '#8a4a1a'  # dark brown to match user drawing
             hip_beam_w = max(_in_to_px(hip_beam_size[0]), 1.8)
@@ -6678,6 +6856,16 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                       f'x2="{p_s_end[0]:.1f}" y2="{p_s_end[1]:.1f}" '
                       f'stroke="{hip_beam_stroke}" stroke-width="{hip_beam_w:.1f}" '
                       f'opacity="0.85"/>\n')
+                # Ridge-zone bays between adjacent trusses (optional)
+                if hip_beam_between_trusses:
+                    for _j in range(len(truss_y_positions) - 1):
+                        p_a = T(bx_world, truss_y_positions[_j])
+                        p_b = T(bx_world, truss_y_positions[_j + 1])
+                        s += (f'<line x1="{p_a[0]:.1f}" y1="{p_a[1]:.1f}" '
+                              f'x2="{p_b[0]:.1f}" y2="{p_b[1]:.1f}" '
+                              f'stroke="{hip_beam_stroke}" '
+                              f'stroke-width="{hip_beam_w:.1f}" '
+                              f'opacity="0.85"/>\n')
 
         # ---- Longitudinal trusses (removed — kept as no-op for compat) ----
         if long_truss_count > 0:
@@ -6860,23 +7048,23 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         wall_top_z = eave_z_ref + wall_top_u   # ring beam z-level
         if ridge_axis == 'y':
             r_x = (eave_xw + eave_xe) / 2.0
-            r_y1 = eave_yn + d_hip
-            r_y2 = eave_ys - d_hip
+            r_y1 = eave_yn + d_hip_n
+            r_y2 = eave_ys - d_hip_s
             R1 = (r_x, r_y1, r_z)  # north end
             R2 = (r_x, r_y2, r_z)  # south end
             # Ring beam corners (at wall-top level)
             rb_xw = eave_xw + wall_inset_trans
             rb_xe = eave_xe - wall_inset_trans
-            rb_yn = eave_yn + wall_inset_long
-            rb_ys = eave_ys - wall_inset_long
+            rb_yn = eave_yn + wall_inset_long_n
+            rb_ys = eave_ys - wall_inset_long_s
         else:
             r_y = (eave_yn + eave_ys) / 2.0
-            r_x1 = eave_xw + d_hip
-            r_x2 = eave_xe - d_hip
+            r_x1 = eave_xw + d_hip_w
+            r_x2 = eave_xe - d_hip_e
             R1 = (r_x1, r_y, r_z)
             R2 = (r_x2, r_y, r_z)
-            rb_xw = eave_xw + wall_inset_long
-            rb_xe = eave_xe - wall_inset_long
+            rb_xw = eave_xw + wall_inset_long_n
+            rb_xe = eave_xe - wall_inset_long_s
             rb_yn = eave_yn + wall_inset_trans
             rb_ys = eave_ys - wall_inset_trans
 
@@ -6886,8 +7074,13 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
             wy = pz - (px + py) * sin30
             return (wx, wy)
 
+        # Wall base level — visible walls extend from here up to the ring
+        # beam (wall_top_z). Kept modest so the roof frame remains the
+        # dominant content but the walls read as walls, not just a strip.
+        wall_bot_z = eave_z_ref - 40
         # Collect all points that need to fit within the drawing area, so we
-        # can autoscale — eave corners, ridge endpoints, ring-beam corners.
+        # can autoscale — eave corners, ridge endpoints, ring-beam corners,
+        # wall bases so walls stay inside the panel.
         anchor_pts = [
             iso((eave_xw, eave_yn, eave_z_ref)),
             iso((eave_xe, eave_yn, eave_z_ref)),
@@ -6898,6 +7091,10 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
             iso((rb_xe, rb_yn, wall_top_z)),
             iso((rb_xe, rb_ys, wall_top_z)),
             iso((rb_xw, rb_ys, wall_top_z)),
+            iso((rb_xw, rb_yn, wall_bot_z)),
+            iso((rb_xe, rb_yn, wall_bot_z)),
+            iso((rb_xe, rb_ys, wall_bot_z)),
+            iso((rb_xw, rb_ys, wall_bot_z)),
         ]
         xs = [v[0] for v in anchor_pts]
         ys = [v[1] for v in anchor_pts]
@@ -6963,6 +7160,63 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
             s += draw_line(a, b, stroke='#a17545', stroke_w=0.8,
                             opacity=0.55, dash='4,3')
 
+        # ---- House walls (semi-transparent) ----
+        # Four vertical panels around the house footprint, from wall_bot_z
+        # up to wall_top_z. Ring beam sits on top of these walls, so they
+        # are drawn first (ring beam and other frame members render over).
+        wall_stroke = '#8a7f6d'
+        wall_fill = '#e5dfd2'
+        wall_quads = [
+            # N wall
+            [(rb_xw, rb_yn, wall_bot_z), (rb_xe, rb_yn, wall_bot_z),
+             (rb_xe, rb_yn, wall_top_z), (rb_xw, rb_yn, wall_top_z), 'N'],
+            # S wall
+            [(rb_xw, rb_ys, wall_bot_z), (rb_xe, rb_ys, wall_bot_z),
+             (rb_xe, rb_ys, wall_top_z), (rb_xw, rb_ys, wall_top_z), 'S'],
+            # W wall
+            [(rb_xw, rb_yn, wall_bot_z), (rb_xw, rb_ys, wall_bot_z),
+             (rb_xw, rb_ys, wall_top_z), (rb_xw, rb_yn, wall_top_z), 'W'],
+            # E wall
+            [(rb_xe, rb_yn, wall_bot_z), (rb_xe, rb_ys, wall_bot_z),
+             (rb_xe, rb_ys, wall_top_z), (rb_xe, rb_yn, wall_top_z), 'E'],
+        ]
+
+        def _avg_svg_y(pts):
+            return sum(to_svg_pt(p)[1] for p in pts) / len(pts)
+        # Paint back-to-front: larger svg_y means closer to viewer, drawn last.
+        for quad in sorted(wall_quads, key=lambda q: _avg_svg_y(q[:4])):
+            pts_str = ' '.join(
+                f'{to_svg_pt(p)[0]:.1f},{to_svg_pt(p)[1]:.1f}' for p in quad[:4])
+            s += (f'<polygon points="{pts_str}" fill="{wall_fill}" '
+                  f'fill-opacity="0.55" stroke="{wall_stroke}" '
+                  f'stroke-width="0.9" stroke-linejoin="round"/>\n')
+
+        # ---- Pillars (vertical marks at each pillar position) ----
+        pillar_stroke = '#3f2f1a'
+        pillar_fill = '#7a6244'
+        _pillar_positions = set()
+        for _floor in house_config.get('floors', []):
+            for _obj in _floor.get('objects', []):
+                if _obj.get('type') == 'pillar':
+                    _pillar_positions.add(
+                        (_obj.get('x', 0.0), _obj.get('y', 0.0)))
+        # House-coord origin (0,0) maps to (rb_xw, rb_yn).
+        for _px, _py in sorted(_pillar_positions):
+            _wx = rb_xw + _px
+            _wy = rb_yn + _py
+            # Skip pillars outside the ring beam (safety)
+            if not (rb_xw <= _wx <= rb_xe and rb_yn <= _wy <= rb_ys):
+                continue
+            _bot = (_wx, _wy, wall_bot_z)
+            _top = (_wx, _wy, wall_top_z + 4)
+            s += draw_line(_bot, _top, stroke=pillar_stroke,
+                            stroke_w=2.0, opacity=0.95)
+            # Small dot at ring beam level (marker)
+            _rb_pt = to_svg_pt((_wx, _wy, wall_top_z))
+            s += (f'<circle cx="{_rb_pt[0]:.1f}" cy="{_rb_pt[1]:.1f}" '
+                  f'r="2.4" fill="{pillar_fill}" '
+                  f'stroke="{pillar_stroke}" stroke-width="0.7"/>\n')
+
         # ---- Ring beam (blue, wall-top level) ----
         rb_corners = [
             (rb_xw, rb_yn, wall_top_z),
@@ -6976,6 +7230,8 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                             stroke=ring_stroke, stroke_w=2.4, opacity=0.95)
 
         # ---- Hip-end beams (brown, at wall-top level) ----
+        # + optional bay beams between adjacent trusses when
+        # `extend_between_trusses` is set (continuous N wall → S wall).
         hip_beam_stroke = '#8a4a1a'
         if truss_count >= 2 and ridge_axis == 'y':
             # Beam endpoints in world coords
@@ -6990,13 +7246,51 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                 s += draw_line((bx_world, truss_y_positions[-1], wall_top_z),
                                 (bx_world, rb_ys, wall_top_z),
                                 stroke=hip_beam_stroke, stroke_w=1.6)
+                # Ridge-zone bay segments (T1↔T2, T2↔T3, …)
+                if hip_beam_between_trusses:
+                    for _j in range(len(truss_y_positions) - 1):
+                        s += draw_line(
+                            (bx_world, truss_y_positions[_j], wall_top_z),
+                            (bx_world, truss_y_positions[_j + 1], wall_top_z),
+                            stroke=hip_beam_stroke, stroke_w=1.6)
+
+        # ---- Ridge members: central ridge + 4 hip ridges (same HSS spec) ----
+        # All 5 ridge members share the same 6"×3"×2mm HSS section so they
+        # are drawn with identical stroke weight and colour to read as one
+        # structural family. They sit on top of the dashed roof-shell
+        # wireframe.
+        hip_ridge_stroke = '#6b4423'
+        # Central ridge (R1 → R2) — the horizontal top line
+        s += draw_line(R1, R2, stroke=hip_ridge_stroke,
+                        stroke_w=2.0, opacity=0.95)
+        # Four hip ridges (ridge endpoint → eave corners)
+        if ridge_axis == 'y':
+            hip_ridge_pairs = [
+                (R1, eave_corners[0]),   # R1 → NW eave corner
+                (R1, eave_corners[1]),   # R1 → NE
+                (R2, eave_corners[2]),   # R2 → SE
+                (R2, eave_corners[3]),   # R2 → SW
+            ]
+        else:
+            hip_ridge_pairs = [
+                (R1, eave_corners[0]),   # R1 → NW
+                (R1, eave_corners[3]),   # R1 → SW
+                (R2, eave_corners[1]),   # R2 → NE
+                (R2, eave_corners[2]),   # R2 → SE
+            ]
+        for _a, _b in hip_ridge_pairs:
+            s += draw_line(_a, _b, stroke=hip_ridge_stroke,
+                            stroke_w=2.0, opacity=0.95)
 
         # ---- 3 Fink trusses ----
         # Each truss lives in a vertical plane at y = truss_y_positions[i].
         # Bottom chord: horizontal at wall_top_z, from x=rb_xw to x=rb_xe.
-        # Peak: at (ridge_x_pos, y, r_z).
+        # Peak: at ridge beam BOTTOM (= r_z − ridge_depth), not the roof
+        # apex — the ridge beam sits between truss peaks and the roof
+        # surface.
         truss_stroke = '#8b0000'
         web_stroke = '#c25050'
+        truss_peak_z = r_z - ridge_depth_u
         if truss_count > 0 and ridge_axis == 'y':
             ridge_x_p = (eave_xw + eave_xe) / 2.0
             for i, ty_pos in enumerate(truss_y_positions):
@@ -7005,11 +7299,11 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                 B1 = (rb_xw + 0.25 * (rb_xe - rb_xw), ty_pos, wall_top_z)
                 B2 = (ridge_x_p, ty_pos, wall_top_z)
                 B3 = (rb_xw + 0.75 * (rb_xe - rb_xw), ty_pos, wall_top_z)
-                Tpk = (ridge_x_p, ty_pos, r_z)
+                Tpk = (ridge_x_p, ty_pos, truss_peak_z)
                 T1 = (rb_xw + 0.25 * (rb_xe - rb_xw), ty_pos,
-                      (wall_top_z + r_z) / 2)
+                      (wall_top_z + truss_peak_z) / 2)
                 T3 = (rb_xw + 0.75 * (rb_xe - rb_xw), ty_pos,
-                      (wall_top_z + r_z) / 2)
+                      (wall_top_z + truss_peak_z) / 2)
                 # Chords (thicker)
                 s += draw_line(B0, Tpk, stroke=truss_stroke, stroke_w=2.4)
                 s += draw_line(Tpk, B4, stroke=truss_stroke, stroke_w=2.4)
@@ -7053,7 +7347,13 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
               f'fill="{ring_stroke}">■ Ring beam ({house_ft[0]:.0f}\' × {house_ft[1]:.0f}\')</text>\n')
         s += (f'<text x="{lg_x}" y="{lg_y + 32}" font-size="11" font-weight="600" '
               f'fill="{hip_beam_stroke}">■ Hip-end beams × {hip_beam_total_count}</text>\n')
-        s += (f'<text x="{lg_x}" y="{lg_y + 48}" font-size="10" fill="#666">'
+        s += (f'<text x="{lg_x}" y="{lg_y + 48}" font-size="11" font-weight="600" '
+              f'fill="{hip_ridge_stroke}">■ Ridges × 5 (1 central + 4 hip)</text>\n')
+        s += (f'<text x="{lg_x}" y="{lg_y + 64}" font-size="11" font-weight="600" '
+              f'fill="{wall_stroke}">■ House walls (4)</text>\n')
+        s += (f'<text x="{lg_x}" y="{lg_y + 80}" font-size="11" font-weight="600" '
+              f'fill="{pillar_stroke}">■ Pillars × {len(_pillar_positions)}</text>\n')
+        s += (f'<text x="{lg_x}" y="{lg_y + 96}" font-size="10" fill="#666">'
               f'(roof shell dashed for context)</text>\n')
 
         return s
@@ -7061,10 +7361,15 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     # ---------- Cross-section panels ----------
     def section_panel_generic(x0, y0, w_p, h_p, title, is_trapezoid,
                               base_span, top_span, height_val, angle_val,
-                              return_geom=False):
+                              return_geom=False,
+                              top_offset_left=None, top_offset_right=None,
+                              angle_left=None, angle_right=None,
+                              skip_base_corners=False):
         """Draws a simple dimensioned cross-section (triangle or trapezoid).
-        If return_geom is True, returns (svg_str, geom_dict) where geom_dict
-        exposes the drawing coordinates so callers can overlay content."""
+        For asymmetric trapezoids, pass top_offset_left/right (world units
+        measured from bl / br) and angle_left/right to override the
+        symmetric layout. If return_geom is True, returns (svg_str,
+        geom_dict) exposing drawing coordinates for callers to overlay."""
         title_h = 36
         inner_pad = 40
         draw_w = w_p - 2 * inner_pad
@@ -7076,13 +7381,18 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         top_px = top_span * s_scale
         h_px = height_val * s_scale
         cx = x0 + w_p / 2
-        baseline_y = y0 + title_h + inner_pad + draw_h - 20
+        _bottom_reserve = 60
+        baseline_y = y0 + title_h + inner_pad + draw_h - _bottom_reserve
         t_y = baseline_y - h_px
         bl = (cx - base_px / 2, baseline_y)
         br = (cx + base_px / 2, baseline_y)
         if is_trapezoid:
-            tl = (cx - top_px / 2, t_y)
-            tr = (cx + top_px / 2, t_y)
+            if top_offset_left is not None and top_offset_right is not None:
+                tl = (bl[0] + top_offset_left * s_scale, t_y)
+                tr = (br[0] - top_offset_right * s_scale, t_y)
+            else:
+                tl = (cx - top_px / 2, t_y)
+                tr = (cx + top_px / 2, t_y)
         else:
             tl = tr = (cx, t_y)
 
@@ -7095,14 +7405,17 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
               f'text-anchor="middle" font-size="16" font-weight="600" fill="#222">'
               f'{title}</text>\n')
 
-        # Roof shell outline
+        # Roof shell outline drawn as a dashed reference line (no fill) so
+        # the structural elements (trusses, ridge beam, ring beam) read as
+        # the primary content and the roof is context.
         if is_trapezoid:
             outline = (f'M {bl[0]:.1f} {bl[1]:.1f} L {br[0]:.1f} {br[1]:.1f} '
                        f'L {tr[0]:.1f} {tr[1]:.1f} L {tl[0]:.1f} {tl[1]:.1f} Z')
         else:
             outline = (f'M {bl[0]:.1f} {bl[1]:.1f} L {br[0]:.1f} {br[1]:.1f} '
                        f'L {tl[0]:.1f} {tl[1]:.1f} Z')
-        s += f'<path d="{outline}" fill="#e8ceb0" stroke="#8B4513" stroke-width="2"/>\n'
+        s += (f'<path d="{outline}" fill="none" stroke="#8B4513" '
+              f'stroke-width="1.2" stroke-dasharray="6,4" opacity="0.55"/>\n')
 
         # Height dim on the left
         h_dim_x = bl[0] - 30
@@ -7128,47 +7441,62 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         s += (f'<text x="{cx}" y="{b_dim_y - 5}" text-anchor="middle" '
               f'font-size="11" fill="#0066cc">{dim_text(base_span)}</text>\n')
 
-        # Top dim (for trapezoid only)
+        # Top dim (for trapezoid only). Placed high enough that a caller
+        # can add an intermediate dimension chain (e.g. truss spacing)
+        # between the ridge line and this dim without overlapping.
         if is_trapezoid and top_span > 0:
-            t_dim_y = t_y - 18
+            t_dim_y = t_y - 48
             s += (f'<line x1="{tl[0]}" y1="{t_y}" x2="{tl[0]}" y2="{t_dim_y - 6}" '
-                  f'stroke="#0066cc" stroke-width="0.5"/>\n')
+                  f'stroke="#0066cc" stroke-width="0.5" stroke-dasharray="3,3"/>\n')
             s += (f'<line x1="{tr[0]}" y1="{t_y}" x2="{tr[0]}" y2="{t_dim_y - 6}" '
-                  f'stroke="#0066cc" stroke-width="0.5"/>\n')
+                  f'stroke="#0066cc" stroke-width="0.5" stroke-dasharray="3,3"/>\n')
             s += (f'<line x1="{tl[0]}" y1="{t_dim_y}" x2="{tr[0]}" y2="{t_dim_y}" '
                   f'stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" '
                   f'marker-end="url(#arr)"/>\n')
             s += (f'<text x="{cx}" y="{t_dim_y - 5}" text-anchor="middle" '
                   f'font-size="11" fill="#0066cc">ridge = {dim_text(top_span)}</text>\n')
 
-        # Interior corner angles.
-        # For these cross-sections the base corner angle IS the roof pitch —
-        # the horizontal base meets the slant side at that angle.
-        base_corner = angle_val
+        # Interior corner angles. Asymmetric hips have different pitches
+        # on the two sloping sides; angle_left/angle_right override
+        # symmetric angle_val when supplied.
+        base_corner_L = angle_left if angle_left is not None else angle_val
+        base_corner_R = angle_right if angle_right is not None else angle_val
         if is_trapezoid:
-            top_corner = 180.0 - base_corner
+            top_corner_L = 180.0 - base_corner_L
+            top_corner_R = 180.0 - base_corner_R
         else:
-            apex_angle = 180.0 - 2.0 * base_corner
+            apex_angle = 180.0 - base_corner_L - base_corner_R
 
-        # Bottom corners
-        s += (f'<text x="{bl[0] + 8}" y="{baseline_y - 6}" text-anchor="start" '
-              f'font-size="11" fill="#333">{base_corner:.1f}°</text>\n')
-        s += (f'<text x="{br[0] - 8}" y="{baseline_y - 6}" text-anchor="end" '
-              f'font-size="11" fill="#333">{base_corner:.1f}°</text>\n')
-        # Top corners / apex
+        # Base corner angles at the bottom corners of the shape. When the
+        # caller draws content that would cover these labels (e.g. section
+        # B-B draws wall rectangles that sit on top of the labels), it can
+        # pass skip_base_corners=True and re-draw the labels itself AFTER
+        # the walls so the labels end up on top.
+        if not skip_base_corners:
+            s += (f'<text x="{bl[0] + 8}" y="{baseline_y - 6}" text-anchor="start" '
+                  f'font-size="11" fill="#333">{base_corner_L:.1f}°</text>\n')
+            s += (f'<text x="{br[0] - 8}" y="{baseline_y - 6}" text-anchor="end" '
+                  f'font-size="11" fill="#333">{base_corner_R:.1f}°</text>\n')
+        # Top corners / apex — kept inside the trapezoid, they don't clash
+        # with anything up there.
         if is_trapezoid:
             s += (f'<text x="{tl[0] + 6}" y="{t_y + 14}" text-anchor="start" '
-                  f'font-size="11" fill="#333">{top_corner:.1f}°</text>\n')
+                  f'font-size="11" fill="#333">{top_corner_L:.1f}°</text>\n')
             s += (f'<text x="{tr[0] - 6}" y="{t_y + 14}" text-anchor="end" '
-                  f'font-size="11" fill="#333">{top_corner:.1f}°</text>\n')
+                  f'font-size="11" fill="#333">{top_corner_R:.1f}°</text>\n')
         else:
             s += (f'<text x="{tl[0]}" y="{t_y + 15}" text-anchor="middle" '
                   f'font-size="11" fill="#333">{apex_angle:.1f}°</text>\n')
 
-        # Pitch label
+        # Pitch label (may show two pitches for asymmetric case)
+        if angle_left is not None and angle_right is not None and \
+           abs(angle_left - angle_right) > 0.1:
+            _pitch_lbl = f'PITCH: N {angle_left:.1f}° / S {angle_right:.1f}°'
+        else:
+            _pitch_lbl = f'PITCH: {angle_val:.1f}°'
         s += (f'<text x="{x0 + w_p - 12}" y="{y0 + title_h + 18}" text-anchor="end" '
               f'font-size="12" font-weight="600" fill="#8B4513">'
-              f'PITCH: {angle_val:.1f}°</text>\n')
+              f'{_pitch_lbl}</text>\n')
 
         if return_geom:
             return s, {
@@ -7195,6 +7523,74 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                                         base_span=base_span, top_span=0.0,
                                         height_val=h, angle_val=angle_val,
                                         return_geom=True)
+        # ---- Rafters + purlins on both main slopes ----
+        # In Section A-A (cut perpendicular to the ridge) rafters run in the
+        # plane of the cut. Draw one rafter on each slope from eave to
+        # ridge-beam side. Purlins are welded ON TOP of the rafters; their
+        # cross-section is drawn as a rotated rectangle whose bottom face
+        # aligns with the rafter's top face.
+        bl_ = geom['bl']; br_ = geom['br']
+        baseline_y_ = geom['baseline_y']; t_y_ = geom['t_y']
+        cx_ = geom['cx']; s_scale_ = geom['s_scale']
+        rafter_stroke_sec = '#8B4513'
+        rafter_fill_sec = '#c8a377'
+        purlin_fill_sec = '#a8c9e0'
+        purlin_stroke_sec = '#4a8fbf'
+        _rd_w_px_a = max(6.0, ridge_width_u * s_scale_)
+        _rd_h_px_a = max(4.0, ridge_depth_u * s_scale_)
+        raft_top_L = (cx_ - _rd_w_px_a / 2, t_y_)
+        raft_top_R = (cx_ + _rd_w_px_a / 2, t_y_)
+        _raft_line_w = max(2.4, rafter_size_in[1] / IN_PER_UNIT * s_scale_ * 0.55)
+        s += (f'<line x1="{bl_[0]:.1f}" y1="{baseline_y_:.1f}" '
+              f'x2="{raft_top_L[0]:.1f}" y2="{raft_top_L[1]:.1f}" '
+              f'stroke="{rafter_stroke_sec}" stroke-width="{_raft_line_w:.1f}" '
+              f'stroke-linecap="round"/>\n')
+        s += (f'<line x1="{br_[0]:.1f}" y1="{baseline_y_:.1f}" '
+              f'x2="{raft_top_R[0]:.1f}" y2="{raft_top_R[1]:.1f}" '
+              f'stroke="{rafter_stroke_sec}" stroke-width="{_raft_line_w:.1f}" '
+              f'stroke-linecap="round"/>\n')
+        # Rotated purlin cross-sections along each rafter at 12" OC.
+        # Positions are computed using the SAME convention as the top view
+        # (horizontal step = slope-spacing × cos(pitch)) so purlin count
+        # and x-positions match between the two views.
+        _purlin_w_px = max(3.0, purlin_size_in[0] / IN_PER_UNIT * s_scale_)
+        _purlin_d_px = max(2.0, purlin_size_in[1] / IN_PER_UNIT * s_scale_)
+        _pitch = angle_val
+        _purlin_step_slope_u = purlin_spacing_in / IN_PER_UNIT
+        _purlin_step_horiz_u = _purlin_step_slope_u * math.cos(math.radians(_pitch))
+        _half_span_u = base_span / 2
+        _n_purl = int(_half_span_u / _purlin_step_horiz_u)
+        # Rafter slope (pixels per world unit horizontal). Rafter goes from
+        # BL (baseline, at eave) up to raft_top_L (at ridge beam side).
+        _raft_run_L_u = (raft_top_L[0] - bl_[0]) / s_scale_
+        _raft_rise_L_px = raft_top_L[1] - baseline_y_  # negative (upward in SVG)
+        _raft_run_R_u = (br_[0] - raft_top_R[0]) / s_scale_
+        _raft_rise_R_px = raft_top_R[1] - baseline_y_
+        for i in range(1, _n_purl + 1):
+            _dx_u = i * _purlin_step_horiz_u  # horizontal distance from eave
+            _dx_px = _dx_u * s_scale_
+            # Left slope: move RIGHT from BL toward apex
+            pxL = bl_[0] + _dx_px
+            # Purlin sits on rafter line — clip to drawn rafter length.
+            _t_L = min(1.0, _dx_u / _raft_run_L_u) if _raft_run_L_u > 0 else 1.0
+            pyL = baseline_y_ + _t_L * _raft_rise_L_px
+            s += (f'<g transform="translate({pxL:.1f},{pyL:.1f}) '
+                  f'rotate({-_pitch:.1f})">'
+                  f'<rect x="{-_purlin_w_px/2:.1f}" y="{-_purlin_d_px:.1f}" '
+                  f'width="{_purlin_w_px:.1f}" height="{_purlin_d_px:.1f}" '
+                  f'fill="{purlin_fill_sec}" stroke="{purlin_stroke_sec}" '
+                  f'stroke-width="0.6"/></g>\n')
+            # Right slope: move LEFT from BR toward apex
+            pxR = br_[0] - _dx_px
+            _t_R = min(1.0, _dx_u / _raft_run_R_u) if _raft_run_R_u > 0 else 1.0
+            pyR = baseline_y_ + _t_R * _raft_rise_R_px
+            s += (f'<g transform="translate({pxR:.1f},{pyR:.1f}) '
+                  f'rotate({_pitch:.1f})">'
+                  f'<rect x="{-_purlin_w_px/2:.1f}" y="{-_purlin_d_px:.1f}" '
+                  f'width="{_purlin_w_px:.1f}" height="{_purlin_d_px:.1f}" '
+                  f'fill="{purlin_fill_sec}" stroke="{purlin_stroke_sec}" '
+                  f'stroke-width="0.6"/></g>\n')
+
         # Overlay Fink truss INSET (bottom chord on ring beam at wall top,
         # smaller span than the roof outline). Also overlay the ring beam.
         if truss_count > 0:
@@ -7262,6 +7658,55 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                       f'width="{_rb_sz:.1f}" height="{_rb_sz:.1f}" '
                       f'fill="{ring_stroke_sec}" stroke="{ring_stroke_sec}"/>\n')
 
+            # ---- Central ridge beam cross-section at the roof apex ----
+            # In Section A-A (cut perpendicular to the ridge) we see the
+            # ridge beam end-on. Draw it as a rectangle at the apex, sitting
+            # between the truss peak and the roof surface.
+            ridge_stroke_sec = '#5a3a17'
+            ridge_fill_sec = '#a6764a'
+            _rd_w_px = max(6.0, ridge_width_u * s_scale)
+            _rd_h_px = max(4.0, ridge_depth_u * s_scale)
+            _rd_x = cx - _rd_w_px / 2
+            _rd_y = geom['t_y']  # roof peak (top of ridge)
+            s += (f'<rect x="{_rd_x:.1f}" y="{_rd_y:.1f}" '
+                  f'width="{_rd_w_px:.1f}" height="{_rd_h_px:.1f}" '
+                  f'fill="{ridge_fill_sec}" stroke="{ridge_stroke_sec}" '
+                  f'stroke-width="1.4"/>\n')
+            s += (f'<text x="{_rd_x + _rd_w_px + 6:.1f}" y="{_rd_y + _rd_h_px/2 + 4:.1f}" '
+                  f'text-anchor="start" font-size="10" fill="{ridge_stroke_sec}" '
+                  f'font-weight="600">Ridge beam '
+                  f'{ridge_size_in[0]}"×{ridge_size_in[1]}"</text>\n')
+
+            # ---- House wall parapet upstands aligned with the ring beam ----
+            # Walls at ±house_trans_u/2 from centre, extending from the eave
+            # baseline up to wall_top. The rafters visibly rest on the walls
+            # (which carry the ring beam at wall top).
+            wall_fill = '#eeeeee'
+            wall_stroke = '#666'
+            _wall_thk_u = 8.0 / IN_PER_UNIT   # 8" nominal wall thickness
+            _wall_thk_px = _wall_thk_u * s_scale
+            _wall_top_svg_y_a = baseline_y - wall_top_u * s_scale
+            _wall_L_cx = cx - (house_trans_u / 2) * s_scale
+            _wall_R_cx = cx + (house_trans_u / 2) * s_scale
+            s += (f'<rect x="{_wall_L_cx - _wall_thk_px/2:.1f}" '
+                  f'y="{_wall_top_svg_y_a:.1f}" '
+                  f'width="{_wall_thk_px:.1f}" '
+                  f'height="{baseline_y - _wall_top_svg_y_a:.1f}" '
+                  f'fill="{wall_fill}" stroke="{wall_stroke}" '
+                  f'stroke-width="0.9"/>\n')
+            s += (f'<rect x="{_wall_R_cx - _wall_thk_px/2:.1f}" '
+                  f'y="{_wall_top_svg_y_a:.1f}" '
+                  f'width="{_wall_thk_px:.1f}" '
+                  f'height="{baseline_y - _wall_top_svg_y_a:.1f}" '
+                  f'fill="{wall_fill}" stroke="{wall_stroke}" '
+                  f'stroke-width="0.9"/>\n')
+            s += (f'<text x="{_wall_L_cx:.1f}" y="{baseline_y + 12:.1f}" '
+                  f'text-anchor="middle" font-size="10" fill="{wall_stroke}" '
+                  f'font-weight="600">Wall</text>\n')
+            s += (f'<text x="{_wall_R_cx:.1f}" y="{baseline_y + 12:.1f}" '
+                  f'text-anchor="middle" font-size="10" fill="{wall_stroke}" '
+                  f'font-weight="600">Wall</text>\n')
+
             # Notes about wall level and truss dimensions
             s += (f'<text x="{x0 + w_p - 12:.1f}" y="{y0 + 36 + 32:.1f}" '
                   f'text-anchor="end" font-size="11" fill="{web_stroke}">'
@@ -7278,20 +7723,103 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         return (inches / IN_PER_UNIT) * scale_
 
     def section_bb_panel(x0, y0, w_p, h_p):
-        # Longitudinal: along ridge → N-S cross section for axis='y'
-        # Trapezoid: base = long span, top = ridge_length
+        # Longitudinal: along ridge → N-S cross section for axis='y'.
+        # Trapezoid can be asymmetric (d_hip_n != d_hip_s).
         if ridge_axis == 'y':
             base_span = span_y
-            angle_val = slopes[2]['pitch']  # hip-end pitch
+            _pitch_L = slopes[2]['pitch']   # N hip pitch
+            _pitch_R = slopes[3]['pitch']   # S hip pitch
+            _tol_L = d_hip_n                # offset from bl to tl
+            _tol_R = d_hip_s                # offset from br to tr
         else:
             base_span = span_x
-            angle_val = slopes[2]['pitch']
+            _pitch_L = slopes[2]['pitch']
+            _pitch_R = slopes[3]['pitch']
+            _tol_L = d_hip_w
+            _tol_R = d_hip_e
+        angle_val = (_pitch_L + _pitch_R) / 2.0
         s, geom = section_panel_generic(x0, y0, w_p, h_p,
                                         'SECTION B–B : LONGITUDINAL (along ridge) — TRUSS LOCATIONS',
                                         is_trapezoid=True,
                                         base_span=base_span, top_span=ridge_length,
                                         height_val=h, angle_val=angle_val,
-                                        return_geom=True)
+                                        return_geom=True,
+                                        top_offset_left=_tol_L,
+                                        top_offset_right=_tol_R,
+                                        angle_left=_pitch_L,
+                                        angle_right=_pitch_R,
+                                        skip_base_corners=True)
+
+        # ---- Rafters + purlins on the two HIP-END slopes ----
+        # In Section B-B (cut along the ridge) the trapezoid's two slanted
+        # sides ARE the hip-end slope profiles. Draw one rafter along each
+        # slanted side, with purlins rotated to sit on top — mirroring how
+        # Section A-A treats the two main slopes. Purlin count and spacing
+        # match the top view's hip-end convention.
+        bl_b = geom['bl']; br_b = geom['br']
+        tl_b = geom['tl']; tr_b = geom['tr']
+        baseline_y_b = geom['baseline_y']; t_y_b = geom['t_y']
+        cx_b = geom['cx']; s_scale_b = geom['s_scale']
+        rafter_stroke_sec = '#8B4513'
+        purlin_fill_sec = '#a8c9e0'
+        purlin_stroke_sec = '#4a8fbf'
+        hip_pitch_n = slopes[2]['pitch']
+        hip_pitch_s = slopes[3]['pitch']
+        # Rafter along each hip slope (dashed roof outline already drawn
+        # underneath as context). Draw the rafter as a solid thick line so
+        # its cross-section reads at a glance.
+        _raft_line_w_b = max(2.4, rafter_size_in[1] / IN_PER_UNIT * s_scale_b * 0.55)
+        # N hip end: bl_b (N eave) → tl_b (N ridge endpoint)
+        s += (f'<line x1="{bl_b[0]:.1f}" y1="{bl_b[1]:.1f}" '
+              f'x2="{tl_b[0]:.1f}" y2="{tl_b[1]:.1f}" '
+              f'stroke="{rafter_stroke_sec}" stroke-width="{_raft_line_w_b:.1f}" '
+              f'stroke-linecap="round"/>\n')
+        # S hip end: br_b (S eave) → tr_b (S ridge endpoint)
+        s += (f'<line x1="{br_b[0]:.1f}" y1="{br_b[1]:.1f}" '
+              f'x2="{tr_b[0]:.1f}" y2="{tr_b[1]:.1f}" '
+              f'stroke="{rafter_stroke_sec}" stroke-width="{_raft_line_w_b:.1f}" '
+              f'stroke-linecap="round"/>\n')
+        # Rotated purlin cross-sections along each hip-end rafter. Same
+        # horizontal-step convention as the top view; N and S hips may
+        # have different pitches (asymmetric roof) so each side uses its
+        # own step and count.
+        _purlin_w_px_b = max(3.0, purlin_size_in[0] / IN_PER_UNIT * s_scale_b)
+        _purlin_d_px_b = max(2.0, purlin_size_in[1] / IN_PER_UNIT * s_scale_b)
+        _purlin_step_slope_u_b = purlin_spacing_in / IN_PER_UNIT
+        _hip_step_n_u = _purlin_step_slope_u_b * math.cos(math.radians(hip_pitch_n))
+        _hip_step_s_u = _purlin_step_slope_u_b * math.cos(math.radians(hip_pitch_s))
+        _n_hip_purl_n = int(d_hip_n / _hip_step_n_u) if _hip_step_n_u > 0 else 0
+        _n_hip_purl_s = int(d_hip_s / _hip_step_s_u) if _hip_step_s_u > 0 else 0
+        # Rafter slopes (rise/run in svg coords)
+        _hipL_run_u = (tl_b[0] - bl_b[0]) / s_scale_b
+        _hipL_rise_px = tl_b[1] - bl_b[1]  # negative (upward)
+        _hipR_run_u = (br_b[0] - tr_b[0]) / s_scale_b
+        _hipR_rise_px = tr_b[1] - br_b[1]
+        for i in range(1, _n_hip_purl_n + 1):
+            _dx_u = i * _hip_step_n_u
+            _dx_px = _dx_u * s_scale_b
+            pxN = bl_b[0] + _dx_px
+            _t_N = min(1.0, _dx_u / _hipL_run_u) if _hipL_run_u > 0 else 1.0
+            pyN = bl_b[1] + _t_N * _hipL_rise_px
+            s += (f'<g transform="translate({pxN:.1f},{pyN:.1f}) '
+                  f'rotate({-hip_pitch_n:.1f})">'
+                  f'<rect x="{-_purlin_w_px_b/2:.1f}" y="{-_purlin_d_px_b:.1f}" '
+                  f'width="{_purlin_w_px_b:.1f}" height="{_purlin_d_px_b:.1f}" '
+                  f'fill="{purlin_fill_sec}" stroke="{purlin_stroke_sec}" '
+                  f'stroke-width="0.6"/></g>\n')
+        for i in range(1, _n_hip_purl_s + 1):
+            _dx_u = i * _hip_step_s_u
+            _dx_px = _dx_u * s_scale_b
+            pxS = br_b[0] - _dx_px
+            _t_S = min(1.0, _dx_u / _hipR_run_u) if _hipR_run_u > 0 else 1.0
+            pyS = br_b[1] + _t_S * _hipR_rise_px
+            s += (f'<g transform="translate({pxS:.1f},{pyS:.1f}) '
+                  f'rotate({hip_pitch_s:.1f})">'
+                  f'<rect x="{-_purlin_w_px_b/2:.1f}" y="{-_purlin_d_px_b:.1f}" '
+                  f'width="{_purlin_w_px_b:.1f}" height="{_purlin_d_px_b:.1f}" '
+                  f'fill="{purlin_fill_sec}" stroke="{purlin_stroke_sec}" '
+                  f'stroke-width="0.6"/></g>\n')
+
         # Overlay truss LOCATIONS: each truss appears as a vertical line from
         # ridge line down to eave (bottom-chord) level, at its longitudinal
         # position within the ridge zone.
@@ -7313,17 +7841,35 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                 return bl[0] + (wy - world_start) / (world_end - world_start) * (br[0] - bl[0])
             truss_stroke = '#8b0000'
             ring_stroke_sec = '#1e5aa6'
+            ridge_stroke_sec = '#5a3a17'
+            ridge_fill_sec = '#a6764a'
             truss_svg_xs = [_world_to_sx(wy) for wy in truss_y_positions]
             # Wall-top y level in svg coords (bottom-chord line for trusses,
             # ring beam runs horizontally across at this level).
             _wall_top_svg_y = baseline_y - wall_top_u * s_scale
+            # Ridge beam sits at the roof peak; its bottom is where the
+            # truss peaks meet it.
+            _ridge_bot_svg_y = t_y + ridge_depth_u * s_scale
+
+            # ---- Central ridge beam along the top of the trapezoid ----
+            # In Section B-B the ridge beam is seen in side profile: it runs
+            # the full length of the ridge (tl → tr) with depth = ridge_depth.
+            s += (f'<rect x="{tl[0]:.1f}" y="{t_y:.1f}" '
+                  f'width="{(tr[0] - tl[0]):.1f}" '
+                  f'height="{ridge_depth_u * s_scale:.1f}" '
+                  f'fill="{ridge_fill_sec}" stroke="{ridge_stroke_sec}" '
+                  f'stroke-width="1.4"/>\n')
+            s += (f'<text x="{tl[0] + 8:.1f}" y="{t_y + ridge_depth_u * s_scale / 2 + 4:.1f}" '
+                  f'text-anchor="start" font-size="10" fill="#ffffff" '
+                  f'font-weight="700">Ridge beam '
+                  f'{ridge_size_in[0]}"×{ridge_size_in[1]}"</text>\n')
 
             # ---- Ring beam horizontal line at wall-top level ----
             # In section B-B (longitudinal), the ring beam runs from the N
-            # wall (world y = world_start + wall_inset_long) to the S wall
-            # (world y = world_end − wall_inset_long).
-            _rb_start_sx = _world_to_sx(world_start + wall_inset_long)
-            _rb_end_sx = _world_to_sx(world_end - wall_inset_long)
+            # wall (world y = world_start + wall_inset_long_n) to the S wall
+            # (world y = world_end − wall_inset_long_s).
+            _rb_start_sx = _world_to_sx(world_start + wall_inset_long_n)
+            _rb_end_sx = _world_to_sx(world_end - wall_inset_long_s)
             s += (f'<line x1="{_rb_start_sx:.1f}" y1="{_wall_top_svg_y:.1f}" '
                   f'x2="{_rb_end_sx:.1f}" y2="{_wall_top_svg_y:.1f}" '
                   f'stroke="{ring_stroke_sec}" stroke-width="2.6" '
@@ -7333,15 +7879,16 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                   f'text-anchor="start" font-size="10" fill="{ring_stroke_sec}" '
                   f'font-weight="600">Ring beam</text>\n')
 
-            # Draw vertical truss markers (from ridge line down to WALL TOP,
-            # not eave — the truss bottom chord sits on the ring beam).
+            # Draw vertical truss markers from the RIDGE BEAM BOTTOM down to
+            # wall-top (truss peak meets ridge underside, bottom chord meets
+            # the ring beam).
             for i, sx in enumerate(truss_svg_xs):
-                s += (f'<line x1="{sx:.1f}" y1="{t_y:.1f}" '
+                s += (f'<line x1="{sx:.1f}" y1="{_ridge_bot_svg_y:.1f}" '
                       f'x2="{sx:.1f}" y2="{_wall_top_svg_y:.1f}" '
                       f'stroke="{truss_stroke}" stroke-width="2.0" '
                       f'opacity="0.85"/>\n')
-                # Dot at ridge (peak) and wall-top (bottom-chord)
-                s += (f'<circle cx="{sx:.1f}" cy="{t_y:.1f}" r="2.8" '
+                # Dot at peak (below ridge) and wall-top (bottom-chord)
+                s += (f'<circle cx="{sx:.1f}" cy="{_ridge_bot_svg_y:.1f}" r="2.8" '
                       f'fill="{truss_stroke}"/>\n')
                 s += (f'<circle cx="{sx:.1f}" cy="{_wall_top_svg_y:.1f}" r="2.8" '
                       f'fill="{truss_stroke}"/>\n')
@@ -7350,15 +7897,15 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                       f'text-anchor="middle" font-size="10" font-weight="700" '
                       f'fill="{truss_stroke}">T{i+1}</text>\n')
 
-            # Truss rise dimension (from ring beam to ridge peak)
+            # Truss rise dimension (from ring beam up to ridge beam bottom)
             _rise_dim_x = truss_svg_xs[-1] + 20
-            s += (f'<line x1="{_rise_dim_x:.1f}" y1="{t_y:.1f}" '
+            s += (f'<line x1="{_rise_dim_x:.1f}" y1="{_ridge_bot_svg_y:.1f}" '
                   f'x2="{_rise_dim_x:.1f}" y2="{_wall_top_svg_y:.1f}" '
                   f'stroke="#0066cc" stroke-width="1" '
                   f'marker-start="url(#arr)" marker-end="url(#arr)"/>\n')
                   # Extension lines from ridge and wall-top to the dim
             s += (f'<text x="{_rise_dim_x + 4:.1f}" '
-                  f'y="{(t_y + _wall_top_svg_y) / 2 + 4:.1f}" '
+                  f'y="{(_ridge_bot_svg_y + _wall_top_svg_y) / 2 + 4:.1f}" '
                   f'text-anchor="start" font-size="10" fill="#0066cc">'
                   f'rise {dim_text(truss_king_post_len)}</text>\n')
             # Wall-top-above-eave dim
@@ -7392,6 +7939,112 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                     s += (f'<text x="{(x1+x2)/2:.1f}" y="{dim_y - 4:.1f}" '
                           f'text-anchor="middle" font-size="10" fill="{blue}">'
                           f'{dim_text(_spacing_u)}</text>\n')
+
+            # ---- House wall parapet upstands aligned with the ring beam ----
+            # Walls at ±house_long_u/2 from centre; both walls sit under the
+            # ring beam. In B-B (longitudinal cut) we see the N and S walls
+            # in true elevation.
+            wall_fill_b = '#eeeeee'
+            wall_stroke_b = '#666'
+            _wall_thk_u_b = 8.0 / IN_PER_UNIT
+            _wall_thk_px_b = _wall_thk_u_b * s_scale
+            _wall_N_cx = _world_to_sx(world_start + wall_inset_long_n)
+            _wall_S_cx = _world_to_sx(world_end - wall_inset_long_s)
+            for _wcx in (_wall_N_cx, _wall_S_cx):
+                s += (f'<rect x="{_wcx - _wall_thk_px_b/2:.1f}" '
+                      f'y="{_wall_top_svg_y:.1f}" '
+                      f'width="{_wall_thk_px_b:.1f}" '
+                      f'height="{baseline_y - _wall_top_svg_y:.1f}" '
+                      f'fill="{wall_fill_b}" stroke="{wall_stroke_b}" '
+                      f'stroke-width="0.9"/>\n')
+            s += (f'<text x="{_wall_N_cx:.1f}" y="{baseline_y + 12:.1f}" '
+                  f'text-anchor="middle" font-size="10" fill="{wall_stroke_b}" '
+                  f'font-weight="600">N wall</text>\n')
+            s += (f'<text x="{_wall_S_cx:.1f}" y="{baseline_y + 12:.1f}" '
+                  f'text-anchor="middle" font-size="10" fill="{wall_stroke_b}" '
+                  f'font-weight="600">S wall</text>\n')
+
+            # ---- Base corner angles (drawn ON TOP of the walls) ----
+            # section_panel_generic was called with skip_base_corners=True
+            # so the labels can be drawn here in SVG source order AFTER
+            # the wall rectangles, making them visible on top.
+            s += (f'<text x="{bl[0] + 8}" y="{baseline_y - 6}" '
+                  f'text-anchor="start" font-size="11" fill="#333">'
+                  f'{_pitch_L:.1f}°</text>\n')
+            s += (f'<text x="{br[0] - 8}" y="{baseline_y - 6}" '
+                  f'text-anchor="end" font-size="11" fill="#333">'
+                  f'{_pitch_R:.1f}°</text>\n')
+
+            # ---- Truss position chain (wall-relative) + overhang dims ----
+            # Main chain measures from N wall → T1 → T2 → T3 → S wall (so
+            # spacings can be used directly for setting out trusses on the
+            # ring beam). Below that, two small overhang dims mark the
+            # roof extension past each wall.
+            _pos_dim_y = baseline_y + 62
+            _n_wall_world = world_start + wall_inset_long_n
+            _s_wall_world = world_end - wall_inset_long_s
+            _pos_pts = ([_wall_N_cx] + list(truss_svg_xs) + [_wall_S_cx])
+            _pos_worlds = ([_n_wall_world] + list(truss_y_positions)
+                           + [_s_wall_world])
+            # Extension ticks down to the dim level (from wall_top)
+            for _px in _pos_pts:
+                s += (f'<line x1="{_px:.1f}" y1="{baseline_y + 40:.1f}" '
+                      f'x2="{_px:.1f}" y2="{_pos_dim_y + 4:.1f}" '
+                      f'stroke="#0066cc" stroke-width="0.5" '
+                      f'stroke-dasharray="2,2"/>\n')
+            for _i in range(len(_pos_pts) - 1):
+                _x1 = _pos_pts[_i]; _x2 = _pos_pts[_i + 1]
+                _dist_u = abs(_pos_worlds[_i + 1] - _pos_worlds[_i])
+                s += (f'<line x1="{_x1:.1f}" y1="{_pos_dim_y:.1f}" '
+                      f'x2="{_x2:.1f}" y2="{_pos_dim_y:.1f}" '
+                      f'stroke="#0066cc" stroke-width="1" '
+                      f'marker-start="url(#arr)" marker-end="url(#arr)"/>\n')
+                s += (f'<text x="{(_x1 + _x2) / 2:.1f}" y="{_pos_dim_y - 4:.1f}" '
+                      f'text-anchor="middle" font-size="10" fill="#0066cc">'
+                      f'{dim_text(_dist_u)}</text>\n')
+            _lbls = ['N wall'] + [f'T{i+1}' for i in range(truss_count)] + ['S wall']
+            for _px, _lbl in zip(_pos_pts, _lbls):
+                s += (f'<text x="{_px:.1f}" y="{_pos_dim_y + 16:.1f}" '
+                      f'text-anchor="middle" font-size="10" '
+                      f'fill="#0066cc">{_lbl}</text>\n')
+
+            # ---- Overhang dims (roof extension past each wall) ----
+            _ovh_dim_y = _pos_dim_y + 34
+            _oh_stroke = '#8B4513'
+            # N overhang: N eave → N wall
+            s += (f'<line x1="{bl[0]:.1f}" y1="{baseline_y + 40:.1f}" '
+                  f'x2="{bl[0]:.1f}" y2="{_ovh_dim_y + 4:.1f}" '
+                  f'stroke="{_oh_stroke}" stroke-width="0.5" '
+                  f'stroke-dasharray="2,2"/>\n')
+            s += (f'<line x1="{_wall_N_cx:.1f}" y1="{_pos_dim_y + 20:.1f}" '
+                  f'x2="{_wall_N_cx:.1f}" y2="{_ovh_dim_y + 4:.1f}" '
+                  f'stroke="{_oh_stroke}" stroke-width="0.5" '
+                  f'stroke-dasharray="2,2"/>\n')
+            s += (f'<line x1="{bl[0]:.1f}" y1="{_ovh_dim_y:.1f}" '
+                  f'x2="{_wall_N_cx:.1f}" y2="{_ovh_dim_y:.1f}" '
+                  f'stroke="{_oh_stroke}" stroke-width="1" '
+                  f'marker-start="url(#arr)" marker-end="url(#arr)"/>\n')
+            s += (f'<text x="{(bl[0] + _wall_N_cx) / 2:.1f}" '
+                  f'y="{_ovh_dim_y - 4:.1f}" text-anchor="middle" '
+                  f'font-size="10" fill="{_oh_stroke}">'
+                  f'N overhang {dim_text(wall_inset_long_n)}</text>\n')
+            # S overhang: S wall → S eave
+            s += (f'<line x1="{br[0]:.1f}" y1="{baseline_y + 40:.1f}" '
+                  f'x2="{br[0]:.1f}" y2="{_ovh_dim_y + 4:.1f}" '
+                  f'stroke="{_oh_stroke}" stroke-width="0.5" '
+                  f'stroke-dasharray="2,2"/>\n')
+            s += (f'<line x1="{_wall_S_cx:.1f}" y1="{_pos_dim_y + 20:.1f}" '
+                  f'x2="{_wall_S_cx:.1f}" y2="{_ovh_dim_y + 4:.1f}" '
+                  f'stroke="{_oh_stroke}" stroke-width="0.5" '
+                  f'stroke-dasharray="2,2"/>\n')
+            s += (f'<line x1="{_wall_S_cx:.1f}" y1="{_ovh_dim_y:.1f}" '
+                  f'x2="{br[0]:.1f}" y2="{_ovh_dim_y:.1f}" '
+                  f'stroke="{_oh_stroke}" stroke-width="1" '
+                  f'marker-start="url(#arr)" marker-end="url(#arr)"/>\n')
+            s += (f'<text x="{(_wall_S_cx + br[0]) / 2:.1f}" '
+                  f'y="{_ovh_dim_y - 4:.1f}" text-anchor="middle" '
+                  f'font-size="10" fill="{_oh_stroke}">'
+                  f'S overhang {dim_text(wall_inset_long_s)}</text>\n')
 
             # Note about truss count in top-right corner (below the pitch label)
             s += (f'<text x="{x0 + w_p - 12:.1f}" y="{y0 + 36 + 32:.1f}" '
@@ -7478,19 +8131,34 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     svg += section_bb_panel(right_col_x, persp_y0 + section_h + row_gap,
                             panel_w, section_h)
 
-    # Row 2: one MAIN slope + one HIP END. The other main and hip-end panels are
-    # geometrically identical mirrors — omit them and note the pairing in the title.
+    # Row 2: one MAIN slope + N hip. Main slopes W/E are still identical.
+    # For asymmetric roofs the N and S hip ends differ — S is drawn on a
+    # new row 3 below.
     grid_y0 = persp_y0 + persp_row_h + row_gap
     main_repr = dict(slopes[0])   # W (or N for axis='x')
-    hip_repr = dict(slopes[2])    # N (or W for axis='x')
+    hip_n_repr = dict(slopes[2])  # N (or W for axis='x')
+    hip_s_repr = dict(slopes[3])  # S (or E for axis='x')
     main_repr['title'] = (f'MAIN SLOPES — {slopes[0]["code"]} &amp; {slopes[1]["code"]} '
                           '(trapezoid, identical pair)')
-    hip_repr['title'] = (f'HIP ENDS — {slopes[2]["code"]} &amp; {slopes[3]["code"]} '
-                         '(triangle, identical pair)')
+    # Asymmetric-aware titles
+    _hips_are_identical = abs(hip_n_repr['pitch'] - hip_s_repr['pitch']) < 0.1
+    if _hips_are_identical:
+        hip_n_repr['title'] = (f'HIP ENDS — {slopes[2]["code"]} &amp; {slopes[3]["code"]} '
+                               '(triangle, identical pair)')
+    else:
+        hip_n_repr['title'] = (f'HIP END — {slopes[2]["code"]} '
+                               f'(triangle, {hip_n_repr["pitch"]:.1f}°)')
+        hip_s_repr['title'] = (f'HIP END — {slopes[3]["code"]} '
+                               f'(triangle, {hip_s_repr["pitch"]:.1f}°)')
     svg += slope_panel(outer_pad, grid_y0, main_repr)
-    svg += slope_panel(outer_pad + panel_w + col_gap, grid_y0, hip_repr)
-
-    framing_y0 = grid_y0 + panel_h + row_gap
+    svg += slope_panel(outer_pad + panel_w + col_gap, grid_y0, hip_n_repr)
+    # Row 2b: S hip panel when hips are asymmetric
+    if not _hips_are_identical:
+        grid_y0_s = grid_y0 + panel_h + row_gap
+        svg += slope_panel(outer_pad + panel_w + col_gap, grid_y0_s, hip_s_repr)
+        framing_y0 = grid_y0_s + panel_h + row_gap
+    else:
+        framing_y0 = grid_y0 + panel_h + row_gap
     svg += framing_detail_panel(outer_pad, framing_y0)
 
     # ---- Embed hand-maintained eave cross-section ----
