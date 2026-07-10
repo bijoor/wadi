@@ -35,6 +35,26 @@ from house_config import HOUSE_CONFIG, GLOBAL_CONFIG
 # BUILD FUNCTIONS
 # ============================================================================
 
+def build_ground():
+    """Build a large flat ground plane so the model doesn't look like it
+    is hanging in mid-air. Sized ~2× the plot dimensions and centred on
+    the plinth."""
+    _before = _snapshot_object_names()
+    site = HOUSE_CONFIG.get('site', {})
+    plinth = HOUSE_CONFIG['plinth']
+    # Base dimensions from the plot; fall back to the plinth footprint.
+    plot_w = float(site.get('plot_width', plinth['width']))
+    plot_l = float(site.get('plot_length', plinth['length']))
+    # 2× the plot each way, giving a comfortable border around the house.
+    ground_w = plot_w * 2.0
+    ground_l = plot_l * 2.0
+    center_x = plinth['x'] + plinth['width'] / 2.0
+    center_y = plinth['y'] + plinth['length'] / 2.0
+    create_ground_plane(center_x, center_y, ground_w, ground_l,
+                        thickness=1.0, material_name='ground')
+    _tag_new_objects(_before, 'ground')
+
+
 def build_plinth():
     """Build the foundation plinth"""
     _before = _snapshot_object_names()
@@ -47,8 +67,7 @@ def build_plinth():
         height=config.get('height'),
         material_name='plinth'
     )
-    # Plinth belongs to the ground-floor layer for viewer grouping.
-    _tag_new_objects(_before, 'f0')
+    _tag_new_objects(_before, 'plinth')
 
 def _tag_new_objects(before_names: set, layer: str):
     """Set a `layer` custom property on every Blender mesh created since
@@ -76,16 +95,43 @@ def _snapshot_object_names():
     return {o.name for o in _bpy.data.objects if o.type == 'MESH'}
 
 
+def _resolve_layer(obj: dict, floor_num: int) -> str:
+    """Return the fine-grained sub-layer name for a single config
+    object. Pillars are lifted out of their floor (users often want to
+    isolate the column layout), beams on the first floor split into two
+    buckets — structural beams under the slab vs. ring beams sitting on
+    top of the walls (identified by a positive `z_offset_ft`), and the
+    remaining objects follow their floor number."""
+    obj_type = obj.get('type')
+    if obj_type == 'pillar':
+        return 'pillars'
+    if floor_num == 0:
+        return 'f0'
+    if floor_num == 1:
+        if obj_type == 'beam':
+            return 'f1_beam' if float(obj.get('z_offset_ft', 0.0)) > 0 else 'f1_slab'
+        if obj_type == 'floor_slab':
+            return 'f1_slab'
+        return 'f1'
+    # Floor 2 (loft). Roof shell + frame handlers set their own tags
+    # inside their creation sites, and the helper below skips objects
+    # that already have one.
+    return 'loft'
+
+
 def build_floor(floor_config: dict):
     """Build a single floor with all its objects using unified structure"""
     floor_num = floor_config['floor_number']
-    _before = _snapshot_object_names()
+    _floor_before = _snapshot_object_names()
 
     # Support both old and new config formats
     if 'objects' in floor_config:
         # New unified object-based structure
         for obj in floor_config['objects']:
             obj_type = obj.get('type')
+            # Snapshot before each config object so we can attribute the
+            # freshly created Blender meshes to a fine-grained sub-layer.
+            _obj_before = _snapshot_object_names()
 
             if obj_type == 'floor_slab':
                 create_floor_slab(
@@ -293,6 +339,13 @@ def build_floor(floor_config: dict):
             else:
                 print(f"Warning: Unknown object type '{obj_type}' - skipping")
 
+            # Tag every mesh created for this config object with a
+            # fine-grained sub-layer (pillars, f0, f1_slab, f1, f1_beam,
+            # loft, …). The helper skips meshes that already carry a
+            # `layer` custom property, so create_hip_roof + the frame
+            # code's own tags survive.
+            _tag_new_objects(_obj_before, _resolve_layer(obj, floor_num))
+
         # After creating all objects, apply boolean operations for doors and windows
         apply_openings_to_walls(floor_num)
 
@@ -333,16 +386,11 @@ def build_floor(floor_config: dict):
                     material_name=wall.get('material', 'walls')
                 )
 
-    # Attach a layer tag to every mesh created for this floor. Floor 0 →
-    # 'f0', floor 1 → 'f1', floor 2 (the loft slab etc.) → 'loft'. Frame
-    # members and the hip-roof shell tag themselves at creation, so they
-    # are skipped here by the "already tagged" check inside the helper.
-    if floor_num == 0:
-        _tag_new_objects(_before, 'f0')
-    elif floor_num == 1:
-        _tag_new_objects(_before, 'f1')
-    else:
-        _tag_new_objects(_before, 'loft')
+    # Catch-all: anything the loop didn't tag (backward-compat schema,
+    # etc.) is tagged with a floor-wide default.
+    _default = {0: 'f0', 1: 'f1'}.get(floor_num, 'loft')
+    _tag_new_objects(_floor_before, _default)
+
 
 def build_house(use_explosion=False):
     """Build the complete house from configuration
@@ -363,8 +411,9 @@ def build_house(use_explosion=False):
     # Initialize scene
     init_scene()
     
-    # Build plinth
+    # Build ground plane + plinth
     print("\n--- Building Foundation ---")
+    build_ground()
     build_plinth()
     
     # Build each floor (which now includes roofs as objects)

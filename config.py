@@ -40,6 +40,7 @@ GLOBAL_CONFIG = {
 
     # Materials & Colors
     'colors': {
+        'ground': (0.36, 0.45, 0.28, 1.0),     # Muted grass green — outdoor ground plane
         'walls': (0.55, 0.25, 0.15, 1.0),      # Laterite: reddish-brown
         'floor': (0.6, 0.55, 0.5, 1.0),
         'plinth': (0.5, 0.45, 0.4, 1.0),

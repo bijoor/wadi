@@ -50,6 +50,7 @@ from blender_3d import (
     create_gable_roof,
     create_hip_roof,
     create_roof_frame_3d,
+    create_ground_plane,
 
     # Scene management
     clear_scene,
@@ -127,6 +128,7 @@ __all__ = [
     'create_gable_roof',
     'create_hip_roof',
     'create_roof_frame_3d',
+    'create_ground_plane',
     'clear_scene',
     'setup_camera_and_lighting',
     'configure_render',

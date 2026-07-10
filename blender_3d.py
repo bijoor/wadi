@@ -211,6 +211,33 @@ def create_box(name: str, location: Tuple[float, float, float],
 # MAIN CONSTRUCTION FUNCTIONS
 # ============================================================================
 
+def create_ground_plane(center_x: float, center_y: float,
+                        width: float, length: float,
+                        thickness: float = 1.0,
+                        material_name: str = 'ground') -> bpy.types.Object:
+    """
+    Create a large flat ground plane so the house doesn't appear to
+    float in mid-air. Placed just below Z=0 (top surface at the plinth
+    base) so the plinth sits cleanly on top.
+
+    Args:
+        center_x, center_y: Centre of the plane in input units (Inkscape coords)
+        width: X extent (input units)
+        length: Y extent (input units)
+        thickness: Vertical thickness (input units). A tiny non-zero
+                   value avoids Z-fighting with the plinth.
+        material_name: Material to apply.
+    """
+    # Position: centre at (cx, cy). Top surface at Z=0; centre at
+    # Z = -thickness/2 so the top edge sits at ground level.
+    location = inkscape_to_blender(center_x, center_y, -thickness / 2.0)
+    dimensions = (to_meters(width), to_meters(length), to_meters(thickness))
+    ground = create_box('Ground', location, dimensions, material_name, 'Foundation')
+    print(f"✓ Created ground plane: {width}×{length} units at "
+          f"({center_x:.1f}, {center_y:.1f})", flush=True)
+    return ground
+
+
 def create_plinth(x: float, y: float, width: float, length: float,
                   height: Optional[float] = None,
                   material_name: str = 'plinth') -> bpy.types.Object:
@@ -1475,6 +1502,17 @@ def create_roof_frame_3d(members, frame_z_lift: float = 0.0,
     import mathutils
     import math
 
+    # Sub-layers of the roof frame — the "spine" (ring beam, ridges,
+    # trusses, hip-end beams, pani patti at the eaves) vs. the roof-
+    # surface members (rafters and purlins). Tagged separately so the
+    # web viewer can toggle each independently.
+    _SPINE_KINDS = {
+        'ring_beam', 'central_ridge', 'hip_ridge', 'hip_end_beam',
+        'truss_bottom_chord', 'truss_top_chord', 'truss_king_post',
+        'truss_diagonal', 'truss_vertical',
+        'pani_patti',
+    }
+
     IN_PER_UNIT = 12.0 / 10.0
 
     # ---- Shared material: dark grey metallic HSS steel ----
@@ -1584,10 +1622,12 @@ def create_roof_frame_3d(members, frame_z_lift: float = 0.0,
         else:
             obj.data.materials[0] = mat
 
-        # Tag as the metal-frame layer for the web viewer's toggle panel
-        # (surfaces on the glTF node as `extras.layer`, exposed as
-        # `object.userData.layer` in three.js).
-        obj['layer'] = 'frame'
+        # Tag with a frame sub-layer for the web viewer's toggle panel.
+        # Spine members (ring beam, ridges, trusses, hip-end beams) go
+        # to 'frame_spine'; the rest (rafters, purlins, pani patti) go
+        # to 'frame_surface'. Surfaces as `extras.layer` on the glTF
+        # node, exposed as `object.userData.layer` in three.js.
+        obj['layer'] = 'frame_spine' if m.get('kind') in _SPINE_KINDS else 'frame_surface'
 
         # Move into target collection (unlink from wherever it landed)
         for c in list(obj.users_collection):

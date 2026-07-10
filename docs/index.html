@@ -156,6 +156,24 @@
             width: 12px; height: 12px; border-radius: 3px;
             border: 1px solid rgba(0,0,0,0.15);
         }
+        /* Mobile-only toggle for the layers panel — mirrors .settings-toggle
+           but sits on the top-LEFT and is hidden on desktop. */
+        .layers-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.5rem;
+            border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            cursor: pointer;
+            z-index: 11;
+            width: 42px; height: 42px;
+            display: none;                  /* shown only on narrow viewports */
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
         .setting-item {
             margin-bottom: 1rem;
         }
@@ -481,6 +499,104 @@
                 display: none !important;
             }
         }
+
+        /* ---- Mobile layout (narrow viewports / phones) ------------------ */
+        @media (max-width: 640px) {
+            /* Compact header — smaller title, hide the subtitle to free
+               vertical space for the 3-D viewer. */
+            header {
+                padding: 0.5rem 0.75rem;
+            }
+            h1 {
+                font-size: 1.1rem;
+            }
+            .subtitle {
+                display: none;
+            }
+            /* Tabs pinned to the bottom of the viewport as a footer so
+               the top of the screen is title only and the 3-D viewer
+               gets the full middle band. */
+            .tabs {
+                position: fixed;
+                left: 0; right: 0; bottom: 0;
+                margin: 0 !important;
+                border-radius: 0;
+                border-top: 1px solid rgba(0,0,0,0.08);
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+                justify-content: space-around;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                z-index: 50;
+                padding: 0.25rem 0.25rem calc(0.25rem + env(safe-area-inset-bottom, 0px));
+            }
+            .tabs::-webkit-scrollbar { display: none; }
+            .tab {
+                padding: 0.6rem 0.75rem;
+                font-size: 1.35rem;   /* larger emojis, easier tap targets */
+                flex: 0 0 auto;
+                border-bottom: none;
+                border-top: 3px solid transparent;
+            }
+            .tab.active {
+                border-bottom-color: transparent;
+                border-top-color: #667eea;
+            }
+            .tab-label {
+                display: none;       /* icon-only tabs on mobile */
+            }
+
+            /* Layer panel becomes a slide-in drawer triggered by the
+               floating 📚 button on the top-left. */
+            .layers-panel {
+                display: none;
+                top: 72px;
+                left: 12px;
+                right: auto;
+                max-width: 220px;
+                /* Leave room for the fixed footer + safe area. */
+                max-height: calc(100vh - 72px - 80px - env(safe-area-inset-bottom, 0px));
+                overflow-y: auto;
+            }
+            .layers-panel.active {
+                display: block;
+            }
+            .layers-toggle {
+                display: flex;
+                top: 12px;
+                left: 12px;
+                width: 40px; height: 40px;
+            }
+
+            /* Shrink the settings gear so it doesn't crowd the model */
+            .settings-toggle {
+                top: 12px;
+                right: 12px;
+                width: 40px; height: 40px;
+                padding: 0.4rem;
+                font-size: 1.1rem;
+            }
+            .settings-panel {
+                top: 62px;
+                right: 12px;
+                min-width: 220px;
+                max-width: calc(100vw - 24px);
+                padding: 1rem;
+            }
+
+            /* Camera-preset bar: tighter, plus lifted above the fixed
+               footer that now holds the tab icons. */
+            .controls {
+                padding: 0.5rem 0.75rem;
+                gap: 0.5rem;
+                border-radius: 24px;
+                bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+            }
+            .controls button {
+                padding: 0.35rem 0.7rem;
+                font-size: 0.8rem;
+            }
+        }
     </style>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
 </head>
@@ -489,13 +605,13 @@
         <h1>🏠 Konkan House</h1>
         <div class="subtitle">3D Interactive Model Viewer</div>
         <div class="tabs" style="margin-top: 1rem;">
-            <button class="tab active" onclick="switchView('3d')">🏗️ 3D Model</button>
-            <button class="tab" onclick="switchView('3d-exploded')">💥 Exploded View</button>
-            <button class="tab" onclick="switchView('plans')">📐 Floor Plans</button>
-            <button class="tab" onclick="switchView('all-plans')">📊 All Floor Plans</button>
-            <button class="tab" onclick="switchView('elevations')">📏 Elevations</button>
-            <button class="tab" onclick="switchView('all-elevations')">🏛️ All Elevations</button>
-            <button class="tab" onclick="switchView('perspectives')">🎨 Perspective Views</button>
+            <button class="tab active" onclick="switchView('3d')" title="3D Model">🏗️<span class="tab-label"> 3D Model</span></button>
+            <button class="tab" onclick="switchView('3d-exploded')" title="Exploded View">💥<span class="tab-label"> Exploded View</span></button>
+            <button class="tab" onclick="switchView('plans')" title="Floor Plans">📐<span class="tab-label"> Floor Plans</span></button>
+            <button class="tab" onclick="switchView('all-plans')" title="All Floor Plans">📊<span class="tab-label"> All Floor Plans</span></button>
+            <button class="tab" onclick="switchView('elevations')" title="Elevations">📏<span class="tab-label"> Elevations</span></button>
+            <button class="tab" onclick="switchView('all-elevations')" title="All Elevations">🏛️<span class="tab-label"> All Elevations</span></button>
+            <button class="tab" onclick="switchView('perspectives')" title="Perspective Views">🎨<span class="tab-label"> Perspective Views</span></button>
         </div>
     </header>
 
@@ -556,16 +672,30 @@
             </div>
         </div>
 
+        <div class="layers-toggle" onclick="toggleLayers('layers-panel')" title="Show layers">📚</div>
+
         <div class="layers-panel" id="layers-panel">
             <h4>Show layers</h4>
             <label><span class="swatch" style="background:#e88968"></span>
                 <input type="checkbox" data-layer="loft" checked> Roof shell</label>
             <label><span class="swatch" style="background:#4b515c"></span>
-                <input type="checkbox" data-layer="frame" checked> Roof frame</label>
+                <input type="checkbox" data-layer="frame_surface" checked> Purlins &amp; rafters</label>
+            <label><span class="swatch" style="background:#8a4a1a"></span>
+                <input type="checkbox" data-layer="frame_spine" checked> Ridges &amp; trusses</label>
+            <label><span class="swatch" style="background:#6b4423"></span>
+                <input type="checkbox" data-layer="f1_beam" checked> First floor top beams</label>
             <label><span class="swatch" style="background:#f5c9a0"></span>
-                <input type="checkbox" data-layer="f1" checked> First floor</label>
+                <input type="checkbox" data-layer="f1" checked> First floor walls</label>
+            <label><span class="swatch" style="background:#b8b8b8"></span>
+                <input type="checkbox" data-layer="f1_slab" checked> First floor slab</label>
             <label><span class="swatch" style="background:#f5c9a0"></span>
-                <input type="checkbox" data-layer="f0" checked> Ground floor</label>
+                <input type="checkbox" data-layer="f0" checked> Ground floor walls</label>
+            <label><span class="swatch" style="background:#ffffff;border:1px solid rgba(0,0,0,0.3)"></span>
+                <input type="checkbox" data-layer="pillars" checked> Pillars</label>
+            <label><span class="swatch" style="background:#808080"></span>
+                <input type="checkbox" data-layer="plinth" checked> Plinth</label>
+            <label><span class="swatch" style="background:#5c7346"></span>
+                <input type="checkbox" data-layer="ground" checked> Ground</label>
         </div>
 
         <model-viewer
@@ -648,16 +778,30 @@
             </div>
         </div>
 
+        <div class="layers-toggle" onclick="toggleLayers('layers-panel-exploded')" title="Show layers">📚</div>
+
         <div class="layers-panel" id="layers-panel-exploded">
             <h4>Show layers</h4>
             <label><span class="swatch" style="background:#e88968"></span>
                 <input type="checkbox" data-layer="loft" checked> Roof shell</label>
             <label><span class="swatch" style="background:#4b515c"></span>
-                <input type="checkbox" data-layer="frame" checked> Roof frame</label>
+                <input type="checkbox" data-layer="frame_surface" checked> Purlins &amp; rafters</label>
+            <label><span class="swatch" style="background:#8a4a1a"></span>
+                <input type="checkbox" data-layer="frame_spine" checked> Ridges &amp; trusses</label>
+            <label><span class="swatch" style="background:#6b4423"></span>
+                <input type="checkbox" data-layer="f1_beam" checked> First floor top beams</label>
             <label><span class="swatch" style="background:#f5c9a0"></span>
-                <input type="checkbox" data-layer="f1" checked> First floor</label>
+                <input type="checkbox" data-layer="f1" checked> First floor walls</label>
+            <label><span class="swatch" style="background:#b8b8b8"></span>
+                <input type="checkbox" data-layer="f1_slab" checked> First floor slab</label>
             <label><span class="swatch" style="background:#f5c9a0"></span>
-                <input type="checkbox" data-layer="f0" checked> Ground floor</label>
+                <input type="checkbox" data-layer="f0" checked> Ground floor walls</label>
+            <label><span class="swatch" style="background:#ffffff;border:1px solid rgba(0,0,0,0.3)"></span>
+                <input type="checkbox" data-layer="pillars" checked> Pillars</label>
+            <label><span class="swatch" style="background:#808080"></span>
+                <input type="checkbox" data-layer="plinth" checked> Plinth</label>
+            <label><span class="swatch" style="background:#5c7346"></span>
+                <input type="checkbox" data-layer="ground" checked> Ground</label>
         </div>
 
         <model-viewer
@@ -947,6 +1091,26 @@
             const panel = document.getElementById('settings-panel');
             panel.classList.toggle('active');
         }
+
+        // Show/hide the layers drawer on mobile.
+        function toggleLayers(panelId) {
+            const panel = document.getElementById(panelId);
+            if (panel) panel.classList.toggle('active');
+        }
+
+        // Close open mobile drawers when the user taps outside them.
+        document.addEventListener('click', (e) => {
+            const inLayers = e.target.closest('.layers-panel, .layers-toggle');
+            if (!inLayers) {
+                document.querySelectorAll('.layers-panel.active')
+                    .forEach(p => p.classList.remove('active'));
+            }
+            const inSettings = e.target.closest('.settings-panel, .settings-toggle');
+            if (!inSettings) {
+                document.querySelectorAll('.settings-panel.active')
+                    .forEach(p => p.classList.remove('active'));
+            }
+        });
 
         // Update lighting controls
         function updateExposure(value) {
@@ -1613,7 +1777,13 @@
             const panel = document.getElementById(panelId);
             if (!panel) return;
             const inputs = panel.querySelectorAll('input[type="checkbox"]');
-            const groups = { f0: [], f1: [], loft: [], frame: [] };
+            const groups = {
+                ground: [], plinth: [], pillars: [],
+                f0: [],
+                f1_slab: [], f1: [], f1_beam: [],
+                frame_spine: [], frame_surface: [],
+                loft: [],
+            };
 
             const apply = (evt) => {
                 let changed = null;
@@ -1665,7 +1835,11 @@
                     // Fallback for untagged GLBs.
                     const name = obj.name || '';
                     if (LEGACY_FRAME_PREFIXES.some(p => name.startsWith(p))) {
-                        groups.frame.push(obj);
+                        // Legacy: no sub-layer info — bucket into "spine"
+                        // as a reasonable default so users can still hide
+                        // the whole frame; regenerating the GLB will
+                        // populate the two buckets correctly.
+                        groups.frame_spine.push(obj);
                     } else if (LEGACY_LOFT_RE.test(name)) {
                         groups.loft.push(obj);
                     } else if (name) {
@@ -1689,7 +1863,8 @@
                 }
 
                 apply();  // sync to current checkbox state
-                console.log(`[${panelId}] classified — f0:${groups.f0.length} f1:${groups.f1.length} loft:${groups.loft.length} frame:${groups.frame.length}`);
+                const gc = Object.fromEntries(Object.entries(groups).map(([k, v]) => [k, v.length]));
+                console.log(`[${panelId}] classified —`, gc);
                 // Expose groups + scene globally for manual console debugging.
                 window[`_${panelId.replace(/-/g, '_')}`] = { groups, scene };
                 return true;
