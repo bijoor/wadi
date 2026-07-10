@@ -38,20 +38,11 @@ GLOBAL_CONFIG = {
         2: 0,                          # Default: no separation above second floor
     },                                 # If set, overrides uniform explosion_factor
 
-    # Materials & Colors
-    'colors': {
-        'ground': (0.36, 0.45, 0.28, 1.0),     # Muted grass green — outdoor ground plane
-        'walls': (0.55, 0.25, 0.15, 1.0),      # Laterite: reddish-brown
-        'floor': (0.6, 0.55, 0.5, 1.0),
-        'plinth': (0.5, 0.45, 0.4, 1.0),
-        'roof': (0.7, 0.3, 0.2, 1.0),
-        'verandah': (0.5, 0.25, 0.15, 1.0),    # Laterite
-        'living': (0.55, 0.25, 0.15, 1.0),     # Laterite
-        'kitchen': (0.55, 0.25, 0.15, 1.0),    # Laterite
-        'bathroom': (0.55, 0.25, 0.15, 1.0),   # Laterite
-        'bedroom': (0.55, 0.25, 0.15, 1.0),    # Laterite
-        'workshop': (0.55, 0.25, 0.15, 1.0),   # Laterite
-    },
+    # Materials, colours and elevation-rendering priority are house-
+    # design-specific — they reference material names and object types
+    # declared in `house_config.py`. Both dicts live there so the
+    # per-design labels can't drift out of sync with the material
+    # palette or the drawing z-order.
 
     # SVG Dimension Configuration
     'dimensions': {
@@ -73,15 +64,4 @@ GLOBAL_CONFIG = {
         'opening_text_size': 8,             # Font size for door/window dimensions
     },
 
-    # Elevation View Rendering Order Configuration
-    # When objects have the same depth coordinate, this priority determines rendering order
-    # Lower number = drawn first (appears underneath)
-    # Default order: beam < floor_slab < wall/room < pillar
-    'elevation_rendering_priority': {
-        'beam': 0,
-        'floor_slab': 1,
-        'room': 2,
-        'wall': 2,
-        'pillar': 3
-    }
 }

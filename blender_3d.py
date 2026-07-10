@@ -1502,16 +1502,10 @@ def create_roof_frame_3d(members, frame_z_lift: float = 0.0,
     import mathutils
     import math
 
-    # Sub-layers of the roof frame — the "spine" (ring beam, ridges,
-    # trusses, hip-end beams, pani patti at the eaves) vs. the roof-
-    # surface members (rafters and purlins). Tagged separately so the
-    # web viewer can toggle each independently.
-    _SPINE_KINDS = {
-        'ring_beam', 'central_ridge', 'hip_ridge', 'hip_end_beam',
-        'truss_bottom_chord', 'truss_top_chord', 'truss_king_post',
-        'truss_diagonal', 'truss_vertical',
-        'pani_patti',
-    }
+    # Which frame `kind`s go into the "ridges & trusses" bucket vs. the
+    # "purlins & rafters" bucket. Read from GLOBAL_CONFIG so the split
+    # can be adjusted centrally in config.py.
+    _SPINE_KINDS = set(GLOBAL_CONFIG.get('frame_spine_kinds', []))
 
     IN_PER_UNIT = 12.0 / 10.0
 
@@ -1850,8 +1844,19 @@ def export_to_web(filepath: str = None):
     print(f"  Format: GLB (binary glTF)", flush=True)
     print(f"  File size: {file_size:.1f} KB", flush=True)
 
-    # Check if static files exist
+    # Write docs/layers.json so the web viewer can build its checkbox
+    # panel dynamically from the same source of truth (config.py::layers).
     docs_dir = os.path.dirname(filepath)
+    layers_config = GLOBAL_CONFIG.get('layers', [])
+    if layers_config:
+        import json as _json
+        layers_json_path = os.path.join(docs_dir, 'layers.json')
+        with open(layers_json_path, 'w') as _lf:
+            _json.dump(layers_config, _lf, indent=2)
+        print(f"✓ Wrote layer manifest: {layers_json_path} "
+              f"({len(layers_config)} layers)", flush=True)
+
+    # Check if static files exist
     html_path = os.path.join(docs_dir, 'index.html')
 
     if os.path.exists(html_path):

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "loft",
+    "label": "Roof shell",
+    "color": "#e88968"
+  },
+  {
+    "id": "frame_surface",
+    "label": "Purlins & rafters",
+    "color": "#4b515c"
+  },
+  {
+    "id": "frame_spine",
+    "label": "Ridges & trusses",
+    "color": "#8a4a1a"
+  },
+  {
+    "id": "f1_beam",
+    "label": "First floor top beams",
+    "color": "#6b4423"
+  },
+  {
+    "id": "f1",
+    "label": "First floor walls",
+    "color": "#f5c9a0"
+  },
+  {
+    "id": "f1_slab",
+    "label": "First floor slab",
+    "color": "#b8b8b8"
+  },
+  {
+    "id": "f0",
+    "label": "Ground floor walls",
+    "color": "#f5c9a0"
+  },
+  {
+    "id": "pillars",
+    "label": "Pillars",
+    "color": "#ffffff"
+  },
+  {
+    "id": "plinth",
+    "label": "Plinth",
+    "color": "#808080"
+  },
+  {
+    "id": "ground",
+    "label": "Ground",
+    "color": "#5c7346"
+  }
+]

@@ -735,26 +735,7 @@
 
         <div class="layers-panel" id="layers-panel">
             <h4>Show layers</h4>
-            <label><span class="swatch" style="background:#e88968"></span>
-                <input type="checkbox" data-layer="loft" checked> Roof shell</label>
-            <label><span class="swatch" style="background:#4b515c"></span>
-                <input type="checkbox" data-layer="frame_surface" checked> Purlins &amp; rafters</label>
-            <label><span class="swatch" style="background:#8a4a1a"></span>
-                <input type="checkbox" data-layer="frame_spine" checked> Ridges &amp; trusses</label>
-            <label><span class="swatch" style="background:#6b4423"></span>
-                <input type="checkbox" data-layer="f1_beam" checked> First floor top beams</label>
-            <label><span class="swatch" style="background:#f5c9a0"></span>
-                <input type="checkbox" data-layer="f1" checked> First floor walls</label>
-            <label><span class="swatch" style="background:#b8b8b8"></span>
-                <input type="checkbox" data-layer="f1_slab" checked> First floor slab</label>
-            <label><span class="swatch" style="background:#f5c9a0"></span>
-                <input type="checkbox" data-layer="f0" checked> Ground floor walls</label>
-            <label><span class="swatch" style="background:#ffffff;border:1px solid rgba(0,0,0,0.3)"></span>
-                <input type="checkbox" data-layer="pillars" checked> Pillars</label>
-            <label><span class="swatch" style="background:#808080"></span>
-                <input type="checkbox" data-layer="plinth" checked> Plinth</label>
-            <label><span class="swatch" style="background:#5c7346"></span>
-                <input type="checkbox" data-layer="ground" checked> Ground</label>
+            <div class="layers-list"><!-- populated from layers.json --></div>
         </div>
 
         <model-viewer
@@ -841,26 +822,7 @@
 
         <div class="layers-panel" id="layers-panel-exploded">
             <h4>Show layers</h4>
-            <label><span class="swatch" style="background:#e88968"></span>
-                <input type="checkbox" data-layer="loft" checked> Roof shell</label>
-            <label><span class="swatch" style="background:#4b515c"></span>
-                <input type="checkbox" data-layer="frame_surface" checked> Purlins &amp; rafters</label>
-            <label><span class="swatch" style="background:#8a4a1a"></span>
-                <input type="checkbox" data-layer="frame_spine" checked> Ridges &amp; trusses</label>
-            <label><span class="swatch" style="background:#6b4423"></span>
-                <input type="checkbox" data-layer="f1_beam" checked> First floor top beams</label>
-            <label><span class="swatch" style="background:#f5c9a0"></span>
-                <input type="checkbox" data-layer="f1" checked> First floor walls</label>
-            <label><span class="swatch" style="background:#b8b8b8"></span>
-                <input type="checkbox" data-layer="f1_slab" checked> First floor slab</label>
-            <label><span class="swatch" style="background:#f5c9a0"></span>
-                <input type="checkbox" data-layer="f0" checked> Ground floor walls</label>
-            <label><span class="swatch" style="background:#ffffff;border:1px solid rgba(0,0,0,0.3)"></span>
-                <input type="checkbox" data-layer="pillars" checked> Pillars</label>
-            <label><span class="swatch" style="background:#808080"></span>
-                <input type="checkbox" data-layer="plinth" checked> Plinth</label>
-            <label><span class="swatch" style="background:#5c7346"></span>
-                <input type="checkbox" data-layer="ground" checked> Ground</label>
+            <div class="layers-list"><!-- populated from layers.json --></div>
         </div>
 
         <model-viewer
@@ -1835,15 +1797,26 @@
         function setupLayerToggles(mv, panelId) {
             const panel = document.getElementById(panelId);
             if (!panel) return;
-            const inputs = panel.querySelectorAll('input[type="checkbox"]');
-            const groups = {
-                ground: [], plinth: [], pillars: [],
-                f0: [],
-                f1_slab: [], f1: [], f1_beam: [],
-                frame_spine: [], frame_surface: [],
-                loft: [],
-            };
+            const list = panel.querySelector('.layers-list');
+            if (!list) return;
 
+            // Populate the panel from the layers manifest (fetched by
+            // buildLayerCheckboxes). One <label> per configured layer.
+            const layers = window._LAYER_MANIFEST || [];
+            list.innerHTML = '';
+            const groups = {};
+            layers.forEach(layer => {
+                groups[layer.id] = [];
+                const border = (layer.color || '').toLowerCase() === '#ffffff'
+                    ? ';border:1px solid rgba(0,0,0,0.3)' : '';
+                const label = document.createElement('label');
+                label.innerHTML =
+                    `<span class="swatch" style="background:${layer.color}${border}"></span>` +
+                    `<input type="checkbox" data-layer="${layer.id}" checked> ${layer.label}`;
+                list.appendChild(label);
+            });
+
+            const inputs = panel.querySelectorAll('input[type="checkbox"]');
             const apply = (evt) => {
                 let changed = null;
                 inputs.forEach(input => {
@@ -1954,8 +1927,35 @@
             mv.addEventListener('load', tryClassify);
         }
 
-        setupLayerToggles(modelViewer, 'layers-panel');
-        setupLayerToggles(modelViewerExploded, 'layers-panel-exploded');
+        // Fetch the layer manifest emitted by Blender's export step, then
+        // wire the toggles for both viewers. Falls back to an inline
+        // default if the JSON is missing (e.g. running from file://).
+        (function initLayers() {
+            const DEFAULTS = [
+                { id: 'loft',          label: 'Roof shell',            color: '#e88968' },
+                { id: 'frame_surface', label: 'Purlins & rafters',     color: '#4b515c' },
+                { id: 'frame_spine',   label: 'Ridges & trusses',      color: '#8a4a1a' },
+                { id: 'f1_beam',       label: 'First floor top beams', color: '#6b4423' },
+                { id: 'f1',            label: 'First floor walls',     color: '#f5c9a0' },
+                { id: 'f1_slab',       label: 'First floor slab',      color: '#b8b8b8' },
+                { id: 'f0',            label: 'Ground floor walls',    color: '#f5c9a0' },
+                { id: 'pillars',       label: 'Pillars',               color: '#ffffff' },
+                { id: 'plinth',        label: 'Plinth',                color: '#808080' },
+                { id: 'ground',        label: 'Ground',                color: '#5c7346' },
+            ];
+            const wire = () => {
+                setupLayerToggles(modelViewer, 'layers-panel');
+                setupLayerToggles(modelViewerExploded, 'layers-panel-exploded');
+            };
+            fetch('layers.json')
+                .then(r => r.ok ? r.json() : Promise.reject(r.status))
+                .then(m => { window._LAYER_MANIFEST = m; wire(); })
+                .catch(err => {
+                    console.warn('[layers] layers.json unavailable, using inline defaults:', err);
+                    window._LAYER_MANIFEST = DEFAULTS;
+                    wire();
+                });
+        })();
     </script>
 </body>
 </html>

@@ -31,7 +31,69 @@ GLOBAL_CONFIG.update({
         0: 250,  # Separation above ground floor (17.5 feet)
         1: 0,  # Separation above first floor (17.5 feet)
         2: 250,    # Separation above loft floor (no separation)
-    }
+    },
+
+    # ------------------------------------------------------------------
+    # Materials palette. Keys are material names referenced by objects
+    # in HOUSE_CONFIG (e.g. `material_name='walls'` on a wall) — keeping
+    # this dict alongside the house config means renaming a material
+    # here forces you to update both sides together.
+    # ------------------------------------------------------------------
+    'colors': {
+        'ground': (0.36, 0.45, 0.28, 1.0),     # Muted grass green — outdoor ground plane
+        'walls': (0.55, 0.25, 0.15, 1.0),      # Laterite: reddish-brown
+        'floor': (0.6, 0.55, 0.5, 1.0),
+        'plinth': (0.5, 0.45, 0.4, 1.0),
+        'roof': (0.7, 0.3, 0.2, 1.0),
+        'verandah': (0.5, 0.25, 0.15, 1.0),    # Laterite
+        'living': (0.55, 0.25, 0.15, 1.0),     # Laterite
+        'kitchen': (0.55, 0.25, 0.15, 1.0),    # Laterite
+        'bathroom': (0.55, 0.25, 0.15, 1.0),   # Laterite
+        'bedroom': (0.55, 0.25, 0.15, 1.0),    # Laterite
+        'workshop': (0.55, 0.25, 0.15, 1.0),   # Laterite
+    },
+
+    # ------------------------------------------------------------------
+    # Elevation-view z-order for objects that share the same depth. Keys
+    # are `type` values used in HOUSE_CONFIG['floors'][…]['objects']; if
+    # a new object type is added there, add it here too. Lower number →
+    # drawn first (underneath).
+    # ------------------------------------------------------------------
+    'elevation_rendering_priority': {
+        'beam': 0,
+        'floor_slab': 1,
+        'room': 2,
+        'wall': 2,
+        'pillar': 3,
+    },
+
+    # ------------------------------------------------------------------
+    # Web-viewer layer panel — ordered top-to-bottom. Each entry is
+    # {id, label, color}. The `id` must match what `_resolve_layer` (in
+    # konkan_house_config.py) assigns to a mesh, or what
+    # `create_roof_frame_3d` (in blender_3d.py) tags on frame members.
+    # `frame_spine_kinds` selects which frame `kind`s belong in the
+    # "Ridges & trusses" bucket vs. the "Purlins & rafters" bucket.
+    # export_to_web writes this whole config out as docs/layers.json so
+    # the web viewer builds both toggle panels from the same source.
+    # ------------------------------------------------------------------
+    'layers': [
+        {'id': 'loft',          'label': 'Roof shell',            'color': '#e88968'},
+        {'id': 'frame_surface', 'label': 'Purlins & rafters',     'color': '#4b515c'},
+        {'id': 'frame_spine',   'label': 'Ridges & trusses',      'color': '#8a4a1a'},
+        {'id': 'f1_beam',       'label': 'First floor top beams', 'color': '#6b4423'},
+        {'id': 'f1',            'label': 'First floor walls',     'color': '#f5c9a0'},
+        {'id': 'f1_slab',       'label': 'First floor slab',      'color': '#b8b8b8'},
+        {'id': 'f0',            'label': 'Ground floor walls',    'color': '#f5c9a0'},
+        {'id': 'pillars',       'label': 'Pillars',               'color': '#ffffff'},
+        {'id': 'plinth',        'label': 'Plinth',                'color': '#808080'},
+        {'id': 'ground',        'label': 'Ground',                'color': '#5c7346'},
+    ],
+    'frame_spine_kinds': [
+        'ring_beam', 'central_ridge', 'hip_ridge', 'hip_end_beam',
+        'truss_bottom_chord', 'truss_top_chord', 'truss_king_post',
+        'truss_diagonal', 'truss_vertical', 'pani_patti',
+    ],
 })
 
 # ============================================================================
@@ -380,9 +442,9 @@ HOUSE_CONFIG = {
                     'name': 'Bedroom_1_Window_North',
                     'x': 35,
                     'y': 80,
-                    'width': 50,        # 4 feet wide
+                    'width': 50,        # 5 feet wide
                     'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2 feet from floor
+                    'sill_height': 25,  # 2.5 feet from floor
                     'direction': 'north',
                     'room': 'Bedroom_1',  # Which room's wall
                 },
@@ -763,17 +825,41 @@ HOUSE_CONFIG = {
                     'room': 'Bathroom_2',
                 },
 
+                # Both bedrooms → Upper_Verandah doors. Bedroom_2 mirrors
+                # Bedroom_1's ground-floor Verandah door; Bedroom_3
+                # mirrors Workshop_Entry on the same wall.
+                {
+                    'type': 'door',
+                    'name': 'Bedroom_2_Verandah_Door',
+                    'x': 83.5,          # 3 in west of the Bedroom_2 / Bedroom_3 partition
+                    'y': 80,
+                    'width': 30,        # 3 feet wide
+                    'height': 65,       # 6.5 feet tall
+                    'direction': 'north',
+                    'room': 'Bedroom_2',
+                },
+                {
+                    'type': 'door',
+                    'name': 'Bedroom_3_Verandah_Door',
+                    'x': 124,
+                    'y': 80,
+                    'width': 30,        # 3 feet wide
+                    'height': 65,       # 6.5 feet tall
+                    'direction': 'north',
+                    'room': 'Bedroom_3',
+                },
+
                 # Windows
                 {
                     'type': 'window',
                     'name': 'Bedroom_2_Window_North',
                     'x': 25,
                     'y': 80,
-                    'width': 80,        # 4 feet wide
-                    'height': 65,       # 4 feet tall
-                    'sill_height': 5,  # 2 feet from floor
+                    'width': 30,        # 3 feet wide (was 5' — reduced to fit the door)
+                    'height': 40,       # 4 feet tall
+                    'sill_height': 25,  # 2.5 feet from floor
                     'direction': 'north',
-                    'room': 'Bedroom_2',  # Which room's wall
+                    'room': 'Bedroom_2',
                 },
                 {
                     'type': 'window',
@@ -789,13 +875,13 @@ HOUSE_CONFIG = {
                 {
                     'type': 'window',
                     'name': 'Bedroom_3_Window_North',
-                    'x': 135,
+                    'x': 187,
                     'y': 80,
-                    'width': 80,        # 4 feet wide
-                    'height': 65,       # 4 feet tall
-                    'sill_height': 5,  # 2 feet from floor
+                    'width': 50,        # 5 feet wide (matches Workshop_Window_North)
+                    'height': 40,       # 4 feet tall
+                    'sill_height': 25,  # 2.5 feet from floor
                     'direction': 'north',
-                    'room': 'Bedroom_3',  # Which room's wall
+                    'room': 'Bedroom_3',
                 },
                 {
                     'type': 'window',

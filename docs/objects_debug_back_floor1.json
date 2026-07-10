@@ -42,18 +42,29 @@
       "z": 146.0,
       "height_end": null,
       "coord_key": "x",
-      "num_openings": 1,
+      "num_openings": 2,
       "openings": [
+        {
+          "type": "door",
+          "wall": "Bedroom_2_north",
+          "x": 83.5,
+          "y": 80,
+          "width": 30,
+          "height": 65,
+          "room": "Bedroom_2",
+          "direction": "north",
+          "sill_height": null
+        },
         {
           "type": "window",
           "wall": "Bedroom_2_north",
           "x": 25,
           "y": 80,
-          "width": 80,
-          "height": 65,
+          "width": 30,
+          "height": 40,
           "room": "Bedroom_2",
           "direction": "north",
-          "sill_height": 5
+          "sill_height": 25
         }
       ]
     },
@@ -68,18 +79,29 @@
       "z": 146.0,
       "height_end": null,
       "coord_key": "x",
-      "num_openings": 1,
+      "num_openings": 2,
       "openings": [
         {
-          "type": "window",
+          "type": "door",
           "wall": "Bedroom_3_north",
-          "x": 135,
+          "x": 124,
           "y": 80,
-          "width": 80,
+          "width": 30,
           "height": 65,
           "room": "Bedroom_3",
           "direction": "north",
-          "sill_height": 5
+          "sill_height": null
+        },
+        {
+          "type": "window",
+          "wall": "Bedroom_3_north",
+          "x": 187,
+          "y": 80,
+          "width": 50,
+          "height": 40,
+          "room": "Bedroom_3",
+          "direction": "north",
+          "sill_height": 25
         }
       ]
     },
