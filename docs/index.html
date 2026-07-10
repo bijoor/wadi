@@ -500,6 +500,65 @@
             }
         }
 
+        /* ---- Desktop layout (wide viewports) ---------------------------- */
+        /* Vertical icon sidebar on the left instead of a horizontal tab
+           bar. Frees up ~50 px of vertical space and keeps the top strip
+           to just the title. */
+        @media (min-width: 641px) {
+            header {
+                padding: 0.5rem 1rem 0.5rem 76px;   /* 60 sidebar + 16 gap */
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+            header h1 {
+                font-size: 1.15rem;
+                margin: 0;
+            }
+            .subtitle {
+                font-size: 0.85rem;
+                margin: 0;
+                color: #666;
+            }
+            .tabs {
+                position: fixed;
+                top: 0; bottom: 0; left: 0;
+                width: 60px;
+                flex-direction: column;
+                justify-content: flex-start;
+                margin: 0 !important;
+                border-radius: 0;
+                border-right: 1px solid rgba(0,0,0,0.08);
+                box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+                padding: 0.5rem 0;
+                gap: 0.1rem;
+                z-index: 90;
+                overflow-y: auto;
+                scrollbar-width: none;
+            }
+            .tabs::-webkit-scrollbar { display: none; }
+            .tab {
+                padding: 0.75rem 0;
+                width: 100%;
+                text-align: center;
+                font-size: 1.4rem;
+                border-bottom: none;
+                border-left: 3px solid transparent;
+                border-radius: 0;
+            }
+            .tab.active {
+                border-bottom-color: transparent;
+                border-left-color: #667eea;
+            }
+            .tab-label {
+                display: none;   /* icon-only sidebar; tooltip via title=... */
+            }
+            /* Shift the main content past the sidebar. */
+            #viewer-container {
+                margin-left: 60px;
+            }
+        }
+
         /* ---- Mobile layout (narrow viewports / phones) ------------------ */
         @media (max-width: 640px) {
             /* Compact header — smaller title, hide the subtitle to free

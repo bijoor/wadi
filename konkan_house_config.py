@@ -106,6 +106,11 @@ def _resolve_layer(obj: dict, floor_num: int) -> str:
     if obj_type == 'pillar':
         return 'pillars'
     if floor_num == 0:
+        # The ground floor slab sits on top of the plinth and belongs
+        # visually with it — group it into the plinth layer so hiding
+        # "Plinth" also hides the slab that caps it.
+        if obj_type == 'floor_slab':
+            return 'plinth'
         return 'f0'
     if floor_num == 1:
         if obj_type == 'beam':
