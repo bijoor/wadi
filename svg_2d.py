@@ -2748,6 +2748,8 @@ def generate_all_elevations(house_config: dict, output_dir: str = None):
         output_dir: Directory to save SVG files (defaults to docs folder for web deployment)
     """
     import os
+    from house_expand import expand_room_walls
+    house_config = expand_room_walls(house_config)
 
     if output_dir is None:
         # Get the blend file directory (if running in Blender) or use current directory
@@ -3386,6 +3388,8 @@ def generate_all_floor_plans(house_config: dict, output_dir: str = None):
         output_dir: Directory to save SVG files (defaults to docs folder for web deployment)
     """
     import os
+    from house_expand import expand_room_walls
+    house_config = expand_room_walls(house_config)
 
     if output_dir is None:
         # Get the blend file directory (if running in Blender) or use current directory
@@ -3694,7 +3698,7 @@ def generate_combined_floor_plans(house_config: dict, output_dir: str = None) ->
     """
     Generate a single combined SVG showing all floor plans side-by-side.
     Uses consistent scaling across all floors for direct comparison.
-    
+
     Args:
         house_config: Complete house configuration
         output_dir: Directory to save the combined SVG
@@ -3703,7 +3707,9 @@ def generate_combined_floor_plans(house_config: dict, output_dir: str = None) ->
         Path to the generated combined SVG file
     """
     import os
-    
+    from house_expand import expand_room_walls
+    house_config = expand_room_walls(house_config)
+
     if output_dir is None:
         try:
             import bpy
@@ -3924,7 +3930,9 @@ def generate_combined_elevations(house_config: dict, output_dir: str = None) -> 
         Path to the generated combined SVG file
     """
     import os
-    
+    from house_expand import expand_room_walls
+    house_config = expand_room_walls(house_config)
+
     if output_dir is None:
         try:
             import bpy
@@ -4128,6 +4136,8 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     """
     import math
     import os
+    from house_expand import expand_room_walls
+    house_config = expand_room_walls(house_config)
 
     if output_dir is None:
         try:

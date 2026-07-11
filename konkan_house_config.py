@@ -422,6 +422,15 @@ def build_house(use_explosion=False):
     # Store explosion flag in GLOBAL_CONFIG so get_floor_z_offset can access it
     GLOBAL_CONFIG['use_explosion'] = use_explosion
 
+    # Expand any nested room walls / openings into the flat schema the
+    # builders understand. Rebinds the module-level `HOUSE_CONFIG` so
+    # every subsequent access (build_floor, roof_frame lookup, etc.) sees
+    # the expanded form. The helper is idempotent and returns the same
+    # object if the config is already flat.
+    global HOUSE_CONFIG
+    from house_expand import expand_room_walls
+    HOUSE_CONFIG = expand_room_walls(HOUSE_CONFIG)
+
     # Set model origin to center of plinth (for symmetric 3D visualization)
     set_model_origin_from_plinth(HOUSE_CONFIG['plinth'])
 

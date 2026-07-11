@@ -36,7 +36,7 @@
           "height": 40,
           "room": "Living_Kitchen",
           "direction": "south",
-          "sill_height": 25
+          "sill_height": 25.0
         },
         {
           "type": "window",
@@ -47,7 +47,7 @@
           "height": 40,
           "room": "Living_Kitchen",
           "direction": "south",
-          "sill_height": 25
+          "sill_height": 25.0
         }
       ]
     },
@@ -321,7 +321,7 @@
           "height": 40,
           "room": "Bedroom_1",
           "direction": "north",
-          "sill_height": 25
+          "sill_height": 25.0
         }
       ]
     },
@@ -358,7 +358,7 @@
           "height": 40,
           "room": "Workshop",
           "direction": "north",
-          "sill_height": 25
+          "sill_height": 25.0
         }
       ]
     },

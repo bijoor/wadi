@@ -305,53 +305,135 @@ HOUSE_CONFIG = {
                 {
                     'type': 'room',
                     'name': 'Verandah',
-                    'x': 0,
-                    'y': 0,
-                    'width': 270,
-                    'length': 88,
+                    'x': 0, 'y': 0, 'width': 270, 'length': 88,
                     'height': 30,
                     'material': 'verandah',
-                    'walls': ['north', 'east', 'west'],  # South is shared with Bedroom/Workshop
+                    # South wall omitted — shared with Bedroom_1 / Workshop
+                    # (those rooms own the boundary and cut its openings).
+                    'walls': {
+                        'north': {
+                            'openings': [
+                                {'kind': 'door', 'name': 'Main_Entry',
+                                 'offset': 110, 'width': 50, 'height': 70},
+                            ],
+                        },
+                        'east':  {},
+                        'west':  {},
+                    },
                 },
                 {
                     'type': 'room',
                     'name': 'Bedroom_1',
-                    'x': 0,
-                    'y': 80,
-                    'width': 124,
-                    'length': 124,
+                    'x': 0, 'y': 80, 'width': 124, 'length': 124,
                     'material': 'bedroom',
-                    'walls': ['north','east','west','south'], # East shared with Workshop, South shared with Living_Kitchen
+                    # East shared with Workshop; South shared with Living_Kitchen
+                    # but this room owns both (legacy — both walls listed).
+                    'walls': {
+                        'north': {
+                            'openings': [
+                                {'kind': 'window', 'name': 'Bedroom_1_Window_North',
+                                 'offset': 35, 'width': 50, 'height': 40, 'sill_height': 25},
+                            ],
+                        },
+                        'east':  {},
+                        'south': {
+                            'openings': [
+                                {'kind': 'door', 'name': 'Bedroom_Entry',
+                                 'offset': 83.5, 'width': 30, 'height': 65},
+                            ],
+                        },
+                        'west': {
+                            'openings': [
+                                {'kind': 'window', 'name': 'Bedroom_1_Window_West',
+                                 'offset': 37, 'width': 50, 'height': 40, 'sill_height': 25},
+                            ],
+                        },
+                    },
                 },
                 {
                     'type': 'room',
                     'name': 'Workshop',
-                    'x': 116,
-                    'y': 80,
-                    'width': 154,
-                    'length': 124,
+                    'x': 116, 'y': 80, 'width': 154, 'length': 124,
                     'material': 'workshop',
-                    'walls': ['north','east','south'],  # West shared with Bedroom
+                    # West omitted — shared with Bedroom_1 (which owns it).
+                    'walls': {
+                        'north': {
+                            'openings': [
+                                {'kind': 'door', 'name': 'Workshop_Entry',
+                                 'offset': 8, 'width': 30, 'height': 65},
+                                {'kind': 'window', 'name': 'Workshop_Window_North',
+                                 'offset': 71, 'width': 50, 'height': 40, 'sill_height': 25},
+                            ],
+                        },
+                        'east': {
+                            'openings': [
+                                {'kind': 'window', 'name': 'Workshop_Window_East',
+                                 'offset': 35, 'width': 50, 'height': 40, 'sill_height': 25},
+                            ],
+                        },
+                        'south': {
+                            'openings': [
+                                {'kind': 'door', 'name': 'Workshop_Exit',
+                                 'offset': 10.5, 'width': 30, 'height': 65},
+                            ],
+                        },
+                    },
                 },
                 {
                     'type': 'room',
                     'name': 'Bathroom_1',
-                    'x': 176,
-                    'y': 196,
-                    'width': 94,
-                    'length': 104,
+                    'x': 176, 'y': 196, 'width': 94, 'length': 104,
                     'material': 'bathroom',
-                    'walls': ['west','south'],  # North shared with Workshop, West shared with Living_Kitchen
+                    # North shared with Workshop; East shared with Living_Kitchen
+                    # (both omitted — those rooms own the boundaries).
+                    'walls': {
+                        'west': {
+                            'openings': [
+                                {'kind': 'door', 'name': 'Bathroom_1_Entry',
+                                 'offset': 32, 'width': 30, 'height': 65},
+                            ],
+                        },
+                        'south': {},
+                    },
                 },
                 {
                     'type': 'room',
                     'name': 'Living_Kitchen',
-                    'x': 0,
-                    'y': 196,
-                    'width': 270,
-                    'length': 254,
+                    'x': 0, 'y': 196, 'width': 270, 'length': 254,
                     'material': 'living',
-                    'walls': ['east','west', 'south'],  # North shared with Bedroom/Bathroom, East shared with Bathroom
+                    # North shared with Bedroom_1 / Workshop (they own it).
+                    # East is drawn even though Bathroom_1 also has it — legacy;
+                    # keep to preserve behaviour during migration.
+                    'walls': {
+                        'east': {
+                            'openings': [
+                                {'kind': 'window', 'name': ' Bathroom_1_Window_1',
+                                 'offset': 18, 'width': 20, 'height': 20, 'sill_height': 45},
+                                {'kind': 'window', 'name': ' Bathroom_1_Window_2',
+                                 'offset': 58, 'width': 20, 'height': 20, 'sill_height': 45},
+                                {'kind': 'window', 'name': ' Kitchen_Window',
+                                 'offset': 114, 'width': 60, 'height': 30, 'sill_height': 35},
+                            ],
+                        },
+                        'west': {
+                            'openings': [
+                                {'kind': 'window', 'name': 'Staircase_Window_1',
+                                 'offset': 28, 'width': 40, 'height': 40, 'sill_height': 25},
+                                {'kind': 'window', 'name': 'Staircase_Window_2',
+                                 'offset': 190, 'width': 40, 'height': 30, 'sill_height': 35},
+                            ],
+                        },
+                        'south': {
+                            'openings': [
+                                {'kind': 'window', 'name': 'Living_Rear_Window_1',
+                                 'offset': 24, 'width': 60, 'height': 40, 'sill_height': 25},
+                                {'kind': 'door', 'name': 'Living_Kitchen_Exit',
+                                 'offset': 98.5, 'width': 75, 'height': 65},
+                                {'kind': 'window', 'name': 'Living_Rear_Window_2',
+                                 'offset': 187.5, 'width': 60, 'height': 40, 'sill_height': 25},
+                            ],
+                        },
+                    },
                 },
 
                 {
@@ -377,191 +459,8 @@ HOUSE_CONFIG = {
                     'material': 'floor',
                 },
 
-                # Doors
-                {
-                    'type': 'door',
-                    'name': 'Main_Entry',
-                    'x': 110,
-                    'y': 0,
-                    'width': 50,        # 5 feet wide
-                    'height': 70,       # 7 feet tall
-                    'direction': 'north',
-                    'room': 'Verandah',  # Which room's wall
-                },
-                {
-                    'type': 'door',
-                    'name': 'Workshop_Entry',
-                    'x': 124,
-                    'y': 80,
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'north',
-                    'room': 'Workshop',  # Which room's wall
-                },
-                {
-                    'type': 'door',
-                    'name': 'Workshop_Exit',
-                    'x': 126.5,         # 3 in east of separating wall (matches Bedroom_3_Entry on top floor)
-                    'y': 196,
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'south',
-                    'room': 'Workshop',  # Which room's wall
-                },
-                {
-                    'type': 'door',
-                    'name': 'Bedroom_Entry',
-                    'x': 83.5,          # 3 in west of separating wall (matches Bedroom_2_Entry on top floor)
-                    'y': 196,
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'south',
-                    'room': 'Bedroom_1',  # Which room's wall
-                },
-                {
-                    'type': 'door',
-                    'name': 'Bathroom_1_Entry',
-                    'x': 176,
-                    'y': 228,
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'west',
-                    'room': 'Bathroom_1',  # Which room's wall
-                },
-                {
-                    'type': 'door',
-                    'name': 'Living_Kitchen_Exit',
-                    'x': 98.5,
-                    'y': 442,
-                    'width': 75,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'south',
-                    'room': 'Living_Kitchen',  # Which room's wall
-                },
-
-                # Windows
-                {
-                    'type': 'window',
-                    'name': 'Bedroom_1_Window_North',
-                    'x': 35,
-                    'y': 80,
-                    'width': 50,        # 5 feet wide
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2.5 feet from floor
-                    'direction': 'north',
-                    'room': 'Bedroom_1',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': 'Bedroom_1_Window_West',
-                    'x': 0,
-                    'y': 117,
-                    'width': 50,        # 4 feet wide
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2 feet from floor
-                    'direction': 'west',
-                    'room': 'Bedroom_1',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': 'Workshop_Window_North',
-                    'x': 187,
-                    'y': 80,
-                    'width': 50,        # 4 feet wide
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2 feet from floor
-                    'direction': 'north',
-                    'room': 'Workshop',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': 'Workshop_Window_East',
-                    'x': 262,
-                    'y': 115,
-                    'width': 50,        # 4 feet wide
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2 feet from floor
-                    'direction': 'east',
-                    'room': 'Workshop',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': ' Bathroom_1_Window_1',
-                    'x': 262,
-                    'y': 214,
-                    'width': 20,        # 4 feet wide
-                    'height': 20,       # 4 feet tall
-                    'sill_height': 45,  # 2 feet from floor
-                    'direction': 'east',
-                    'room': 'Living_Kitchen',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': ' Bathroom_1_Window_2',
-                    'x': 262,
-                    'y': 254,
-                    'width': 20,        # 4 feet wide
-                    'height': 20,       # 4 feet tall
-                    'sill_height': 45,  # 2 feet from floor
-                    'direction': 'east',
-                    'room': 'Living_Kitchen',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': ' Kitchen_Window',
-                    'x': 262,
-                    'y': 310,
-                    'width': 60,        # 4 feet wide
-                    'height': 30,       # 4 feet tall
-                    'sill_height': 35,  # 2 feet from floor
-                    'direction': 'east',
-                    'room': 'Living_Kitchen',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': 'Staircase_Window_1',
-                    'x': 0,
-                    'y': 224,
-                    'width': 40,        # 4 feet wide
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2 feet from floor
-                    'direction': 'west',
-                    'room': 'Living_Kitchen',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': 'Staircase_Window_2',
-                    'x': 0,
-                    'y': 386,
-                    'width': 40,        # 4 feet wide
-                    'height': 30,       # 4 feet tall
-                    'sill_height': 35,  # 2 feet from floor
-                    'direction': 'west',
-                    'room': 'Living_Kitchen',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': 'Living_Rear_Window_1',
-                    'x': 24,
-                    'y': 442,
-                    'width': 60,        # 4 feet wide
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2 feet from floor
-                    'direction': 'south',
-                    'room': 'Living_Kitchen',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': 'Living_Rear_Window_2',
-                    'x': 187.5,
-                    'y': 442,
-                    'width': 60,        # 4 feet wide
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2 feet from floor
-                    'direction': 'south',
-                    'room': 'Living_Kitchen',  # Which room's wall
-                },
-
+                # All ground-floor doors and windows are now nested under
+                # each room's `walls.<side>.openings` list above.
             ],
         },
         # ============ FIRST FLOOR ============
@@ -680,7 +579,8 @@ HOUSE_CONFIG = {
                     'length': 88,
                     'height': 30,
                     'material': 'verandah',
-                    'walls': ['north', 'east', 'west'],  # South is shared with Bedroom/Workshop
+                    # South is shared with Bedroom/Workshop.
+                    'walls': {'north': {}, 'east': {}, 'west': {}},
                 },
                 {
                     'type': 'room',
@@ -690,13 +590,26 @@ HOUSE_CONFIG = {
                     'width': 124,
                     'length': 124,
                     'material': 'bedroom',
-                    'walls': ['north','east','west','south'], # East shared with Workshop, South shared with Living_Kitchen
-                    'wall_heights': {
-                        'north': 90,
-                        'east': 90,
-                        'west': 90,
-                        'south': 90,
-                    }
+                    # East shared with Workshop, South shared with Living_Kitchen.
+                    'walls': {
+                        'north': {'height': 90, 'openings': [
+                            {'kind': 'window', 'name': 'Bedroom_2_Window_North',
+                             'offset': 25, 'width': 30, 'height': 40,
+                             'sill_height': 25},
+                            {'kind': 'door',   'name': 'Bedroom_2_Verandah_Door',
+                             'offset': 83.5, 'width': 30, 'height': 65},
+                        ]},
+                        'east':  {'height': 90},
+                        'west':  {'height': 90, 'openings': [
+                            {'kind': 'window', 'name': 'Bedroom_2_Window_West',
+                             'offset': 35, 'width': 50, 'height': 40,
+                             'sill_height': 25},
+                        ]},
+                        'south': {'height': 90, 'openings': [
+                            {'kind': 'door',   'name': 'Bedroom_2_Entry',
+                             'offset': 83.5, 'width': 30, 'height': 65},
+                        ]},
+                    },
                 },
                 {
                     'type': 'room',
@@ -706,13 +619,30 @@ HOUSE_CONFIG = {
                     'width': 154,
                     'length': 124,
                     'material': 'workshop',
-                    'walls': ['north','east','south'],  # West shared with Bedroom
-                    'wall_heights': {
-                        'north': 90,
-                        'east': 90,
-                        'west': 90,
-                        'south': 90,
-                    }
+                    # West shared with Bedroom_2. Bathroom_2 has no north wall of
+                    # its own, so Bathroom_2_Entry_N pierces this room's south
+                    # wall but opens *into* Bathroom_2 (direction override).
+                    'walls': {
+                        'north': {'height': 90, 'openings': [
+                            {'kind': 'door',   'name': 'Bedroom_3_Verandah_Door',
+                             'offset': 8, 'width': 30, 'height': 65},
+                            {'kind': 'window', 'name': 'Bedroom_3_Window_North',
+                             'offset': 71, 'width': 50, 'height': 40,
+                             'sill_height': 25},
+                        ]},
+                        'east':  {'height': 90, 'openings': [
+                            {'kind': 'window', 'name': 'Bedroom_3_Window_East',
+                             'offset': 35, 'width': 50, 'height': 40,
+                             'sill_height': 25},
+                        ]},
+                        'south': {'height': 90, 'openings': [
+                            {'kind': 'door',   'name': 'Bedroom_3_Entry',
+                             'offset': 10.5, 'width': 30, 'height': 65},
+                            {'kind': 'door',   'name': 'Bathroom_2_Entry_N',
+                             'offset': 70.5, 'width': 30, 'height': 65,
+                             'direction': 'north'},
+                        ]},
+                    },
                 },
                 # Single Bathroom_2 room with one interior partition wall at the
                 # E-W centerline (y=248). Partition spans inner edge to inner edge
@@ -726,12 +656,22 @@ HOUSE_CONFIG = {
                     'width': 94,
                     'length': 104,
                     'material': 'bathroom',
-                    'walls': ['west', 'south', 'east'],  # north shared with Bedroom_3
-                    'wall_heights': {
-                        'east': 90,
-                        'west': 90,
-                        'south': 90,
-                    }
+                    # North shared with Bedroom_3.
+                    'walls': {
+                        'west':  {'height': 90},
+                        'east':  {'height': 90, 'openings': [
+                            {'kind': 'window', 'name': 'Bathroom_2_Window_N',
+                             'offset': 18, 'width': 20, 'height': 20,
+                             'sill_height': 45},
+                            {'kind': 'window', 'name': 'Bathroom_2_Window_S',
+                             'offset': 66, 'width': 20, 'height': 20,
+                             'sill_height': 45},
+                        ]},
+                        'south': {'height': 90, 'openings': [
+                            {'kind': 'door',   'name': 'Bathroom_2_Entry_S',
+                             'offset': 10.5, 'width': 30, 'height': 65},
+                        ]},
+                    },
                 },
                 {
                     'type': 'wall',
@@ -764,6 +704,14 @@ HOUSE_CONFIG = {
                     'height': 90,
                     #'height_end': 85,  # Sloping wall
                     'material': 'walls',
+                    'openings': [
+                        {'kind': 'window', 'name': 'Above_Kitchen_Window_1',
+                         'offset': 10, 'width': 50, 'height': 60,
+                         'sill_height': 5},
+                        {'kind': 'window', 'name': 'Above_Kitchen_Window_2',
+                         'offset': 75, 'width': 50, 'height': 60,
+                         'sill_height': 5},
+                    ],
                 },
                 {
                     'type': 'wall',
@@ -775,6 +723,15 @@ HOUSE_CONFIG = {
                     'height': 90,
                     #'height_end': 85,  # Sloping wall
                     'material': 'walls',
+                    'facing': 'west',
+                    'openings': [
+                        {'kind': 'window', 'name': 'Above_Stairs_Window_1',
+                         'offset': 10, 'width': 50, 'height': 60,
+                         'sill_height': 5},
+                        {'kind': 'window', 'name': 'Above_Stairs_Window_2',
+                         'offset': 75, 'width': 50, 'height': 60,
+                         'sill_height': 5},
+                    ],
                 },
                 {
                     'type': 'wall',
@@ -785,217 +742,22 @@ HOUSE_CONFIG = {
                     'end_y': 446,
                     'height': 90,
                     'material': 'walls',
+                    'facing': 'south',
+                    'openings': [
+                        {'kind': 'window', 'name': 'Above_Living_Rear_Window_1',
+                         'offset': 24, 'width': 60, 'height': 60,
+                         'sill_height': 5},
+                        {'kind': 'window', 'name': 'Above_Living_Rear_Window_2',
+                         'offset': 103.5, 'width': 65, 'height': 60,
+                         'sill_height': 5},
+                        {'kind': 'window', 'name': 'Above_Living_Rear_Window_3',
+                         'offset': 187.5, 'width': 60, 'height': 60,
+                         'sill_height': 5},
+                    ],
                 },
-                # Doors
-                {
-                    'type': 'door',
-                    'name': 'Bedroom_3_Entry',
-                    'x': 126.5,         # 3 in east of separating wall (wall ends at x=124)
-                    'y': 196,
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'south',
-                    'room': 'Bedroom_3',  # Which room's wall
-                },
-                {
-                    'type': 'door',
-                    'name': 'Bedroom_2_Entry',
-                    'x': 83.5,          # 3 in west of separating wall (wall starts at x=116, door right edge at 113.5)
-                    'y': 196,
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'south',
-                    'room': 'Bedroom_2',  # Which room's wall
-                },
-                {
-                    'type': 'door',
-                    'name': 'Bathroom_2_Entry_N',
-                    'x': 186.5,         # 3 in east of west wall inner edge (184 + 2.5)
-                    'y': 196,           # northern face of Bedroom_3's south wall (y=196..204)
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'north',
-                    'wall': 'Bedroom_3_South',  # explicit — Bathroom_2 has no north wall of its own
-                },
-                {
-                    'type': 'door',
-                    'name': 'Bathroom_2_Entry_S',
-                    'x': 186.5,         # 3 in east of west wall inner edge
-                    'y': 292,           # northern face of Bathroom_2's south wall (y=292..300)
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'south',
-                    'room': 'Bathroom_2',
-                },
-
-                # Both bedrooms → Upper_Verandah doors. Bedroom_2 mirrors
-                # Bedroom_1's ground-floor Verandah door; Bedroom_3
-                # mirrors Workshop_Entry on the same wall.
-                {
-                    'type': 'door',
-                    'name': 'Bedroom_2_Verandah_Door',
-                    'x': 83.5,          # 3 in west of the Bedroom_2 / Bedroom_3 partition
-                    'y': 80,
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'north',
-                    'room': 'Bedroom_2',
-                },
-                {
-                    'type': 'door',
-                    'name': 'Bedroom_3_Verandah_Door',
-                    'x': 124,
-                    'y': 80,
-                    'width': 30,        # 3 feet wide
-                    'height': 65,       # 6.5 feet tall
-                    'direction': 'north',
-                    'room': 'Bedroom_3',
-                },
-
-                # Windows
-                {
-                    'type': 'window',
-                    'name': 'Bedroom_2_Window_North',
-                    'x': 25,
-                    'y': 80,
-                    'width': 30,        # 3 feet wide (was 5' — reduced to fit the door)
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2.5 feet from floor
-                    'direction': 'north',
-                    'room': 'Bedroom_2',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Bedroom_2_Window_West',
-                    'x': 0,
-                    'y': 115,
-                    'width': 50,        # 4 feet wide
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2 feet from floor
-                    'direction': 'west',
-                    'room': 'Bedroom_2',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': 'Bedroom_3_Window_North',
-                    'x': 187,
-                    'y': 80,
-                    'width': 50,        # 5 feet wide (matches Workshop_Window_North)
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2.5 feet from floor
-                    'direction': 'north',
-                    'room': 'Bedroom_3',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Bedroom_3_Window_East',
-                    'x': 262,
-                    'y': 115,
-                    'width': 50,        # 4 feet wide
-                    'height': 40,       # 4 feet tall
-                    'sill_height': 25,  # 2 feet from floor
-                    'direction': 'east',
-                    'room': 'Bedroom_3',  # Which room's wall
-                },
-                {
-                    'type': 'window',
-                    'name': 'Bathroom_2_Window_N',
-                    'x': 262,
-                    'y': 214,
-                    'width': 20,        # 4 feet wide
-                    'height': 20,       # 4 feet tall
-                    'sill_height': 45,  # 2 feet from floor
-                    'direction': 'east',
-                    'room': 'Bathroom_2',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Bathroom_2_Window_S',
-                    'x': 262,
-                    'y': 262,           # centered in south half (interior y=252..292)
-                    'width': 20,        # 4 feet wide
-                    'height': 20,       # 4 feet tall
-                    'sill_height': 45,  # 2 feet from floor
-                    'direction': 'east',
-                    'room': 'Bathroom_2',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Above_Kitchen_Window_1',
-                    'x': 262,
-                    'y': 310,
-                    'width': 50,        # 4 feet wide
-                    'height': 60,       # 4 feet tall
-                    'sill_height': 5,  # 2 feet from floor
-                    'direction': 'east',
-                    'wall': 'Living_Kitchen_2_East',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Above_Kitchen_Window_2',
-                    'x': 262,
-                    'y': 375,
-                    'width': 50,        # 4 feet wide
-                    'height': 60,       # 4 feet tall
-                    'sill_height': 5,  # 2 feet from floor
-                    'direction': 'east',
-                    'wall': 'Living_Kitchen_2_East',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Above_Stairs_Window_1',
-                    'x': 0,
-                    'y': 310,
-                    'width': 50,        # 4 feet wide
-                    'height': 60,       # 4 feet tall
-                    'sill_height': 5,  # 2 feet from floor
-                    'direction': 'west',
-                    'wall': 'Living_Kitchen_2_West',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Above_Stairs_Window_2',
-                    'x': 0,
-                    'y': 375,
-                    'width': 50,        # 4 feet wide
-                    'height': 60,       # 4 feet tall
-                    'sill_height': 5,  # 2 feet from floor
-                    'direction': 'west',
-                    'wall': 'Living_Kitchen_2_West',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Above_Living_Rear_Window_1',
-                    'x': 24,
-                    'y': 442,
-                    'width': 60,        # 4 feet wide
-                    'height': 60,       # 4 feet tall
-                    'sill_height': 5,  # 2 feet from floor
-                    'direction': 'south',
-                    'wall': 'Living_Kitchen_2_South',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Above_Living_Rear_Window_2',
-                    'x': 103.5,
-                    'y': 442,
-                    'width': 65,        # 4 feet wide
-                    'height': 60,       # 4 feet tall
-                    'sill_height': 5,  # 2 feet from floor
-                    'direction': 'south',
-                    'wall': 'Living_Kitchen_2_South',
-                },
-                {
-                    'type': 'window',
-                    'name': 'Above_Living_Rear_Window_3',
-                    'x': 187.5,
-                    'y': 442,
-                    'width': 60,        # 4 feet wide
-                    'height': 60,       # 4 feet tall
-                    'sill_height': 5,  # 2 feet from floor
-                    'direction': 'south',
-                    'wall': 'Living_Kitchen_2_South',
-                },
+                # All first-floor doors and windows are now nested under each
+                # room's / standalone wall's `walls.<side>.openings` or
+                # `openings` list above.
             ],
         },
         # ============ LOFT FLOOR ============
@@ -1003,27 +765,6 @@ HOUSE_CONFIG = {
             'floor_number': 2,
             'name': 'Loft Floor',
             'objects': [
-                # Floor slab
-                # {
-                #     'type': 'floor_slab',
-                #     'x': 8,
-                #     'y': 88,
-                #     'width': 252,
-                #     'length': 120,
-                # },
-                # {
-                #     'type': 'floor_slab',
-                #     'x': 176,
-                #     'y': 208,
-                #     'width': 84,
-                #     'length': 92,
-                # },
-                # Ring beams that sit on top of the first-floor walls have
-                # been moved into the first-floor config (with
-                # z_offset_ft = 9.8) so the layer grouping in the web
-                # viewer treats them as part of "First floor" instead of
-                # "Roof shell". Only the hip roof itself lives on this
-                # (loft) floor now.
 
                 # ============================================================
                 # ROOF — pick ONE (comment out the other)

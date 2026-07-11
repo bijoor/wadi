@@ -39,7 +39,7 @@
           "height": 20,
           "room": "Living_Kitchen",
           "direction": "east",
-          "sill_height": 45
+          "sill_height": 45.0
         },
         {
           "type": "window",
@@ -50,7 +50,7 @@
           "height": 20,
           "room": "Living_Kitchen",
           "direction": "east",
-          "sill_height": 45
+          "sill_height": 45.0
         },
         {
           "type": "window",
@@ -61,7 +61,7 @@
           "height": 30,
           "room": "Living_Kitchen",
           "direction": "east",
-          "sill_height": 35
+          "sill_height": 35.0
         }
       ]
     },
@@ -87,7 +87,7 @@
           "height": 40,
           "room": "Workshop",
           "direction": "east",
-          "sill_height": 25
+          "sill_height": 25.0
         }
       ]
     },
@@ -377,7 +377,7 @@
           "height": 40,
           "room": "Bedroom_1",
           "direction": "west",
-          "sill_height": 25
+          "sill_height": 25.0
         }
       ]
     },
@@ -403,7 +403,7 @@
           "height": 40,
           "room": "Living_Kitchen",
           "direction": "west",
-          "sill_height": 25
+          "sill_height": 25.0
         },
         {
           "type": "window",
@@ -414,7 +414,7 @@
           "height": 30,
           "room": "Living_Kitchen",
           "direction": "west",
-          "sill_height": 35
+          "sill_height": 35.0
         }
       ]
     },

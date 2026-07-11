@@ -25,7 +25,7 @@
           "height": 60,
           "room": null,
           "direction": "east",
-          "sill_height": 5
+          "sill_height": 5.0
         },
         {
           "type": "window",
@@ -36,7 +36,7 @@
           "height": 60,
           "room": null,
           "direction": "east",
-          "sill_height": 5
+          "sill_height": 5.0
         }
       ]
     },
@@ -89,7 +89,9 @@
       "priority": 2,
       "x": 80,
       "width": 124,
-      "height": 90,
+      "height": {
+        "height": 90
+      },
       "z": 146.0,
       "height_end": null,
       "coord_key": "y",
@@ -104,7 +106,7 @@
           "height": 40,
           "room": "Bedroom_3",
           "direction": "east",
-          "sill_height": 25
+          "sill_height": 25.0
         }
       ]
     },
@@ -115,7 +117,9 @@
       "priority": 2,
       "x": 196,
       "width": 104,
-      "height": 90,
+      "height": {
+        "height": 90
+      },
       "z": 146.0,
       "height_end": null,
       "coord_key": "y",
@@ -130,7 +134,7 @@
           "height": 20,
           "room": "Bathroom_2",
           "direction": "east",
-          "sill_height": 45
+          "sill_height": 45.0
         },
         {
           "type": "window",
@@ -141,7 +145,7 @@
           "height": 20,
           "room": "Bathroom_2",
           "direction": "east",
-          "sill_height": 45
+          "sill_height": 45.0
         }
       ]
     },
@@ -152,7 +156,9 @@
       "priority": 2,
       "x": 196,
       "width": 104,
-      "height": 90,
+      "height": {
+        "height": 90
+      },
       "z": 146.0,
       "height_end": null,
       "coord_key": "y",
@@ -166,7 +172,9 @@
       "priority": 2,
       "x": 80,
       "width": 124,
-      "height": 90,
+      "height": {
+        "height": 90
+      },
       "z": 146.0,
       "height_end": null,
       "coord_key": "y",
@@ -237,7 +245,7 @@
           "height": 60,
           "room": null,
           "direction": "west",
-          "sill_height": 5
+          "sill_height": 5.0
         },
         {
           "type": "window",
@@ -248,7 +256,7 @@
           "height": 60,
           "room": null,
           "direction": "west",
-          "sill_height": 5
+          "sill_height": 5.0
         }
       ]
     },
@@ -385,7 +393,9 @@
       "priority": 2,
       "x": 80,
       "width": 124,
-      "height": 90,
+      "height": {
+        "height": 90
+      },
       "z": 146.0,
       "height_end": null,
       "coord_key": "y",
@@ -400,7 +410,7 @@
           "height": 40,
           "room": "Bedroom_2",
           "direction": "west",
-          "sill_height": 25
+          "sill_height": 25.0
         }
       ]
     }
