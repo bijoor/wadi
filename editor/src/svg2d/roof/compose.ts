@@ -1,9 +1,6 @@
 // Master canvas assembly + panel metadata tracking.
 // Mirrors svg_2d.py lines 8371-8515 (compose) + 8522-8562 (per-panel split).
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { RoofComputed } from "./geometry";
 import type { Layout } from "./layout";
 import { slopePanel } from "./slopePanel";
@@ -33,7 +30,19 @@ export interface PanelMeta {
   heightIsFloat?: boolean;
 }
 
-export function compose(computed: RoofComputed, layout: Layout): {
+export interface ComposeOptions {
+  // Raw contents of docs/2d/roof/roof-cross-section.svg. Node callers
+  // read it from disk and pass it in; browser callers fetch it over
+  // HTTP. When omitted, the eave panel is replaced by a "not found"
+  // stub — the pipeline still succeeds.
+  eaveCrossSectionSvg?: string;
+}
+
+export function compose(
+  computed: RoofComputed,
+  layout: Layout,
+  options: ComposeOptions = {},
+): {
   masterSvg: string;
   panels: PanelMeta[];
 } {
@@ -201,12 +210,12 @@ export function compose(computed: RoofComputed, layout: Layout): {
   _eave_frag += `<rect x="${f(outer_pad)}" y="${f(eave_y0)}" width="${f(external_eave_panel_w)}" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>\n`;
   _eave_frag += `<text x="${fFloat(outer_pad + external_eave_panel_w / 2)}" y="${f(eave_y0 + 27)}" text-anchor="middle" font-size="18" font-weight="600" fill="#222">EAVE CROSS SECTION — hand-drawn detail (docs/2d/roof/roof-cross-section.svg)</text>\n`;
 
-  // Try to embed docs/2d/roof/roof-cross-section.svg
-  const _here = path.dirname(fileURLToPath(import.meta.url));
-  // .../editor/src/svg2d/roof → .../blender/docs/2d/roof
-  const externalPath = path.resolve(_here, "..", "..", "..", "..", "docs", "2d", "roof", "roof-cross-section.svg");
-  try {
-    const external = fs.readFileSync(externalPath, "utf8");
+  // Embed docs/2d/roof/roof-cross-section.svg if the caller supplied it.
+  // Node callers read it from disk; browser callers fetch it. When it's
+  // absent we fall back to a "not found" text stub (matching what Python
+  // does when the file is missing).
+  const external = options.eaveCrossSectionSvg;
+  if (external) {
     const m = /<svg\b[^>]*>([\s\S]*)<\/svg>/.exec(external);
     const inner = m ? m[1] : "";
     const vbMatch = /viewBox\s*=\s*"([^"]+)"/.exec(external);
@@ -215,7 +224,7 @@ export function compose(computed: RoofComputed, layout: Layout): {
     _eave_frag += `<svg x="${f(outer_pad)}" y="${f(eave_y0 + _title_bar)}" width="${f(external_eave_panel_w)}" height="${f1(external_eave_panel_h - _title_bar)}" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet">\n`;
     _eave_frag += inner;
     _eave_frag += `</svg>\n`;
-  } catch {
+  } else {
     _eave_frag += `<text x="${fFloat(outer_pad + external_eave_panel_w / 2)}" y="${fFloat(eave_y0 + external_eave_panel_h / 2)}" text-anchor="middle" font-size="14" fill="#b00">(docs/2d/roof/roof-cross-section.svg not found — panel skipped)</text>\n`;
   }
   svg += record(

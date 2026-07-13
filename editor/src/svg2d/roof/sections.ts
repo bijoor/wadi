@@ -318,6 +318,7 @@ export function sectionBbPanel(
   let s = baseSvg;
 
   const { bl: bl_b, br: br_b, tl: tl_b, tr: tr_b, baseline_y: baseline_y_b, t_y: t_y_b, s_scale: s_scale_b } = geom;
+  void baseline_y_b;
   void t_y_b;
   const rafter_stroke_sec = "#8B4513";
   const purlin_fill_sec = "#a8c9e0";

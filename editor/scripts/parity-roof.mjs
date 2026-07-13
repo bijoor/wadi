@@ -39,7 +39,7 @@ const cfg = JSON.parse(
 );
 
 const scratchDir = fs.mkdtempSync(path.join(fs.realpathSync("/tmp"), "roof-parity-"));
-generateRoofSectionsSvg(cfg, scratchDir);
+await generateRoofSectionsSvg(cfg, scratchDir);
 
 let passed = 0;
 let failed = 0;

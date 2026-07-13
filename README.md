@@ -48,7 +48,7 @@ Everything is regenerated from the same JSON, so a schema change ripples through
 
 The browser editor's 2D and 3D previews are **byte-identical** to the Python-generated ones — a parity harness in `editor/scripts/` diffs them on every change (34/34 primitive checks + 3/3 floor plans + 5/5 elevations + 15/15 roof outputs).
 
-The roof SVG generator (`editor/src/svg2d/roof/`, ~4000 lines of TS) has full parity with `python/svg_2d.py::generate_roof_sections_svg` and is used by the parity harness and by `editor/scripts/dump-svgs.mjs`, but the browser editor's preview tabs currently show only *Summary / Plans / Elevations / 3D*. A *Roof* preview tab is future work — the TS code is ready, it just needs an adapter (swap Node `fs` for an in-memory map) and a new tab component. Meanwhile the roof panels are always visible in the tabbed viewer at `docs/index.html`.
+The roof SVG generator (`editor/src/svg2d/roof/`, ~4000 lines of TS) has full parity with `python/svg_2d.py::generate_roof_sections_svg` and is wired into the browser editor's *Roof* preview tab — pick the master or any of the 13 panels, toggle between rendered and raw SVG, download individual files. Node callers (`parity-roof.mjs`, `dump-svgs.mjs`) go through the same `computeRoofSections()` core; the disk-writing helper simply layers `fs.writeFileSync` on top.
 
 ---
 

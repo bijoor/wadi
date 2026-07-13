@@ -22,6 +22,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"],
-  "exclude": ["src/svg2d/roof/**"]
+  "include": ["src"]
 }

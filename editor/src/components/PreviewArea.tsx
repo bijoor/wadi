@@ -6,14 +6,16 @@ import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
 import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
 import { ThreePreview } from "../three/ThreePreview";
+import { RoofPreview } from "./RoofPreview";
 import type { HouseConfig as ExpandHouseConfig } from "../svg2d/expand";
 
-type Tab = "summary" | "plans" | "elevations" | "3d";
+type Tab = "summary" | "plans" | "elevations" | "roof" | "3d";
 
 const TABS: { id: Tab; label: string; badge?: string }[] = [
   { id: "summary", label: "Summary" },
   { id: "plans", label: "Floor plans" },
   { id: "elevations", label: "Elevations" },
+  { id: "roof", label: "Roof" },
   { id: "3d", label: "3D preview" },
 ];
 
@@ -69,6 +71,7 @@ export function PreviewArea() {
         {config && tab === "summary" && <SummaryPanel />}
         {config && tab === "plans" && <FloorPlansPanel />}
         {config && tab === "elevations" && <ElevationsPanel />}
+        {config && tab === "roof" && <RoofPreview />}
         {config && tab === "3d" && (
           <ThreePreview config={config as ExpandHouseConfig} />
         )}

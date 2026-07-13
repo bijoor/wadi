@@ -98,7 +98,7 @@ write(elevationsDir, "elevations_combined.svg", generateCombinedElevations(cfg))
 // Roof panels — writes 14 SVGs + roof_panels.json manifest directly to
 // disk (the port writes files itself rather than returning strings, to
 // keep memory low for the ~144 KB master roof_plan.svg).
-generateRoofSectionsSvg(cfg, roofDir);
+await generateRoofSectionsSvg(cfg, roofDir);
 // Enumerate expected roof files so the summary line lists them
 // regardless of whether they existed before this run.
 const ROOF_FILES = [
