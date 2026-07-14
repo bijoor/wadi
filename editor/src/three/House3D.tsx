@@ -12,7 +12,6 @@
 import { useMemo } from "react";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
-import { deriveForHouse } from "../svg2d/roofGeometry";
 import {
   computeFloorZBands,
   readGlobals,
@@ -27,7 +26,11 @@ import {
   PlinthBox,
 } from "./boxes";
 import { HipRoofMesh, type HipRoofGeom } from "./roof";
-import { RoofFrameMesh, computeShellLift, type RoofFraming, type RoofFrameGeom } from "./roofFrame";
+import { GableRoofMesh } from "./gableRoof";
+import { GableRoofFrameMesh } from "./gableRoofFrame";
+import { deriveAllGableRoofs } from "../svg2d/roof/gableGeometry";
+import { deriveAllHipRoofs } from "../svg2d/roofGeometry";
+import { RoofFrameMesh, computeShellLift, type RoofFraming, type RoofFrameGeom, type RoofTrusses } from "./roofFrame";
 import { StaircaseMesh } from "./staircase";
 import { OpeningPane, WallWithOpenings, type WallOpening } from "./wallCSG";
 import { DEFAULT_LAYERS, useLayerStore } from "./layers";
@@ -44,13 +47,16 @@ export function House3D({ config }: { config: HouseConfig }) {
 
   const byLayer = useMemo(() => {
     const hc = expandRoomWalls(config);
-    const globals = readGlobals();
+    // House-level defaults (defaults.floor_height / slab_thickness) win
+    // over the code globals; per-floor overrides win over both.
+    const houseDefaults = (config as { defaults?: { floor_height?: number; slab_thickness?: number } }).defaults;
+    const globals = readGlobals(houseDefaults);
     const plot = readPlotBounds(hc);
     const bands = computeFloorZBands(
       hc.floors ?? [],
       globals.plinthHeight,
       globals.slabThickness,
-      globals.floorHeights,
+      globals.floorHeight,
     );
 
     const groups: Record<string, React.ReactNode[]> = {};
@@ -58,20 +64,20 @@ export function House3D({ config }: { config: HouseConfig }) {
       (groups[layer] ??= []).push(node);
     };
 
-    // Hip roof — derived geometry (matches roof_geometry.py).
+    // Roofs (Phase 2) — iterate ALL hip_roof and gable_roof objects and
+    // render each with its own x/y/width/length offset. Each has its
+    // own try/catch so a bad config on one roof doesn't take out the
+    // rest. Debug snapshots record per-roof status.
+    const roofDebug: Array<Record<string, unknown>> = [];
+
     try {
-      const derived = deriveForHouse(
-        hc as unknown as Parameters<typeof deriveForHouse>[0],
+      const hipRoofs = deriveAllHipRoofs(
+        hc as unknown as Parameters<typeof deriveAllHipRoofs>[0],
         DEFAULT_GLOBAL_CONFIG,
       );
-      if (derived) {
-        let hipConfig: Obj | undefined;
-        for (const floor of hc.floors ?? []) {
-          for (const obj of (floor.objects as Obj[] | undefined) ?? []) {
-            if (obj.type === "hip_roof") { hipConfig = obj; break; }
-          }
-          if (hipConfig) break;
-        }
+      hipRoofs.forEach((h, idx) => {
+        const derived = h.geom;
+        const hipConfig = h.config as unknown as Obj;
         const n = (k: string) => derived[k] as number;
         const merged: HipRoofGeom = {
           eave_x_west: n("eave_x_west"),
@@ -83,61 +89,51 @@ export function House3D({ config }: { config: HouseConfig }) {
           ridge_y_end: n("ridge_y_end"),
           ridge_h: n("ridge_h"),
           ridge_axis:
-            (hipConfig?.ridge_axis as "y" | "x" | undefined) ??
+            (hipConfig.ridge_axis as "y" | "x" | undefined) ??
             (derived.ridge_axis as "y" | "x"),
           ridge_ext_u: derived.ridge_ext_u as number | undefined,
-          // Needed by HipRoofMesh: Python's `ridge_h` is measured from
-          // wall_top_z, not eave_z. Shell ridge Z = eave_z +
-          // wall_top_above_eave + ridge_h; omitting this makes the
-          // shell peak 20+ units too low.
           wall_top_above_eave: derived.wall_top_above_eave as number | undefined,
         };
-        // Frame geom extends the shell geom with the ring-beam anchor
-        // coords (the actual wall edges, i.e. the plinth footprint).
+        // Ring-beam anchor rectangle — the roof's own footprint in world
+        // coords (position + size). Falls back to the plinth for
+        // backward-compat with configs that don't set x/y/width/length.
         const p = hc.plinth as { x: number; y: number; width: number; length: number } | undefined;
+        const rx = (hipConfig as { x?: number }).x;
+        const ry = (hipConfig as { y?: number }).y;
+        const rw = (hipConfig as { width?: number }).width;
+        const rl = (hipConfig as { length?: number }).length;
+        const ringWest = rx !== undefined ? rx : p ? p.x : merged.eave_x_west;
+        const ringEast = rx !== undefined && rw !== undefined ? rx + rw : p ? p.x + p.width : merged.eave_x_east;
+        const ringNorth = ry !== undefined ? ry : p ? p.y : merged.eave_y_north;
+        const ringSouth = ry !== undefined && rl !== undefined ? ry + rl : p ? p.y + p.length : merged.eave_y_south;
         const frameGeomMerged: RoofFrameGeom = {
           ...merged,
-          ring_beam_x_west: p ? p.x : merged.eave_x_west,
-          ring_beam_x_east: p ? p.x + p.width : merged.eave_x_east,
-          ring_beam_y_north: p ? p.y : merged.eave_y_north,
-          ring_beam_y_south: p ? p.y + p.length : merged.eave_y_south,
+          ring_beam_x_west: ringWest,
+          ring_beam_x_east: ringEast,
+          ring_beam_y_north: ringNorth,
+          ring_beam_y_south: ringSouth,
         };
-        const framing = (hipConfig?.framing as RoofFraming | undefined) ?? {};
-        // shellLift lifts the roof surface above the ring beam + rafter
-        // + purlin stack so the shell isn't embedded in the frame at
-        // the wall crossing. See roofFrame.ts::computeShellLift.
+        const framing = (hipConfig.framing as RoofFraming | undefined) ?? {};
         const shellLift = computeShellLift(framing);
         push(
           "loft",
           <HipRoofMesh
-            key="hip-roof"
+            key={`hip-roof-${idx}`}
             geom={merged}
             plotWidth={plot.width}
             plotLength={plot.length}
             shellLift={shellLift}
           />,
         );
-
-        // Structural frame — rendered separately so the layer panel
-        // can hide the shell and inspect the truss / rafter grid.
-        // Frame internally tags each member as `spine` or `surface`;
-        // we push the whole component under `frame_spine` and let the
-        // per-mesh material colour differentiate. When the user hides
-        // `frame_spine` the whole group vanishes.
-        const trusses = hipConfig?.trusses as
-          | {
-              positions?: number[];
-              chord_size_in?: [number, number];
-              web_size_in?: [number, number];
-            }
+        const trusses = hipConfig.trusses as
+          | { positions?: number[]; chord_size_in?: [number, number]; web_size_in?: [number, number] }
           | undefined;
         const trussPositions = trusses?.positions ?? [];
-        const frameGeom: RoofFrameGeom = frameGeomMerged;
         push(
           "frame_spine",
           <RoofFrameMesh
-            key="hip-roof-frame-spine"
-            geom={frameGeom}
+            key={`hip-roof-frame-spine-${idx}`}
+            geom={frameGeomMerged}
             framing={framing}
             trusses={trusses}
             trussPositions={trussPositions}
@@ -150,8 +146,8 @@ export function House3D({ config }: { config: HouseConfig }) {
         push(
           "frame_surface",
           <RoofFrameMesh
-            key="hip-roof-frame-surface"
-            geom={frameGeom}
+            key={`hip-roof-frame-surface-${idx}`}
+            geom={frameGeomMerged}
             framing={framing}
             trusses={trusses}
             trussPositions={trussPositions}
@@ -161,8 +157,102 @@ export function House3D({ config }: { config: HouseConfig }) {
             shellLift={shellLift}
           />,
         );
-      }
-    } catch { /* under-specified — skip */ }
+        roofDebug.push({
+          idx,
+          type: "hip_roof",
+          floor: h.floorNum,
+          eave_x_west: merged.eave_x_west,
+          eave_x_east: merged.eave_x_east,
+          eave_y_north: merged.eave_y_north,
+          eave_y_south: merged.eave_y_south,
+          eave_z: merged.eave_z,
+          ridge_h: merged.ridge_h,
+          trussPositions,
+        });
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn("[roof3d] hip compute failed:", msg, e);
+      roofDebug.push({ type: "hip_roof", status: "error", error: msg });
+    }
+
+    try {
+      const gableRoofs = deriveAllGableRoofs(
+        hc as unknown as Parameters<typeof deriveAllGableRoofs>[0],
+        DEFAULT_GLOBAL_CONFIG,
+      );
+      gableRoofs.forEach((g, idx) => {
+        // Ring-beam anchor rectangle for the gable — falls back to eaves
+        // when the roof has no explicit position/size (rare after Phase 2).
+        const gc = g.config as unknown as { x?: number; y?: number; width?: number; length?: number };
+        const rw = gc.x !== undefined && gc.width !== undefined ? gc.x + gc.width : g.geom.eave_x_east;
+        const rl = gc.y !== undefined && gc.length !== undefined ? gc.y + gc.length : g.geom.eave_y_south;
+        const frameGeom = {
+          ...g.geom,
+          ring_beam_x_west: gc.x ?? g.geom.eave_x_west,
+          ring_beam_x_east: rw,
+          ring_beam_y_north: gc.y ?? g.geom.eave_y_north,
+          ring_beam_y_south: rl,
+        };
+        const framing = (g.config.framing as RoofFraming | undefined) ?? {};
+        const trusses = (g.config as { trusses?: RoofTrusses }).trusses;
+        const shellLift = computeShellLift(framing);
+        push(
+          "loft",
+          <GableRoofMesh
+            key={`gable-roof-${idx}`}
+            geom={g.geom}
+            plotWidth={plot.width}
+            plotLength={plot.length}
+            shellLift={shellLift}
+          />,
+        );
+        push(
+          "frame_spine",
+          <GableRoofFrameMesh
+            key={`gable-roof-frame-spine-${idx}`}
+            geom={frameGeom}
+            framing={framing}
+            trusses={trusses}
+            plotWidth={plot.width}
+            plotLength={plot.length}
+            bucket="spine"
+            shellLift={shellLift}
+          />,
+        );
+        push(
+          "frame_surface",
+          <GableRoofFrameMesh
+            key={`gable-roof-frame-surface-${idx}`}
+            geom={frameGeom}
+            framing={framing}
+            trusses={trusses}
+            plotWidth={plot.width}
+            plotLength={plot.length}
+            bucket="surface"
+            shellLift={shellLift}
+          />,
+        );
+        roofDebug.push({
+          idx,
+          type: "gable_roof",
+          floor: g.floorNum,
+          eave_x_west: g.geom.eave_x_west,
+          eave_y_north: g.geom.eave_y_north,
+          eave_z: g.geom.eave_z,
+          ridge_h: g.geom.ridge_h,
+        });
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn("[gable3d] gable compute failed:", msg, e);
+      roofDebug.push({ type: "gable_roof", status: "error", error: msg });
+    }
+
+    (window as unknown as { __roofDebug?: unknown }).__roofDebug = {
+      status: roofDebug.length ? "ok" : "no-roof",
+      roofs: roofDebug,
+    };
 
     // Plinth
     if (hc.plinth) {
@@ -328,7 +418,7 @@ interface Globals {
   slabThickness: number;
   roofThickness: number;
   beamSize: number;
-  floorHeights: Record<number, number>;
+  floorHeight: number;
 }
 interface Plot { width: number; length: number }
 

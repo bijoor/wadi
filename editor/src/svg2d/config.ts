@@ -26,13 +26,37 @@ export interface DimensionConfig {
   opening_text_size: number;
 }
 
+// Structural defaults for roof frame members. Each roof object's own
+// `framing.*` block overrides these; the fallback chain is
+//   roof.framing.X → houseConfig.defaults.framing.X → GC.roof_framing.X.
+// Nominal sizes stay in inches (industry standard, "2×4", "6×3"); the
+// on-centre spacing stays in inches too (o.c. is universally inches).
+export interface RoofFramingDefaults {
+  rafter_size_in: [number, number];
+  rafter_spacing_in: number;
+  purlin_size_in: [number, number];
+  purlin_spacing_in: number;
+  ridge_size_in: [number, number];
+  ring_beam_size_in: [number, number];
+  wall_thickness_mm?: {
+    rafter?: number;
+    purlin?: number;
+    ridge?: number;
+    ring_beam?: number;
+  };
+}
+
 export interface GlobalConfig {
   wall_thickness: number;
   plinth_height: number;
   floor_slab_thickness: number;
   roof_thickness: number;
   beam_size: number;
-  floor_heights: Record<number, number>;
+  // Single default wall-height for any floor without an explicit override.
+  // Was previously a per-floor-number dict; flattened so any newly-added
+  // floor gets the same default regardless of position in the stack.
+  floor_height: number;
+  roof_framing: RoofFramingDefaults;
   elevation_rendering_priority: Record<string, number>;
   dimensions: DimensionConfig;
 }
@@ -43,10 +67,20 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
   floor_slab_thickness: 8,
   roof_thickness: 3,
   beam_size: 8,
-  floor_heights: {
-    0: 100.0,
-    1: 90.0,
-    2: 70.0,
+  floor_height: 100.0,
+  roof_framing: {
+    rafter_size_in: [2, 4],
+    rafter_spacing_in: 36,
+    purlin_size_in: [2, 1],
+    purlin_spacing_in: 12,
+    ridge_size_in: [6, 3],
+    ring_beam_size_in: [4, 2],
+    wall_thickness_mm: {
+      rafter: 2,
+      purlin: 1.5,
+      ridge: 3,
+      ring_beam: 3,
+    },
   },
   elevation_rendering_priority: {
     beam: 0,

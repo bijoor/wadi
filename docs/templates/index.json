@@ -1,0 +1,22 @@
+{
+  "templates": [
+    {
+      "id": "blank",
+      "title": "Blank plot",
+      "description": "Empty 30 × 40 ft plot with a single floor slab. Best when you want to build your house entirely from scratch.",
+      "file": "templates/blank.json"
+    },
+    {
+      "id": "verandah_cottage",
+      "title": "Verandah cottage",
+      "description": "Single-story Konkan cottage with a front verandah (4 pillars), living room, bedroom, kitchen, bathroom, and a hip roof.",
+      "file": "templates/verandah_cottage.json"
+    },
+    {
+      "id": "two_story_konkan",
+      "title": "Two-story Konkan",
+      "description": "Full two-story starter with verandah, living/kitchen on the ground floor, staircase, three bedrooms + study on the first floor, and a hip roof.",
+      "file": "templates/two_story_konkan.json"
+    }
+  ]
+}

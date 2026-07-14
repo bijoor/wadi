@@ -6,8 +6,9 @@
 
 import { Suspense, useMemo } from "react";
 import { createRoot } from "react-dom/client";
+import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
-import { Environment, OrbitControls, Grid } from "@react-three/drei";
+import { Environment, OrbitControls, Grid, Text } from "@react-three/drei";
 import {
   EffectComposer,
   N8AO,
@@ -93,6 +94,7 @@ function ViewerScene() {
         position={[0, -0.02, 0]}
       />
       <House3D config={config} />
+      <CompassRose plot={plot} />
       <OrbitControls
         makeDefault
         enableDamping
@@ -111,6 +113,107 @@ function ViewerScene() {
       </EffectComposer>
     </Canvas>
   );
+}
+
+// Flat compass rose laid on the ground just outside the plot's NW
+// corner. Standard map convention: N points to Three's -Z axis (which
+// corresponds to Inkscape Y=0, the top of the floor plan). N arrow is
+// coloured red; the other three are white/grey. Everything sits on
+// the XZ plane at y=0.01 so it renders just above the grid without
+// z-fighting.
+function CompassRose({ plot }: { plot: { width: number; length: number } }) {
+  const halfW = plot.width / 2;
+  const halfL = plot.length / 2;
+  // Radius sized to a fraction of the plot so it's readable but not
+  // dominant. Position: offset outside the NW corner of the plot.
+  const R = Math.max(20, Math.min(halfW, halfL) * 0.22);
+  const pad = R * 1.3;
+  const cx = -halfW - pad;
+  const cz = -halfL - pad;
+  const y = 0.02;
+  const letterSize = R * 0.45;
+
+  // A single triangular "arrow" pointing along +Z (south) in local
+  // space; the caller rotates it to face N / S / E / W. Colour is red
+  // for the N arrow only, white for the other three.
+  const Arrow = ({
+    dir,
+    color,
+  }: {
+    dir: "N" | "S" | "E" | "W";
+    color: string;
+  }) => {
+    const rotY =
+      dir === "N" ? Math.PI : dir === "S" ? 0 : dir === "E" ? Math.PI / 2 : -Math.PI / 2;
+    return (
+      <group rotation={[0, rotY, 0]}>
+        <mesh position={[0, 0, R * 0.55]} rotation={[-Math.PI / 2, 0, 0]}>
+          {/* Triangle: base at hub, tip at radius R. */}
+          <shapeGeometry args={[buildTriangle(R * 0.9, R * 0.35)]} />
+          <meshBasicMaterial color={color} side={2 /* DoubleSide */} />
+        </mesh>
+      </group>
+    );
+  };
+
+  const letter = (
+    ch: string,
+    color: string,
+    pos: [number, number, number],
+  ) => (
+    <Text
+      position={pos}
+      rotation={[-Math.PI / 2, 0, 0]}
+      fontSize={letterSize}
+      color={color}
+      anchorX="center"
+      anchorY="middle"
+      outlineWidth={letterSize * 0.08}
+      outlineColor="black"
+    >
+      {ch}
+    </Text>
+  );
+
+  return (
+    <group position={[cx, y, cz]}>
+      {/* Backing disc so the rose reads against any ground colour. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[R * 1.35, 48]} />
+        <meshBasicMaterial color="#0f172a" transparent opacity={0.7} />
+      </mesh>
+      {/* Outer ring. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+        <ringGeometry args={[R * 1.3, R * 1.35, 48]} />
+        <meshBasicMaterial color="#ffffff" side={2} />
+      </mesh>
+      {/* Central hub. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+        <circleGeometry args={[R * 0.1, 24]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+      <Arrow dir="N" color="#dc2626" />
+      <Arrow dir="S" color="#e5e7eb" />
+      <Arrow dir="E" color="#e5e7eb" />
+      <Arrow dir="W" color="#e5e7eb" />
+      {letter("N", "#ffffff", [0, 0.02, -R * 1.65])}
+      {letter("S", "#ffffff", [0, 0.02, R * 1.65])}
+      {letter("E", "#ffffff", [R * 1.65, 0.02, 0])}
+      {letter("W", "#ffffff", [-R * 1.65, 0.02, 0])}
+    </group>
+  );
+}
+
+// Build an isoceles triangle Shape whose apex sits at (0, -length/2) and
+// whose base spans ±width/2 on X at (0, +length/2). Used for the compass
+// arrows — the parent group rotates it per direction.
+function buildTriangle(length: number, width: number): THREE.Shape {
+  const s = new THREE.Shape();
+  s.moveTo(0, -length / 2);
+  s.lineTo(-width / 2, length / 2);
+  s.lineTo(width / 2, length / 2);
+  s.closePath();
+  return s;
 }
 
 export function mountViewer3D(container: HTMLElement): void {

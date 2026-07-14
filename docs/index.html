@@ -832,6 +832,91 @@
         .html-lightbox-controls button:hover {
             background: #fff;
         }
+        /* ---- Template picker modal ------------------------------------- */
+        .new-house-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+        }
+        .new-house-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+        }
+        .new-house-modal-card {
+            position: relative;
+            max-width: 900px;
+            margin: 5vh auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem 1.75rem 1.75rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .new-house-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .new-house-modal-header h2 {
+            margin: 0;
+            font-size: 1.35rem;
+            color: #2C2A26;
+        }
+        .new-house-modal-close {
+            background: transparent;
+            border: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+        }
+        .new-house-modal-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #000;
+        }
+        .new-house-modal-subtitle {
+            margin: 0 0 1.25rem 0;
+            color: #555;
+            font-size: 0.95rem;
+        }
+        .new-house-modal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+        .template-card {
+            border: 1px solid #e0dfda;
+            border-radius: 10px;
+            padding: 1rem 1.1rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: #fafaf7;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .template-card:hover {
+            border-color: #B85028;
+            background: #fff;
+            box-shadow: 0 4px 14px rgba(184, 80, 40, 0.15);
+            transform: translateY(-2px);
+        }
+        .template-card-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #2C2A26;
+        }
+        .template-card-desc {
+            color: #555;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
         /* Cursor + subtle hover so users know the BOM cards are clickable. */
         .roof-bom-item {
             cursor: zoom-in;
@@ -1095,8 +1180,8 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CwGEgNwY.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/viewer-BQYKoIT9.css">
+  <script type="module" crossorigin src="./assets/viewer-B2RGgSVF.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/viewer-B26b9NVF.css">
 </head>
 <body>
     <header>
@@ -1123,6 +1208,7 @@
                     <button id="btn-redo" class="hdr-btn" title="Redo (⇧⌘Z)" aria-label="Redo">↷</button>
                     <button id="btn-load" class="hdr-btn hdr-btn-text" title="Load JSON…">📂 Load</button>
                     <button id="btn-save" class="hdr-btn hdr-btn-text" title="Download JSON">💾 Save</button>
+                    <button id="btn-new" class="hdr-btn hdr-btn-text" title="Start a new house from a template">✨ New</button>
                     <button id="btn-edit-toggle" class="hdr-btn hdr-btn-text" title="Toggle edit panels">✏️ Edit</button>
                 </div>
                 <input id="file-input-json" type="file" accept="application/json,.json" hidden />
@@ -1200,6 +1286,13 @@
                 <h4>Show layers</h4>
                 <div class="layers-list" id="viewer-layer-list"></div>
             </div>
+            <!-- Debug badge — shows roof compute status. Toggle via the
+                 🐞 button; auto-refreshes from window.__roofDebug. -->
+            <div class="debug-badge-wrapper" style="position: absolute; top: 20px; right: 20px; z-index: 12;">
+                <button id="debug-badge-toggle" class="settings-toggle" onclick="toggleRoofDebug()" title="Show roof debug info" style="width: 42px; height: 42px; font-size: 1.1rem;">🐞</button>
+                <pre id="debug-badge-panel" style="display: none; position: absolute; top: 52px; right: 0; background: rgba(15,23,42,0.95); color: #e2e8f0; padding: 0.75rem; border-radius: 8px; font-size: 0.72rem; line-height: 1.4; max-width: 340px; max-height: 60vh; overflow: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); white-space: pre-wrap;"></pre>
+            </div>
+
             <!-- Three.js Canvas mounted here by src/viewer/main.ts. Uses
                  the same House3D scene the editor renders, minus the
                  editor's toolbar / section cutter / preset row. Orbit
@@ -1243,6 +1336,24 @@
             </div>
         </div>
         <!-- End Roof Details View -->
+
+        <!-- Template picker modal — opens when the New button is clicked.
+             Populated from templates/index.json. Selecting a card loads
+             the template into the store (after confirming if the user has
+             unsaved changes). -->
+        <div id="new-house-modal" class="new-house-modal" style="display: none;">
+            <div class="new-house-modal-backdrop" onclick="closeNewHouseModal()"></div>
+            <div class="new-house-modal-card">
+                <div class="new-house-modal-header">
+                    <h2>Start a new house</h2>
+                    <button class="new-house-modal-close" onclick="closeNewHouseModal()" aria-label="Close">✕</button>
+                </div>
+                <p class="new-house-modal-subtitle">Pick a template to start from. You can edit everything after loading.</p>
+                <div class="new-house-modal-grid" id="new-house-modal-grid">
+                    <div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 2rem;">Loading templates…</div>
+                </div>
+            </div>
+        </div>
 
         <!-- HTML lightbox — expands any BOM card to full-screen with
              an Export-to-PDF (print) button. Populated by openHtmlLightbox(). -->
@@ -1865,6 +1976,41 @@
                 catch (e) { console.warn('[svg lightbox] could not restore tab', e); }
             }
             svgLightboxReturnTab = null;
+        }
+
+        // Roof debug panel — shows window.__roofDebug (published by
+        // House3D on every render) so the user can see WHY the roof
+        // isn't drawing (no hip_roof, compute error, footprint mismatch,
+        // etc.) without opening DevTools.
+        function toggleRoofDebug() {
+            const panel = document.getElementById('debug-badge-panel');
+            if (!panel) return;
+            const visible = panel.style.display !== 'none';
+            if (visible) {
+                panel.style.display = 'none';
+                return;
+            }
+            renderRoofDebug();
+            panel.style.display = 'block';
+            // Refresh every 500 ms while open so config edits show up live.
+            if (!window.__roofDebugTimer) {
+                window.__roofDebugTimer = setInterval(renderRoofDebug, 500);
+            }
+        }
+        function renderRoofDebug() {
+            const panel = document.getElementById('debug-badge-panel');
+            if (!panel || panel.style.display === 'none') {
+                if (window.__roofDebugTimer) {
+                    clearInterval(window.__roofDebugTimer);
+                    window.__roofDebugTimer = null;
+                }
+                return;
+            }
+            const d = window.__roofDebug;
+            const b = window.__roofBomDebug;
+            panel.textContent =
+                'Roof 3D compute:\n' + JSON.stringify(d ?? 'not run yet', null, 2) +
+                '\n\nRoof 2D/BOM compute:\n' + JSON.stringify(b ?? 'not run yet', null, 2);
         }
 
         // HTML lightbox — used by the BOM cards. Simpler than the SVG

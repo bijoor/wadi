@@ -1,0 +1,171 @@
+{
+  "site": {
+    "reference_x": 0,
+    "reference_y": 0,
+    "plot_length": 400,
+    "plot_width": 300
+  },
+  "plinth": {
+    "x": 0,
+    "y": 0,
+    "length": 400,
+    "width": 300,
+    "height": 30
+  },
+  "floors": [
+    {
+      "floor_number": 0,
+      "name": "Ground Floor",
+      "objects": [
+        {
+          "type": "floor_slab",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 400
+        },
+        {
+          "type": "pillar",
+          "name": "Verandah_Pillar_NW",
+          "x": 5,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 100
+        },
+        {
+          "type": "pillar",
+          "name": "Verandah_Pillar_N1",
+          "x": 105,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 100
+        },
+        {
+          "type": "pillar",
+          "name": "Verandah_Pillar_N2",
+          "x": 195,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 100
+        },
+        {
+          "type": "pillar",
+          "name": "Verandah_Pillar_NE",
+          "x": 285,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 100
+        },
+        {
+          "type": "room",
+          "name": "Verandah",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 100,
+          "material": "verandah"
+        },
+        {
+          "type": "room",
+          "name": "Living_Room",
+          "x": 0,
+          "y": 100,
+          "width": 180,
+          "length": 200,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Main_Entry",
+                  "offset": 70,
+                  "width": 40,
+                  "height": 80
+                }
+              ]
+            },
+            "east": {},
+            "south": {},
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Living_Window",
+                  "offset": 80,
+                  "width": 50,
+                  "height": 50,
+                  "sill_height": 30
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bedroom",
+          "x": 180,
+          "y": 100,
+          "width": 120,
+          "length": 200,
+          "walls": {
+            "north": {},
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bedroom_Window",
+                  "offset": 80,
+                  "width": 50,
+                  "height": 50,
+                  "sill_height": 30
+                }
+              ]
+            },
+            "south": {},
+            "west": {}
+          }
+        },
+        {
+          "type": "room",
+          "name": "Kitchen",
+          "x": 0,
+          "y": 300,
+          "width": 180,
+          "length": 100
+        },
+        {
+          "type": "room",
+          "name": "Bathroom",
+          "x": 180,
+          "y": 300,
+          "width": 120,
+          "length": 100
+        }
+      ]
+    },
+    {
+      "floor_number": 1,
+      "name": "Loft Floor",
+      "objects": [
+        {
+          "type": "hip_roof",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 400,
+          "ridge_axis": "y",
+          "ridge_h": 70,
+          "min_overhang": 25,
+          "trusses": {
+            "type": "fink",
+            "positions": [80, 200, 320]
+          }
+        }
+      ]
+    }
+  ]
+}

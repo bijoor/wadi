@@ -196,13 +196,13 @@ const hipRoof = z
   .object({
     type: z.literal("hip_roof"),
   })
-  .passthrough();
+  .catchall(z.unknown());
 
 const gableRoof = z
   .object({
     type: z.literal("gable_roof"),
   })
-  .passthrough();
+  .catchall(z.unknown());
 
 export const object = z.discriminatedUnion("type", [
   floorSlab,
@@ -222,15 +222,33 @@ const floor = z
   .object({
     floor_number: z.number().int().nonnegative(),
     name: z.string(),
+    // Per-floor overrides for the default floor_heights in GlobalConfig.
+    // Height = wall height on that floor in project units (10 units = 1 ft).
+    // Slab thickness = the horizontal slab between this floor and the one
+    // above. Both fall back to GlobalConfig defaults when omitted.
+    height: z.number().positive().optional(),
+    slab_thickness: z.number().nonnegative().optional(),
     objects: z.array(object),
   })
   .strict();
 export type Floor = z.infer<typeof floor>;
 
+// House-level overrides for the built-in GlobalConfig defaults. Every
+// floor without its own `.height` / `.slab_thickness` falls back to
+// these; if these are absent too, the code defaults in
+// DEFAULT_GLOBAL_CONFIG apply.
+const houseDefaults = z
+  .object({
+    floor_height: z.number().positive().optional(),
+    slab_thickness: z.number().nonnegative().optional(),
+  })
+  .strict();
+
 export const HouseConfig = z
   .object({
     site,
     plinth,
+    defaults: houseDefaults.optional(),
     floors: z.array(floor).min(1),
     _walls_expanded: z.boolean().optional(),
   })

@@ -130,7 +130,47 @@ function rebuildSvgMap(): void {
     "2d/elevations/elevations_combined.svg",
     generateCombinedElevations(cfg),
   );
-  const roof = computeRoofSections(cfg, { eaveCrossSectionSvg: eaveSvg });
+  // Roof pipeline throws on incomplete hip_roof configs (e.g. missing
+  // trusses.positions). Swallow the error so a partial config still
+  // renders floor plans + elevations — the roof tab will just show its
+  // empty state until the user fills in the required fields.
+  // Publish result to window.__roofBomDebug so the on-screen debug badge
+  // (🐞) can surface why the roof is missing without needing DevTools.
+  let roof: ReturnType<typeof computeRoofSections> = null;
+  // Snapshot the actual hip_roof object post-validate — so the debug
+  // badge can show whether `trusses` survived the schema pass and
+  // whether the fields the compute needs are there.
+  let hipRoofSnapshot: Record<string, unknown> | null = null;
+  for (const f of cfg.floors ?? []) {
+    for (const o of f.objects ?? []) {
+      if ((o as { type?: string }).type === "hip_roof") {
+        hipRoofSnapshot = o as unknown as Record<string, unknown>;
+        break;
+      }
+    }
+    if (hipRoofSnapshot) break;
+  }
+  try {
+    roof = computeRoofSections(cfg, { eaveCrossSectionSvg: eaveSvg });
+    (window as unknown as { __roofBomDebug?: unknown }).__roofBomDebug = {
+      status: roof ? "ok" : "no-roof",
+      hipRoofInConfig: !!hipRoofSnapshot,
+      hipRoofKeys: hipRoofSnapshot ? Object.keys(hipRoofSnapshot) : [],
+      hipRoofSnapshot,
+      panelCount: roof?.panels.length ?? 0,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn("[roof] compute failed, skipping roof panels:", msg, e);
+    (window as unknown as { __roofBomDebug?: unknown }).__roofBomDebug = {
+      status: "error",
+      hipRoofInConfig: !!hipRoofSnapshot,
+      hipRoofKeys: hipRoofSnapshot ? Object.keys(hipRoofSnapshot) : [],
+      hipRoofSnapshot,
+      error: msg,
+    };
+    window.roofBomManifest = [];
+  }
   if (roof) {
     svgMap.set(`2d/roof/${roof.master.filename}`, roof.master.content);
     for (const p of roof.panels) {
@@ -278,6 +318,7 @@ function reloadActiveTab(): void {
 // -----------------------------------------------------------------
 
 function wireHeaderButtons(): void {
+  const btnNew = document.getElementById("btn-new");
   const btnEdit = document.getElementById("btn-edit-toggle");
   const btnLoad = document.getElementById("btn-load");
   const btnSave = document.getElementById("btn-save");
@@ -289,6 +330,10 @@ function wireHeaderButtons(): void {
     const next = document.body.dataset.editMode === "on" ? "off" : "on";
     document.body.dataset.editMode = next;
     try { localStorage.setItem(EDIT_MODE_KEY, next); } catch { /* ignore */ }
+  });
+
+  btnNew?.addEventListener("click", () => {
+    void openNewHouseModal();
   });
 
   btnLoad?.addEventListener("click", async () => {
@@ -343,6 +388,102 @@ function applyStoredEditMode(): void {
   try { stored = localStorage.getItem(EDIT_MODE_KEY); } catch { /* ignore */ }
   document.body.dataset.editMode = stored === "on" ? "on" : "off";
 }
+
+// -----------------------------------------------------------------
+// Template picker modal
+// -----------------------------------------------------------------
+
+interface TemplateEntry {
+  id: string;
+  title: string;
+  description: string;
+  file: string;
+}
+// Cache the manifest between opens so we don't refetch every click.
+let templateManifestCache: TemplateEntry[] | null = null;
+
+async function openNewHouseModal(): Promise<void> {
+  const modal = document.getElementById("new-house-modal");
+  const grid = document.getElementById("new-house-modal-grid");
+  if (!modal || !grid) return;
+  modal.style.display = "block";
+
+  if (!templateManifestCache) {
+    try {
+      const r = await fetch("templates/index.json");
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const parsed = (await r.json()) as { templates: TemplateEntry[] };
+      templateManifestCache = parsed.templates;
+    } catch (e) {
+      grid.innerHTML =
+        `<div style="grid-column: 1 / -1; color: #b00; padding: 1rem;">
+          Failed to load templates/index.json: ${e instanceof Error ? e.message : String(e)}
+        </div>`;
+      return;
+    }
+  }
+
+  grid.innerHTML = "";
+  for (const t of templateManifestCache) {
+    const card = document.createElement("div");
+    card.className = "template-card";
+    card.innerHTML = `
+      <div class="template-card-title">${escapeHtml(t.title)}</div>
+      <div class="template-card-desc">${escapeHtml(t.description)}</div>`;
+    card.addEventListener("click", () => void selectTemplate(t));
+    grid.appendChild(card);
+  }
+}
+
+function closeNewHouseModal(): void {
+  const modal = document.getElementById("new-house-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function selectTemplate(t: TemplateEntry): Promise<void> {
+  // Undo history is our proxy for "has unsaved edits". If the user has
+  // pushed any past states since loading, warn before wiping.
+  const hasEdits = useConfigStore.temporal.getState().pastStates.length > 0;
+  if (hasEdits) {
+    const ok = confirm(
+      `Loading "${t.title}" will replace your current work. Continue?\n\n` +
+      `Tip: click Cancel and use 💾 Save first if you want to keep it.`,
+    );
+    if (!ok) return;
+  }
+  try {
+    const r = await fetch(t.file);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const raw = await r.json();
+    const parsed = validate(raw);
+    if (!parsed.ok || !parsed.data) {
+      alert(
+        `Template "${t.title}" failed validation:\n` +
+        (parsed.errors ?? []).slice(0, 5).map((e) => `• ${e.path}: ${e.message}`).join("\n"),
+      );
+      return;
+    }
+    useConfigStore.getState().loadConfig(parsed.data, `${t.title} (template)`);
+    // Clear undo history so the freshly-loaded template becomes the new
+    // baseline — Ctrl+Z shouldn't revert to the pre-template state.
+    useConfigStore.temporal.getState().clear();
+    closeNewHouseModal();
+  } catch (e) {
+    alert(`Failed to load template: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Expose so the modal's inline onclick handlers (backdrop, ✕) can call it.
+declare global {
+  interface Window {
+    closeNewHouseModal?: () => void;
+  }
+}
+window.closeNewHouseModal = closeNewHouseModal;
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {

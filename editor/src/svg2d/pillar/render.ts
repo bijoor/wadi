@@ -46,10 +46,14 @@ export function renderPillarView(
   const floors = houseConfig.floors ?? [];
 
   const gc = DEFAULT_GLOBAL_CONFIG;
+  const houseDefaults = (houseConfig as { defaults?: { floor_height?: number; slab_thickness?: number } }).defaults;
   const plinth_height = plinthConfig.height ?? gc.plinth_height;   // int
-  const slab_thickness = gc.floor_slab_thickness ?? 8;             // int
-  const floor_heights = gc.floor_heights ?? {};
-  const floor_0_height = (floor_heights as Record<number, number>)[0] ?? 100;   // int
+  const slab_thickness =
+    houseDefaults?.slab_thickness ?? gc.floor_slab_thickness ?? 8; // int
+  // Prefer per-floor override on floor 0 → house default → global.
+  const floor0 = floors[0] as { height?: number } | undefined;
+  const floor_0_height =
+    floor0?.height ?? houseDefaults?.floor_height ?? gc.floor_height ?? 100;   // int
 
   const building_width = plinthConfig.width ?? 0;    // int
   const building_length = plinthConfig.length ?? 0;  // int

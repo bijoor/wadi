@@ -427,6 +427,7 @@
     {
       "floor_number": 1,
       "name": "First Floor",
+      "height": 90,
       "objects": [
         {
           "type": "floor_slab",

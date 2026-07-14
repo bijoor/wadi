@@ -29,13 +29,26 @@ export function computeTopFloorWallTopZ(
   floorNumber: number,
   globalConfig: GlobalConfig,
   beamOffset = 0.0,
+  // Optional per-floor overrides — if the caller passes the config's
+  // `floors` array, each floor's own `.height` / `.slab_thickness` are
+  // preferred first. House-level `houseDefaults` come next; the code
+  // defaults in globalConfig are the final fallback.
+  floors?: Array<{ height?: number; slab_thickness?: number }>,
+  houseDefaults?: { floor_height?: number; slab_thickness?: number },
 ): number {
   let z = globalConfig.plinth_height as number;
-  const slab = (globalConfig.floor_slab_thickness as number | undefined) ?? 0;
-  const floorHeights = globalConfig.floor_heights as Record<number, number>;
+  const defaultSlab =
+    houseDefaults?.slab_thickness ??
+    (globalConfig.floor_slab_thickness as number | undefined) ??
+    0;
+  const defaultHeight =
+    houseDefaults?.floor_height ??
+    (globalConfig.floor_height as number | undefined) ??
+    100;
   for (let f = 0; f < floorNumber; f++) {
-    z += slab;
-    z += floorHeights[f];
+    const perFloor = floors?.[f];
+    z += perFloor?.slab_thickness ?? defaultSlab;
+    z += perFloor?.height ?? defaultHeight;
   }
   z += beamOffset;
   return z;
@@ -47,6 +60,11 @@ export function deriveHipRoofGeometry(
   houseTransU: number,
   houseLongU: number,
   ridgeAxis: string = "y",
+  // NEW (Phase 2): roof position in world coords. Defaults to (0,0)
+  // so existing single-roof configs keep working — the derived
+  // eave_x_west etc. become absolute world X/Y once these are added.
+  roofX: number = 0,
+  roofY: number = 0,
 ): Record<string, unknown> {
   if (ridgeAxis !== "y") {
     throw new Error(
@@ -87,7 +105,14 @@ export function deriveHipRoofGeometry(
   );
 
   let ridgeH: number;
-  if ("ridge_h_ft" in hipRoof) {
+  // Prefer unit-form fields (matches room/pillar convention: 10 units = 1 ft).
+  // The old `_ft` fields are still honoured for backward-compat with
+  // existing configs.
+  if ("ridge_h" in hipRoof && (hipRoof as { ridge_h?: number }).ridge_h !== undefined) {
+    const v = Number((hipRoof as { ridge_h?: number }).ridge_h);
+    if (!(v > 0)) throw new Error("hip_roof.ridge_h must be > 0");
+    ridgeH = v;
+  } else if ("ridge_h_ft" in hipRoof) {
     const v = hipRoof.ridge_h_ft as number;
     if (v <= 0) throw new Error("hip_roof.ridge_h_ft must be > 0");
     ridgeH = v * 10.0;
@@ -99,12 +124,14 @@ export function deriveHipRoofGeometry(
     ridgeH = dMax * Math.tan((mp * Math.PI) / 180);
   } else {
     throw new Error(
-      "hip_roof must specify one of 'ridge_h_ft' or 'min_pitch_deg'",
+      "hip_roof must specify one of 'ridge_h' / 'ridge_h_ft' / 'min_pitch_deg'",
     );
   }
 
-  const minOv = Number(hipRoof.min_overhang_ft ?? 0) * 10.0;
-  if (minOv <= 0) throw new Error("hip_roof.min_overhang_ft must be > 0");
+  const minOvU = (hipRoof as { min_overhang?: number }).min_overhang;
+  const minOvFt = hipRoof.min_overhang_ft as number | undefined;
+  const minOv = Number(minOvU ?? (minOvFt !== undefined ? minOvFt * 10.0 : 0));
+  if (minOv <= 0) throw new Error("hip_roof.min_overhang must be > 0");
 
   const dCrit = Math.min(
     houseTransU / 2.0,
@@ -139,13 +166,16 @@ export function deriveHipRoofGeometry(
   const ridgeYEndExt = ridgeYEnd + ridgeExtU;
 
   return {
-    eave_x_west: 0 - oEw,
-    eave_x_east: houseTransU + oEw,
-    eave_y_north: 0 - oN,
-    eave_y_south: houseLongU + oS,
+    // All X/Y outputs shifted by (roofX, roofY) so multiple positioned
+    // roofs land at the correct absolute world coordinates. Existing
+    // single-roof callers pass (0, 0) and behaviour is unchanged.
+    eave_x_west: roofX + 0 - oEw,
+    eave_x_east: roofX + houseTransU + oEw,
+    eave_y_north: roofY + 0 - oN,
+    eave_y_south: roofY + houseLongU + oS,
     eave_z: eaveZ,
-    ridge_y_start: ridgeYStart,
-    ridge_y_end: ridgeYEnd,
+    ridge_y_start: roofY + ridgeYStart,
+    ridge_y_end: roofY + ridgeYEnd,
     ridge_h: ridgeH,
     ridge_axis: ridgeAxis,
     slope_angle_ew: pitchEw,
@@ -161,36 +191,97 @@ export function deriveHipRoofGeometry(
     ridge_ext_u: ridgeExtU,
     ridge_ext_ft: ridgeExtU / 10.0,
     has_ridge_vent: hasRidgeVent,
-    ridge_y_start_ext: ridgeYStartExt,
-    ridge_y_end_ext: ridgeYEndExt,
+    ridge_y_start_ext: roofY + ridgeYStartExt,
+    ridge_y_end_ext: roofY + ridgeYEndExt,
     ridge_vent_cfg: { ...ventCfg },
   };
 }
 
+// Derive geometry for a specific hip_roof object on the given floor.
+// Reads position + size from either the new `x, y, width, length` fields
+// (project units) or falls back to `(0, 0)` + `framing.house_footprint_ft`
+// (feet) for existing configs.
+export function deriveHipRoofFromObject(
+  hipRoof: HipRoof,
+  floorNum: number,
+  houseConfig: HouseConfig,
+  globalConfig: GlobalConfig,
+): Record<string, unknown> {
+  const framing =
+    (hipRoof.framing as Record<string, unknown> | undefined) ?? {};
+  const houseFt = (framing.house_footprint_ft as [number, number] | undefined) ??
+    [27.0, 45.0];
+  const roofX = Number((hipRoof as { x?: number }).x ?? 0);
+  const roofY = Number((hipRoof as { y?: number }).y ?? 0);
+  const roofW = Number((hipRoof as { width?: number }).width ?? houseFt[0] * 10.0);
+  const roofL = Number((hipRoof as { length?: number }).length ?? houseFt[1] * 10.0);
+  let beamOffsetU: number;
+  const beamU = (hipRoof as { beam_offset?: number }).beam_offset;
+  if (beamU !== undefined) {
+    beamOffsetU = Number(beamU);
+  } else if ("beam_offset_ft" in hipRoof) {
+    beamOffsetU = (hipRoof.beam_offset_ft as number) * 10.0;
+  } else {
+    beamOffsetU = Number(globalConfig.wall_thickness ?? 8);
+  }
+  const wallTopZ = computeTopFloorWallTopZ(
+    floorNum,
+    globalConfig,
+    beamOffsetU,
+    houseConfig.floors as Array<{ height?: number; slab_thickness?: number }>,
+    (houseConfig as { defaults?: { floor_height?: number; slab_thickness?: number } }).defaults,
+  );
+  return deriveHipRoofGeometry(
+    hipRoof,
+    wallTopZ,
+    roofW,
+    roofL,
+    (hipRoof.ridge_axis as string | undefined) ?? "y",
+    roofX,
+    roofY,
+  );
+}
+
+// Backward-compat wrapper — returns the first hip_roof only. Kept so
+// any lingering single-roof caller doesn't break; new code should use
+// `deriveAllHipRoofs` to iterate every roof in the config.
 export function deriveForHouse(
   houseConfig: HouseConfig,
   globalConfig: GlobalConfig,
 ): Record<string, unknown> | null {
   const [hipRoof, floorNum] = findHipRoof(houseConfig);
   if (hipRoof === null || floorNum === null) return null;
-  const framing =
-    (hipRoof.framing as Record<string, unknown> | undefined) ?? {};
-  const houseFt = (framing.house_footprint_ft as [number, number] | undefined) ??
-    [27.0, 45.0];
-  const houseTransU = houseFt[0] * 10.0;
-  const houseLongU = houseFt[1] * 10.0;
-  let beamOffsetU: number;
-  if ("beam_offset_ft" in hipRoof) {
-    beamOffsetU = (hipRoof.beam_offset_ft as number) * 10.0;
-  } else {
-    beamOffsetU = Number(globalConfig.wall_thickness ?? 8);
+  return deriveHipRoofFromObject(hipRoof, floorNum, houseConfig, globalConfig);
+}
+
+export interface DerivedHipRoof {
+  geom: Record<string, unknown>;
+  config: HipRoof;
+  floorNum: number;
+}
+
+// Iterate every hip_roof in the config and derive geometry for each.
+// Phase 2 entry point — replaces the single-roof `deriveForHouse` for
+// rendering pipelines that support multiple roofs.
+export function deriveAllHipRoofs(
+  houseConfig: HouseConfig,
+  globalConfig: GlobalConfig,
+): DerivedHipRoof[] {
+  const out: DerivedHipRoof[] = [];
+  for (let fi = 0; fi < (houseConfig.floors ?? []).length; fi++) {
+    const floor = houseConfig.floors[fi];
+    for (const obj of floor.objects ?? []) {
+      if ((obj as { type?: string }).type !== "hip_roof") continue;
+      try {
+        out.push({
+          geom: deriveHipRoofFromObject(obj as unknown as HipRoof, fi, houseConfig, globalConfig),
+          config: obj as unknown as HipRoof,
+          floorNum: fi,
+        });
+      } catch (e) {
+        console.warn(`[roof] hip_roof on floor ${fi} skipped:`, e);
+      }
+    }
   }
-  const wallTopZ = computeTopFloorWallTopZ(floorNum, globalConfig, beamOffsetU);
-  return deriveHipRoofGeometry(
-    hipRoof,
-    wallTopZ,
-    houseTransU,
-    houseLongU,
-    (hipRoof.ridge_axis as string | undefined) ?? "y",
-  );
+  return out;
 }

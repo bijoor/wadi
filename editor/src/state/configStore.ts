@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { temporal } from "zundo";
 import type { HouseConfig, HouseObject } from "../schema/houseConfig";
+import { makeDefault, makeDefaultFloor, type AddableObjectType } from "./defaultFactory";
 
 // Identity of the currently-selected object in the sidebar tree. `floor`
 // is the index into HOUSE_CONFIG.floors; `object` is the index into that
@@ -14,12 +15,31 @@ interface ConfigState {
   config: HouseConfig | null;
   filename: string | null;
   selection: Selection | null;
+  // When true the PropertyPanel replaces its object form with the House
+  // settings form (site + plinth). Mutually exclusive with `selection` —
+  // picking an object clears it, and opening it clears the selection.
+  siteEditorOpen: boolean;
+  // When set, the PropertyPanel shows FloorPropertiesForm for that floor
+  // index. Mutex with selection + siteEditorOpen (setter clears the
+  // others, and picking an object / opening site editor clears this).
+  floorEditorIdx: number | null;
   validationErrors: { path: string; message: string }[];
   dirty: boolean;
 
   loadConfig: (config: HouseConfig, filename?: string) => void;
   clearConfig: () => void;
   select: (sel: Selection | null) => void;
+  setSiteEditorOpen: (open: boolean) => void;
+  setFloorEditor: (idx: number | null) => void;
+  updateSite: (patch: Partial<HouseConfig["site"]>) => void;
+  updatePlinth: (patch: Partial<HouseConfig["plinth"]>) => void;
+  // Patches the house-level defaults block (floor_height / slab_thickness).
+  // Passing undefined for a field deletes it (so it falls back to the
+  // code globals); passing a number sets it.
+  updateDefaults: (patch: { floor_height?: number | undefined; slab_thickness?: number | undefined }) => void;
+  // Patches a floor's top-level fields (name, height, slab_thickness).
+  // The `objects` array is edited via updateObject / insertObject etc.
+  updateFloor: (floorIdx: number, patch: Partial<HouseConfig["floors"][number]>) => void;
 
   // Object mutations — all bump `dirty` and are captured by the
   // temporal middleware so Cmd/Ctrl+Z rewinds them.
@@ -28,6 +48,10 @@ interface ConfigState {
   deleteObject: (sel: Selection) => void;
   duplicateObject: (sel: Selection) => Selection | null;
   insertObject: (floor: number, obj: HouseObject) => Selection;
+  // Convenience wrappers used by Sidebar's "+" buttons. Both auto-select
+  // the freshly created item so the property panel opens for editing.
+  addObject: (floor: number, type: AddableObjectType) => Selection | null;
+  addFloor: () => number | null;
 
   setValidationErrors: (errs: { path: string; message: string }[]) => void;
 }
@@ -47,6 +71,8 @@ export const useConfigStore = create<ConfigState>()(
       config: null,
       filename: null,
       selection: null,
+      siteEditorOpen: false,
+      floorEditorIdx: null,
       validationErrors: [],
       dirty: false,
 
@@ -55,6 +81,8 @@ export const useConfigStore = create<ConfigState>()(
           config,
           filename: filename ?? null,
           selection: null,
+          siteEditorOpen: false,
+          floorEditorIdx: null,
           validationErrors: [],
           dirty: false,
         });
@@ -68,13 +96,82 @@ export const useConfigStore = create<ConfigState>()(
           config: null,
           filename: null,
           selection: null,
+          siteEditorOpen: false,
+          floorEditorIdx: null,
           validationErrors: [],
           dirty: false,
         });
         useConfigStore.temporal.getState().clear();
       },
 
-      select: (sel) => set({ selection: sel }),
+      // Panel-selection setters — the three (selection / siteEditorOpen /
+      // floorEditorIdx) are mutually exclusive. Whichever the user picks
+      // last wins; the other two are cleared.
+      select: (sel) =>
+        set((state) => ({
+          selection: sel,
+          siteEditorOpen: sel ? false : state.siteEditorOpen,
+          floorEditorIdx: sel ? null : state.floorEditorIdx,
+        })),
+      setSiteEditorOpen: (open) =>
+        set((state) => ({
+          siteEditorOpen: open,
+          selection: open ? null : state.selection,
+          floorEditorIdx: open ? null : state.floorEditorIdx,
+        })),
+      setFloorEditor: (idx) =>
+        set((state) => ({
+          floorEditorIdx: idx,
+          selection: idx !== null ? null : state.selection,
+          siteEditorOpen: idx !== null ? false : state.siteEditorOpen,
+        })),
+
+      updateSite: (patch) =>
+        set((state) => {
+          if (!state.config) return state;
+          return {
+            config: { ...state.config, site: { ...state.config.site, ...patch } },
+            dirty: true,
+          };
+        }),
+
+      updatePlinth: (patch) =>
+        set((state) => {
+          if (!state.config) return state;
+          return {
+            config: { ...state.config, plinth: { ...state.config.plinth, ...patch } },
+            dirty: true,
+          };
+        }),
+
+      updateDefaults: (patch) =>
+        set((state) => {
+          if (!state.config) return state;
+          const cur = (state.config as { defaults?: Record<string, number> }).defaults ?? {};
+          const next: Record<string, number> = { ...cur };
+          for (const [k, v] of Object.entries(patch)) {
+            if (v === undefined) delete next[k];
+            else next[k] = v;
+          }
+          const cleaned: Record<string, number> | undefined =
+            Object.keys(next).length === 0 ? undefined : next;
+          return {
+            config: { ...state.config, defaults: cleaned } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      updateFloor: (floorIdx, patch) =>
+        set((state) => {
+          if (!state.config) return state;
+          const floors = state.config.floors.map((f, i) =>
+            i === floorIdx ? { ...f, ...patch } : f,
+          );
+          return {
+            config: { ...state.config, floors },
+            dirty: true,
+          };
+        }),
 
       updateObject: (sel, patch) =>
         set((state) => {
@@ -158,6 +255,32 @@ export const useConfigStore = create<ConfigState>()(
           };
         });
         return sel;
+      },
+
+      addObject: (floor, type) => {
+        const state = useConfigStore.getState();
+        if (!state.config) return null;
+        const existing = state.config.floors[floor]?.objects ?? [];
+        const obj = makeDefault(type, state.config, existing);
+        return state.insertObject(floor, obj);
+      },
+
+      addFloor: () => {
+        let newFloorIdx: number | null = null;
+        set((state) => {
+          if (!state.config) return state;
+          const nextNumber =
+            (state.config.floors[state.config.floors.length - 1]?.floor_number ?? -1) + 1;
+          const nextFloor = makeDefaultFloor(state.config, nextNumber);
+          const floors = [...state.config.floors, nextFloor];
+          newFloorIdx = floors.length - 1;
+          return {
+            config: { ...state.config, floors },
+            selection: null,
+            dirty: true,
+          };
+        });
+        return newFloorIdx;
       },
 
       setValidationErrors: (validationErrors) => set({ validationErrors }),

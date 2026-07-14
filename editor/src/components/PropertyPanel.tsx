@@ -11,6 +11,10 @@ import {
   PillarForm,
   StaircaseForm,
 } from "../forms/simpleForms";
+import { HipRoofForm } from "../forms/HipRoofForm";
+import { GableRoofForm } from "../forms/GableRoofForm";
+import { HouseSettingsForm } from "../forms/HouseSettingsForm";
+import { FloorPropertiesForm } from "../forms/FloorPropertiesForm";
 import { useEffect } from "react";
 
 function objectDisplayName(obj: HouseObject): string | null {
@@ -21,6 +25,8 @@ function objectDisplayName(obj: HouseObject): string | null {
 export function PropertyPanel() {
   const selectedObject = useConfigStore(selectSelectedObject);
   const selection = useConfigStore((s) => s.selection);
+  const siteEditorOpen = useConfigStore((s) => s.siteEditorOpen);
+  const floorEditorIdx = useConfigStore((s) => s.floorEditorIdx);
   const config = useConfigStore((s) => s.config);
   const validationErrors = useConfigStore((s) => s.validationErrors);
   const setValidationErrors = useConfigStore((s) => s.setValidationErrors);
@@ -63,7 +69,27 @@ export function PropertyPanel() {
         )}
       </header>
 
-      {selection && selectedObject ? (
+      {siteEditorOpen ? (
+        <div className="flex-1 overflow-y-auto p-3 text-sm">
+          <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">
+            house
+          </div>
+          <div className="mb-3 text-base font-medium text-slate-100">
+            Site &amp; plinth
+          </div>
+          <HouseSettingsForm />
+        </div>
+      ) : floorEditorIdx !== null && config?.floors[floorEditorIdx] ? (
+        <div className="flex-1 overflow-y-auto p-3 text-sm">
+          <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">
+            floor
+          </div>
+          <div className="mb-3 text-base font-medium text-slate-100">
+            {config.floors[floorEditorIdx].name}
+          </div>
+          <FloorPropertiesForm floorIdx={floorEditorIdx} />
+        </div>
+      ) : selection && selectedObject ? (
         <div className="flex-1 overflow-y-auto p-3 text-sm">
           <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">
             {selectedObject.type}
@@ -75,7 +101,8 @@ export function PropertyPanel() {
         </div>
       ) : (
         <div className="p-4 text-sm text-slate-500">
-          Select an object from the sidebar to edit its properties.
+          Select an object from the sidebar to edit its properties, or
+          click <b>🏠 House settings</b> to edit the site &amp; plinth.
         </div>
       )}
 
@@ -120,8 +147,9 @@ function FormFor({ object, selection }: { object: HouseObject; selection: Select
     case "window":
       return <FlatDoorWindowForm obj={object} selection={selection} />;
     case "hip_roof":
+      return <HipRoofForm obj={object} selection={selection} />;
     case "gable_roof":
-      return <OpaqueRoofForm obj={object} selection={selection} />;
+      return <GableRoofForm obj={object} selection={selection} />;
     default:
       return (
         <div className="text-xs text-slate-500">

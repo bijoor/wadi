@@ -16,10 +16,33 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { toThreePos, type Vec3 } from "./coords";
+import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 
 // Inch → world-unit conversion. The house config uses 10 units per foot,
 // i.e. 10/12 units per inch. All framing sizes come in inches.
-const IN = 10 / 12;
+export const IN = 10 / 12;
+
+// Fallback chain for the frame member specs: roof-level framing block
+// wins over the GlobalConfig defaults. Called by both the hip renderer
+// (below) and the gable renderer in gableRoofFrame.tsx.
+export function resolveFraming(fr: RoofFraming): {
+  ridge_size_in: [number, number];
+  rafter_size_in: [number, number];
+  purlin_size_in: [number, number];
+  ring_beam_size_in: [number, number];
+  rafter_spacing_in: number;
+  purlin_spacing_in: number;
+} {
+  const g = DEFAULT_GLOBAL_CONFIG.roof_framing;
+  return {
+    ridge_size_in: fr.ridge_size_in ?? g.ridge_size_in,
+    rafter_size_in: fr.rafter_size_in ?? g.rafter_size_in,
+    purlin_size_in: fr.purlin_size_in ?? g.purlin_size_in,
+    ring_beam_size_in: fr.ring_beam?.size_in ?? g.ring_beam_size_in,
+    rafter_spacing_in: fr.rafter_spacing_in ?? g.rafter_spacing_in,
+    purlin_spacing_in: fr.purlin_spacing_in ?? g.purlin_spacing_in,
+  };
+}
 
 // Total frame-stack thickness at the wall crossing:
 //   ring_beam_depth + rafter_depth + purlin_depth
@@ -155,7 +178,7 @@ interface Member {
 // depth = vertical. Returns a Member with box size = [width, depth,
 // length] in Three space, positioned at the midpoint and rotated to
 // point from p1 to p2.
-function beamBetween(
+export function beamBetween(
   p1World: W,
   p2World: W,
   sizeIn: [number, number],
@@ -191,8 +214,8 @@ function beamBetween(
 
 // Helper: world-coords Vec3-like object. (x,y) is Inkscape (X east, Y
 // south); z is world Z (up).
-type W = { x: number; y: number; z: number };
-const w = (x: number, y: number, z: number): W => ({ x, y, z });
+export type W = { x: number; y: number; z: number };
+export const w = (x: number, y: number, z: number): W => ({ x, y, z });
 
 function buildFrame(
   g: RoofFrameGeom,
@@ -221,17 +244,17 @@ function buildFrame(
   const rbYn = g.ring_beam_y_north ?? g.eave_y_north;
   const rbYs = g.ring_beam_y_south ?? g.eave_y_south;
 
-  const ridgeSize: [number, number] = fr.ridge_size_in ?? [6, 3];
-  const rafterSize: [number, number] = fr.rafter_size_in ?? [2, 4];
-  const purlinSize: [number, number] = fr.purlin_size_in ?? [2, 1];
-  const ringBeamSize: [number, number] = fr.ring_beam?.size_in ?? [4, 2];
+  // Fallback chain: roof-level framing → GC global framing defaults.
+  const rf = resolveFraming(fr);
+  const ridgeSize = rf.ridge_size_in;
+  const rafterSize = rf.rafter_size_in;
+  const purlinSize = rf.purlin_size_in;
+  const ringBeamSize = rf.ring_beam_size_in;
   const hipBeamSize: [number, number] = fr.hip_end_beam?.size_in ?? [4, 2];
-  // Truss chord and web sections come from hip_roof.trusses; Python
-  // uses [2,4] chords and [2,2] webs by default.
   const trussChordSize: [number, number] = trusses?.chord_size_in ?? [2, 4];
   const trussWebSize: [number, number] = trusses?.web_size_in ?? [2, 2];
-  const rafterSpacingU = (fr.rafter_spacing_in ?? 36) * IN;
-  const purlinSpacingAlongSlopeU = (fr.purlin_spacing_in ?? 12) * IN;
+  const rafterSpacingU = rf.rafter_spacing_in * IN;
+  const purlinSpacingAlongSlopeU = rf.purlin_spacing_in * IN;
 
   // Shell rise from eave to ridge (world units). Python's `ridge_h`
   // measures WALL→RIDGE; total shell rise is that plus the eave drop.

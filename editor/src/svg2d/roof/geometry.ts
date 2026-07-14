@@ -241,15 +241,19 @@ export function computeAll(houseConfig: HouseConfig): RoofComputed | null {
   const slope_ew = (roof.slope_angle_ew as number | undefined) ?? slope_uniform ?? 0;
   const ridge_length_override = roof.ridge_length as number | undefined;
 
+  // Framing defaults come from DEFAULT_GLOBAL_CONFIG.roof_framing;
+  // per-roof `framing.*` overrides win. Kept in inches — construction
+  // spec convention.
   const framing = (roof.framing as Record<string, unknown>) ?? {};
-  const rafter_size_in = (framing.rafter_size_in as [number, number]) ?? [4, 2];
-  const rafter_wall_mm = (framing.rafter_wall_mm as number) ?? 2;
-  const rafter_spacing_in = (framing.rafter_spacing_in as number) ?? 36;
-  const purlin_size_in = (framing.purlin_size_in as [number, number]) ?? [2, 1];
-  const purlin_wall_mm = (framing.purlin_wall_mm as number) ?? 1.5;
-  const purlin_spacing_in = (framing.purlin_spacing_in as number) ?? 12;
-  const ridge_size_in = (framing.ridge_size_in as [number, number]) ?? [6, 3];
-  const ridge_wall_mm = (framing.ridge_wall_mm as number) ?? 2;
+  const rfGlobal = DEFAULT_GLOBAL_CONFIG.roof_framing;
+  const rafter_size_in = (framing.rafter_size_in as [number, number]) ?? rfGlobal.rafter_size_in;
+  const rafter_wall_mm = (framing.rafter_wall_mm as number) ?? rfGlobal.wall_thickness_mm?.rafter ?? 2;
+  const rafter_spacing_in = (framing.rafter_spacing_in as number) ?? rfGlobal.rafter_spacing_in;
+  const purlin_size_in = (framing.purlin_size_in as [number, number]) ?? rfGlobal.purlin_size_in;
+  const purlin_wall_mm = (framing.purlin_wall_mm as number) ?? rfGlobal.wall_thickness_mm?.purlin ?? 1.5;
+  const purlin_spacing_in = (framing.purlin_spacing_in as number) ?? rfGlobal.purlin_spacing_in;
+  const ridge_size_in = (framing.ridge_size_in as [number, number]) ?? rfGlobal.ridge_size_in;
+  const ridge_wall_mm = (framing.ridge_wall_mm as number) ?? rfGlobal.wall_thickness_mm?.ridge ?? 2;
 
   const rafter_spacing_u = inToU(rafter_spacing_in);
   const purlin_spacing_u = inToU(purlin_spacing_in);

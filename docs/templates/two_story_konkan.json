@@ -1,0 +1,218 @@
+{
+  "site": {
+    "reference_x": 0,
+    "reference_y": 0,
+    "plot_length": 450,
+    "plot_width": 300
+  },
+  "plinth": {
+    "x": 0,
+    "y": 0,
+    "length": 450,
+    "width": 300,
+    "height": 30
+  },
+  "floors": [
+    {
+      "floor_number": 0,
+      "name": "Ground Floor",
+      "objects": [
+        {
+          "type": "floor_slab",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 450
+        },
+        {
+          "type": "pillar",
+          "name": "Verandah_Pillar_NW",
+          "x": 5,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 220
+        },
+        {
+          "type": "pillar",
+          "name": "Verandah_Pillar_N1",
+          "x": 145,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 220
+        },
+        {
+          "type": "pillar",
+          "name": "Verandah_Pillar_NE",
+          "x": 285,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 220
+        },
+        {
+          "type": "room",
+          "name": "Verandah",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 90,
+          "material": "verandah"
+        },
+        {
+          "type": "room",
+          "name": "Living_Room",
+          "x": 0,
+          "y": 90,
+          "width": 180,
+          "length": 200,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Main_Entry",
+                  "offset": 70,
+                  "width": 40,
+                  "height": 80
+                }
+              ]
+            },
+            "east": {},
+            "south": {},
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Living_Window",
+                  "offset": 80,
+                  "width": 50,
+                  "height": 50,
+                  "sill_height": 30
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "room",
+          "name": "Kitchen",
+          "x": 180,
+          "y": 90,
+          "width": 120,
+          "length": 200
+        },
+        {
+          "type": "staircase",
+          "start_x": 120,
+          "start_y": 290,
+          "num_steps": 12,
+          "step_rise": 6,
+          "step_tread": 10,
+          "step_width": 40,
+          "direction": "north"
+        },
+        {
+          "type": "room",
+          "name": "Ground_Store",
+          "x": 0,
+          "y": 290,
+          "width": 120,
+          "length": 160
+        },
+        {
+          "type": "room",
+          "name": "Bathroom",
+          "x": 180,
+          "y": 290,
+          "width": 120,
+          "length": 160
+        }
+      ]
+    },
+    {
+      "floor_number": 1,
+      "name": "First Floor",
+      "height": 90,
+      "objects": [
+        {
+          "type": "floor_slab",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 450
+        },
+        {
+          "type": "room",
+          "name": "Master_Bedroom",
+          "x": 0,
+          "y": 0,
+          "width": 180,
+          "length": 200,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Master_Window_N",
+                  "offset": 70,
+                  "width": 40,
+                  "height": 50,
+                  "sill_height": 30
+                }
+              ]
+            },
+            "east": {},
+            "south": {},
+            "west": {}
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bedroom_2",
+          "x": 180,
+          "y": 0,
+          "width": 120,
+          "length": 200
+        },
+        {
+          "type": "room",
+          "name": "Upper_Bathroom",
+          "x": 0,
+          "y": 200,
+          "width": 120,
+          "length": 100
+        },
+        {
+          "type": "room",
+          "name": "Study",
+          "x": 120,
+          "y": 200,
+          "width": 180,
+          "length": 100
+        }
+      ]
+    },
+    {
+      "floor_number": 2,
+      "name": "Loft Floor",
+      "objects": [
+        {
+          "type": "hip_roof",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 450,
+          "ridge_axis": "y",
+          "ridge_h": 70,
+          "min_overhang": 25,
+          "trusses": {
+            "type": "fink",
+            "positions": [90, 225, 360]
+          }
+        }
+      ]
+    }
+  ]
+}

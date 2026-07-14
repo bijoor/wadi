@@ -35,16 +35,19 @@ export interface FloorZBounds {
 export function computeFloorZBands(
   floors: Array<Record<string, unknown>>,
   plinthHeight: number,
-  slabThickness: number,
-  floorHeights: Record<number, number>,
+  slabThickness: number,          // house.defaults.slab_thickness ?? GC default
+  floorHeight: number,            // house.defaults.floor_height ?? GC default
 ): FloorZBounds[] {
   const bands: FloorZBounds[] = [];
   let current = plinthHeight;
   for (const floor of floors) {
-    const num = (floor.floor_number as number | undefined) ?? 0;
-    const fh = floorHeights[num] ?? 100;
+    // Per-floor overrides take precedence over the defaults passed in.
+    const fhOverride = floor.height as number | undefined;
+    const slabOverride = floor.slab_thickness as number | undefined;
+    const fh = fhOverride ?? floorHeight;
+    const slab = slabOverride ?? slabThickness;
     const slabZ = current;
-    const wallZ = slabZ + slabThickness;
+    const wallZ = slabZ + slab;
     const wallTop = wallZ + fh;
     bands.push({ slabZ, wallZ, wallTop, floorHeight: fh });
     current = wallTop;
@@ -84,15 +87,18 @@ export function readPlotBounds(house: Record<string, unknown>): PlotBounds {
   };
 }
 
-// Convenience: pull the constants we need from DEFAULT_GLOBAL_CONFIG.
-export function readGlobals() {
+// Convenience: pull the constants we need from DEFAULT_GLOBAL_CONFIG,
+// with optional house-level overrides layered on top.
+export function readGlobals(
+  houseDefaults?: { floor_height?: number; slab_thickness?: number },
+) {
   const g = DEFAULT_GLOBAL_CONFIG;
   return {
     wallThickness: g.wall_thickness,
     plinthHeight: g.plinth_height,
-    slabThickness: g.floor_slab_thickness,
+    slabThickness: houseDefaults?.slab_thickness ?? g.floor_slab_thickness,
     roofThickness: g.roof_thickness,
     beamSize: g.beam_size,
-    floorHeights: g.floor_heights,
+    floorHeight: houseDefaults?.floor_height ?? g.floor_height,
   };
 }

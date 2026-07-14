@@ -125,7 +125,15 @@ export function generateElevationView(
 
   for (const floorConfig of floors) {
     const floorNum = floorConfig.floor_number ?? 0;
-    const floorHeight = GC.floor_heights[floorNum] ?? 100;
+    // Per-floor override wins over the GlobalConfig default.
+    // Fallback chain: per-floor override → house-level defaults →
+    // global default.
+    const houseDefaults = (houseConfig as { defaults?: { floor_height?: number } }).defaults;
+    const floorHeight =
+      (floorConfig.height as number | undefined) ??
+      houseDefaults?.floor_height ??
+      GC.floor_height ??
+      100;
     totalHeight += floorHeight;
   }
 
@@ -221,7 +229,14 @@ export function generateElevationView(
 
   for (const floorConfig of floors) {
     const floorNum = floorConfig.floor_number ?? 0;
-    const floorHeight = GC.floor_heights[floorNum] ?? 100;
+    // Fallback chain: per-floor override → house-level defaults →
+    // global default.
+    const houseDefaults = (houseConfig as { defaults?: { floor_height?: number } }).defaults;
+    const floorHeight =
+      (floorConfig.height as number | undefined) ??
+      houseDefaults?.floor_height ??
+      GC.floor_height ??
+      100;
 
     const floorObjectsWithDepth: [number, number, Obj][] = [];
 
