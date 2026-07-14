@@ -5,17 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && vite build --config vite.viewer.config.ts",
     "lint": "oxlint",
     "preview": "vite preview",
     "smoke-validate": "tsx scripts/smoke-validate.ts",
     "dump-svgs": "tsx scripts/dump-svgs.mjs",
     "parity-primitives": "tsx scripts/parity-primitives.mjs",
-    "parity-floorplans": "tsx scripts/parity-floorplans.mjs",
-    "parity-elevations": "tsx scripts/parity-elevations.mjs",
-    "parity-roof": "tsx scripts/parity-roof.mjs",
-    "parity-pillars": "tsx scripts/parity-pillars.mjs",
-    "parity-all": "npm run parity-primitives && npm run parity-floorplans && npm run parity-elevations && npm run parity-roof && npm run parity-pillars"
+    "parity-all": "npm run parity-primitives"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

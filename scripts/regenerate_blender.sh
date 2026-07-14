@@ -1,8 +1,9 @@
 #!/bin/bash
-# Regenerate every Blender-side asset the docs/ viewer consumes:
-#   1. Photoreal perspective PNGs (Cycles renders, 7 views)
-#   2. Auto-cropped versions of the above (Pillow)
-#   3. Interactive GLBs (normal + exploded) via export_to_web()
+# Regenerate the photoreal perspective PNGs (Cycles renders + auto-crop).
+# This is the ONLY thing Blender is still needed for — the interactive 3D
+# model and every 2D SVG are generated in-browser from house_config.json
+# by the editor/viewer TypeScript code.
+#
 # Requires Blender installed at /Applications/Blender.app and python3 +
 # Pillow for the cropping step.
 
@@ -26,24 +27,19 @@ if [ ! -f "$BLEND_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "Regenerating Blender renders + interactive 3D"
+echo "Regenerating photoreal perspectives"
 echo "=========================================="
 
 echo ""
-echo "[1/3] Rendering realistic perspectives (Blender headless)..."
+echo "[1/2] Rendering realistic perspectives (Blender headless)..."
 "$BLENDER" --background "$BLEND_FILE" --python "$SCRIPT_DIR/render_all_final.py"
 
 echo ""
-echo "[2/3] Auto-cropping rendered perspectives..."
+echo "[2/2] Auto-cropping rendered perspectives..."
 python3 "$SCRIPT_DIR/auto_crop_perspectives.py"
-
-echo ""
-echo "[3/3] Generating interactive 3D models (normal + exploded GLB)..."
-python3 "$SCRIPT_DIR/generate_3d_models.py"
 
 echo ""
 echo "=========================================="
 echo "Done."
-echo "  PNGs:  docs/3d/perspectives/*.png"
-echo "  GLBs:  docs/3d/konkan_house.glb, docs/3d/konkan_house_exploded.glb"
+echo "  PNGs: docs/3d/perspectives/*.png"
 echo "=========================================="
