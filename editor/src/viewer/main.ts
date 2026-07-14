@@ -35,6 +35,9 @@ import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
 import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
 import { computeRoofSections } from "../svg2d/roof/index";
+import { computeAll } from "../svg2d/roof/geometry";
+import { frameBomHtml, roofMaterialBomHtml, readTileDensities } from "../svg2d/roof/htmlBom";
+import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
 import { pickAndLoadConfig, downloadConfig } from "../io/fileIO";
 import { Sidebar } from "../components/Sidebar";
@@ -134,6 +137,21 @@ function rebuildSvgMap(): void {
       svgMap.set(`2d/roof/${p.filename}`, p.content);
     }
     svgMap.set(`2d/roof/${roof.manifest.filename}`, roof.manifest.content);
+    // HTML BOM cards — replace the old consolidated_bom / tile_roofing
+    // SVG panels in the viewer. Frame BOM is computed from the same
+    // RoofComputed the SVG panels used; tile BOM reads tile densities
+    // from `hip_roof.tile_density` on the config, with defaults.
+    const expanded = expandRoomWalls(cfg);
+    const computed = computeAll(expanded);
+    if (computed) {
+      const densities = readTileDensities(cfg);
+      svgMap.set("2d/roof/frame_bom.html", frameBomHtml(computed));
+      svgMap.set("2d/roof/roof_material_bom.html", roofMaterialBomHtml(computed, densities));
+      window.roofBomManifest = [
+        { filename: "2d/roof/frame_bom.html", displayName: "Frame BOM" },
+        { filename: "2d/roof/roof_material_bom.html", displayName: "Roof material BOM" },
+      ];
+    }
   }
   // Pillar elevations + cross-sections. The section files depend on the
   // house's row/col count, so we publish a manifest on window for the
@@ -164,9 +182,14 @@ function patchFetch(): void {
     const key = clean.startsWith("./") ? clean.slice(2) : clean;
     const hit = svgMap.get(key);
     if (hit !== undefined) {
+      const contentType = key.endsWith(".html")
+        ? "text/html"
+        : key.endsWith(".json")
+          ? "application/json"
+          : "image/svg+xml";
       return Promise.resolve(
         new Response(hit, {
-          headers: { "Content-Type": "image/svg+xml" },
+          headers: { "Content-Type": contentType },
         }),
       );
     }
@@ -187,7 +210,13 @@ function mountEditPanels(): void {
 // via useConfigStore directly.
 function subscribeConfig(): void {
   let last = useConfigStore.getState().config;
+  let lastSelection = useConfigStore.getState().selection;
+  applySelectionAttr(lastSelection);
   useConfigStore.subscribe((state) => {
+    if (state.selection !== lastSelection) {
+      lastSelection = state.selection;
+      applySelectionAttr(lastSelection);
+    }
     if (state.config === last) return;
     last = state.config;
     rebuildSvgMap();
@@ -196,6 +225,13 @@ function subscribeConfig(): void {
   });
   // Same watcher for undo/redo history so the ↶ ↷ buttons update.
   useConfigStore.temporal.subscribe(() => updateHistoryButtons());
+}
+
+// Mirror the store's selection state onto body[data-selection] so the
+// mobile-only CSS in viewer.html can swap between the tree and the
+// property panel (and reveal the floating back button).
+function applySelectionAttr(sel: unknown): void {
+  document.body.dataset.selection = sel ? "on" : "off";
 }
 
 // The vanilla viewer defines these on window (see viewer.html <script>).
@@ -212,6 +248,9 @@ declare global {
     // Published from rebuildSvgMap so the elevations loader can iterate
     // pillar cards without hard-coding the row/col count.
     pillarSvgManifest?: { filename: string; displayName: string }[];
+    // Published from rebuildSvgMap so the roof-panels loader can render
+    // the two HTML BOM cards after the SVG panels.
+    roofBomManifest?: { filename: string; displayName: string }[];
   }
 }
 
@@ -266,6 +305,21 @@ function wireHeaderButtons(): void {
 
   btnUndo?.addEventListener("click", () => useConfigStore.temporal.getState().undo());
   btnRedo?.addEventListener("click", () => useConfigStore.temporal.getState().redo());
+
+  // Mobile back button: clears the selection so the tree returns.
+  document.getElementById("btn-back-to-tree")?.addEventListener("click", () => {
+    useConfigStore.getState().select(null);
+  });
+
+  // Auto-close the mobile hamburger dropdown after any action inside it,
+  // so users don't have to tap ☰ twice per action. Uses delegation on
+  // the buttons wrapper so it covers all current + future controls.
+  const menuButtons = document.querySelector(".header-actions-buttons");
+  menuButtons?.addEventListener("click", (e) => {
+    if ((e.target as HTMLElement).closest("button")) {
+      document.body.dataset.menu = "off";
+    }
+  });
 
   // File input isn't wired here — pickAndLoadConfig handles its own picker.
   void fileInput;
