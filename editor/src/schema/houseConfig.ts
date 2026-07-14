@@ -105,7 +105,10 @@ const room = z
     y: z.number(),
     width: positive(),
     length: positive(),
-    height: positive().optional(),
+    // 0 accepted — semantically the same as absent ("use floor default").
+    // Old configs that accidentally saved height: 0 keep loading; the
+    // form treats 0 as "no override" and doesn't write it back.
+    height: nonNegative().optional(),
     material: z.string().optional(),
     walls: z
       .union([
@@ -204,6 +207,18 @@ const gableRoof = z
   })
   .catchall(z.unknown());
 
+const flatRoof = z
+  .object({
+    type: z.literal("flat_roof"),
+  })
+  .catchall(z.unknown());
+
+const shedRoof = z
+  .object({
+    type: z.literal("shed_roof"),
+  })
+  .catchall(z.unknown());
+
 export const object = z.discriminatedUnion("type", [
   floorSlab,
   pillar,
@@ -215,6 +230,8 @@ export const object = z.discriminatedUnion("type", [
   windowObj,
   hipRoof,
   gableRoof,
+  flatRoof,
+  shedRoof,
 ]);
 export type HouseObject = z.infer<typeof object>;
 

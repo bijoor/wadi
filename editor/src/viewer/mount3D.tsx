@@ -28,7 +28,16 @@ function ViewerScene() {
   // load), render nothing until the config arrives.
   const config = useConfigStore((s) => s.config) as HouseConfig | null;
   if (!config) return null;
-  const plot = useMemo(() => readPlotBounds(expandRoomWalls(config)), [config]);
+  // expandRoomWalls throws on invalid openings; falls back to reading
+  // the plot directly from the raw config so the scene camera stays
+  // consistent while House3D handles the error.
+  const plot = useMemo(() => {
+    try {
+      return readPlotBounds(expandRoomWalls(config));
+    } catch {
+      return readPlotBounds(config as unknown as Record<string, unknown>);
+    }
+  }, [config]);
   // Rough bounding sphere: floor plan diagonal + a chunky vertical
   // allowance (the roof reaches ~30-35% of the plot's larger side).
   // Distance = R / sin(fov/2) gives the closest we can be while still

@@ -24,7 +24,9 @@ export type AddableObjectType =
   | "door"
   | "window"
   | "hip_roof"
-  | "gable_roof";
+  | "gable_roof"
+  | "flat_roof"
+  | "shed_roof";
 
 export const ADDABLE_TYPES: AddableObjectType[] = [
   "floor_slab",
@@ -36,6 +38,8 @@ export const ADDABLE_TYPES: AddableObjectType[] = [
   "window",
   "hip_roof",
   "gable_roof",
+  "flat_roof",
+  "shed_roof",
 ];
 
 export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
@@ -48,6 +52,8 @@ export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
   window: "Window",
   hip_roof: "Hip roof",
   gable_roof: "Gable roof",
+  flat_roof: "Flat roof",
+  shed_roof: "Shed roof",
 };
 
 // Build a default object of the given type. `existing` is the current
@@ -160,6 +166,29 @@ export function makeDefault(
         ridge_h: 70,           // 7 ft
         min_overhang: 25,      // 2.5 ft
         gable_overhang: 10,    // 1 ft
+      } as unknown as HouseObject;
+    case "flat_roof":
+      return {
+        type: "flat_roof",
+        x: 0,
+        y: 0,
+        width: plotW,
+        length: plotL,
+        slab_thickness: 6,      // 0.6 ft ≈ RCC deck
+        overhang: 5,
+        parapet_height: 30,     // 3 ft
+        parapet_thickness: 8,   // 0.8 ft
+      } as unknown as HouseObject;
+    case "shed_roof":
+      return {
+        type: "shed_roof",
+        x: 0,
+        y: 0,
+        width: plotW,
+        length: plotL,
+        slope_dir: "south",
+        rise: 30,                // 3 ft rise across the longitudinal span
+        min_overhang: 20,        // 2 ft
       } as unknown as HouseObject;
   }
 }

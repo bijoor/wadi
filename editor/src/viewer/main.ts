@@ -35,7 +35,11 @@ import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
 import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
 import { computeRoofSections } from "../svg2d/roof/index";
-import { computeAll } from "../svg2d/roof/geometry";
+import { computeAll, computeAllRoofs } from "../svg2d/roof/geometry";
+import { generateGablePanels } from "../svg2d/roof/gableCompose";
+import { collectAllGableMembers, gableTileContribution } from "../svg2d/roof/gableBom";
+import { generateFlatPanels, collectAllFlatMembers, flatTileContribution } from "../svg2d/roof/flatCompose";
+import { generateShedPanels, collectAllShedMembers, shedTileContribution } from "../svg2d/roof/shedCompose";
 import { frameBomHtml, metalBomHtml, roofMaterialBomHtml, readTileDensities, readMetalStock } from "../svg2d/roof/htmlBom";
 import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
@@ -116,20 +120,33 @@ function rebuildSvgMap(): void {
   svgMap.clear();
   if (!cfg) return;
 
-  for (const { filename, content } of generateAllFloorPlans(cfg)) {
-    svgMap.set(`2d/floor_plans/${filename}`, content);
-  }
-  svgMap.set(
-    "2d/floor_plans/floor_plans_combined.svg",
-    generateCombinedFloorPlans(cfg),
-  );
-  for (const { view, content } of generateAllElevations(cfg)) {
-    svgMap.set(`2d/elevations/elevation_${view}.svg`, content);
-  }
-  svgMap.set(
-    "2d/elevations/elevations_combined.svg",
-    generateCombinedElevations(cfg),
-  );
+  // Each generator wrapped independently so a bad opening (which
+  // makes expandRoomWalls throw) doesn't take down every SVG. The
+  // rest still update; the broken tab shows its stale content until
+  // the user fixes the config.
+  const safe = (label: string, fn: () => void) => {
+    try { fn(); }
+    catch (e) {
+      console.warn(`[svg] ${label} skipped:`, e instanceof Error ? e.message : e);
+    }
+  };
+
+  safe("floor plans", () => {
+    for (const { filename, content } of generateAllFloorPlans(cfg)) {
+      svgMap.set(`2d/floor_plans/${filename}`, content);
+    }
+  });
+  safe("combined floor plans", () => {
+    svgMap.set("2d/floor_plans/floor_plans_combined.svg", generateCombinedFloorPlans(cfg));
+  });
+  safe("elevations", () => {
+    for (const { view, content } of generateAllElevations(cfg)) {
+      svgMap.set(`2d/elevations/elevation_${view}.svg`, content);
+    }
+  });
+  safe("combined elevations", () => {
+    svgMap.set("2d/elevations/elevations_combined.svg", generateCombinedElevations(cfg));
+  });
   // Roof pipeline throws on incomplete hip_roof configs (e.g. missing
   // trusses.positions). Swallow the error so a partial config still
   // renders floor plans + elevations — the roof tab will just show its
@@ -171,30 +188,81 @@ function rebuildSvgMap(): void {
     };
     window.roofBomManifest = [];
   }
+  // Hip pipeline output (SVG panels + master + manifest). May be null
+  // when there's no hip_roof or the config is incomplete.
   if (roof) {
     svgMap.set(`2d/roof/${roof.master.filename}`, roof.master.content);
     for (const p of roof.panels) {
       svgMap.set(`2d/roof/${p.filename}`, p.content);
     }
-    svgMap.set(`2d/roof/${roof.manifest.filename}`, roof.manifest.content);
-    // HTML BOM cards — replace the old consolidated_bom / tile_roofing
-    // SVG panels in the viewer. Frame BOM is computed from the same
-    // RoofComputed the SVG panels used; tile BOM reads tile densities
-    // from `hip_roof.tile_density` on the config, with defaults.
-    const expanded = expandRoomWalls(cfg);
-    const computed = computeAll(expanded);
-    if (computed) {
-      const densities = readTileDensities(cfg);
-      const stock = readMetalStock(cfg);
-      svgMap.set("2d/roof/frame_bom.html", frameBomHtml(computed));
-      svgMap.set("2d/roof/metal_bom.html", metalBomHtml(computed, stock));
-      svgMap.set("2d/roof/roof_material_bom.html", roofMaterialBomHtml(computed, densities));
-      window.roofBomManifest = [
-        { filename: "2d/roof/frame_bom.html", displayName: "Frame BOM" },
-        { filename: "2d/roof/metal_bom.html", displayName: "Metal BOM by spec" },
-        { filename: "2d/roof/roof_material_bom.html", displayName: "Roof material BOM" },
-      ];
-    }
+  }
+  // Gable panels — MVP top view + cross-section per gable_roof. Runs
+  // regardless of whether hip_roof exists; the two sets are merged
+  // into the same roof_panels.json manifest below.
+  const gablePanels = generateGablePanels(cfg);
+  for (const gp of gablePanels) {
+    svgMap.set(`2d/roof/${gp.filename}`, gp.content);
+  }
+  const flatPanels = generateFlatPanels(cfg);
+  for (const p of flatPanels) {
+    svgMap.set(`2d/roof/${p.filename}`, p.content);
+  }
+  const shedPanels = generateShedPanels(cfg);
+  for (const p of shedPanels) {
+    svgMap.set(`2d/roof/${p.filename}`, p.content);
+  }
+  // Always publish a roof_panels.json — hip + gable + flat + shed
+  // entries merged into one manifest so the viewer's loadRoofPanels
+  // loop finds them all. Empty = viewer's own empty state.
+  const hipManifestEntries: Array<Record<string, unknown>> = roof
+    ? (JSON.parse(roof.manifest.content) as Array<Record<string, unknown>>)
+    : [];
+  const toManifest = (p: { id: string; title: string; filename: string; width: number; height: number }) => ({
+    id: p.id, title: p.title, file: p.filename, width: p.width, height: p.height,
+  });
+  const mergedManifest = [
+    ...hipManifestEntries,
+    ...gablePanels.map(toManifest),
+    ...flatPanels.map(toManifest),
+    ...shedPanels.map(toManifest),
+  ];
+  svgMap.set(
+    "2d/roof/roof_panels.json",
+    JSON.stringify(mergedManifest, null, 2),
+  );
+
+  // HTML BOM cards — Phase 1b + Phase 2: aggregates across every
+  // hip_roof (via computeAllRoofs → RoofComputed[]) AND every
+  // gable_roof (via collectAllGableMembers). Emitted whenever there's
+  // at least one roof of either type.
+  const expanded = expandRoomWalls(cfg);
+  const allRoofs = computeAllRoofs(expanded);
+  const gableMembers = collectAllGableMembers(cfg);
+  const flatMembers = collectAllFlatMembers(cfg);
+  const shedMembers = collectAllShedMembers(cfg);
+  const gableTiles = gableTileContribution(cfg);
+  const flatTiles = flatTileContribution(cfg);
+  const shedTiles = shedTileContribution(cfg);
+  const extraMembers = [...gableMembers, ...flatMembers, ...shedMembers];
+  const extraArea = gableTiles.areaSft + flatTiles.areaSft + shedTiles.areaSft;
+  const extraRidgeRun = gableTiles.ridgeRunFt + shedTiles.ridgeRunFt;
+  const hasAnyRoof = allRoofs.length > 0 || extraMembers.length > 0;
+  if (hasAnyRoof) {
+    const densities = readTileDensities(cfg);
+    const stock = readMetalStock(cfg);
+    svgMap.set("2d/roof/frame_bom.html", frameBomHtml(allRoofs, extraMembers));
+    svgMap.set("2d/roof/metal_bom.html", metalBomHtml(allRoofs, stock, extraMembers));
+    svgMap.set(
+      "2d/roof/roof_material_bom.html",
+      roofMaterialBomHtml(allRoofs, densities, extraArea, extraRidgeRun),
+    );
+    window.roofBomManifest = [
+      { filename: "2d/roof/frame_bom.html", displayName: "Frame BOM" },
+      { filename: "2d/roof/metal_bom.html", displayName: "Metal BOM by spec" },
+      { filename: "2d/roof/roof_material_bom.html", displayName: "Roof material BOM" },
+    ];
+  } else {
+    window.roofBomManifest = [];
   }
   // Pillar elevations + cross-sections. The section files depend on the
   // house's row/col count, so we publish a manifest on window for the

@@ -237,13 +237,16 @@ export function GableRoofForm({
               const next = [...positions];
               const long =
                 get<number>(bag, ["length"]) ?? (footprint[1] ?? 40) * 10;
+              // Gable trusses are optional — click + Truss adds exactly
+              // one at a time. First one lands at 50 %; subsequent ones
+              // at the midpoint of the two furthest neighbours.
               if (next.length >= 2) {
                 const mid = (next[0] + next[next.length - 1]) / 2;
                 next.splice(1, 0, mid);
               } else if (next.length === 1) {
                 next.push(next[0] + long * 0.3);
               } else {
-                next.push(long * 0.2, long * 0.5, long * 0.8);
+                next.push(long * 0.5);
               }
               next.sort((a, b) => a - b);
               if (!get<string>(bag, ["trusses", "type"])) {

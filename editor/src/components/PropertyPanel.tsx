@@ -13,6 +13,8 @@ import {
 } from "../forms/simpleForms";
 import { HipRoofForm } from "../forms/HipRoofForm";
 import { GableRoofForm } from "../forms/GableRoofForm";
+import { FlatRoofForm } from "../forms/FlatRoofForm";
+import { ShedRoofForm } from "../forms/ShedRoofForm";
 import { HouseSettingsForm } from "../forms/HouseSettingsForm";
 import { FloorPropertiesForm } from "../forms/FloorPropertiesForm";
 import { useEffect } from "react";
@@ -150,6 +152,10 @@ function FormFor({ object, selection }: { object: HouseObject; selection: Select
       return <HipRoofForm obj={object} selection={selection} />;
     case "gable_roof":
       return <GableRoofForm obj={object} selection={selection} />;
+    case "flat_roof":
+      return <FlatRoofForm obj={object} selection={selection} />;
+    case "shed_roof":
+      return <ShedRoofForm obj={object} selection={selection} />;
     default:
       return (
         <div className="text-xs text-slate-500">

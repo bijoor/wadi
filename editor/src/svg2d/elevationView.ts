@@ -16,7 +16,8 @@
 import { DEFAULT_GLOBAL_CONFIG } from "./config";
 import { f, fFloat } from "./format";
 import { svgDrawDimensionLine } from "./dimensions";
-import { deriveForHouse } from "./roofGeometry";
+import { deriveAllHipRoofs } from "./roofGeometry";
+import { deriveAllGableRoofs } from "./roof/gableGeometry";
 import type { HouseConfig } from "./expand";
 
 type Obj = Record<string, unknown>;
@@ -87,22 +88,34 @@ export function generateElevationView(
   const floors = (houseConfig.floors as FloorConfig[] | undefined) ?? [];
   const GC = DEFAULT_GLOBAL_CONFIG;
 
-  // Idempotent hip-roof derivation (Python's setdefault behavior).
+  // Per-roof derivation (Python's setdefault semantics per roof, but
+  // each roof gets its OWN derived geometry — Phase 2 lets each roof
+  // have its own x/y/width/length so applying one derivation to all
+  // roofs would draw them at wrong positions.
   try {
-    const derivedRoof = deriveForHouse(houseConfig, GC);
-    if (derivedRoof !== null) {
-      for (const floor of houseConfig.floors ?? []) {
-        for (const obj of (floor.objects ?? []) as Obj[]) {
-          if (obj.type === "hip_roof") {
-            for (const [k, v] of Object.entries(derivedRoof)) {
-              if (!(k in obj)) obj[k] = v;
-            }
-          }
-        }
+    const derivedRoofs = deriveAllHipRoofs(houseConfig, GC);
+    for (const dh of derivedRoofs) {
+      const target = dh.config as unknown as Record<string, unknown>;
+      for (const [k, v] of Object.entries(dh.geom)) {
+        if (!(k in target)) target[k] = v;
       }
     }
   } catch {
     // legacy hip_roof configs continue to work
+  }
+  // Same for gable roofs — populate the derived geometry onto each
+  // gable_roof object so the draw loop below can read absolute
+  // eave/ridge coords.
+  try {
+    const derivedGables = deriveAllGableRoofs(houseConfig, GC);
+    for (const dg of derivedGables) {
+      const target = dg.config as unknown as Record<string, unknown>;
+      for (const [k, v] of Object.entries(dg.geom)) {
+        if (!(k in target)) target[k] = v;
+      }
+    }
+  } catch {
+    // partial gable configs skipped
   }
 
   const buildingWidth = (plinthConfig.width as number | undefined) ?? 0;
@@ -141,8 +154,19 @@ export function generateElevationView(
   for (const floorConfig of floors) {
     for (const obj of (floorConfig.objects ?? []) as Obj[]) {
       if (obj.type === "gable_roof") {
-        const ridgeZ = (obj.ridge_z as number | undefined) ?? 0;
-        totalHeight = Math.max(totalHeight, ridgeZ);
+        // Prefer the derived absolute ridge top set by deriveAllGableRoofs:
+        //   ridgeTop = eave_z + wall_top_above_eave + ridge_h + roof_thickness
+        // Fall back to the legacy Python `ridge_z` if present.
+        const eaveZ = obj.eave_z as number | undefined;
+        const wte = obj.wall_top_above_eave as number | undefined;
+        const rh = obj.ridge_h as number | undefined;
+        if (eaveZ !== undefined && rh !== undefined) {
+          const ridgeTop = eaveZ + (wte ?? 0) + rh + GC.roof_thickness;
+          totalHeight = Math.max(totalHeight, ridgeTop);
+        } else {
+          const ridgeZ = (obj.ridge_z as number | undefined) ?? 0;
+          totalHeight = Math.max(totalHeight, ridgeZ);
+        }
       } else if (obj.type === "hip_roof") {
         const spanX = (obj.eave_x_east as number) - (obj.eave_x_west as number);
         const spanY = (obj.eave_y_south as number) - (obj.eave_y_north as number);
@@ -686,70 +710,56 @@ export function generateElevationView(
     // Roof collection
     for (const obj of (floorConfig.objects ?? []) as Obj[]) {
       if (obj.type === "gable_roof") {
-        const ridgeAxis = (obj.ridge_axis as string | undefined) ?? "x";
-        const ridgeZRelative = (obj.ridge_z as number | undefined) ?? 0;
-        const ridgeStartX = (obj.ridge_start_x as number | undefined) ?? 0;
-        const ridgeStartY = (obj.ridge_start_y as number | undefined) ?? 0;
-        const ridgeLength = (obj.ridge_length as number | undefined) ?? 0;
-        const leftSlopeAngle = (obj.left_slope_angle as number | undefined) ?? 22;
-        const leftSlopeLength = (obj.left_slope_length as number | undefined) ?? 0;
-        const rightSlopeAngle = (obj.right_slope_angle as number | undefined) ?? 26;
-        const rightSlopeLength = (obj.right_slope_length as number | undefined) ?? 0;
-        const roofThickVal = GC.roof_thickness;
+        // Phase 2 gable elevations — reads the derived geometry
+        // (eave_x_west/east, eave_y_north/south, eave_z, ridge_y_start/end,
+        // ridge_h, wall_top_above_eave) that deriveAllGableRoofs
+        // populated above. Only ridge_axis='y' supported.
+        const ex_w = obj.eave_x_west as number | undefined;
+        const ex_e = obj.eave_x_east as number | undefined;
+        const ey_n = obj.eave_y_north as number | undefined;
+        const ey_s = obj.eave_y_south as number | undefined;
+        const ez = obj.eave_z as number | undefined;
+        const rys = obj.ridge_y_start as number | undefined;
+        const rye = obj.ridge_y_end as number | undefined;
+        const rh = obj.ridge_h as number | undefined;
+        const wte = (obj.wall_top_above_eave as number | undefined) ?? 0;
+        if (
+          ex_w !== undefined && ex_e !== undefined && ez !== undefined &&
+          rys !== undefined && rye !== undefined && rh !== undefined
+        ) {
+          const roofThickVal = GC.roof_thickness;
+          const ridgeX = (ex_w + ex_e) / 2;
+          const ridgeZ = ez + wte + rh;
 
-        const ridgeZ = currentZ + ridgeZRelative;
-        const leftHorizontal = leftSlopeLength * Math.cos((leftSlopeAngle * Math.PI) / 180);
-        const leftDrop = leftSlopeLength * Math.sin((leftSlopeAngle * Math.PI) / 180);
-        const rightHorizontal = rightSlopeLength * Math.cos((rightSlopeAngle * Math.PI) / 180);
-        const rightDrop = rightSlopeLength * Math.sin((rightSlopeAngle * Math.PI) / 180);
-
-        const leftEaveZ = ridgeZ - leftDrop;
-        const rightEaveZ = ridgeZ - rightDrop;
-
-        let triangleViews: string[];
-        let triRidgeWorld: number, triLeftWorld: number, triRightWorld: number;
-        let ridgeAxisWorldStart: number, ridgeAxisWorldEnd: number;
-        if (ridgeAxis === "y") {
-          triangleViews = ["front", "back"];
-          triRidgeWorld = ridgeStartX;
-          triLeftWorld = ridgeStartX - leftHorizontal;
-          triRightWorld = ridgeStartX + rightHorizontal;
-          ridgeAxisWorldStart = ridgeStartY;
-          ridgeAxisWorldEnd = ridgeStartY + ridgeLength;
-        } else {
-          triangleViews = ["left", "right"];
-          triRidgeWorld = ridgeStartY;
-          triLeftWorld = ridgeStartY - leftHorizontal;
-          triRightWorld = ridgeStartY + rightHorizontal;
-          ridgeAxisWorldStart = ridgeStartX;
-          ridgeAxisWorldEnd = ridgeStartX + ridgeLength;
-        }
-
-        if (triangleViews.includes(viewType)) {
-          const ridgeSvgY = zToY(ridgeZ + roofThickVal);
-          const leftEaveSvgY = zToY(leftEaveZ);
-          const rightEaveSvgY = zToY(rightEaveZ);
-          const ridgeSvgX = worldToSvgX(triRidgeWorld, 0);
-          const leftEaveSvgX = worldToSvgX(triLeftWorld, 0);
-          const rightEaveSvgX = worldToSvgX(triRightWorld, 0);
-          roofSvg += `<line x1="${fFloat(leftEaveSvgX)}" y1="${fFloat(leftEaveSvgY)}" x2="${fFloat(ridgeSvgX)}" y2="${fFloat(ridgeSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-          roofSvg += `<line x1="${fFloat(ridgeSvgX)}" y1="${fFloat(ridgeSvgY)}" x2="${fFloat(rightEaveSvgX)}" y2="${fFloat(rightEaveSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-        } else {
-          let slopeDrop: number;
-          if (ridgeAxis === "y") {
-            slopeDrop = viewType === "left" ? leftDrop : rightDrop;
+          if (viewType === "front" || viewType === "back") {
+            // Triangle silhouette from the gable end: apex at ridge,
+            // base along the eave line between the two X-eaves.
+            const apexSvgY = zToY(ridgeZ + roofThickVal);
+            const eaveSvgY = zToY(ez);
+            const apexSvgX = worldToSvgX(ridgeX, 0);
+            const westSvgX = worldToSvgX(ex_w, 0);
+            const eastSvgX = worldToSvgX(ex_e, 0);
+            roofSvg += `<line x1="${fFloat(westSvgX)}" y1="${fFloat(eaveSvgY)}" x2="${fFloat(apexSvgX)}" y2="${fFloat(apexSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
+            roofSvg += `<line x1="${fFloat(apexSvgX)}" y1="${fFloat(apexSvgY)}" x2="${fFloat(eastSvgX)}" y2="${fFloat(eaveSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
           } else {
-            slopeDrop = viewType === "front" ? rightDrop : leftDrop;
+            // Side view (left/right): a rectangle from ridge_y_start to
+            // ridge_y_end horizontally, and from ridge_z down to eave_z
+            // vertically. Plus a ridge cap line on top.
+            const ridgeTopY = zToY(ridgeZ + roofThickVal);
+            const ridgeBottomY = zToY(ridgeZ);
+            const eaveSvgY = zToY(ez);
+            const startSvgX = worldToSvgX(rys, 0);
+            const endSvgX = worldToSvgX(rye, 0);
+            const rectX = Math.min(startSvgX, endSvgX);
+            const rectW = Math.abs(endSvgX - startSvgX);
+            const rectH = eaveSvgY - ridgeBottomY;
+            roofSvg += `<rect x="${fFloat(rectX)}" y="${fFloat(ridgeBottomY)}" width="${fFloat(rectW)}" height="${fFloat(rectH)}" fill="none" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
+            roofSvg += `<line x1="${fFloat(startSvgX)}" y1="${fFloat(ridgeTopY)}" x2="${fFloat(endSvgX)}" y2="${fFloat(ridgeTopY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
           }
-          const ridgeTopY = zToY(ridgeZ + roofThickVal);
-          const ridgeBottomY = zToY(ridgeZ);
-          const roofBottomY = zToY(ridgeZ - slopeDrop);
-          const ridgeStartSvgX = worldToSvgX(ridgeAxisWorldStart, 0);
-          const ridgeEndSvgX = worldToSvgX(ridgeAxisWorldEnd, 0);
-          const roofWidth = Math.abs(ridgeEndSvgX - ridgeStartSvgX);
-          const roofHeight = roofBottomY - ridgeBottomY;
-          roofSvg += `<rect x="${fFloat(Math.min(ridgeStartSvgX, ridgeEndSvgX))}" y="${fFloat(ridgeBottomY)}" width="${fFloat(roofWidth)}" height="${fFloat(roofHeight)}" fill="none" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-          roofSvg += `<line x1="${fFloat(ridgeStartSvgX)}" y1="${fFloat(ridgeTopY)}" x2="${fFloat(ridgeEndSvgX)}" y2="${fFloat(ridgeTopY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
+          // Suppress the unused-var warning for ey_n / ey_s — they might
+          // matter for ridge_axis='x' later; kept here for symmetry.
+          void ey_n;
+          void ey_s;
         }
       }
       if (obj.type === "hip_roof") {

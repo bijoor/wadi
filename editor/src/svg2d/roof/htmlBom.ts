@@ -99,7 +99,7 @@ export interface FrameMember {
 
 // Canonicalise a size + wall into a comparable material spec string
 // (used as the group key in Metal BOM). Format: "H×W in × T mm MS".
-function matSpec(size: [number, number], wallMm: number, material: string = "MS"): string {
+export function matSpec(size: [number, number], wallMm: number, material: string = "MS"): string {
   return `${size[0]}×${size[1]} in × ${wallMm} mm ${material}`;
 }
 
@@ -290,8 +290,22 @@ export function collectFrameMembers(computed: RoofComputed): FrameMember[] {
 // Public entry points — the three HTML BOM tables
 // ---------------------------------------------------------------
 
-export function frameBomHtml(computed: RoofComputed): string {
-  const members = collectFrameMembers(computed);
+export function frameBomHtml(
+  computeds: RoofComputed | RoofComputed[],
+  extraMembers: FrameMember[] = [],
+): string {
+  const arr = Array.isArray(computeds) ? computeds : [computeds];
+  // Concatenate hip members across all roofs, then append any extras
+  // (gable members supplied by the caller). The hip loop tags rows
+  // with roof # when there's more than one hip; gable rows come with
+  // their own gable # in their item names.
+  const hipMembers = arr.flatMap((c, ri) =>
+    collectFrameMembers(c).map((m) => ({
+      ...m,
+      item: arr.length > 1 ? `${m.item} (hip #${ri + 1})` : m.item,
+    })),
+  );
+  const members = [...hipMembers, ...extraMembers];
   const rows = members.map((m) => [
     m.item,
     m.extraNote ? `${m.matSpec} · ${m.extraNote}` : m.matSpec,
@@ -299,15 +313,25 @@ export function frameBomHtml(computed: RoofComputed): string {
     m.count > 1 ? `up to ${fmt(m.maxLenFt)} ft` : `${fmt(m.maxLenFt)} ft`,
     `${fmt(m.totalLenFt)} ft`,
   ]);
+  const totalRoofs = arr.length + (extraMembers.length > 0 ? 1 : 0);
   return renderTable(
-    "Frame BOM — steel takeoff by member",
+    totalRoofs > 1
+      ? `Frame BOM — steel takeoff (${arr.length} hip + gable members)`
+      : "Frame BOM — steel takeoff by member",
     ["Item", "Spec", "Qty", "Length each", "Total length"],
     rows,
   );
 }
 
-export function metalBomHtml(computed: RoofComputed, stock: MetalStockConfig): string {
-  const members = collectFrameMembers(computed);
+export function metalBomHtml(
+  computeds: RoofComputed | RoofComputed[],
+  stock: MetalStockConfig,
+  extraMembers: FrameMember[] = [],
+): string {
+  const arr = Array.isArray(computeds) ? computeds : [computeds];
+  // Aggregate across every hip + gable member so pieces-to-order is
+  // one purchase order for the whole project.
+  const members = [...arr.flatMap((c) => collectFrameMembers(c)), ...extraMembers];
   // Group members by canonical matSpec, summing totalLenFt and tracking
   // which item names contribute.
   const groups = new Map<string, { totalLenFt: number; items: string[] }>();
@@ -345,10 +369,19 @@ export function metalBomHtml(computed: RoofComputed, stock: MetalStockConfig): s
   );
 }
 
-export function roofMaterialBomHtml(computed: RoofComputed, densities: TileDensities): string {
-  const area = computed.total_roof_area_sft;
+export function roofMaterialBomHtml(
+  computeds: RoofComputed | RoofComputed[],
+  densities: TileDensities,
+  gableAreaSft: number = 0,
+  gableRidgeRunFt: number = 0,
+): string {
+  const arr = Array.isArray(computeds) ? computeds : [computeds];
+  // Sum tile-covered area and ridge-run across every roof — both hip
+  // (from RoofComputed) and gable (caller supplies the pre-summed
+  // contributions via the last two args).
+  const area = arr.reduce((s, c) => s + c.total_roof_area_sft, 0) + gableAreaSft;
+  const ridgeRunFt = arr.reduce((s, c) => s + c.total_ridge_run_ft, 0) + gableRidgeRunFt;
   const wasteMul = 1 + densities.wastePct;
-  const ridgeRunFt = computed.total_ridge_run_ft;
 
   const mangaloreQty = Math.ceil(area * densities.mangaloreTilesPerSft * wasteMul);
   const ceilingQty = Math.ceil(area * densities.ceilingTilesPerSft * wasteMul);

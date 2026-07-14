@@ -208,6 +208,42 @@ function sumConsistentUnits(u: number): number {
   return (feet * 12 + inch) / 1.2;
 }
 
+// Compute the full RoofComputed for every hip_roof in the config
+// (Phase 2 — supports multiple roofs). Each roof is computed in
+// isolation: the config is cloned with only that roof retained so
+// computeAll's single-roof assumptions hold. Result is one entry per
+// roof, in the same order they appear in the config.
+export function computeAllRoofs(houseConfig: HouseConfig): RoofComputed[] {
+  const out: RoofComputed[] = [];
+  for (let fi = 0; fi < (houseConfig.floors ?? []).length; fi++) {
+    const floor = houseConfig.floors[fi];
+    for (let oi = 0; oi < (floor.objects ?? []).length; oi++) {
+      const obj = floor.objects[oi] as { type?: string };
+      if (obj.type !== "hip_roof") continue;
+      // Clone the config and strip every hip_roof except the target
+      // (identified by floor + object index). Non-roof objects are kept
+      // so wall / plinth data stays available for the roof compute.
+      const clone = JSON.parse(JSON.stringify(houseConfig)) as HouseConfig;
+      for (let fj = 0; fj < clone.floors.length; fj++) {
+        clone.floors[fj].objects = clone.floors[fj].objects.filter(
+          (o, oj) => {
+            const t = (o as { type?: string }).type;
+            if (t !== "hip_roof") return true;
+            return fj === fi && oj === oi;
+          },
+        );
+      }
+      try {
+        const r = computeAll(clone);
+        if (r) out.push(r);
+      } catch (e) {
+        console.warn(`[roof] computeAllRoofs: floor ${fi} obj ${oi} skipped:`, e);
+      }
+    }
+  }
+  return out;
+}
+
 export function computeAll(houseConfig: HouseConfig): RoofComputed | null {
   const globalConfig = DEFAULT_GLOBAL_CONFIG;
 

@@ -1180,7 +1180,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-B2RGgSVF.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-SYZup8ne.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/viewer-B26b9NVF.css">
 </head>
 <body>
@@ -1569,8 +1569,16 @@
         // SVG generator (docs/roof_panels.json). One card per panel; SVGs
         // are inlined so lightbox click-through works the same way.
         window.roofPanelsLoaded = false;
+        // Monotonic token — every call bumps this and captures it
+        // locally. If a newer call started while we were awaiting, the
+        // stale one bails without touching the grid. Prevents duplicate
+        // cards when config edits (which reset roofPanelsLoaded=false
+        // and re-trigger loadRoofPanels) fire faster than the previous
+        // load finishes.
+        window.__roofPanelsToken = 0;
         async function loadRoofPanels() {
             if (window.roofPanelsLoaded) return;
+            const myToken = ++window.__roofPanelsToken;
             const grid = document.getElementById('roof-panels-grid');
             grid.innerHTML = '<p style="text-align: center; color: #666;">Loading roof panels…</p>';
             let manifest = [];
@@ -1579,6 +1587,7 @@
                 if (!r.ok) throw new Error('roof_panels.json HTTP ' + r.status);
                 manifest = await r.json();
             } catch (e) {
+                if (myToken !== window.__roofPanelsToken) return;
                 grid.innerHTML = `
                     <div style="text-align: center; padding: 3rem; color: #666;">
                         <h3>Roof panels not available</h3>
@@ -1587,6 +1596,8 @@
                 console.warn('[roof panels]', e);
                 return;
             }
+            // Bail if a newer load kicked off while we were awaiting.
+            if (myToken !== window.__roofPanelsToken) return;
             grid.innerHTML = '';
             // Panels replaced by HTML BOM cards below — skip their SVG
             // versions so they don't duplicate.
@@ -1596,6 +1607,7 @@
                 'materials_takeoff',
             ]);
             for (const p of manifest) {
+                if (myToken !== window.__roofPanelsToken) return;
                 if (SKIP_PANEL_IDS.has(p.id)) continue;
                 // Manifest stores bare filenames; prepend the roof dir.
                 const fileUrl = '2d/roof/' + p.file;
@@ -1603,6 +1615,7 @@
                     const r = await fetch(fileUrl + '?t=' + Date.now());
                     if (!r.ok) continue;
                     const svg = await r.text();
+                    if (myToken !== window.__roofPanelsToken) return;
                     const item = document.createElement('div');
                     item.className = 'svg-item';
                     item.innerHTML = `<h3>${p.title}</h3>${svg}`;
@@ -1616,15 +1629,15 @@
                 }
             }
             // HTML BOM cards: frame + metal + roof material. Published by
-            // the TS bootstrap on window.roofBomManifest. Cards are
-            // clickable — click opens the HTML lightbox for a full-screen
-            // view with PDF export.
+            // the TS bootstrap on window.roofBomManifest.
             const bomCards = window.roofBomManifest || [];
             for (const c of bomCards) {
+                if (myToken !== window.__roofPanelsToken) return;
                 try {
                     const r = await fetch(c.filename + '?t=' + Date.now());
                     if (!r.ok) continue;
                     const html = await r.text();
+                    if (myToken !== window.__roofPanelsToken) return;
                     const item = document.createElement('div');
                     item.className = 'svg-item roof-bom-item';
                     item.innerHTML = html;
@@ -1634,6 +1647,7 @@
                     console.warn('[roof BOM]', c.filename, e);
                 }
             }
+            if (myToken !== window.__roofPanelsToken) return;
             window.roofPanelsLoaded = true;
         }
 

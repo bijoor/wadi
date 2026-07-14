@@ -28,7 +28,11 @@ import {
 import { HipRoofMesh, type HipRoofGeom } from "./roof";
 import { GableRoofMesh } from "./gableRoof";
 import { GableRoofFrameMesh } from "./gableRoofFrame";
+import { FlatRoofMesh } from "./flatRoof";
+import { ShedRoofMesh } from "./shedRoof";
 import { deriveAllGableRoofs } from "../svg2d/roof/gableGeometry";
+import { deriveAllFlatRoofs } from "../svg2d/roof/flatGeometry";
+import { deriveAllShedRoofs } from "../svg2d/roof/shedGeometry";
 import { deriveAllHipRoofs } from "../svg2d/roofGeometry";
 import { RoofFrameMesh, computeShellLift, type RoofFraming, type RoofFrameGeom, type RoofTrusses } from "./roofFrame";
 import { StaircaseMesh } from "./staircase";
@@ -46,7 +50,20 @@ export function House3D({ config }: { config: HouseConfig }) {
   const visible = useLayerStore((s) => s.visible);
 
   const byLayer = useMemo(() => {
-    const hc = expandRoomWalls(config);
+    // expandRoomWalls throws on invalid openings (overlaps, out-of-range
+    // etc.). Catch so a bad opening doesn't take down the whole 3D
+    // scene — return empty groups; the user can fix the offending
+    // opening and the scene will render again on the next config change.
+    let hc: ReturnType<typeof expandRoomWalls>;
+    try {
+      hc = expandRoomWalls(config);
+    } catch (e) {
+      console.warn("[house3d] expandRoomWalls failed, skipping scene:", e);
+      (window as unknown as { __expandError?: unknown }).__expandError =
+        e instanceof Error ? e.message : String(e);
+      return {} as Record<string, React.ReactNode[]>;
+    }
+    (window as unknown as { __expandError?: unknown }).__expandError = null;
     // House-level defaults (defaults.floor_height / slab_thickness) win
     // over the code globals; per-floor overrides win over both.
     const houseDefaults = (config as { defaults?: { floor_height?: number; slab_thickness?: number } }).defaults;
@@ -247,6 +264,61 @@ export function House3D({ config }: { config: HouseConfig }) {
       const msg = e instanceof Error ? e.message : String(e);
       console.warn("[gable3d] gable compute failed:", msg, e);
       roofDebug.push({ type: "gable_roof", status: "error", error: msg });
+    }
+
+    // Flat roofs — horizontal slab + optional parapet.
+    try {
+      const flats = deriveAllFlatRoofs(
+        hc as unknown as Parameters<typeof deriveAllFlatRoofs>[0],
+        DEFAULT_GLOBAL_CONFIG,
+      );
+      flats.forEach((f, idx) => {
+        push(
+          "loft",
+          <FlatRoofMesh
+            key={`flat-roof-${idx}`}
+            geom={f.geom}
+            plotWidth={plot.width}
+            plotLength={plot.length}
+          />,
+        );
+        roofDebug.push({
+          idx, type: "flat_roof", floor: f.floorNum,
+          eave_z: f.geom.eave_z, parapet_h: f.geom.parapet_height,
+        });
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn("[flat3d] flat compute failed:", msg, e);
+      roofDebug.push({ type: "flat_roof", status: "error", error: msg });
+    }
+
+    // Shed (mono-pitch) roofs.
+    try {
+      const sheds = deriveAllShedRoofs(
+        hc as unknown as Parameters<typeof deriveAllShedRoofs>[0],
+        DEFAULT_GLOBAL_CONFIG,
+      );
+      sheds.forEach((s, idx) => {
+        push(
+          "loft",
+          <ShedRoofMesh
+            key={`shed-roof-${idx}`}
+            geom={s.geom}
+            plotWidth={plot.width}
+            plotLength={plot.length}
+          />,
+        );
+        roofDebug.push({
+          idx, type: "shed_roof", floor: s.floorNum,
+          slope_dir: s.geom.slope_dir, rise: s.geom.rise,
+          pitch: s.geom.slope_angle,
+        });
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn("[shed3d] shed compute failed:", msg, e);
+      roofDebug.push({ type: "shed_roof", status: "error", error: msg });
     }
 
     (window as unknown as { __roofDebug?: unknown }).__roofDebug = {
