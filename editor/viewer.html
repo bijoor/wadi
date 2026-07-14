@@ -897,6 +897,13 @@
         #viewer-sidebar details[open] > summary::before {
             content: "▾ ";
         }
+        /* Tailwind Preflight zeroes ul padding-left, and the Sidebar's
+           ul carries just `ml-2` (8 px) which barely reads as an indent
+           at the current font size. Add a bit more so children clearly
+           sit under their parent group header. */
+        #viewer-sidebar ul {
+            padding-left: 0.75rem;
+        }
     </style>
     <!-- TS viewer bootstrap — fetches house_config.json, runs SVG
          generators in memory, patches window.fetch so the vanilla-JS
