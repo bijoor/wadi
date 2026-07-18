@@ -1,0 +1,35 @@
+{
+  "site": {
+    "reference_x": 0,
+    "reference_y": 0,
+    "plot_length": 400,
+    "plot_width": 300
+  },
+  "plinth": {
+    "x": 0,
+    "y": 0,
+    "length": 400,
+    "width": 300,
+    "height": 30
+  },
+  "floors": [
+    {
+      "floor_number": 0,
+      "name": "Ground Floor",
+      "objects": [
+        {
+          "type": "floor_slab",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 400
+        }
+      ]
+    }
+  ],
+  "defaults": {
+    "floor_height": 98,
+    "wall_height": 90,
+    "slab_thickness": 8
+  }
+}

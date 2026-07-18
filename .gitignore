@@ -27,8 +27,9 @@ docs/3d/*.bin
 *objects_debug*.json
 *.log
 
-# Claude Code per-project state
-.claude/
+# Claude Code per-project state (local), but track shared skills
+.claude/*
+!.claude/skills/
 
 # Local-only resources (textures, BlenderKit plugin install, big render zips)
 textures
