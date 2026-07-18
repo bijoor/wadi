@@ -1,66 +1,70 @@
-# Recreate a house from drawings (PDF / sketch / CAD export)
+# Build a house from a drawing — GUIDED DIALOG (the user interprets, you construct)
 
-Transcribing an existing design. **The #1 rule: build it INCREMENTALLY and compare
-each step to the original. Never author the whole plan in one shot** — a
-full house written at once is extremely hard to QC, and a single transcription
-slip (a flipped Y, a wrong dimension, an overlap) hides in the crowd and is hard
-to trace. Go piece by piece; render and check against the drawing each time.
+**Do NOT try to read the architect's drawing yourself.** Dimensions, scale, and
+symbols on technical drawings are unreliable to read off a PDF/photo, and guessing
+them builds the wrong house. Instead run a **step-by-step dialog**: the USER reads
+their drawing and tells you each piece; YOU do all the coordinate / scale /
+convention work and show them the result at each step so they can correct it.
 
-## 1. Read the drawings first
+You may glance at the drawing for orientation, but treat **every** dimension and
+position as something to **confirm with the user**, never to read off yourself.
 
-- Claude Code reads PDFs directly (the Read tool renders each page). Open every
-  relevant page.
-- Establish and **state back to the user** before placing anything:
-  - **Orientation** — where is north? (Usually up.) This sets the Y-DOWN mapping:
-    the top of a north-up drawing → small Y.
-  - **Units** — feet or meters? (Config is **ft × 10**; convert meters.)
-  - **Plot / plinth** outer dimensions.
-  - **Floors** — how many; which page is which floor.
-  - **Which drawing is which** — floor plan (per floor), elevations, roof plan,
-    sections.
-- If any of these is unclear, ask — don't guess.
+## Division of labour (this is the whole point)
 
-## 2. Build incrementally, comparing to the original at every step
+- **You handle silently — never ask the user for these:** coordinates (`x`/`y`),
+  the **Y-DOWN** frame, the **ft × 10** conversion, the **outer-wall-face**
+  convention, placing a room relative to its neighbours, roof placement + Z,
+  validation and rendering.
+- **You ask the user — they read it off the drawing:** names, sizes in **feet**,
+  where things are in **plain spatial terms**, which walls have doors/windows.
 
-1. **Frame first.** site + plinth + a `floor_slab` per floor + the floor stack
-   (floor `height`s). Run `preview.sh`, Read it, confirm the outline and overall
-   dimensions match the drawing.
-2. **One room at a time.** Add a single `room` (`x, y, width, length`) →
-   `preview.sh` → **Read the rendered plan and compare THAT room's position and
-   size against the original drawing** → fix if off → only then move to the next
-   room. Per room, check:
-   - right **place** (remember Y is DOWN — north = smaller Y),
-   - right **size** (ft × 10; the render labels feet — cross-check the numbers),
-   - **no overlap** with already-placed rooms, inside the plinth.
-3. **Openings** for that room (doors/windows in `walls.<side>.openings`) → render →
-   compare their positions to the drawing.
-4. **Repeat room by room** until the floor matches the plan.
-5. **Next floor.** Same loop; watch **vertical alignment** of wet areas and the
-   staircase against the floor below.
-6. **Roof last.** On its own top floor (see `roof-v2-guide.md`); compare the roof
-   plan + the elevations to the drawings.
+Ask **spatially, not numerically**: "How big is the bedroom, in feet?" and "Where
+is it — which corner, or next to which room?" — **not** "What's its x, y?" The user
+should never have to think in the coordinate system. That's your job.
 
-Save after each increment — the live app also updates per save, so the user watches
-it grow and can flag a problem early.
+## The dialog
 
-## 3. Why room by room (not all at once)
+### 0. Frame first
+Ask, then build site + plinth + one `floor_slab` per floor:
+- Plot size (in feet)? Units on the drawing (ft or m)?
+- Which way is **north** on the drawing?
+- How many floors? Name for each.
 
-- Each render is a **small, checkable delta** against the source, so an error is
-  obvious and localized the moment it appears.
-- A whole-house render is a wall of rooms; a wrong Y-flip or dimension is easy to
-  miss and painful to bisect after the fact.
-- It keeps you honest: you literally look at the original next to your render for
-  each piece.
+Render (`preview.sh`) or point them at the live app; confirm the outline/size.
 
-## 4. Final cross-checks before saying it's done
+### 1. Rooms — one at a time, per floor
+For each room, ask:
+- Name?
+- Size — **width × length in feet**?
+- **Where is it?** (a corner, or "north of the kitchen", "sharing the east wall of
+  the hall")
+- Which walls have doors/windows, and roughly where along each wall?
 
-- Total plot dimensions = the drawing.
-- Room count + names per floor = the drawing.
-- Roof footprint covers the plinth; hip/gable ends match the roof plan.
-- Openings on the correct walls, within each wall's length.
-- Run `validate.mjs`, then a final `preview.sh` and compare every floor + the
-  elevations to the originals one more time.
+Then YOU: convert ft × 10, compute `x`/`y` from the described position (anchor to
+rooms already placed), treat the size as the **outer** wall footprint, add the
+openings. **Render and ask "does this match your drawing?"** Fix from their answer
+**before** starting the next room.
 
-> Tip: when comparing, render with `preview.sh` and Read your `plans.png`
-> alongside the corresponding PDF page — put your transcription and the original
-> side by side and reconcile differences before moving on.
+Start with a corner room; anchor every later room to ones already placed, so the
+user only ever gives you relative positions.
+
+### 2. Other objects
+Staircase, verandah / balcony, pillars, kitchen platform — same ask → place →
+render → confirm loop.
+
+### 3. Roof (last)
+Ask: hip / gable / flat / shed? Pitch/steepness? Over which parts of the house?
+Place it on its **own top floor** (see `roof-v2-guide.md`); show the elevations;
+confirm.
+
+## Rules for the dialog
+
+- **One piece at a time, render and confirm each.** Never construct the whole house
+  from one big answer — it's impossible for either of you to QC.
+- **If an answer is ambiguous, ask a follow-up — don't guess.** ("Is the bathroom
+  inside the master bedroom, or off the hallway?")
+- **Keep the user in plain language.** If they volunteer coordinates, fine, but
+  never require them.
+- **Keep a short running brief** (see `design-brief.md`) of what they've told you,
+  so later changes re-derive cleanly and you don't re-ask.
+- Validate (`validate.mjs`) and do a final render pass before calling it done.
