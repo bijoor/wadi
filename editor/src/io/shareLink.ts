@@ -81,12 +81,12 @@ export async function decodeConfigFromHash(
   }
 }
 
-// The canonical public home of the web app. Used to anchor share links
-// when we're NOT already running on a public web origin — i.e. inside
-// the Tauri desktop app (origin is localhost/tauri asset) or a local dev
-// server. A link must be openable by someone else, so it can never point
-// at localhost.
-const PUBLIC_APP_URL = "https://bijoor.github.io/wadi/";
+// The canonical public home of the web app (custom domain on GitHub
+// Pages). Used to anchor share links when we're NOT already running on a
+// public web origin — i.e. inside the Tauri desktop app (origin is
+// localhost/tauri asset) or a local dev server. A link must be openable by
+// someone else, so it can never point at localhost.
+const PUBLIC_APP_URL = "https://wadi.house/";
 
 /**
  * Absolute shareable URL for a payload. On the deployed web app we anchor
