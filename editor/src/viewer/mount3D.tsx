@@ -22,6 +22,18 @@ import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { ViewerLayerPanel } from "./LayerPanel";
 import { useConfigStore } from "../state/configStore";
 
+// Optional camera auto-rotate, for recording a smooth turntable GIF of the
+// model (the hero on the landing page). Off by default so it never affects
+// normal use. Enable by adding ?spin to the app URL (e.g. /app/?spin), or
+// ?spin=<speed> to tune it — higher is faster, roughly 60/speed seconds per
+// full revolution (so ?spin=6 ≈ 10s per turn, ?spin=4 ≈ 15s).
+const SPIN_PARAM = new URLSearchParams(window.location.search).get("spin");
+const AUTO_ROTATE = SPIN_PARAM !== null;
+const AUTO_ROTATE_SPEED =
+  SPIN_PARAM && !Number.isNaN(parseFloat(SPIN_PARAM))
+    ? parseFloat(SPIN_PARAM)
+    : 6.0;
+
 function ViewerScene() {
   // Subscribe to useConfigStore so property-panel edits re-render the
   // scene without any external glue. If the store is empty (initial
@@ -109,6 +121,8 @@ function ViewerScene() {
         enableDamping
         dampingFactor={0.1}
         target={[0, targetY, 0]}
+        autoRotate={AUTO_ROTATE}
+        autoRotateSpeed={AUTO_ROTATE_SPEED}
       />
       <EffectComposer multisampling={0} enableNormalPass>
         <N8AO
