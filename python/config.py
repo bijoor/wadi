@@ -1,5 +1,5 @@
 """
-Konkan House Configuration
+Wadi Configuration
 Shared configuration for both 3D Blender functions and 2D SVG generation
 """
 

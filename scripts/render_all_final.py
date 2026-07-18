@@ -35,7 +35,7 @@ print()
 
 # Build house
 print("Building house...")
-exec(open(os.path.join(_PROJECT_ROOT, 'python', 'konkan_house_config.py')).read())
+exec(open(os.path.join(_PROJECT_ROOT, 'python', 'wadi_config.py')).read())
 build_house(use_explosion=False)
 print("✓ House built\n")
 

@@ -1,5 +1,5 @@
 """
-Konkan House 3D Library
+Wadi 3D Library
 Reusable functions for creating house models in Blender
 
 This is the main module that provides all functions for:

@@ -1,14 +1,41 @@
 import { validate, type HouseConfig } from "../schema/houseConfig";
+import { isTauri } from "@tauri-apps/api/core";
+import { open as tauriOpen, save as tauriSave } from "@tauri-apps/plugin-dialog";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
-// Prompt the user for a .json file and return the parsed + validated
-// HouseConfig. Rejects with a plain-string error if the JSON is malformed
-// or fails schema validation; the caller shows it in a toast/banner.
-export async function pickAndLoadConfig(): Promise<{
+// Load result — filePath is populated only when running inside Tauri,
+// so `saveConfig` can distinguish "Save" (write in place) from
+// "Save As" (needs a picker).
+export interface LoadResult {
   config: HouseConfig;
   filename: string;
-}> {
+  filePath: string | null;
+}
+
+export async function pickAndLoadConfig(): Promise<LoadResult> {
+  if (isTauri()) {
+    const selected = await tauriOpen({
+      title: "Open house config",
+      multiple: false,
+      directory: false,
+      filters: [{ name: "House config", extensions: ["json"] }],
+    });
+    if (!selected || typeof selected !== "string") {
+      throw new Error("Cancelled");
+    }
+    const text = await readTextFile(selected);
+    return parseAndValidate(text, basename(selected), selected);
+  }
   const file = await pickJsonFile();
   const text = await file.text();
+  return parseAndValidate(text, file.name, null);
+}
+
+function parseAndValidate(
+  text: string,
+  filename: string,
+  filePath: string | null,
+): LoadResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -29,7 +56,7 @@ export async function pickAndLoadConfig(): Promise<{
       }`,
     );
   }
-  return { config: result.data, filename: file.name };
+  return { config: result.data, filename, filePath };
 }
 
 function pickJsonFile(): Promise<File> {
@@ -50,15 +77,49 @@ function pickJsonFile(): Promise<File> {
   });
 }
 
-// Trigger a browser download of the current config as JSON. Uses the
-// same 2-space indent + trailing newline the Python extractor emits so
-// diffs against the repo copy stay clean.
-export function downloadConfig(config: HouseConfig, filename = "house_config.json") {
-  // Strip the runtime-only marker before saving; users editing on disk
-  // shouldn't see internal flags.
+// Serialize with 2-space indent + trailing newline — matches the
+// Python extractor so diffs against the repo copy stay clean.
+function serialize(config: HouseConfig): string {
   const clean = { ...config };
   delete (clean as { _walls_expanded?: boolean })._walls_expanded;
-  const text = JSON.stringify(clean, null, 2) + "\n";
+  return JSON.stringify(clean, null, 2) + "\n";
+}
+
+// Save the config.
+// - In Tauri with `filePath`: writes in place (Save). Returns the same path.
+// - In Tauri without `filePath`: shows native save dialog (Save As). Returns the chosen path.
+// - In the browser: triggers a Blob download using `defaultName`. Returns null.
+export async function saveConfig(
+  config: HouseConfig,
+  filePath: string | null,
+  defaultName = "house_config.json",
+): Promise<string | null> {
+  const text = serialize(config);
+  if (isTauri()) {
+    let target = filePath;
+    if (!target) {
+      const chosen = await tauriSave({
+        title: "Save house config",
+        defaultPath: defaultName,
+        filters: [{ name: "House config", extensions: ["json"] }],
+      });
+      if (!chosen) throw new Error("Cancelled");
+      target = chosen;
+    }
+    await writeTextFile(target, text);
+    return target;
+  }
+  downloadBlob(text, defaultName);
+  return null;
+}
+
+// Kept as an alias so any lingering call sites that only care about
+// browser-style download don't break. New code should call saveConfig.
+export function downloadConfig(config: HouseConfig, filename = "house_config.json") {
+  downloadBlob(serialize(config), filename);
+}
+
+function downloadBlob(text: string, filename: string) {
   const blob = new Blob([text], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -67,6 +128,43 @@ export function downloadConfig(config: HouseConfig, filename = "house_config.jso
   document.body.appendChild(a);
   a.click();
   a.remove();
-  // Revoke on a delay so Safari has time to start the download.
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function basename(path: string): string {
+  const i = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  return i >= 0 ? path.slice(i + 1) : path;
+}
+
+// Generic text-save. Tauri: native save dialog + writeTextFile.
+// Browser: Blob download. Returns the saved absolute path in Tauri,
+// null in the browser. Rejects with Error("Cancelled") if the user
+// dismisses the dialog.
+export async function saveText(
+  text: string,
+  defaultName: string,
+  filterName: string,
+  extensions: string[],
+  mimeType = "text/plain",
+): Promise<string | null> {
+  if (isTauri()) {
+    const chosen = await tauriSave({
+      title: `Save ${filterName}`,
+      defaultPath: defaultName,
+      filters: [{ name: filterName, extensions }],
+    });
+    if (!chosen) throw new Error("Cancelled");
+    await writeTextFile(chosen, text);
+    return chosen;
+  }
+  const blob = new Blob([text], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = defaultName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return null;
 }

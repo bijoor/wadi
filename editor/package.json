@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && vite build --config vite.viewer.config.ts",
+    "build:tauri": "vite build && vite build --config vite.viewer.config.ts",
     "lint": "oxlint",
     "preview": "vite preview",
     "smoke-validate": "tsx scripts/smoke-validate.ts",
@@ -20,6 +21,9 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@react-three/postprocessing": "^3.0.4",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.5.1",
     "clsx": "^2.1.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

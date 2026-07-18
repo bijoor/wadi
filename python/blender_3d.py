@@ -1,5 +1,5 @@
 """
-Konkan House 3D Blender Functions
+Wadi 3D Blender Functions
 Handles all 3D model generation in Blender
 
 Coordinate System:
@@ -1919,11 +1919,11 @@ def init_scene():
 
 def export_to_web(filepath: str = None):
     """
-    Export the Blender model to docs/konkan_house.glb for web viewing.
+    Export the Blender model to docs/wadi.glb for web viewing.
     Static HTML files are already in the docs/ folder.
 
     Args:
-        filepath: Path to save the file. If None, saves to docs/konkan_house.glb
+        filepath: Path to save the file. If None, saves to docs/wadi.glb
 
     Returns:
         Path to the exported file
@@ -1942,7 +1942,7 @@ def export_to_web(filepath: str = None):
         # Export to docs folder
         docs_dir = os.path.join(blend_dir, "docs")
         os.makedirs(docs_dir, exist_ok=True)
-        filepath = os.path.join(docs_dir, "konkan_house.glb")
+        filepath = os.path.join(docs_dir, "wadi.glb")
 
     print("\n" + "="*70, flush=True)
     print("EXPORTING MODEL FOR WEB", flush=True)

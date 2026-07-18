@@ -4,7 +4,7 @@
 
 import sys
 sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
-from konkan_house_lib import GLOBAL_CONFIG
+from wadi_lib import GLOBAL_CONFIG
 
 # Override default config values
 GLOBAL_CONFIG.update({
@@ -70,7 +70,7 @@ GLOBAL_CONFIG.update({
     # ------------------------------------------------------------------
     # Web-viewer layer panel — ordered top-to-bottom. Each entry is
     # {id, label, color}. The `id` must match what `_resolve_layer` (in
-    # konkan_house_config.py) assigns to a mesh, or what
+    # wadi_config.py) assigns to a mesh, or what
     # `create_roof_frame_3d` (in blender_3d.py) tags on frame members.
     # `frame_spine_kinds` selects which frame `kind`s belong in the
     # "Ridges & trusses" bucket vs. the "Purlins & rafters" bucket.

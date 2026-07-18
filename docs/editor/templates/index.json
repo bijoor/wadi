@@ -13,10 +13,10 @@
       "file": "templates/verandah_cottage.json"
     },
     {
-      "id": "two_story_konkan",
+      "id": "two_story_wadi",
       "title": "Two-story Konkan",
       "description": "Full two-story house: verandah, living / kitchen / staircase / store / bath on ground; two bedrooms + study + bath on first; hip roof over a loft. 30 × 45 ft plot.",
-      "file": "templates/two_story_konkan.json"
+      "file": "templates/two_story_wadi.json"
     },
     {
       "id": "l_shape_villa",

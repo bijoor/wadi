@@ -26,7 +26,7 @@ from config import GLOBAL_CONFIG  # noqa: E402
 # Run house_config.py under exec so we don't need Blender for the import.
 config_code = (REPO / 'python' / 'house_config.py').read_text()
 config_code = config_code.replace(
-    'from konkan_house_lib import GLOBAL_CONFIG',
+    'from wadi_lib import GLOBAL_CONFIG',
     '# GLOBAL_CONFIG imported by the extractor',
 )
 namespace: dict = {

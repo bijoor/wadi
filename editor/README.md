@@ -1,4 +1,4 @@
-# Konkan House Editor
+# Wadi Editor
 
 A standalone browser-based editor for `house_config.json` — the JSON that
 drives both the Blender 3D pipeline and the SVG floor plan / elevation
@@ -32,7 +32,7 @@ picker to load and the download API to save. To iterate on a design:
 5. **Regenerate outputs**:
    - `python3 regenerate_combined_svgs.py` for SVG floor plans /
      elevations (no Blender needed)
-   - Open `konkan_house_config.py` in Blender's Text Editor and press
+   - Open `wadi_config.py` in Blender's Text Editor and press
      Alt+P for the full GLB + material build
 
 ## Local development

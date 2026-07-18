@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Wadi",
+  "version": "0.1.0",
+  "identifier": "house.wadi.app",
+  "build": {
+    "frontendDist": "../docs",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "python3 ../scripts/tauri-dev-serve.py 1420",
+    "beforeBuildCommand": "cd ../editor && npm run build:tauri"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Wadi",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}

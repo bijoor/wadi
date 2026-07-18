@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/bijoor/konkan-house/schema/house_config.schema.json",
+  "$id": "https://github.com/bijoor/wadi/schema/house_config.schema.json",
   "title": "House Config",
   "description": "Procedural house configuration read by the Blender pipeline and the browser editor. Coordinates use the Inkscape convention (origin top-left, X→right, Y→down); units are ambiguous by design — see CLAUDE.md 'Coordinate system & units'.",
   "type": "object",

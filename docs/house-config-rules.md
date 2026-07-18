@@ -289,7 +289,7 @@ Ground floor with rooms + Loft floor with hip/gable roof. See
 ### Two-story home
 
 Ground + First floors with rooms + Loft floor with roof. See
-`two_story_konkan.json`.
+`two_story_wadi.json`.
 
 ### Courtyard home
 

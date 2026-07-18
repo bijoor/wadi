@@ -14,6 +14,10 @@ export interface Selection {
 interface ConfigState {
   config: HouseConfig | null;
   filename: string | null;
+  // Full filesystem path — populated only when running inside Tauri and
+  // the config was opened/saved via a native dialog. Used to distinguish
+  // Save (write-in-place) from Save As (prompt for path).
+  filePath: string | null;
   selection: Selection | null;
   // When true the PropertyPanel replaces its object form with the House
   // settings form (site + plinth). Mutually exclusive with `selection` —
@@ -26,7 +30,8 @@ interface ConfigState {
   validationErrors: { path: string; message: string }[];
   dirty: boolean;
 
-  loadConfig: (config: HouseConfig, filename?: string) => void;
+  loadConfig: (config: HouseConfig, filename?: string, filePath?: string | null) => void;
+  setFilePath: (filePath: string | null) => void;
   clearConfig: () => void;
   select: (sel: Selection | null) => void;
   setSiteEditorOpen: (open: boolean) => void;
@@ -65,6 +70,7 @@ interface ConfigState {
 // runs. Only the config-mutating ops are captured.
 const NON_TRACKED_KEYS = new Set<keyof ConfigState>([
   "filename",
+  "filePath",
   "selection",
   "validationErrors",
 ]);
@@ -74,16 +80,18 @@ export const useConfigStore = create<ConfigState>()(
     (set) => ({
       config: null,
       filename: null,
+      filePath: null,
       selection: null,
       siteEditorOpen: false,
       floorEditorIdx: null,
       validationErrors: [],
       dirty: false,
 
-      loadConfig: (config, filename) => {
+      loadConfig: (config, filename, filePath) => {
         set({
           config,
           filename: filename ?? null,
+          filePath: filePath ?? null,
           selection: null,
           siteEditorOpen: false,
           floorEditorIdx: null,
@@ -95,10 +103,13 @@ export const useConfigStore = create<ConfigState>()(
         useConfigStore.temporal.getState().clear();
       },
 
+      setFilePath: (filePath) => set({ filePath }),
+
       clearConfig: () => {
         set({
           config: null,
           filename: null,
+          filePath: null,
           selection: null,
           siteEditorOpen: false,
           floorEditorIdx: null,

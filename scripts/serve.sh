@@ -1,6 +1,6 @@
 #!/bin/bash
 # Serve docs/ over HTTP so the interactive 3D viewer (index.html) can load
-# konkan_house.glb. Default port 8000; pass an alternate port as the first arg.
+# wadi.glb. Default port 8000; pass an alternate port as the first arg.
 # Stop with Ctrl+C.
 
 set -e

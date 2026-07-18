@@ -46,14 +46,14 @@ import { computeMergedV2Spec } from "../svg2d/roof/v2/computeFromHouse";
 import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
 import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
-import { pickAndLoadConfig, downloadConfig } from "../io/fileIO";
+import { pickAndLoadConfig, saveConfig, saveText } from "../io/fileIO";
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
 import { mountViewer3D, mountViewerLayerPanel } from "./mount3D";
 
 const CONFIG_URL = "house_config.json";
 const EAVE_CROSS_SECTION_URL = "2d/roof/roof-cross-section.svg";
-const EDIT_MODE_KEY = "konkan-viewer:edit-mode";
+const EDIT_MODE_KEY = "wadi:edit-mode";
 
 // State shared with the fetch patch — mutated whenever the config
 // changes so that subsequent fetches return the fresh SVG strings.
@@ -115,6 +115,8 @@ async function bootViewer(): Promise<void> {
 
   // Header buttons: Edit toggle, Load, Save, Undo, Redo.
   wireHeaderButtons();
+  // Expose window.exportCurrentSvg for the inline lightbox toolbar.
+  wireExports();
   applyStoredEditMode();
 }
 
@@ -375,7 +377,32 @@ declare global {
     // Published from rebuildSvgMap so the roof-panels loader can render
     // the two HTML BOM cards after the SVG panels.
     roofBomManifest?: { filename: string; displayName: string }[];
+    // Exposed by wireExports below so the inline <script> in
+    // index.html can trigger a save without needing to import
+    // fileIO. Filename is a hint for the save dialog.
+    exportCurrentSvg?: (defaultName: string) => Promise<void>;
   }
+}
+
+// Grab the currently-open lightbox SVG (as source text) and save
+// via the native dialog / browser download.
+function wireExports(): void {
+  window.exportCurrentSvg = async (defaultName: string) => {
+    const svg = document.querySelector<SVGSVGElement>("#svg-container svg");
+    if (!svg) {
+      alert("No SVG open to export.");
+      return;
+    }
+    // Prepend the XML declaration so downstream tools (Illustrator,
+    // Inkscape) recognise the file as standalone SVG.
+    const text = `<?xml version="1.0" encoding="UTF-8"?>\n${svg.outerHTML}`;
+    try {
+      await saveText(text, defaultName, "SVG image", ["svg"], "image/svg+xml");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") alert(`Export failed: ${msg}`);
+    }
+  };
 }
 
 function reloadActiveTab(): void {
@@ -421,15 +448,24 @@ function wireHeaderButtons(): void {
     // Uses the same file picker + Zod validation the editor's TopBar does.
     try {
       const res = await pickAndLoadConfig();
-      useConfigStore.getState().loadConfig(res.config, res.filename);
+      useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
     } catch (e) {
-      alert(`Load failed: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") alert(`Load failed: ${msg}`);
     }
   });
 
-  btnSave?.addEventListener("click", () => {
-    const cfg = useConfigStore.getState().config;
-    if (cfg) downloadConfig(cfg, "house_config.json");
+  btnSave?.addEventListener("click", async () => {
+    const state = useConfigStore.getState();
+    const cfg = state.config;
+    if (!cfg) return;
+    try {
+      const saved = await saveConfig(cfg, state.filePath, state.filename ?? "house_config.json");
+      if (saved) state.setFilePath(saved);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") alert(`Save failed: ${msg}`);
+    }
   });
 
   btnUndo?.addEventListener("click", () => useConfigStore.temporal.getState().undo());

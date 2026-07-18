@@ -1,6 +1,6 @@
 """
-Konkan House Configuration and Builder
-Edit this file to change the house design
+Wadi — House Configuration and Builder
+Edit this file to change the house design.
 
 All coordinates are in feet (Inkscape-style: origin top-left, X right, Y down)
 """
@@ -10,7 +10,7 @@ import os
 import importlib
 
 # Add the folder containing this script to sys.path so sibling modules
-# (konkan_house_lib, blender_3d, svg_2d…) are importable regardless of
+# (wadi_lib, blender_3d, svg_2d…) are importable regardless of
 # where Blender was launched from. Using __file__ makes this robust to
 # repo moves or re-clones.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -20,17 +20,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 import svg_2d
 import blender_3d
-import konkan_house_lib
+import wadi_lib
 import house_config
 
 importlib.reload(config)
 importlib.reload(svg_2d)
 importlib.reload(blender_3d)
-importlib.reload(konkan_house_lib)
+importlib.reload(wadi_lib)
 importlib.reload(house_config)
 
 # Now import from the reloaded modules
-from konkan_house_lib import *
+from wadi_lib import *
 from house_config import HOUSE_CONFIG, GLOBAL_CONFIG
 
 # ============================================================================

@@ -26,7 +26,7 @@ Every SVG-generation change currently requires editing two codebases (Python `sv
 ## Target folder layout
 
 ```
-konkan-house/                         (repo root — rename optional)
+wadi/                         (repo root — rename optional)
 ├── README.md                         short pointer to docs-internal/
 ├── house_config.json                 canonical source of truth
 ├── config/
@@ -43,9 +43,9 @@ konkan-house/                         (repo root — rename optional)
 │   │   ├── house_expand.py
 │   │   └── roof_geometry.py
 │   ├── blender/                      requires bpy
-│   │   ├── build.py                  was konkan_house_config.py
+│   │   ├── build.py                  was wadi_config.py
 │   │   ├── geometry.py               was blender_3d.py
-│   │   ├── facade.py                 was konkan_house_lib.py
+│   │   ├── facade.py                 was wadi_lib.py
 │   │   └── export_glb.py             extracted from build_house
 │   ├── render/                       Cycles + BlenderKit
 │   │   ├── apply_materials.py
@@ -78,7 +78,7 @@ konkan-house/                         (repo root — rename optional)
 │   ├── house_config.json             copied at editor build time
 │   ├── editor/                       Vite build output
 │   ├── 3d/
-│   │   ├── konkan_house.glb
+│   │   ├── wadi.glb
 │   │   ├── realistic_render.png
 │   │   └── perspectives/             was realistic_perspectives/
 │   │       ├── aerial.png
@@ -129,7 +129,7 @@ Each phase is independently useful and reversible. Ship them serially with commi
 
 ### Phase R1 — Cut SVG generation out of the Blender build path (~2 h)
 
-- `konkan_house_config.py::build_house` currently calls `generate_all_floor_plans` / `generate_all_elevations` / `generate_combined_*`. **Remove those calls.**
+- `wadi_config.py::build_house` currently calls `generate_all_floor_plans` / `generate_all_elevations` / `generate_combined_*`. **Remove those calls.**
 - Blender build now only produces GLB; SVGs come from the editor.
 - Nothing physically moves yet — this is a wiring change only.
 - Add a placeholder `scripts/regen_svgs.sh` that shells out to the current `regenerate_combined_svgs.py` (Phase R2 will replace it).
@@ -158,7 +158,7 @@ Each phase is independently useful and reversible. Ship them serially with commi
 
 - `git mv` all Python files into their `pipeline/` subfolders per the target layout.
 - Rename `config.py` → `config/global_defaults.py`, `house_config.py` → `pipeline/loader/config_loader.py`.
-- Update every import statement. The scary one: `konkan_house_config.py`'s importlib.reload chain that assumes `config → svg_2d → blender_3d → konkan_house_lib → house_config`. New chain: `global_defaults → geometry → facade → config_loader`.
+- Update every import statement. The scary one: `wadi_config.py`'s importlib.reload chain that assumes `config → svg_2d → blender_3d → wadi_lib → house_config`. New chain: `global_defaults → geometry → facade → config_loader`.
 - Update the absolute path hard-coded in several scripts (`sys.path.insert(0, '/Users/…/blender')`) to resolve relative to `__file__`.
 - Update `editor/vite.config.ts`'s copy-plugin src path (`../house_config.json` may stay if we keep it at repo root; otherwise update to the new location).
 - Delete `konkan_house_lib_old.py` (already marked legacy).
@@ -193,7 +193,7 @@ Each phase is independently useful and reversible. Ship them serially with commi
 
 ## Risks
 
-1. **Blender importlib.reload chain breaks silently on file renames.** Must audit `konkan_house_config.py` (new: `pipeline/blender/build.py`) and update the reload order after every rename in R4.
+1. **Blender importlib.reload chain breaks silently on file renames.** Must audit `wadi_config.py` (new: `pipeline/blender/build.py`) and update the reload order after every rename in R4.
 2. **`docs/index.html` viewer** links to specific SVG filenames. If R3 goes ahead without updating the viewer references, every tab breaks. Must be done atomically.
 3. **BlenderKit and texture paths** — Python render scripts may resolve textures relative to their own `__file__`; after moving into `pipeline/render/`, those paths shift. Test at least one render before wrapping.
 4. **`sys.path.insert` absolute paths** — several scripts hard-code `/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender`. Must be replaced with `pathlib.Path(__file__).resolve().parent.parent.parent` or similar during R4.

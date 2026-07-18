@@ -1,9 +1,9 @@
-# Konkan House
+# Wadi
 
 Procedurally generate a full construction package — floor plans, elevations, roof drawings, structural sections, a photoreal 3D render, and an interactive GLB — from a single declarative description of the house.
 
-**Live site:** https://bijoor.github.io/konkan-house/
-**Live editor:** https://bijoor.github.io/konkan-house/editor/
+**Live site:** https://bijoor.github.io/wadi/
+**Live editor:** https://bijoor.github.io/wadi/editor/
 
 ---
 
@@ -71,8 +71,8 @@ blender/                       (repo root)
 │   ├── roof_geometry.py       hip roof geometry derivation
 │   ├── roof_frame.py          structural frame member list
 │   ├── blender_3d.py          Blender geometry builder (requires bpy)
-│   ├── konkan_house_lib.py    thin facade re-exporting the above
-│   └── konkan_house_config.py Blender Alt+P entry point
+│   ├── wadi_lib.py    thin facade re-exporting the above
+│   └── wadi_config.py Blender Alt+P entry point
 ├── editor/                    React + Three.js browser editor (TypeScript)
 │   ├── src/                   (see editor/README.md for the full tour)
 │   └── scripts/               parity + validation harnesses
@@ -101,8 +101,8 @@ blender/                       (repo root)
 │   │                          + roof-cross-section.svg, roof-trusses.svg
 │   │                            (hand-drawn refs the pipeline embeds as-is)
 │   ├── 3d/                    GLB + perspective PNGs + layers.json
-│   │   ├── konkan_house.glb
-│   │   ├── konkan_house_exploded.glb
+│   │   ├── wadi.glb
+│   │   ├── wadi_exploded.glb
 │   │   └── perspectives/      aerial + 6 named angles
 │   └── editor/                built browser editor (vite output)
 ├── plans/                     planning docs kept for history
@@ -122,7 +122,7 @@ The editor is the primary way to iterate on the design. It runs entirely in the 
 
 ### Open it
 
-- **Hosted:** https://bijoor.github.io/konkan-house/editor/ (auto-loads the JSON from the same Pages site)
+- **Hosted:** https://bijoor.github.io/wadi/editor/ (auto-loads the JSON from the same Pages site)
 - **Local dev:** `cd editor && npm install && npm run dev` → http://localhost:5173
 
 ### Typical edit loop
@@ -185,7 +185,7 @@ The script runs Blender headless via `render_all_final.py`, then crops whitespac
 python3 scripts/generate_pdf.py
 ```
 
-Stitches everything under `docs/` into a single browsable PDF at `docs/konkan_house.pdf`.
+Stitches everything under `docs/` into a single browsable PDF at `docs/wadi.pdf`.
 
 ---
 
@@ -221,7 +221,7 @@ The `docs/` folder is the GitHub Pages root. Pushing to `main` triggers a rebuil
 
 The wrapper stages everything, creates a commit, pushes to `main`, and reminds you that Pages will rebuild in ~1–2 minutes.
 
-Note that `konkan_house.glb`, `house-model.blend`, `house-model.blend1`, and the debug `*_debug_*.json` files are `.gitignore`d — they're all regenerated locally. Only the SVGs, PNGs, editor build, and `docs/index.html` land in the repo.
+Note that `wadi.glb`, `house-model.blend`, `house-model.blend1`, and the debug `*_debug_*.json` files are `.gitignore`d — they're all regenerated locally. Only the SVGs, PNGs, editor build, and `docs/index.html` land in the repo.
 
 ---
 

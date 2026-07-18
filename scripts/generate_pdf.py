@@ -133,7 +133,7 @@ def build_html():
 <html>
 <head>
 <meta charset="utf-8">
-<title>Konkan House — E/W Roof Variant</title>
+<title>Wadi — E/W Roof Variant</title>
 <style>
   @page {{ size: A3 landscape; margin: 12mm; }}
   @page roofplan {{ size: {roof_page_w_mm}mm {roof_page_h_mm:.1f}mm; margin: {page_margin_mm}mm; }}
@@ -169,7 +169,7 @@ def build_html():
 <body>
 
 <section class="page cover">
-  <h1>Konkan House</h1>
+  <h1>Wadi</h1>
   <div class="subtitle">East–West Roof Variant — Design Package</div>
   <div class="meta">Generated {today}</div>
   <img class="hero" src="{hero}" alt="Hero render">

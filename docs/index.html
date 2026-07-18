@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Konkan House - 3D Model Viewer</title>
+    <title>Wadi — 3D Home Designer</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
     <link rel="apple-touch-icon" href="favicon.svg"/>
     <meta name="theme-color" content="#B85028"/>
@@ -1180,7 +1180,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-D6GRy3ep.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-BQI_Onc8.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/viewer-plKEW6vr.css">
 </head>
 <body>
@@ -1189,9 +1189,9 @@
             <div>
                 <h1>
                     <img src="favicon.svg" alt="" class="hdr-logo" width="28" height="28"/>
-                    Konkan House
+                    Wadi
                 </h1>
-                <div class="subtitle">3D Interactive Model Viewer</div>
+                <div class="subtitle">3D Home Designer</div>
             </div>
             <div class="header-actions">
                 <!-- Mobile-only hamburger: on narrow screens the button
@@ -1374,6 +1374,7 @@
                 <div class="zoom-info" id="svg-zoom">100%</div>
                 <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
                 <button class="zoom-btn" onclick="resetZoom()" title="Reset">⟲</button>
+                <button class="zoom-btn" onclick="exportCurrentSvgFile()" title="Save SVG…">💾</button>
                 <button class="zoom-btn" onclick="exportToPDF()" title="Export to PDF">📄</button>
             </div>
             <p style="color: #666; text-align: center; padding: 2rem;">Loading...</p>
@@ -1938,6 +1939,20 @@
             fitToView();
         }
 
+        // Save the current lightbox SVG to disk. Uses window.exportCurrentSvg
+        // which is installed by the viewer bundle (fileIO.saveText) and
+        // routes through the native save dialog in Tauri or a Blob
+        // download in the browser.
+        function exportCurrentSvgFile() {
+            const name = (svgLightboxCurrentFile || 'diagram').split('/').pop() || 'diagram.svg';
+            const defaultName = name.endsWith('.svg') ? name : name + '.svg';
+            if (typeof window.exportCurrentSvg === 'function') {
+                window.exportCurrentSvg(defaultName);
+            } else {
+                alert('Export helper not available yet — reload the app and try again.');
+            }
+        }
+
         function exportToPDF() {
             // Temporarily reset zoom and center the SVG for printing
             const currentScale = svgState.scale;
@@ -1965,12 +1980,16 @@
         // Which tab was active when the SVG lightbox was opened. Used by
         // closeSvgLightbox to jump back where the user came from.
         let svgLightboxReturnTab = null;
+        // Filename of the currently-displayed SVG. Used as the default
+        // save name when the user clicks the 💾 button in the toolbar.
+        let svgLightboxCurrentFile = null;
 
         async function openSvgLightbox(filename, caption) {
             // Remember the tab the user is coming from so the close
             // button (or Esc) can put them back on it.
             const activeTab = document.querySelector('.tab.active');
             svgLightboxReturnTab = activeTab ? activeTab.getAttribute('onclick') : null;
+            svgLightboxCurrentFile = filename;
 
             const svgContainer = document.getElementById('svg-container');
             svgContainer.style.display = 'block';

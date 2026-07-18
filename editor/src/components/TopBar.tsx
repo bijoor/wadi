@@ -129,7 +129,7 @@ export function TopBar() {
       </a>
       <div className="flex flex-col leading-tight">
         <span className="text-sm font-semibold text-slate-100">
-          🏠 Konkan House Editor
+          🏠 Wadi Editor
         </span>
         <span className="text-xs text-slate-400">
           {filename ? (
