@@ -110,6 +110,11 @@ See `prompts/verify-visually.md`.
   by 10.
 - **The roof footprint must cover the plinth footprint.** Roof segment widths and
   positions come from the walls they sit on, not arbitrary numbers.
+- **The roof lives on its OWN top floor** (`floor_number` ABOVE the floors it
+  covers, containing only the roof), and you **never set its Z** — the base height
+  is computed from `plinth.height` + the `height`s of the floors below it. To move
+  the roof up/down, change floor heights, not the roof. There is no Z field on the
+  roof. (See `reference/roof-v2-guide.md`.)
 - **Floors stack; `floor_number` is 0-based** (ground = 0). Heights are independent
   per floor (`height`, `wall_height`, `slab_thickness` are unrelated fields).
 - **Minimal patches.** Preserve unchanged objects verbatim so the user (and diffs)

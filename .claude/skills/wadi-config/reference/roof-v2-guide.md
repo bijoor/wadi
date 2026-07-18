@@ -9,6 +9,34 @@ after writing a roof (it runs the exact derivation the app uses).
 > hand-invent it — **copy the roof from the closest example** (see the shape map
 > below), then adjust its segment coordinates/widths to your plinth, and validate.
 
+## Where the roof lives, and its height (you do NOT set a Z)
+
+Read this first — it's the part that isn't obvious and that you must not try to
+reverse-engineer from the geometry.
+
+- **A roof object goes on its OWN top floor** — a floor whose `floor_number` is
+  ABOVE every floor it covers, containing only the roof object(s). Name it
+  something like `"Roof"` or `"Loft Floor"`. Example: ground = 0, first = 1 → the
+  roof floor is `floor_number` **2**. The roof then covers the floors below it.
+  (All the examples do this: the roof sits alone on the topmost floor.)
+- **You NEVER write a Z or height on the roof.** There is no Z field anywhere in
+  the roof object. Its base sits automatically at the top of the walls below it,
+  computed by the pipeline as:
+
+  ```
+  roof base Z = plinth.height + Σ (height of every floor BELOW the roof's floor)
+  ```
+
+  using each floor's own `height` (falling back to `defaults.floor_height`).
+  **`slab_thickness` does NOT enter this stack** — `height` already is the full
+  floor-to-floor rise.
+- **To raise or lower the roof, change the FLOORS' `height` (or `plinth.height`),
+  not the roof.** If the roof floats too low/high, you put it on the wrong floor
+  or a floor below it has the wrong `height`.
+- `slope` / `ridge_h` is the rise **above** that computed wall-top; segment
+  `start`/`end` are 2D `[x, y]` only. Don't compute a Z — the pipeline does it
+  entirely from the floor stack.
+
 ## The core idea
 
 A roof is a set of **segments**. Each segment is a line (`start`→`end`) with a
