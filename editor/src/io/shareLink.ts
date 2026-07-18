@@ -81,7 +81,26 @@ export async function decodeConfigFromHash(
   }
 }
 
-/** Absolute shareable URL for a payload, anchored at the current page. */
+// The canonical public home of the web app. Used to anchor share links
+// when we're NOT already running on a public web origin — i.e. inside
+// the Tauri desktop app (origin is localhost/tauri asset) or a local dev
+// server. A link must be openable by someone else, so it can never point
+// at localhost.
+const PUBLIC_APP_URL = "https://bijoor.github.io/wadi/";
+
+/**
+ * Absolute shareable URL for a payload. On the deployed web app we anchor
+ * at the current origin+path (so it stays correct if the site moves); in
+ * the desktop app / local dev we fall back to the public URL so the link
+ * actually works for the recipient.
+ */
 export function buildShareUrl(hashPayload: string): string {
-  return `${location.origin}${location.pathname}#${hashPayload}`;
+  const isPublicWeb =
+    location.protocol === "https:" &&
+    location.hostname !== "localhost" &&
+    location.hostname !== "127.0.0.1";
+  const base = isPublicWeb
+    ? `${location.origin}${location.pathname}`
+    : PUBLIC_APP_URL;
+  return `${base}#${hashPayload}`;
 }

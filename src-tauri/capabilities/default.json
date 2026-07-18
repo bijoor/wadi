@@ -12,6 +12,7 @@
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
     "fs:allow-watch",
+    "clipboard-manager:allow-write-text",
     {
       "identifier": "fs:scope",
       "allow": [

@@ -52,6 +52,8 @@ import {
   decodeConfigFromHash,
   buildShareUrl,
 } from "../io/shareLink";
+import { isTauri } from "@tauri-apps/api/core";
+import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-manager";
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
 import { mountViewer3D, mountViewerLayerPanel } from "./mount3D";
@@ -476,6 +478,48 @@ function flashSaved(btn: HTMLElement | null, text = "✓ Saved"): void {
   btn.dataset.flashTimer = String(t);
 }
 
+// Copy text to the clipboard, cross-target. The async Clipboard API is
+// the happy path in a browser, but it throws in the Tauri WKWebView; there
+// we fall back to a hidden-textarea execCommand("copy"), which WKWebView
+// does support. (window.prompt is NOT an option — WKWebView throws on it.)
+async function copyText(text: string): Promise<boolean> {
+  // In the Tauri desktop app both web clipboard paths are unavailable in
+  // WKWebView (async Clipboard API throws; execCommand("copy") is a
+  // no-op), so go straight to the native clipboard plugin.
+  if (isTauri()) {
+    try {
+      await tauriClipboardWrite(text);
+      return true;
+    } catch {
+      /* fall through to the web paths (harmless if they also fail) */
+    }
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through to the legacy execCommand path */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 function wireHeaderButtons(): void {
   const btnNew = document.getElementById("btn-new");
   const btnEdit = document.getElementById("btn-edit-toggle");
@@ -497,11 +541,13 @@ function wireHeaderButtons(): void {
     if (!cfg) return;
     try {
       const url = buildShareUrl(await encodeConfigToHash(cfg));
-      try {
-        await navigator.clipboard.writeText(url);
+      if (await copyText(url)) {
         flashSaved(btnShare, "✓ Link copied");
-      } catch {
-        window.prompt("Copy this shareable link:", url);
+      } else {
+        // Extremely rare (both clipboard paths failed). Don't use
+        // window.prompt — WKWebView doesn't support it.
+        console.info("[share] link:", url);
+        alert("Couldn't copy automatically — the link was logged to the console.");
       }
     } catch (e) {
       alert(`Share failed: ${e instanceof Error ? e.message : String(e)}`);
