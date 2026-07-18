@@ -1,0 +1,40 @@
+{
+  "templates": [
+    {
+      "id": "blank",
+      "title": "Blank plot",
+      "description": "Empty 30 × 40 ft plot with a single floor slab. Best when you want to build your house entirely from scratch.",
+      "file": "templates/blank.json"
+    },
+    {
+      "id": "verandah_cottage",
+      "title": "Verandah cottage",
+      "description": "Single-story Konkan cottage: front verandah (4 pillars), living room, kitchen, bedroom, bathroom, hip roof. Small footprint (30 × 40 ft).",
+      "file": "templates/verandah_cottage.json"
+    },
+    {
+      "id": "two_story_wadi",
+      "title": "Two-story Konkan",
+      "description": "Full two-story house: verandah, living / kitchen / staircase / store / bath on ground; two bedrooms + study + bath on first; hip roof over a loft. 30 × 45 ft plot.",
+      "file": "templates/two_story_wadi.json"
+    },
+    {
+      "id": "l_shape_villa",
+      "title": "L-shape villa",
+      "description": "Villa with a main house + east wing at right angles. Mixed roof types — hip over the main mass, shed over the wing. 50 × 50 ft plot.",
+      "file": "templates/l_shape_villa.json"
+    },
+    {
+      "id": "courtyard_home",
+      "title": "Courtyard home",
+      "description": "Four wings around an open central courtyard, each with its own hip roof. Front hall, kitchen, three bedrooms + bathrooms. 60 × 50 ft plot.",
+      "file": "templates/courtyard_home.json"
+    },
+    {
+      "id": "modern_flat",
+      "title": "Modern flat-roof home",
+      "description": "Contemporary layout: main flat roof with parapet, plus a shed-roofed porch. Foyer, living, kitchen, master bedroom + bath, utility. 36 × 45 ft plot.",
+      "file": "templates/modern_flat.json"
+    }
+  ]
+}

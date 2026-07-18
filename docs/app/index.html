@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Wadi — 3D Home Designer</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+    <link rel="apple-touch-icon" href="favicon.svg"/>
+    <meta name="theme-color" content="#B85028"/>
+    <style>
+        /* Universal box-sizing everywhere (safe), but keep the margin/
+           padding reset OFF the mounted editor panels — the React
+           components inside them assume browser defaults + Tailwind
+           Preflight, and a global reset here beats Tailwind's own
+           element-level rules by cascade order.
+           `:where()` is used inside `:not()` so the whole selector keeps
+           the specificity of `*` (0) rather than inheriting the ID
+           specificity from `#viewer-sidebar` — otherwise this rule
+           would override every class-based padding on the page. */
+        * { box-sizing: border-box; }
+        *:not(:where(#viewer-sidebar, #viewer-sidebar *,
+                     #viewer-property-panel, #viewer-property-panel *)) {
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Scoped to the top-of-page header only. Un-scoped rules on the
+           `header` / `h1` tags used to leak into <header>/<h1> elements
+           inside mounted React panels (e.g. PropertyPanel's title bar),
+           painting them white. */
+        body > header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        body > header h1 {
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .hdr-logo {
+            display: inline-block;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .header-actions {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+            /* Pin to the top-right corner of the header regardless of
+               how the title/subtitle wrap. `body > header` is the
+               positioning context (set below). */
+            position: absolute;
+            top: 50%;
+            right: 1rem;
+            transform: translateY(-50%);
+        }
+        body > header {
+            position: relative;
+        }
+        /* Edit-mode indicator: the button lights up in laterite when
+           edit mode is on, sits neutral when off. Driven by
+           body[data-edit-mode="on"|"off"] which main.ts toggles. */
+        body[data-edit-mode="on"] #btn-edit-toggle {
+            background: #B85028;
+            color: #fff;
+            border-color: #B85028;
+        }
+        body[data-edit-mode="on"] #btn-edit-toggle:hover:not(:disabled) {
+            background: #a04620;
+        }
+        /* Group that holds the actual buttons; hamburger toggles it on
+           narrow screens. */
+        .header-actions-buttons {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+        /* Desktop: hamburger hidden, buttons inline. */
+        #btn-menu {
+            display: none;
+            font-size: 1.15rem;
+            line-height: 1;
+            padding: 0.3rem 0.55rem;
+        }
+        /* Mobile: swap in the hamburger; buttons collapse into a dropdown
+           anchored to the top-right corner, revealed only when the menu
+           is toggled on. */
+        @media (max-width: 640px) {
+            #btn-menu {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .header-actions-buttons {
+                display: none;
+                position: absolute;
+                top: calc(100% + 4px);
+                right: 0;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.3rem;
+                padding: 0.5rem;
+                background: rgba(255, 255, 255, 0.98);
+                border: 1px solid rgba(0, 0, 0, 0.08);
+                border-radius: 10px;
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+                z-index: 50;
+                min-width: 140px;
+            }
+            body[data-menu="on"] .header-actions-buttons {
+                display: flex;
+            }
+            /* Full-width buttons inside the dropdown; left-aligned text so
+               emoji + label read naturally in a stacked menu. */
+            .header-actions-buttons .hdr-btn {
+                width: 100%;
+                text-align: left;
+                justify-content: flex-start;
+            }
+        }
+        .hdr-btn {
+            background: #f2f2f5;
+            color: #333;
+            border: 1px solid #d0d0d5;
+            border-radius: 8px;
+            padding: 0.35rem 0.6rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .hdr-btn:hover:not(:disabled) {
+            background: #e6e6ea;
+        }
+        .hdr-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .hdr-btn.hdr-btn-primary {
+            background: #B85028;
+            color: #fff;
+            border-color: #B85028;
+        }
+        .hdr-btn.hdr-btn-primary:hover {
+            background: #a04620;
+        }
+        /* ---- Editing layout ---------------------------------------------
+           Default (edit mode OFF): the viewer content area fills the row
+           and both edit panels are hidden. In edit mode wide screens
+           show sidebar | content | property-panel via flex; narrow
+           screens overlay the panels as drawers. -------- */
+        #viewer-container {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row;
+        }
+        #viewer-content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+        /* Wrapper that holds all the .view-container children. It's the
+           positioning context they anchor to (they use position:absolute
+           to overlay each other), and takes the remaining vertical
+           space below the top tab strip. */
+        #viewer-views {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+        /* Panels are hidden by default and take their intrinsic width
+           from the mounted React component (Sidebar = w-72 / 288 px,
+           PropertyPanel = w-96 / 384 px). We give the wrapper aside
+           nothing but flex-item boilerplate so the editor's own
+           dark theme + typography come through unmodified. */
+        #viewer-sidebar,
+        #viewer-property-panel {
+            display: none;
+            flex: 0 0 auto;
+        }
+        body[data-edit-mode="on"] #viewer-sidebar,
+        body[data-edit-mode="on"] #viewer-property-panel {
+            display: flex;
+        }
+        /* Below 900 px: only one panel at a time (they don't both fit).
+           Tree by default; picking an object swaps in the property panel.
+           `body[data-selection]` is toggled by main.ts based on the
+           useConfigStore selection state. The floating back button (see
+           .viewer-back-btn) clears the selection to return to the tree. */
+        @media (max-width: 900px) {
+            body[data-edit-mode="on"] #viewer-sidebar,
+            body[data-edit-mode="on"] #viewer-property-panel {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 60;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            }
+            /* No selection → show the tree, hide the property panel. */
+            body[data-edit-mode="on"]:not([data-selection="on"]) #viewer-property-panel {
+                display: none;
+            }
+            /* Selection → show the property panel, hide the tree. */
+            body[data-edit-mode="on"][data-selection="on"] #viewer-sidebar {
+                display: none;
+            }
+        }
+        /* Floating "back to tree" button — only visible on narrow screens
+           when a selection is active. Sits above the property panel's
+           header so it's the first tappable target. */
+        .viewer-back-btn {
+            display: none;
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 70;
+            background: rgba(15, 23, 42, 0.9);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 0.35rem 0.65rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        .viewer-back-btn:hover {
+            background: rgba(30, 41, 59, 1);
+        }
+        @media (max-width: 900px) {
+            body[data-edit-mode="on"][data-selection="on"] .viewer-back-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+            }
+        }
+        #viewer-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background-color: #f0f0f0;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            z-index: 10;
+        }
+        /* Legacy global button style — originally targeted the
+           bottom "Top View / Front View / Reset" controls of the
+           old <model-viewer>. Now scoped to .viewer-btn so it stops
+           hitting every React-rendered button inside the mounted
+           editor panels (which have their own Tailwind styling). */
+        .viewer-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .viewer-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #333;
+            font-size: 1.2rem;
+            background: white;
+            padding: 2rem 3rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .settings-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            min-width: 250px;
+            z-index: 10;
+            display: none;
+        }
+        .settings-panel.active {
+            display: block;
+        }
+        .settings-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.75rem;
+            border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            cursor: pointer;
+            z-index: 11;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .settings-toggle:hover {
+            transform: rotate(90deg);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.2);
+        }
+        .layers-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.9rem 1.1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 10;
+            font-size: 0.9rem;
+        }
+        .layers-panel h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+            color: #333;
+            font-weight: 600;
+        }
+        .layers-panel label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.25rem 0;
+            color: #333;
+            cursor: pointer;
+            user-select: none;
+        }
+        .layers-panel input[type="checkbox"] {
+            accent-color: #667eea;
+        }
+        .layers-panel .swatch {
+            width: 12px; height: 12px; border-radius: 3px;
+            border: 1px solid rgba(0,0,0,0.15);
+        }
+        /* Mobile-only toggle for the layers panel — mirrors .settings-toggle
+           but sits on the top-LEFT and is hidden on desktop. */
+        .layers-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.5rem;
+            border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            cursor: pointer;
+            z-index: 11;
+            width: 42px; height: 42px;
+            display: none;                  /* shown only on narrow viewports */
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        /* When edit mode is on the 3D viewport shrinks (sidebar +
+           property panel eat width). Collapse the layers list into the
+           same 📚 popup we use on mobile so it doesn't crowd the scene. */
+        body[data-edit-mode="on"] .layers-panel {
+            display: none;
+            top: 72px;       /* just below the toggle */
+            left: 20px;
+            max-width: 240px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        body[data-edit-mode="on"] .layers-panel.active {
+            display: block;
+        }
+        body[data-edit-mode="on"] .layers-toggle {
+            display: flex;
+        }
+        .setting-item {
+            margin-bottom: 1rem;
+        }
+        .setting-item label {
+            display: block;
+            color: #333;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .setting-item input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+        .setting-item .value {
+            display: inline-block;
+            color: #667eea;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-left: 0.5rem;
+        }
+        .tabs {
+            display: flex;
+            gap: 0;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .tab {
+            padding: 0.75rem 2rem;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        .tab:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: none;
+            box-shadow: none;
+        }
+        .tab.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.15);
+            border-bottom-color: #667eea;
+        }
+        /* Tab icons — inline SVGs styled to match the emoji sizing
+           they replaced. Icons themselves inherit `currentColor` for
+           outlines and use the laterite accent (#B85028) for fills. */
+        .tab-icon {
+            width: 20px;
+            height: 20px;
+            vertical-align: -4px;
+            margin-right: 4px;
+        }
+        .tab-icon path,
+        .tab-icon rect,
+        .tab-icon line {
+            fill-rule: evenodd;
+        }
+        .view-container {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .view-container.active {
+            display: block;
+        }
+        .svg-views-container {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: #f5f5f5;
+            padding: 2rem;
+            position: relative;
+        }
+        .svg-views-container::-webkit-scrollbar {
+            width: 12px;
+        }
+        .svg-views-container::-webkit-scrollbar-track {
+            background: #e0e0e0;
+            border-radius: 10px;
+        }
+        .svg-views-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .svg-views-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .svg-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding-bottom: 2rem;
+        }
+        .svg-item {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .svg-item:hover {
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            transform: translateY(-4px);
+        }
+        .svg-item h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.2rem;
+        }
+        .svg-item svg {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        .svg-item svg:hover {
+            transform: scale(1.02);
+        }
+        .perspective-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .perspective-card:hover {
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            transform: translateY(-4px);
+        }
+        .perspective-card h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        .perspective-card img {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        .perspective-card img:hover {
+            transform: scale(1.02);
+        }
+        /* Lightbox styles */
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+        }
+        .lightbox.active {
+            display: flex;
+        }
+        .lightbox-content {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.2);
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .lightbox-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+        .lightbox-caption {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 1rem 2rem;
+            border-radius: 25px;
+        }
+        .lightbox-prev, .lightbox-next {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 45px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            transition: 0.3s;
+            user-select: none;
+        }
+        .lightbox-prev:hover, .lightbox-next:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .lightbox-prev {
+            left: 20px;
+        }
+        .lightbox-next {
+            right: 20px;
+        }
+        .section-header {
+            text-align: center;
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .svg-full-width {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: white;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;             /* iOS: let JS handle pinch/pan */
+            -webkit-touch-callout: none;    /* iOS: suppress long-press menu */
+        }
+        .svg-full-width.grabbing {
+            cursor: grabbing;
+        }
+        .svg-full-width svg {
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
+        }
+        /* Thin separator between the close button and the zoom cluster
+           inside the same top-right control panel. */
+        .zoom-divider {
+            height: 1px;
+            background: rgba(0, 0, 0, 0.12);
+            margin: 0.15rem 0;
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 10;
+        }
+        .zoom-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .zoom-btn:hover {
+            background: #5568d3;
+            transform: scale(1.1);
+        }
+        .zoom-info {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #666;
+            padding: 0.25rem;
+            font-weight: 600;
+        }
+
+        /* Print styles for PDF export */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            header, .tabs, .zoom-controls, .html-lightbox-controls {
+                display: none !important;
+            }
+
+            #svg-container {
+                position: static !important;
+                display: block !important;
+                width: 100% !important;
+                height: 100vh !important;
+                page-break-after: always;
+            }
+
+            #svg-container svg {
+                width: 100% !important;
+                height: 100% !important;
+                transform: none !important;
+            }
+
+            .view-container {
+                display: none !important;
+            }
+
+            /* When the HTML lightbox is up, print only its content so the
+               BOM table lands cleanly on a page without the dark overlay
+               or any other viewer chrome. */
+            #html-lightbox {
+                position: static !important;
+                display: block !important;
+                background: white !important;
+                padding: 0 !important;
+                overflow: visible !important;
+            }
+            #html-lightbox-content {
+                max-width: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                background: white !important;
+                border-radius: 0 !important;
+            }
+        }
+        /* ---- HTML lightbox --------------------------------------------
+           Full-screen overlay for expanding the BOM cards. Reuses the
+           same close/print buttons pattern as the SVG lightbox but
+           doesn't need pan/zoom — HTML tables reflow on their own. */
+        .html-lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            overflow: auto;
+            padding: 3rem 1.5rem;
+        }
+        .html-lightbox-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+        }
+        .html-lightbox-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .html-lightbox-controls button {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 0.55rem 0.75rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        .html-lightbox-controls button:hover {
+            background: #fff;
+        }
+        /* ---- Template picker modal ------------------------------------- */
+        .new-house-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+        }
+        .new-house-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+        }
+        .new-house-modal-card {
+            position: relative;
+            max-width: 900px;
+            margin: 5vh auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem 1.75rem 1.75rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .new-house-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .new-house-modal-header h2 {
+            margin: 0;
+            font-size: 1.35rem;
+            color: #2C2A26;
+        }
+        .new-house-modal-close {
+            background: transparent;
+            border: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+        }
+        .new-house-modal-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #000;
+        }
+        .new-house-modal-subtitle {
+            margin: 0 0 1.25rem 0;
+            color: #555;
+            font-size: 0.95rem;
+        }
+        .new-house-modal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+        .template-card {
+            border: 1px solid #e0dfda;
+            border-radius: 10px;
+            padding: 1rem 1.1rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: #fafaf7;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .template-card:hover {
+            border-color: #B85028;
+            background: #fff;
+            box-shadow: 0 4px 14px rgba(184, 80, 40, 0.15);
+            transform: translateY(-2px);
+        }
+        .template-card-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #2C2A26;
+        }
+        .template-card-desc {
+            color: #555;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        /* Cursor + subtle hover so users know the BOM cards are clickable. */
+        .roof-bom-item {
+            cursor: zoom-in;
+            transition: box-shadow 0.15s ease;
+        }
+        .roof-bom-item:hover {
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        }
+
+        /* ---- Desktop layout (wide viewports) ---------------------------- */
+        /* Vertical icon sidebar on the left instead of a horizontal tab
+           bar. Frees up ~50 px of vertical space and keeps the top strip
+           to just the title. */
+        @media (min-width: 641px) {
+            body > header {
+                padding: 0.5rem 1rem;
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+            body > header h1 {
+                font-size: 1.15rem;
+                margin: 0;
+            }
+            .subtitle {
+                font-size: 0.85rem;
+                margin: 0;
+                color: #666;
+            }
+            /* Desktop tab strip: horizontal row docked at the top of the
+               view panel. Sits INSIDE #viewer-content-area, so it doesn't
+               overlap the edit-mode sidebar. Icons + labels shown. */
+            .tabs {
+                flex: 0 0 auto;
+                display: flex;
+                flex-direction: row;
+                justify-content: flex-start;
+                gap: 0.25rem;
+                margin: 0;
+                padding: 0.25rem 0.5rem;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 0;
+                border-bottom: 1px solid rgba(0,0,0,0.08);
+                box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+                overflow-x: auto;
+                scrollbar-width: none;
+                z-index: 10;
+            }
+            .tabs::-webkit-scrollbar { display: none; }
+            .tab {
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.5rem 0.85rem;
+                font-size: 0.9rem;
+                border-radius: 6px;
+                border-bottom: 3px solid transparent;
+                border-left: none;
+            }
+            .tab.active {
+                border-bottom-color: #667eea;
+                border-left-color: transparent;
+            }
+            .tab-label {
+                display: inline;
+            }
+        }
+
+        /* ---- Mobile layout (narrow viewports / phones) ------------------ */
+        @media (max-width: 640px) {
+            /* Compact header — smaller title, hide the subtitle to free
+               vertical space for the 3-D viewer. */
+            header {
+                padding: 0.5rem 0.75rem;
+            }
+            h1 {
+                font-size: 1.1rem;
+            }
+            .subtitle {
+                display: none;
+            }
+            /* Tabs pinned to the bottom of the viewport as a footer so
+               the top of the screen is title only and the 3-D viewer
+               gets the full middle band. */
+            .tabs {
+                position: fixed;
+                left: 0; right: 0; bottom: 0;
+                margin: 0 !important;
+                border-radius: 0;
+                border-top: 1px solid rgba(0,0,0,0.08);
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+                justify-content: space-around;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                z-index: 50;
+                padding: 0.25rem 0.25rem calc(0.25rem + env(safe-area-inset-bottom, 0px));
+            }
+            .tabs::-webkit-scrollbar { display: none; }
+            .tab {
+                padding: 0.6rem 0.75rem;
+                font-size: 1.35rem;   /* larger emojis, easier tap targets */
+                flex: 0 0 auto;
+                border-bottom: none;
+                border-top: 3px solid transparent;
+            }
+            .tab.active {
+                border-bottom-color: transparent;
+                border-top-color: #667eea;
+            }
+            .tab-label {
+                display: none;       /* icon-only tabs on mobile */
+            }
+
+            /* Layer panel becomes a slide-in drawer triggered by the
+               floating 📚 button on the top-left. */
+            .layers-panel {
+                display: none;
+                /* Sit just below the floating 📚 toggle (60 px + button + gap). */
+                top: calc(max(env(safe-area-inset-top, 0px), 60px) + 52px);
+                left: max(env(safe-area-inset-left, 0px), 12px);
+                right: auto;
+                max-width: 220px;
+                /* Leave room for the fixed footer + safe area. */
+                max-height: calc(100vh - max(env(safe-area-inset-top, 0px), 60px) - 132px - env(safe-area-inset-bottom, 0px));
+                overflow-y: auto;
+            }
+            .layers-panel.active {
+                display: block;
+            }
+            /* iPad Safari overlays a floating URL/toolbar chrome that
+               isn't reflected in `env(safe-area-inset-top)`. Pin the
+               toggle far enough down that it clears the typical toolbar
+               height (~55 px) while still respecting the safe area when
+               the browser does publish one. */
+            .layers-toggle {
+                display: flex;
+                top: max(env(safe-area-inset-top, 0px), 60px);
+                left: max(env(safe-area-inset-left, 0px), 12px);
+                width: 40px; height: 40px;
+            }
+
+            /* Shrink the settings gear so it doesn't crowd the model */
+            .settings-toggle {
+                top: max(env(safe-area-inset-top, 0px), 60px);
+                right: max(env(safe-area-inset-right, 0px), 12px);
+                width: 40px; height: 40px;
+                padding: 0.4rem;
+                font-size: 1.1rem;
+            }
+            .settings-panel {
+                top: calc(max(env(safe-area-inset-top, 0px), 60px) + 52px);
+                right: max(env(safe-area-inset-right, 0px), 12px);
+                min-width: 220px;
+                max-width: calc(100vw - 24px);
+                padding: 1rem;
+            }
+
+            /* Camera-preset bar: tighter, plus lifted above the fixed
+               footer that now holds the tab icons. */
+            .controls {
+                padding: 0.5rem 0.75rem;
+                gap: 0.5rem;
+                border-radius: 24px;
+                bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+            }
+            .controls button {
+                padding: 0.35rem 0.7rem;
+                font-size: 0.8rem;
+            }
+
+            /* ---- SVG-based tabs: floor plans, elevations, perspectives.
+               The default desktop layout forces 500 px min columns and
+               heavy padding; reflow them into single-column stacks that
+               fit on a phone and clear the fixed tab footer. */
+            .svg-views-container {
+                padding: 0.75rem;
+                /* Leave room for the fixed footer (~60 px) + safe area. */
+                padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+            }
+            .svg-views-container::-webkit-scrollbar {
+                width: 0;
+            }
+            .svg-grid {
+                grid-template-columns: 1fr;   /* stack cards, no min-width */
+                gap: 1rem;
+            }
+            .svg-item {
+                padding: 0.75rem;
+            }
+            .svg-item h3 {
+                font-size: 1rem;
+                margin: 0 0 0.5rem 0;
+            }
+            .section-header {
+                font-size: 1.05rem;
+                padding: 0.5rem 0.75rem;
+                margin-bottom: 1rem;
+            }
+            /* Perspective grid: single column instead of 500 px min. */
+            #view-perspectives .svg-views-container > div[style*="grid-template-columns"] {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+                max-width: 100% !important;
+            }
+            .perspective-card {
+                padding: 0.75rem;
+            }
+            .perspective-card h3 {
+                font-size: 0.95rem;
+            }
+            /* Pan/zoom SVG views ("All floor plans", "All elevations").
+               Push the zoom buttons above the footer. */
+            .zoom-controls {
+                top: 12px;
+                right: 12px;
+                padding: 0.35rem;
+                gap: 0.35rem;
+            }
+            .zoom-btn {
+                width: 34px; height: 34px; font-size: 1rem;
+            }
+        }
+
+        /* Defensive rules for the mounted editor panels. With the
+           universal reset above now scoped to skip these subtrees,
+           the mounted React components render with browser defaults
+           + Tailwind Preflight, matching the standalone editor.
+           Only two things still need explicit help:
+             - fieldset needs min-width:0 so wide inputs inside a
+               <Section> don't force horizontal overflow (Tailwind
+               Preflight doesn't add this)
+             - Tailwind Preflight hides <summary>'s native disclosure
+               triangle but doesn't add a replacement, so add ▸/▾. */
+        #viewer-property-panel fieldset {
+            min-width: 0;
+        }
+        #viewer-sidebar details > summary {
+            list-style: none;
+        }
+        #viewer-sidebar details > summary::-webkit-details-marker {
+            display: none;
+        }
+        #viewer-sidebar details > summary::before {
+            content: "▸ ";
+            color: rgb(100 116 139); /* slate-500 */
+        }
+        #viewer-sidebar details[open] > summary::before {
+            content: "▾ ";
+        }
+        /* Tailwind Preflight zeroes ul padding-left, and the Sidebar's
+           ul carries just `ml-2` (8 px) which barely reads as an indent
+           at the current font size. Add a bit more so children clearly
+           sit under their parent group header. */
+        #viewer-sidebar ul {
+            padding-left: 0.75rem;
+        }
+    </style>
+    <!-- TS viewer bootstrap — fetches house_config.json, runs SVG
+         generators in memory, patches window.fetch so the vanilla-JS
+         loaders below silently see generated content, and mounts the
+         Three.js scene into #viewer-3d-scene. -->
+  <script type="module" crossorigin src="./assets/viewer-DEd08cCG.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/viewer-plKEW6vr.css">
+</head>
+<body>
+    <header>
+        <div class="header-row">
+            <div>
+                <h1>
+                    <img src="favicon.svg" alt="" class="hdr-logo" width="28" height="28"/>
+                    Wadi
+                </h1>
+                <div class="subtitle">3D Home Designer</div>
+            </div>
+            <div class="header-actions">
+                <!-- Mobile-only hamburger: on narrow screens the button
+                     group would overlap the title, so we collapse it into
+                     a dropdown that toggles via body[data-menu="on"]. -->
+                <button id="btn-menu" class="hdr-btn hdr-btn-icon"
+                        title="Menu" aria-label="Toggle menu"
+                        onclick="document.body.dataset.menu = (document.body.dataset.menu === 'on' ? 'off' : 'on')">☰</button>
+                <div class="header-actions-buttons">
+                    <!-- Edit-mode buttons — only meaningful when the sidebar
+                         is visible, but they're always rendered so the
+                         header layout doesn't shift when toggling. -->
+                    <button id="btn-undo" class="hdr-btn" title="Undo (⌘Z)" aria-label="Undo">↶</button>
+                    <button id="btn-redo" class="hdr-btn" title="Redo (⇧⌘Z)" aria-label="Redo">↷</button>
+                    <button id="btn-load" class="hdr-btn hdr-btn-text" title="Load JSON…">📂 Load</button>
+                    <button id="btn-save" class="hdr-btn hdr-btn-text" title="Save JSON (write in place)">💾 Save</button>
+                    <button id="btn-save-as" class="hdr-btn hdr-btn-text" title="Save JSON to a new file…">📝 Save As</button>
+                    <button id="btn-share" class="hdr-btn hdr-btn-text" title="Copy a shareable link to this house">🔗 Share</button>
+                    <button id="btn-export-wadi" class="hdr-btn hdr-btn-text" title="Save as a .wadi file (double-clicks open in the desktop app)">📦 .wadi</button>
+                    <button id="btn-new" class="hdr-btn hdr-btn-text" title="Start a new house from a template">✨ New</button>
+                    <button id="btn-edit-toggle" class="hdr-btn hdr-btn-text" title="Toggle edit panels">✏️ Edit</button>
+                </div>
+                <input id="file-input-json" type="file" accept="application/json,.json" hidden />
+            </div>
+        </div>
+    </header>
+
+    <div id="viewer-container">
+        <!-- Mobile-only "back to tree" — visible when a selection is
+             active on a narrow viewport so the user can dismiss the
+             property panel and return to the object tree. -->
+        <button id="btn-back-to-tree" class="viewer-back-btn"
+                title="Back to object tree" aria-label="Back to object tree">← Tree</button>
+        <!-- Edit-mode slots: React roots for the editor's Sidebar (left)
+             and PropertyPanel (right). Hidden unless body[data-edit-mode=on]. -->
+        <aside id="viewer-sidebar"></aside>
+        <div id="viewer-content-area">
+        <!-- View tabs: docked at the top of the content area so they
+             don't overlap the edit-mode sidebar. On mobile the same
+             .tabs element is repositioned to the bottom as a footer
+             nav (see the @media (max-width: 640px) block below). -->
+        <nav class="tabs">
+            <button class="tab active" onclick="switchView('3d')" title="3D Model">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- isometric cube: laterite top face + outlined side faces -->
+                    <path d="M12 3 L21 8 L12 13 L3 8 Z" fill="#B85028"/>
+                    <path d="M3 8 L3 17 L12 22 L12 13 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M21 8 L21 17 L12 22 L12 13 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M12 3 L21 8 L12 13 L3 8 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg><span class="tab-label"> 3D Model</span>
+            </button>
+            <button class="tab" onclick="switchView('plans')" title="Floor Plans">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- top-down plan: 2x2 rooms, one shaded laterite -->
+                    <rect x="3" y="3" width="9" height="9" fill="#B85028"/>
+                    <rect x="3" y="3" width="18" height="18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.5"/>
+                </svg><span class="tab-label"> Floor Plans</span>
+            </button>
+            <button class="tab" onclick="switchView('elevations')" title="Elevations">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- house facade: laterite roof, walls + door + windows outlined -->
+                    <path d="M2 12 L12 4 L22 12 Z" fill="#B85028"/>
+                    <path d="M2 12 L12 4 L22 12 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M4 12 L4 21 L20 21 L20 12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <rect x="10" y="15" width="4" height="6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <rect x="5.5" y="14" width="3" height="3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <rect x="15.5" y="14" width="3" height="3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg><span class="tab-label"> Elevations</span>
+            </button>
+            <button class="tab" onclick="switchView('roof')" title="Roof Details">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- pitched roof with a Fink-style truss silhouette -->
+                    <path d="M2 18 L12 5 L22 18 Z" fill="#B85028"/>
+                    <path d="M2 18 L12 5 L22 18 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <line x1="2" y1="18" x2="22" y2="18" stroke="currentColor" stroke-width="1.5"/>
+                    <!-- king post + Fink diagonals sit inside the laterite fill;
+                         semi-transparent black reads against the warm background. -->
+                    <line x1="12" y1="5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
+                    <line x1="7" y1="11.5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
+                    <line x1="17" y1="11.5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
+                </svg><span class="tab-label"> Roof Details</span>
+            </button>
+        </nav>
+        <div id="viewer-views">
+        <!-- 3D Model View -->
+        <div id="view-3d" class="view-container active">
+            <!-- Layer toggles (top-left) — populated by React on load.
+                 On mobile the panel is hidden by default; the toggle
+                 button below reveals it. Positioning + styling come
+                 from the .layers-panel / .layers-toggle CSS rules. -->
+            <div class="layers-toggle" onclick="toggleLayers('viewer-layer-panel')" title="Show layers">📚</div>
+            <div class="layers-panel" id="viewer-layer-panel">
+                <h4>Show layers</h4>
+                <div class="layers-list" id="viewer-layer-list"></div>
+            </div>
+            <!-- Debug badge — shows roof compute status. Toggle via the
+                 🐞 button; auto-refreshes from window.__roofDebug. -->
+            <div class="debug-badge-wrapper" style="position: absolute; top: 20px; right: 20px; z-index: 12;">
+                <button id="debug-badge-toggle" class="settings-toggle" onclick="toggleRoofDebug()" title="Show roof debug info" style="width: 42px; height: 42px; font-size: 1.1rem;">🐞</button>
+                <pre id="debug-badge-panel" style="display: none; position: absolute; top: 52px; right: 0; background: rgba(15,23,42,0.95); color: #e2e8f0; padding: 0.75rem; border-radius: 8px; font-size: 0.72rem; line-height: 1.4; max-width: 340px; max-height: 60vh; overflow: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); white-space: pre-wrap;"></pre>
+            </div>
+
+            <!-- Three.js Canvas mounted here by src/viewer/main.ts. Uses
+                 the same House3D scene the editor renders, minus the
+                 editor's toolbar / section cutter / preset row. Orbit
+                 with mouse/touch; wheel/pinch to zoom. -->
+            <div
+                id="viewer-3d-scene"
+                style="width: 100%; height: 100%; position: relative; background: #0a0f14;">
+            </div>
+        </div>
+        <!-- End 3D Model View -->
+
+        <!-- Floor Plans View -->
+        <div id="view-plans" class="view-container">
+            <div class="svg-views-container">
+                <h2 class="section-header">Floor Plans</h2>
+                <div class="svg-grid" id="floor-plans-grid">
+                    <!-- Floor plans will be loaded here dynamically -->
+                </div>
+            </div>
+        </div>
+        <!-- End Floor Plans View -->
+
+        <!-- Elevations View -->
+        <div id="view-elevations" class="view-container">
+            <div class="svg-views-container">
+                <h2 class="section-header">Elevation Views</h2>
+                <div class="svg-grid" id="elevations-grid">
+                    <!-- Elevations will be loaded here dynamically -->
+                </div>
+            </div>
+        </div>
+        <!-- End Elevations View -->
+
+        <!-- Roof Details View -->
+        <div id="view-roof" class="view-container">
+            <div class="svg-views-container">
+                <h2 class="section-header">Roof Details</h2>
+                <div class="svg-grid" id="roof-panels-grid">
+                    <!-- Roof panels loaded here dynamically from roof_panels.json -->
+                </div>
+            </div>
+        </div>
+        <!-- End Roof Details View -->
+
+        <!-- Template picker modal — opens when the New button is clicked.
+             Populated from templates/index.json. Selecting a card loads
+             the template into the store (after confirming if the user has
+             unsaved changes). -->
+        <div id="new-house-modal" class="new-house-modal" style="display: none;">
+            <div class="new-house-modal-backdrop" onclick="closeNewHouseModal()"></div>
+            <div class="new-house-modal-card">
+                <div class="new-house-modal-header">
+                    <h2>Start a new house</h2>
+                    <button class="new-house-modal-close" onclick="closeNewHouseModal()" aria-label="Close">✕</button>
+                </div>
+                <p class="new-house-modal-subtitle">Pick a template to start from. You can edit everything after loading.</p>
+                <div class="new-house-modal-grid" id="new-house-modal-grid">
+                    <div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 2rem;">Loading templates…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HTML lightbox — expands any BOM card to full-screen with
+             an Export-to-PDF (print) button. Populated by openHtmlLightbox(). -->
+        <div id="html-lightbox" class="html-lightbox" style="display: none;">
+            <div class="html-lightbox-controls">
+                <button onclick="printHtmlLightbox()" title="Export to PDF">📄 PDF</button>
+                <button onclick="closeHtmlLightbox()" title="Close (Esc)" aria-label="Close">✕</button>
+            </div>
+            <div class="html-lightbox-content" id="html-lightbox-content"></div>
+        </div>
+
+        <!-- Shared SVG Container with zoom controls -->
+        <div class="svg-full-width" id="svg-container" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="closeSvgLightbox()" title="Close (Esc)" aria-label="Close viewer">✕</button>
+                <div class="zoom-divider" aria-hidden="true"></div>
+                <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
+                <div class="zoom-info" id="svg-zoom">100%</div>
+                <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="Reset">⟲</button>
+                <button class="zoom-btn" onclick="exportCurrentSvgFile()" title="Save SVG…">💾</button>
+                <button class="zoom-btn" onclick="exportToPDF()" title="Export to PDF">📄</button>
+            </div>
+            <p style="color: #666; text-align: center; padding: 2rem;">Loading...</p>
+        </div>
+        </div><!-- /viewer-views -->
+        </div><!-- /viewer-content-area -->
+        <aside id="viewer-property-panel"></aside>
+    </div>
+
+    <script>
+        // Toggle a layer/settings panel's visibility. Reused by the
+        // mobile-only .layers-toggle button. On desktop the panel is
+        // always visible (see the media queries at the top).
+        function toggleLayers(panelId) {
+            const panel = document.getElementById(panelId);
+            if (panel) panel.classList.toggle('active');
+        }
+
+        // View switching
+        function switchView(view) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update views
+            document.querySelectorAll('.view-container').forEach(container => {
+                container.classList.remove('active');
+            });
+
+            const svgContainer = document.getElementById('svg-container');
+
+            if (view === '3d') {
+                document.getElementById('view-3d').classList.add('active');
+                svgContainer.style.display = 'none';
+            } else if (view === 'plans') {
+                document.getElementById('view-plans').classList.add('active');
+                svgContainer.style.display = 'none';
+                loadFloorPlans();
+            } else if (view === 'elevations') {
+                document.getElementById('view-elevations').classList.add('active');
+                svgContainer.style.display = 'none';
+                loadElevations();
+            } else if (view === 'roof') {
+                document.getElementById('view-roof').classList.add('active');
+                svgContainer.style.display = 'none';
+                loadRoofPanels();
+            }
+        }
+
+        // Load floor plans dynamically
+        // Loaded flags live on `window` so the TS bootstrap in main.ts
+        // can reset them to false when the config changes (forcing a
+        // re-fetch that picks up the freshly-regenerated SVGs). A local
+        // `let` would be invisible to main.ts and the loader would
+        // early-return with stale content.
+        window.floorPlansLoaded = false;
+        async function loadFloorPlans() {
+            if (window.floorPlansLoaded) return;
+
+            const grid = document.getElementById('floor-plans-grid');
+            const floorPlanFiles = [
+                { num: 0, name: 'Ground_Floor', displayName: 'Ground Floor' },
+                { num: 1, name: 'First_Floor', displayName: 'First Floor' },
+                { num: 2, name: 'Loft_Floor', displayName: 'Loft Floor' },
+                { num: 3, name: 'Roof_Floor', displayName: 'Roof Floor' }
+            ];
+
+            grid.innerHTML = '<p style="text-align: center; color: #666;">Loading floor plans...</p>';
+
+            let loadedAny = false;
+            // Per-floor cards first, then an "All Floor Plans" card at the
+            // end pointing at the combined SVG so users can drill into the
+            // full layout from the same tab.
+            const perFloor = floorPlanFiles.map((f) => ({
+                filename: `2d/floor_plans/floor_plan_${f.num}_${f.name}.svg`,
+                displayName: f.displayName,
+            }));
+            const cards = [
+                ...perFloor,
+                {
+                    filename: '2d/floor_plans/floor_plans_combined.svg',
+                    displayName: 'All Floor Plans',
+                },
+            ];
+            for (const c of cards) {
+                try {
+                    const cacheBuster = `?t=${Date.now()}`;
+                    const response = await fetch(c.filename + cacheBuster);
+                    if (!response.ok) continue;
+                    const svgContent = await response.text();
+
+                    const item = document.createElement('div');
+                    item.className = 'svg-item';
+                    item.innerHTML = `<h3>${c.displayName}</h3>${svgContent}`;
+                    if (!loadedAny) { grid.innerHTML = ''; loadedAny = true; }
+                    grid.appendChild(item);
+
+                    const svg = item.querySelector('svg');
+                    if (svg) {
+                        svg.addEventListener('click', () =>
+                            openSvgLightbox(c.filename, c.displayName));
+                    }
+                } catch (error) {
+                    console.log(`Floor plan ${c.filename} not found:`, error);
+                }
+            }
+
+            if (!loadedAny) {
+                grid.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #666;">
+                        <h3>No floor plans available</h3>
+                        <p>Floor plans will appear here after generation.</p>
+                    </div>
+                `;
+            }
+
+            window.floorPlansLoaded = true;
+        }
+
+        // Load elevations dynamically
+        window.elevationsLoaded = false;
+        async function loadElevations() {
+            if (window.elevationsLoaded) return;
+
+            const grid = document.getElementById('elevations-grid');
+            const elevationFiles = [
+                { name: 'front', displayName: 'Front Elevation' },
+                { name: 'back', displayName: 'Back Elevation' },
+                { name: 'left', displayName: 'Left Elevation' },
+                { name: 'right', displayName: 'Right Elevation' }
+            ];
+
+            grid.innerHTML = '<p style="text-align: center; color: #666;">Loading elevations...</p>';
+
+            let loadedAny = false;
+            // Per-view cards first, then a combined "All Elevations" card
+            // that pans/zooms in the same lightbox on click.
+            const perView = elevationFiles.map((e) => ({
+                filename: `2d/elevations/elevation_${e.name}.svg`,
+                displayName: e.displayName,
+            }));
+            // Pillar cards come from a manifest published by the TS
+            // bootstrap after it runs generateAllPillarSvgs — filenames
+            // include row/col section variants that depend on the config.
+            const pillarCards = (window.pillarSvgManifest || []).map((p) => ({
+                filename: p.filename,
+                displayName: p.displayName,
+            }));
+            const cards = [
+                ...perView,
+                {
+                    filename: '2d/elevations/elevations_combined.svg',
+                    displayName: 'All Elevations',
+                },
+                ...pillarCards,
+            ];
+            for (const c of cards) {
+                try {
+                    const cacheBuster = `?t=${Date.now()}`;
+                    const response = await fetch(c.filename + cacheBuster);
+                    if (!response.ok) continue;
+                    const svgContent = await response.text();
+
+                    const item = document.createElement('div');
+                    item.className = 'svg-item';
+                    item.innerHTML = `<h3>${c.displayName}</h3>${svgContent}`;
+                    if (!loadedAny) { grid.innerHTML = ''; loadedAny = true; }
+                    grid.appendChild(item);
+
+                    const svg = item.querySelector('svg');
+                    if (svg) {
+                        svg.addEventListener('click', () =>
+                            openSvgLightbox(c.filename, c.displayName));
+                    }
+                } catch (error) {
+                    console.log(`Elevation ${c.filename} not found:`, error);
+                }
+            }
+
+            if (!loadedAny) {
+                grid.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #666;">
+                        <h3>No elevation views available</h3>
+                        <p>Elevation views will appear here after generation.</p>
+                    </div>
+                `;
+            }
+
+            window.elevationsLoaded = true;
+        }
+
+        // Load roof panels dynamically from the manifest emitted by the
+        // SVG generator (docs/roof_panels.json). One card per panel; SVGs
+        // are inlined so lightbox click-through works the same way.
+        window.roofPanelsLoaded = false;
+        // Monotonic token — every call bumps this and captures it
+        // locally. If a newer call started while we were awaiting, the
+        // stale one bails without touching the grid. Prevents duplicate
+        // cards when config edits (which reset roofPanelsLoaded=false
+        // and re-trigger loadRoofPanels) fire faster than the previous
+        // load finishes.
+        window.__roofPanelsToken = 0;
+        async function loadRoofPanels() {
+            if (window.roofPanelsLoaded) return;
+            const myToken = ++window.__roofPanelsToken;
+            const grid = document.getElementById('roof-panels-grid');
+            grid.innerHTML = '<p style="text-align: center; color: #666;">Loading roof panels…</p>';
+            let manifest = [];
+            try {
+                const r = await fetch('2d/roof/roof_panels.json?t=' + Date.now());
+                if (!r.ok) throw new Error('roof_panels.json HTTP ' + r.status);
+                manifest = await r.json();
+            } catch (e) {
+                if (myToken !== window.__roofPanelsToken) return;
+                grid.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #666;">
+                        <h3>Roof panels not available</h3>
+                        <p>Re-run the SVG generator to produce roof_panels.json + roof_&lt;id&gt;.svg files.</p>
+                    </div>`;
+                console.warn('[roof panels]', e);
+                return;
+            }
+            // Bail if a newer load kicked off while we were awaiting.
+            if (myToken !== window.__roofPanelsToken) return;
+            grid.innerHTML = '';
+            // Panels replaced by HTML BOM cards below — skip their SVG
+            // versions so they don't duplicate.
+            const SKIP_PANEL_IDS = new Set([
+                'consolidated_bom',
+                'tile_roofing',
+                'materials_takeoff',
+            ]);
+            for (const p of manifest) {
+                if (myToken !== window.__roofPanelsToken) return;
+                if (SKIP_PANEL_IDS.has(p.id)) continue;
+                // Manifest stores bare filenames; prepend the roof dir.
+                const fileUrl = '2d/roof/' + p.file;
+                try {
+                    const r = await fetch(fileUrl + '?t=' + Date.now());
+                    if (!r.ok) continue;
+                    const svg = await r.text();
+                    if (myToken !== window.__roofPanelsToken) return;
+                    const item = document.createElement('div');
+                    item.className = 'svg-item';
+                    item.innerHTML = `<h3>${p.title}</h3>${svg}`;
+                    grid.appendChild(item);
+                    const svgEl = item.querySelector('svg');
+                    if (svgEl) {
+                        svgEl.addEventListener('click', () => openSvgLightbox(fileUrl, p.title));
+                    }
+                } catch (e) {
+                    console.warn('[roof panels]', p.id, e);
+                }
+            }
+            // HTML BOM cards: frame + metal + roof material. Published by
+            // the TS bootstrap on window.roofBomManifest.
+            const bomCards = window.roofBomManifest || [];
+            for (const c of bomCards) {
+                if (myToken !== window.__roofPanelsToken) return;
+                try {
+                    const r = await fetch(c.filename + '?t=' + Date.now());
+                    if (!r.ok) continue;
+                    const html = await r.text();
+                    if (myToken !== window.__roofPanelsToken) return;
+                    const item = document.createElement('div');
+                    item.className = 'svg-item roof-bom-item';
+                    item.innerHTML = html;
+                    item.addEventListener('click', () => openHtmlLightbox(html, c.displayName));
+                    grid.appendChild(item);
+                } catch (e) {
+                    console.warn('[roof BOM]', c.filename, e);
+                }
+            }
+            if (myToken !== window.__roofPanelsToken) return;
+            window.roofPanelsLoaded = true;
+        }
+
+        // Zoom and Pan state for combined views
+        // Single state for the shared SVG container
+        const svgState = { scale: 1, translateX: 0, translateY: 0, isDragging: false, startX: 0, startY: 0 };
+
+        // Fit SVG to view and center it
+        function fitToView() {
+            const container = document.getElementById('svg-container');
+            const svg = container.querySelector('svg');
+            if (!svg) {
+                console.log('fitToView: No SVG found');
+                return;
+            }
+
+            // Get SVG dimensions - try multiple methods
+            let svgWidth = 0;
+            let svgHeight = 0;
+
+            // Method 1: Try viewBox
+            if (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width > 0) {
+                svgWidth = svg.viewBox.baseVal.width;
+                svgHeight = svg.viewBox.baseVal.height;
+                console.log('fitToView: Using viewBox', svgWidth, svgHeight);
+            }
+            // Method 2: Try width/height attributes
+            else if (svg.width && svg.width.baseVal && svg.width.baseVal.value > 0) {
+                svgWidth = svg.width.baseVal.value;
+                svgHeight = svg.height.baseVal.value;
+                console.log('fitToView: Using width/height attributes', svgWidth, svgHeight);
+            }
+            // Method 3: Try getBoundingClientRect
+            else {
+                const bbox = svg.getBoundingClientRect();
+                svgWidth = bbox.width;
+                svgHeight = bbox.height;
+                console.log('fitToView: Using getBoundingClientRect', svgWidth, svgHeight);
+            }
+
+            // Fallback if dimensions are still invalid
+            if (svgWidth <= 0 || svgHeight <= 0) {
+                console.warn('fitToView: Invalid SVG dimensions, using defaults');
+                svgWidth = 800;
+                svgHeight = 600;
+            }
+
+            // Get container dimensions
+            const containerRect = container.getBoundingClientRect();
+            const containerWidth = containerRect.width;
+            const containerHeight = containerRect.height;
+
+            console.log('fitToView: Container dimensions', containerWidth, containerHeight);
+
+            // Calculate scale to fit (with some padding)
+            const padding = 40; // pixels of padding
+            const scaleX = (containerWidth - padding * 2) / svgWidth;
+            const scaleY = (containerHeight - padding * 2) / svgHeight;
+            const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+
+            console.log('fitToView: Calculated scale', scale);
+
+            // Calculate translation to center
+            const scaledWidth = svgWidth * scale;
+            const scaledHeight = svgHeight * scale;
+            const translateX = (containerWidth - scaledWidth) / 2;
+            const translateY = (containerHeight - scaledHeight) / 2;
+
+            console.log('fitToView: Translation', translateX, translateY);
+
+            // Update state
+            svgState.scale = scale;
+            svgState.translateX = translateX;
+            svgState.translateY = translateY;
+
+            updateTransform();
+        }
+
+        // Setup pan and zoom - loads SVG via fetch if filename provided
+        async function setupPanZoom(filename = null) {
+            console.log('setupPanZoom: Setting up with file', filename);
+            const container = document.getElementById('svg-container');
+
+            // If filename provided, fetch and load the SVG first
+            if (filename) {
+                try {
+                    // Add cache-busting parameter to always fetch fresh SVGs
+                    const cacheBuster = `?t=${Date.now()}`;
+                    const response = await fetch(filename + cacheBuster);
+                    if (response.ok) {
+                        const svgContent = await response.text();
+                        // Keep zoom controls and add SVG
+                        const controls = container.querySelector('.zoom-controls');
+                        container.innerHTML = svgContent;
+                        if (controls) {
+                            container.insertBefore(controls, container.firstChild);
+                        }
+                    } else {
+                        console.error(`Failed to fetch ${filename}`);
+                        return;
+                    }
+                } catch (error) {
+                    console.error(`Error loading SVG ${filename}:`, error);
+                    return;
+                }
+            }
+
+            const svg = container.querySelector('svg');
+            if (!svg) {
+                console.log('setupPanZoom: No SVG found');
+                return;
+            }
+
+            console.log('setupPanZoom: Found SVG, setting up controls');
+
+            // Reset state to defaults first
+            svgState.scale = 1;
+            svgState.translateX = 0;
+            svgState.translateY = 0;
+            svgState.isDragging = false;
+
+            console.log('setupPanZoom: Initial state', svgState);
+
+            // Fit the SVG to view by default
+            fitToView();
+
+            // Mouse wheel zoom
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                // Very low zoom sensitivity: 1% per scroll for fine control
+                const delta = e.deltaY > 0 ? 0.99 : 1.01;
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const newScale = svgState.scale * delta;
+                if (newScale < 0.1 || newScale > 10) return;
+
+                // Zoom towards mouse position
+                svgState.translateX = x - (x - svgState.translateX) * delta;
+                svgState.translateY = y - (y - svgState.translateY) * delta;
+                svgState.scale = newScale;
+
+                updateTransform();
+            });
+
+            // Pan with mouse drag
+            container.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.zoom-controls')) return;
+                e.preventDefault(); // Prevent text selection during drag
+                svgState.isDragging = true;
+                svgState.startX = e.clientX - svgState.translateX;
+                svgState.startY = e.clientY - svgState.translateY;
+                container.classList.add('grabbing');
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (!svgState.isDragging) return;
+                svgState.translateX = e.clientX - svgState.startX;
+                svgState.translateY = e.clientY - svgState.startY;
+                updateTransform();
+            });
+
+            container.addEventListener('mouseup', () => {
+                svgState.isDragging = false;
+                container.classList.remove('grabbing');
+            });
+
+            container.addEventListener('mouseleave', () => {
+                svgState.isDragging = false;
+                container.classList.remove('grabbing');
+            });
+
+            // Touch support for mobile. {passive: false} is required so that
+            // preventDefault() actually fires on iOS Safari — otherwise touchmove
+            // is treated as passive and the page scrolls instead of the SVG panning.
+            let touchStartDistance = 0;
+            container.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.zoom-controls')) return;
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    touchStartDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                } else if (e.touches.length === 1) {
+                    e.preventDefault();
+                    svgState.isDragging = true;
+                    svgState.startX = e.touches[0].clientX - svgState.translateX;
+                    svgState.startY = e.touches[0].clientY - svgState.translateY;
+                }
+            }, { passive: false });
+
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && touchStartDistance > 0) {
+                    e.preventDefault();
+                    const newDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const delta = newDistance / touchStartDistance;
+                    // Pivot around the midpoint of the two fingers, mapped
+                    // to container-local coordinates (matching the wheel
+                    // handler's pivot math).
+                    const rect = container.getBoundingClientRect();
+                    const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                    const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                    const newScale = svgState.scale * delta;
+                    if (newScale >= 0.1 && newScale <= 10) {
+                        svgState.translateX = mx - (mx - svgState.translateX) * delta;
+                        svgState.translateY = my - (my - svgState.translateY) * delta;
+                        svgState.scale = newScale;
+                        touchStartDistance = newDistance;
+                        updateTransform();
+                    }
+                } else if (e.touches.length === 1 && svgState.isDragging) {
+                    e.preventDefault();
+                    svgState.translateX = e.touches[0].clientX - svgState.startX;
+                    svgState.translateY = e.touches[0].clientY - svgState.startY;
+                    updateTransform();
+                }
+            }, { passive: false });
+
+            container.addEventListener('touchend', () => {
+                svgState.isDragging = false;
+                touchStartDistance = 0;
+            });
+            container.addEventListener('touchcancel', () => {
+                svgState.isDragging = false;
+                touchStartDistance = 0;
+            });
+        }
+
+        function updateTransform() {
+            const container = document.getElementById('svg-container');
+            const svg = container.querySelector('svg');
+            if (!svg) {
+                console.log('updateTransform: No SVG found');
+                return;
+            }
+
+            const transformValue = `translate(${svgState.translateX}px, ${svgState.translateY}px) scale(${svgState.scale})`;
+            svg.style.transform = transformValue;
+
+            console.log('updateTransform: Applied transform:', transformValue);
+            console.log('updateTransform: SVG visibility:', window.getComputedStyle(svg).visibility);
+            console.log('updateTransform: SVG display:', window.getComputedStyle(svg).display);
+
+            // Update zoom percentage display
+            const zoomInfo = document.getElementById('svg-zoom');
+            if (zoomInfo) {
+                zoomInfo.textContent = Math.round(svgState.scale * 100) + '%';
+            }
+        }
+
+        // Scale by `factor` while keeping the container-space point
+        // (anchorX, anchorY) fixed on screen. Because our CSS uses
+        // `transform-origin: 0 0`, a bare scale change pulls everything
+        // toward the top-left; adjusting the translation the same way
+        // the wheel handler does keeps the pivot where the user expects.
+        function zoomAround(factor, anchorX, anchorY) {
+            const newScale = svgState.scale * factor;
+            if (newScale < 0.1 || newScale > 10) return;
+            svgState.translateX = anchorX - (anchorX - svgState.translateX) * factor;
+            svgState.translateY = anchorY - (anchorY - svgState.translateY) * factor;
+            svgState.scale = newScale;
+            updateTransform();
+        }
+
+        function containerCenter() {
+            const el = document.getElementById('svg-container');
+            const r = el.getBoundingClientRect();
+            return { x: r.width / 2, y: r.height / 2 };
+        }
+
+        function zoomIn() {
+            const c = containerCenter();
+            zoomAround(1.2, c.x, c.y);
+        }
+
+        function zoomOut() {
+            const c = containerCenter();
+            zoomAround(0.8, c.x, c.y);
+        }
+
+        function resetZoom() {
+            // Reset to fit and center the view
+            fitToView();
+        }
+
+        // Save the current lightbox SVG to disk. Uses window.exportCurrentSvg
+        // which is installed by the viewer bundle (fileIO.saveText) and
+        // routes through the native save dialog in Tauri or a Blob
+        // download in the browser.
+        function exportCurrentSvgFile() {
+            const name = (svgLightboxCurrentFile || 'diagram').split('/').pop() || 'diagram.svg';
+            const defaultName = name.endsWith('.svg') ? name : name + '.svg';
+            if (typeof window.exportCurrentSvg === 'function') {
+                window.exportCurrentSvg(defaultName);
+            } else {
+                alert('Export helper not available yet — reload the app and try again.');
+            }
+        }
+
+        function exportToPDF() {
+            // Temporarily reset zoom and center the SVG for printing
+            const currentScale = svgState.scale;
+            const currentX = svgState.translateX;
+            const currentY = svgState.translateY;
+
+            // Fit to view for printing
+            fitToView();
+
+            // Trigger print dialog (user can save as PDF)
+            setTimeout(() => {
+                window.print();
+
+                // Restore previous zoom state after print dialog
+                setTimeout(() => {
+                    svgState.scale = currentScale;
+                    svgState.translateX = currentX;
+                    svgState.translateY = currentY;
+                    updateTransform();
+                }, 100);
+            }, 100);
+        }
+
+        // Open individual SVG - show container and load the SVG
+        // Which tab was active when the SVG lightbox was opened. Used by
+        // closeSvgLightbox to jump back where the user came from.
+        let svgLightboxReturnTab = null;
+        // Filename of the currently-displayed SVG. Used as the default
+        // save name when the user clicks the 💾 button in the toolbar.
+        let svgLightboxCurrentFile = null;
+
+        async function openSvgLightbox(filename, caption) {
+            // Remember the tab the user is coming from so the close
+            // button (or Esc) can put them back on it.
+            const activeTab = document.querySelector('.tab.active');
+            svgLightboxReturnTab = activeTab ? activeTab.getAttribute('onclick') : null;
+            svgLightboxCurrentFile = filename;
+
+            const svgContainer = document.getElementById('svg-container');
+            svgContainer.style.display = 'block';
+
+            // Load the SVG via the pan/zoom helper.
+            await setupPanZoom(filename);
+        }
+
+        function closeSvgLightbox() {
+            const svgContainer = document.getElementById('svg-container');
+            svgContainer.style.display = 'none';
+            // Restore the tab the user came from. The onclick attributes
+            // on tabs are of the form "switchView('plans')" etc.; running
+            // it re-activates the same tab.
+            if (svgLightboxReturnTab) {
+                try { new Function(svgLightboxReturnTab)(); }
+                catch (e) { console.warn('[svg lightbox] could not restore tab', e); }
+            }
+            svgLightboxReturnTab = null;
+        }
+
+        // Roof debug panel — shows window.__roofDebug (published by
+        // House3D on every render) so the user can see WHY the roof
+        // isn't drawing (no hip_roof, compute error, footprint mismatch,
+        // etc.) without opening DevTools.
+        function toggleRoofDebug() {
+            const panel = document.getElementById('debug-badge-panel');
+            if (!panel) return;
+            const visible = panel.style.display !== 'none';
+            if (visible) {
+                panel.style.display = 'none';
+                return;
+            }
+            renderRoofDebug();
+            panel.style.display = 'block';
+            // Refresh every 500 ms while open so config edits show up live.
+            if (!window.__roofDebugTimer) {
+                window.__roofDebugTimer = setInterval(renderRoofDebug, 500);
+            }
+        }
+        function renderRoofDebug() {
+            const panel = document.getElementById('debug-badge-panel');
+            if (!panel || panel.style.display === 'none') {
+                if (window.__roofDebugTimer) {
+                    clearInterval(window.__roofDebugTimer);
+                    window.__roofDebugTimer = null;
+                }
+                return;
+            }
+            const d = window.__roofDebug;
+            const b = window.__roofBomDebug;
+            panel.textContent =
+                'Roof 3D compute:\n' + JSON.stringify(d ?? 'not run yet', null, 2) +
+                '\n\nRoof 2D/BOM compute:\n' + JSON.stringify(b ?? 'not run yet', null, 2);
+        }
+
+        // HTML lightbox — used by the BOM cards. Simpler than the SVG
+        // lightbox because HTML tables reflow naturally (no pan/zoom).
+        function openHtmlLightbox(html, caption) {
+            const box = document.getElementById('html-lightbox');
+            const content = document.getElementById('html-lightbox-content');
+            // Prepend the caption so the printed page has a title.
+            content.innerHTML = html;
+            box.style.display = 'block';
+            box.dataset.caption = caption || '';
+        }
+
+        function closeHtmlLightbox() {
+            document.getElementById('html-lightbox').style.display = 'none';
+        }
+
+        // Print → user picks "Save as PDF" in the browser's print dialog.
+        // The @media print block in <style> hides everything except the
+        // lightbox content so the PDF is just the table.
+        function printHtmlLightbox() {
+            window.print();
+        }
+
+        // Keyboard navigation — Esc closes whichever lightbox is open.
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            const svgContainer = document.getElementById('svg-container');
+            const htmlBox = document.getElementById('html-lightbox');
+            if (htmlBox && htmlBox.style.display !== 'none') {
+                closeHtmlLightbox();
+            } else if (svgContainer && svgContainer.style.display !== 'none') {
+                closeSvgLightbox();
+            }
+        });
+
+
+    </script>
+</body>
+</html>

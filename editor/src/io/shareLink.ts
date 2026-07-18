@@ -86,7 +86,7 @@ export async function decodeConfigFromHash(
 // public web origin — i.e. inside the Tauri desktop app (origin is
 // localhost/tauri asset) or a local dev server. A link must be openable by
 // someone else, so it can never point at localhost.
-const PUBLIC_APP_URL = "https://wadi.house/";
+const PUBLIC_APP_URL = "https://wadi.house/app/";
 
 /**
  * Absolute shareable URL for a payload. On the deployed web app we anchor

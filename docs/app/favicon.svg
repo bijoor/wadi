@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>Wadi</title>
+  <!-- Hip roof — laterite tiles, the signature colour of Konkan houses. -->
+  <path d="M2 16 L10 5 L22 5 L30 16 Z" fill="#B85028"/>
+  <path d="M2 16 L10 5 L22 5 L30 16 Z" fill="none" stroke="#2C2A26" stroke-width="1.4" stroke-linejoin="round"/>
+  <!-- Hip diagonals — softly hinted so they read at 32 px+ but don't
+       clutter the 16 px favicon. -->
+  <line x1="2" y1="16" x2="10" y2="5" stroke="#2C2A26" stroke-width="0.5" opacity="0.35"/>
+  <line x1="30" y1="16" x2="22" y2="5" stroke="#2C2A26" stroke-width="0.5" opacity="0.35"/>
+  <!-- Plinth — the raised base every Konkan house sits on. -->
+  <rect x="3" y="25" width="26" height="4" fill="#3D3630"/>
+  <!-- Verandah — four pillars in the traditional cream wash. -->
+  <rect x="5.5" y="16" width="2" height="9" fill="#F5F1E8" stroke="#2C2A26" stroke-width="0.6"/>
+  <rect x="11.5" y="16" width="2" height="9" fill="#F5F1E8" stroke="#2C2A26" stroke-width="0.6"/>
+  <rect x="18.5" y="16" width="2" height="9" fill="#F5F1E8" stroke="#2C2A26" stroke-width="0.6"/>
+  <rect x="24.5" y="16" width="2" height="9" fill="#F5F1E8" stroke="#2C2A26" stroke-width="0.6"/>
+</svg>

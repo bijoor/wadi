@@ -13,7 +13,7 @@ function renameViewerToIndex(): Plugin {
     name: 'rename-viewer-to-index',
     apply: 'build',
     closeBundle() {
-      const outDir = path.resolve(__dirname, '../docs')
+      const outDir = path.resolve(__dirname, '../docs/app')
       const from = path.join(outDir, 'viewer.html')
       const to = path.join(outDir, 'index.html')
       if (fs.existsSync(from)) {
@@ -42,8 +42,13 @@ export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss(), renameViewerToIndex()],
   build: {
-    outDir: path.resolve(__dirname, '../docs'),
-    emptyOutDir: false,          // keep docs/editor/, docs/2d/roof/refs, etc.
+    // The designer app lives at wadi.house/app/ so the root can serve the
+    // marketing landing page. Its data assets (house_config.json, 2d/,
+    // templates/, …) stay at the site root and are fetched root-absolute
+    // (see main.ts); the generated 2d/ tab content never hits the network
+    // (patchFetch serves it), so only those few real-file fetches care.
+    outDir: path.resolve(__dirname, '../docs/app'),
+    emptyOutDir: false,          // keep sibling output (docs/app/… incremental)
     rollupOptions: {
       // Object form: the key becomes the output basename, so the viewer
       // input at editor/viewer.html lands at docs/index.html.

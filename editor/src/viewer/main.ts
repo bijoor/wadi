@@ -66,8 +66,12 @@ import { PropertyPanel } from "../components/PropertyPanel";
 import { mountViewer3D, mountViewerLayerPanel } from "./mount3D";
 import { startConfigWatcher } from "./configWatcher";
 
-const CONFIG_URL = "house_config.json";
-const EAVE_CROSS_SECTION_URL = "2d/roof/roof-cross-section.svg";
+// Root-absolute so they resolve to the site root no matter where the app
+// is served from (it lives at /app/, its data assets stay at the root).
+// The generated 2d/ tab content is intercepted by patchFetch and never
+// hits the network, so only these real-file fetches need the leading "/".
+const CONFIG_URL = "/house_config.json";
+const EAVE_CROSS_SECTION_URL = "/2d/roof/roof-cross-section.svg";
 const EDIT_MODE_KEY = "wadi:edit-mode";
 
 // State shared with the fetch patch — mutated whenever the config
@@ -727,7 +731,7 @@ async function openNewHouseModal(): Promise<void> {
   // Cache-buster on the URL side-steps browser HTTP caching too.
   let templates: TemplateEntry[];
   try {
-    const r = await fetch(`templates/index.json?t=${Date.now()}`);
+    const r = await fetch(`/templates/index.json?t=${Date.now()}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const parsed = (await r.json()) as { templates: TemplateEntry[] };
     templates = parsed.templates;
@@ -768,7 +772,10 @@ async function selectTemplate(t: TemplateEntry): Promise<void> {
     if (!ok) return;
   }
   try {
-    const r = await fetch(t.file);
+    // index.json lists files relative to the site root (e.g.
+    // "templates/blank.json"); anchor them at "/" so they resolve there
+    // and not under /app/ where the designer is served.
+    const r = await fetch(`/${t.file.replace(/^\//, "")}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const raw = await r.json();
     const parsed = validate(raw);

@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "Wadi",
+        "url": "/app/index.html",
         "width": 1400,
         "height": 900,
         "minWidth": 900,

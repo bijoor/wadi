@@ -1,0 +1,485 @@
+{
+  "site": {
+    "reference_x": 0,
+    "reference_y": 0,
+    "plot_length": 500,
+    "plot_width": 500
+  },
+  "plinth": {
+    "x": 0,
+    "y": 0,
+    "length": 500,
+    "width": 500,
+    "height": 30
+  },
+  "floors": [
+    {
+      "floor_number": 0,
+      "name": "Ground Floor",
+      "objects": [
+        {
+          "type": "floor_slab",
+          "x": 0,
+          "y": 0,
+          "width": 500,
+          "length": 500
+        },
+        {
+          "type": "pillar",
+          "name": "V_Pillar_1",
+          "x": 5,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 100
+        },
+        {
+          "type": "pillar",
+          "name": "V_Pillar_2",
+          "x": 120,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 100
+        },
+        {
+          "type": "pillar",
+          "name": "V_Pillar_3",
+          "x": 240,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 100
+        },
+        {
+          "type": "pillar",
+          "name": "V_Pillar_4",
+          "x": 355,
+          "y": 5,
+          "width": 10,
+          "length": 10,
+          "height": 100
+        },
+        {
+          "type": "room",
+          "name": "Verandah",
+          "x": 0,
+          "y": 0,
+          "width": 370,
+          "length": 100,
+          "material": "verandah",
+          "walls": {
+            "east": {},
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Main_Entry",
+                  "offset": 170,
+                  "width": 40,
+                  "height": 80
+                }
+              ]
+            },
+            "west": {}
+          }
+        },
+        {
+          "type": "room",
+          "name": "Living_Room",
+          "x": 0,
+          "y": 92,
+          "width": 250,
+          "length": 200,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "LR_Entry",
+                  "offset": 170,
+                  "width": 40,
+                  "height": 80
+                }
+              ]
+            },
+            "east": {},
+            "south": {},
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "LR_Window_W1",
+                  "offset": 50,
+                  "width": 60,
+                  "height": 50,
+                  "sill_height": 30
+                },
+                {
+                  "kind": "window",
+                  "name": "LR_Window_W2",
+                  "offset": 130,
+                  "width": 60,
+                  "height": 50,
+                  "sill_height": 30
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "room",
+          "name": "Dining",
+          "x": 242,
+          "y": 92,
+          "width": 128,
+          "length": 200,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Dining_Entry",
+                  "offset": 60,
+                  "width": 30,
+                  "height": 80
+                }
+              ]
+            },
+            "west": {},
+            "south": {},
+            "east": {}
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bedroom_1",
+          "x": 0,
+          "y": 284,
+          "width": 200,
+          "length": 216,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "B1_Entry",
+                  "offset": 130,
+                  "width": 30,
+                  "height": 80
+                }
+              ]
+            },
+            "east": {},
+            "south": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "B1_Window_S",
+                  "offset": 80,
+                  "width": 50,
+                  "height": 50,
+                  "sill_height": 30
+                }
+              ]
+            },
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "B1_Window_W1",
+                  "offset": 40,
+                  "width": 50,
+                  "height": 50,
+                  "sill_height": 30
+                },
+                {
+                  "kind": "window",
+                  "name": "B1_Window_W2",
+                  "offset": 130,
+                  "width": 50,
+                  "height": 50,
+                  "sill_height": 30
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bathroom_1",
+          "x": 192,
+          "y": 284,
+          "width": 178,
+          "length": 108,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bath1_Entry",
+                  "offset": 30,
+                  "width": 25,
+                  "height": 80
+                }
+              ]
+            },
+            "west": {},
+            "south": {},
+            "east": {}
+          }
+        },
+        {
+          "type": "room",
+          "name": "Utility",
+          "x": 192,
+          "y": 384,
+          "width": 178,
+          "length": 116,
+          "walls": {
+            "north": {},
+            "west": {},
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Utility_Entry",
+                  "offset": 60,
+                  "width": 30,
+                  "height": 80
+                },
+                {
+                  "kind": "window",
+                  "name": "Utility_Window_S",
+                  "offset": 130,
+                  "width": 40,
+                  "height": 40,
+                  "sill_height": 50
+                }
+              ]
+            },
+            "east": {}
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bedroom_2_Wing",
+          "x": 362,
+          "y": 92,
+          "width": 138,
+          "length": 200,
+          "walls": {
+            "west": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "B2_Entry",
+                  "offset": 100,
+                  "width": 30,
+                  "height": 80
+                }
+              ]
+            },
+            "north": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "B2_Window_N",
+                  "offset": 60,
+                  "width": 60,
+                  "height": 50,
+                  "sill_height": 30
+                }
+              ]
+            },
+            "south": {},
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "B2_Window_E1",
+                  "offset": 40,
+                  "width": 50,
+                  "height": 50,
+                  "sill_height": 30
+                },
+                {
+                  "kind": "window",
+                  "name": "B2_Window_E2",
+                  "offset": 120,
+                  "width": 50,
+                  "height": 50,
+                  "sill_height": 30
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bath_Wing",
+          "x": 362,
+          "y": 284,
+          "width": 138,
+          "length": 108,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "BathW_Entry",
+                  "offset": 40,
+                  "width": 25,
+                  "height": 80
+                }
+              ]
+            },
+            "west": {},
+            "south": {},
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "BathW_Window_E",
+                  "offset": 40,
+                  "width": 30,
+                  "height": 40,
+                  "sill_height": 50
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "room",
+          "name": "Storage_Wing",
+          "x": 362,
+          "y": 384,
+          "width": 138,
+          "length": 116,
+          "walls": {
+            "north": {},
+            "west": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Store_Entry",
+                  "offset": 40,
+                  "width": 30,
+                  "height": 80
+                }
+              ]
+            },
+            "south": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Store_Window_S",
+                  "offset": 40,
+                  "width": 40,
+                  "height": 40,
+                  "sill_height": 50
+                }
+              ]
+            },
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Store_Window_E",
+                  "offset": 40,
+                  "width": 40,
+                  "height": 40,
+                  "sill_height": 50
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "floor_number": 1,
+      "name": "Loft Floor",
+      "objects": [
+        {
+          "type": "roof",
+          "roof_type": "pitched",
+          "segments": [
+            {
+              "id": "seg0",
+              "start": [
+                185,
+                0
+              ],
+              "end": [
+                185,
+                500
+              ],
+              "width": 370,
+              "hip_setback_start": 100,
+              "hip_setback_end": 100
+            }
+          ],
+          "default_endpoint": "closed",
+          "trusses": [
+            {
+              "segment_id": "seg0",
+              "type": "fink",
+              "positions_along": [
+                100,
+                250,
+                400
+              ]
+            }
+          ],
+          "min_overhang": 25,
+          "slope": {
+            "by": "height",
+            "ridge_h": 80
+          }
+        },
+        {
+          "type": "roof",
+          "roof_type": "shed",
+          "segments": [
+            {
+              "id": "seg0",
+              "start": [
+                431,
+                92
+              ],
+              "end": [
+                431,
+                500
+              ],
+              "width": 138,
+              "shed_high_side": "right"
+            }
+          ],
+          "min_overhang": 20,
+          "slope": {
+            "by": "height",
+            "ridge_h": 40
+          },
+          "trusses": [
+            {
+              "segment_id": "seg0",
+              "type": "mono_pitch",
+              "positions_along": [
+                102,
+                204,
+                306
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defaults": {
+    "floor_height": 98,
+    "wall_height": 90,
+    "slab_thickness": 8
+  }
+}
