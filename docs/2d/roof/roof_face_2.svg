@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+<title>Face 3 (triangle) — seg0.hip_face.end</title>
+<rect width="900" height="600" fill="#faf8f4"/>
+<g class="v2-face-panel">
+<rect x="0" y="0" width="900" height="600" fill="#fdfcfa" stroke="#333" stroke-width="1"/>
+<rect x="0" y="0" width="900" height="40" fill="#f2ede4" stroke="#333" stroke-width="1"/>
+<text x="450" y="26" text-anchor="middle" font-size="14" font-weight="600" fill="#222">HIP_FACE (TRIANGLE) — seg0.hip_face.end</text>
+<polygon points="108.1,522.2 791.9,522.2 450.0,93.8" fill="#f5e0c9" stroke="#5a2e0b" stroke-width="1.5" fill-opacity="0.5"/>
+<line x1="126.1" y1="522.2" x2="126.1" y2="499.7" stroke="#94a3b8" stroke-width="1"/>
+<line x1="185.0" y1="522.2" x2="185.0" y2="425.9" stroke="#94a3b8" stroke-width="1"/>
+<line x1="243.9" y1="522.2" x2="243.9" y2="352.1" stroke="#94a3b8" stroke-width="1"/>
+<line x1="302.8" y1="522.2" x2="302.8" y2="278.3" stroke="#94a3b8" stroke-width="1"/>
+<line x1="361.7" y1="522.2" x2="361.7" y2="204.5" stroke="#94a3b8" stroke-width="1"/>
+<line x1="420.6" y1="522.2" x2="420.6" y2="130.7" stroke="#94a3b8" stroke-width="1"/>
+<line x1="479.4" y1="522.2" x2="479.4" y2="130.7" stroke="#94a3b8" stroke-width="1"/>
+<line x1="538.3" y1="522.2" x2="538.3" y2="204.5" stroke="#94a3b8" stroke-width="1"/>
+<line x1="597.2" y1="522.2" x2="597.2" y2="278.3" stroke="#94a3b8" stroke-width="1"/>
+<line x1="656.1" y1="522.2" x2="656.1" y2="352.1" stroke="#94a3b8" stroke-width="1"/>
+<line x1="715.0" y1="522.2" x2="715.0" y2="425.9" stroke="#94a3b8" stroke-width="1"/>
+<line x1="773.9" y1="522.2" x2="773.9" y2="499.7" stroke="#94a3b8" stroke-width="1"/>
+<line x1="123.8" y1="502.6" x2="776.2" y2="502.6" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="139.5" y1="482.9" x2="760.5" y2="482.9" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="155.1" y1="463.3" x2="744.9" y2="463.3" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="170.8" y1="443.7" x2="729.2" y2="443.7" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="186.5" y1="424.0" x2="713.5" y2="424.0" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="202.1" y1="404.4" x2="697.9" y2="404.4" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="217.8" y1="384.8" x2="682.2" y2="384.8" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="233.5" y1="365.1" x2="666.5" y2="365.1" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="249.1" y1="345.5" x2="650.9" y2="345.5" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="264.8" y1="325.9" x2="635.2" y2="325.9" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="280.5" y1="306.2" x2="619.5" y2="306.2" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="296.1" y1="286.6" x2="603.9" y2="286.6" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="311.8" y1="267.0" x2="588.2" y2="267.0" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="327.5" y1="247.3" x2="572.5" y2="247.3" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="343.1" y1="227.7" x2="556.9" y2="227.7" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="358.8" y1="208.1" x2="541.2" y2="208.1" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="374.5" y1="188.4" x2="525.5" y2="188.4" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="390.1" y1="168.8" x2="509.9" y2="168.8" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="405.8" y1="149.2" x2="494.2" y2="149.2" stroke="#cbd5e1" stroke-width="0.6"/>
+<line x1="421.5" y1="129.5" x2="478.5" y2="129.5" stroke="#cbd5e1" stroke-width="0.6"/>
+<text x="450" y="536.2" text-anchor="middle" font-size="11" fill="#334155">eave: 34' 10"</text>
+<text x="803.9" y="308.0" text-anchor="start" font-size="11" fill="#334155">h: 21' 10"</text>
+<text x="450" y="60.0" text-anchor="middle" font-size="15" font-weight="600" fill="#8B4513">ROOF PITCH: 24.4°</text>
+<text x="450" y="78.0" text-anchor="middle" font-size="13" fill="#333">AREA: 380 sft</text>
+<text x="888" y="60.0" text-anchor="end" font-size="11" fill="#333">12 rafters</text>
+<text x="888" y="75.0" text-anchor="end" font-size="11" fill="#333">20 purlins</text>
+</g>
+
+</svg>

@@ -87,6 +87,12 @@ const beam = z
     y: z.number(),
     width: positive(),
     length: positive(),
+    // Vertical thickness of the beam, in PROJECT UNITS. Optional —
+    // defaults to the floor's slab_thickness. The 3D viewer + BeamForm
+    // read this as `height`; note the Python builder currently reads a
+    // `thickness` key instead (wadi_config.py) — see the known
+    // field-name mismatch.
+    height: positive().optional(),
     // Vertical lift above the floor slab, in PROJECT UNITS
     // (10 units = 1 ft). Was previously z_offset_ft in feet.
     z_offset: z.number().optional(),

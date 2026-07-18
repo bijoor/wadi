@@ -1,0 +1,51 @@
+[
+  {
+    "id": "top_view",
+    "title": "Top View",
+    "file": "roof_top_view.svg",
+    "width": 900,
+    "height": 600
+  },
+  {
+    "id": "perspective",
+    "title": "Perspective (isometric)",
+    "file": "roof_perspective.svg",
+    "width": 900,
+    "height": 600
+  },
+  {
+    "id": "section_a_a",
+    "title": "Section A-A (cut at X=135)",
+    "file": "roof_section_a_a.svg",
+    "width": 900,
+    "height": 600
+  },
+  {
+    "id": "section_b_b",
+    "title": "Section B-B (cut at Y=235)",
+    "file": "roof_section_b_b.svg",
+    "width": 900,
+    "height": 600
+  },
+  {
+    "id": "face_0",
+    "title": "Face 1 (trapezoid, 2 identical)",
+    "file": "roof_face_0.svg",
+    "width": 900,
+    "height": 600
+  },
+  {
+    "id": "face_1",
+    "title": "Face 2 (triangle) — seg0.hip_face.start",
+    "file": "roof_face_1.svg",
+    "width": 900,
+    "height": 600
+  },
+  {
+    "id": "face_2",
+    "title": "Face 3 (triangle) — seg0.hip_face.end",
+    "file": "roof_face_2.svg",
+    "width": 900,
+    "height": 600
+  }
+]

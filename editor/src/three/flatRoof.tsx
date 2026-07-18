@@ -4,7 +4,6 @@
 // materials without splitting draw calls per face.
 
 import { useMemo } from "react";
-import * as THREE from "three";
 import type { Vec3 } from "./coords";
 import type { FlatRoofGeom } from "../svg2d/roof/flatGeometry";
 

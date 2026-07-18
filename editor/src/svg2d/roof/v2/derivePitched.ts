@@ -31,6 +31,7 @@ import type {
   Point3D,
   RoofConfig,
   RoofPlane,
+  RoofSegment,
   RoofSpec,
   SlopeSpec,
   StraightMember,

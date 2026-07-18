@@ -13,14 +13,6 @@
 
 import type { MemberRole, RoofPlane, RoofSpec, StraightMember, TrussTriangle } from "./model";
 
-// Only these member roles are drawn at the top-view scale. Ring
-// beams stay because they show the wall perimeter; eave border
-// elements (pani patti / L-channel / corner angle) would overlay
-// the polygon edges and clutter the view.
-const TOP_VIEW_MEMBER_ROLES: Set<MemberRole> = new Set([
-  "ridge", "hip", "valley", "ring_beam", "rafter", "purlin",
-]);
-
 export interface RenderTopViewOptions {
   width: number;         // panel width in SVG units (pixels)
   height: number;        // panel height

@@ -72,7 +72,6 @@ export function deriveGableRoofGeometry(
   // "Cross" = perpendicular to ridge (the slope span). "Along" = with
   // the ridge (the length the ridge runs).
   const crossLen = isY ? houseTransU : houseLongU;
-  const alongLen = isY ? houseLongU : houseTransU;
 
   const minOv = Number(
     hipRoof.min_overhang ??

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+<title>Perspective (isometric)</title>
+<rect width="900" height="600" fill="#faf8f4"/>
+<g id="v2-perspective" transform="translate(0,0)">
+<rect x="0" y="0" width="900" height="600" fill="#fdfcfa" stroke="#333" stroke-width="1"/>
+<text x="450" y="24" text-anchor="middle" font-size="14" font-weight="bold" fill="#222">Perspective (isometric)</text>
+<polygon points="880.00,270.98 534.90,71.74 597.24,131.68" fill="#c66" fill-opacity="0.85" stroke="#5a2e0b" stroke-width="1"/>
+<polygon points="534.90,71.74 597.24,131.68 389.38,251.68 20.00,369.02" fill="#c66" fill-opacity="0.85" stroke="#5a2e0b" stroke-width="1"/>
+<polygon points="880.00,270.98 365.10,568.26 389.38,251.68 597.24,131.68" fill="#c66" fill-opacity="0.85" stroke="#5a2e0b" stroke-width="1"/>
+<polygon points="20.00,369.02 365.10,568.26 389.38,251.68" fill="#c66" fill-opacity="0.85" stroke="#5a2e0b" stroke-width="1"/>
+<line x1="646.78" y1="103.07" x2="339.84" y2="280.29" stroke="#3b1a05" stroke-width="2"/>
+<line x1="597.24" y1="131.68" x2="534.90" y2="71.74" stroke="#5a2e0b" stroke-width="2"/>
+<line x1="597.24" y1="131.68" x2="880.00" y2="270.98" stroke="#5a2e0b" stroke-width="2"/>
+<line x1="389.38" y1="251.68" x2="20.00" y2="369.02" stroke="#5a2e0b" stroke-width="2"/>
+<line x1="389.38" y1="251.68" x2="365.10" y2="568.26" stroke="#5a2e0b" stroke-width="2"/>
+</g>
+
+</svg>

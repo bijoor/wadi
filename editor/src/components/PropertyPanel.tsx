@@ -7,7 +7,6 @@ import {
   BeamForm,
   FloorSlabForm,
   FlatDoorWindowForm,
-  OpaqueRoofForm,
   PillarForm,
   StaircaseForm,
 } from "../forms/simpleForms";

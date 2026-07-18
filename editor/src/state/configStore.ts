@@ -76,8 +76,10 @@ const NON_TRACKED_KEYS = new Set<keyof ConfigState>([
 ]);
 
 export const useConfigStore = create<ConfigState>()(
-  temporal(
-    (set) => ({
+  // <TState, Mps, Mcs, UState> — UState is the partialize slice (only
+  // `config` participates in undo history; see partialize below).
+  temporal<ConfigState, [], [], { config: HouseConfig | null }>(
+    (set, get) => ({
       config: null,
       filename: null,
       filePath: null,
@@ -273,7 +275,7 @@ export const useConfigStore = create<ConfigState>()(
       },
 
       addObject: (floor, type) => {
-        const state = useConfigStore.getState();
+        const state = get();
         if (!state.config) return null;
         const existing = state.config.floors[floor]?.objects ?? [];
         const obj = makeDefault(type, state.config, existing);

@@ -45,6 +45,10 @@ interface DrawObject {
   openings?: Obj[];
   coord_key?: string | null;
   floor_height_expected?: number;
+  // True when this wall's outward face points toward the viewer for the
+  // current elevation (room walls: direction matches the view; standalone
+  // walls: `facing` matches). Drives which window sills get dimensioned.
+  faces_viewer?: boolean;
 }
 
 interface FloorLevel {
@@ -139,13 +143,12 @@ export function generateElevationView(
   let totalHeight = plinthHeight;
 
   for (const floorConfig of floors) {
-    const floorNum = floorConfig.floor_number ?? 0;
     // Per-floor override wins over the GlobalConfig default.
     // Fallback chain: per-floor override → house-level defaults →
     // global default.
     const houseDefaults = (houseConfig as { defaults?: { floor_height?: number } }).defaults;
     const floorHeight =
-      (floorConfig.height as number | undefined) ??
+      (floorConfig as { height?: number }).height ??
       houseDefaults?.floor_height ??
       GC.floor_height ??
       100;
@@ -228,6 +231,18 @@ export function generateElevationView(
     return coord;
   };
 
+  // The compass direction a wall must face to point at the viewer in this
+  // elevation. A window's sill is dimensioned only when its wall faces the
+  // viewer (so occluded back-wall windows aren't dimensioned here).
+  const viewerFacingDir =
+    viewType === "front"
+      ? "north"
+      : viewType === "back"
+        ? "south"
+        : viewType === "left"
+          ? "west"
+          : "east";
+
   const contentTopMargin = verticalMargin + titleSpace;
   let svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${fFloat(svgWidth)}" height="${fFloat(svgHeight)}" viewBox="0 0 ${fFloat(svgWidth)} ${fFloat(svgHeight)}">
@@ -258,6 +273,15 @@ export function generateElevationView(
   ];
 
   const elevationOpenings: ElevationOpening[] = [];
+  // Every window on a wall that faces the viewer — used for sill-height
+  // dimensioning (section 5). Separate from elevationOpenings, which is
+  // front-most-wall only and drives the horizontal opening dimensions.
+  const sillWindows: Array<{
+    x: number;
+    width: number;
+    z_bottom: number;
+    sill_height: number;
+  }> = [];
   const wallsWithCustomHeights: WallCustom[] = [];
   let roofSvg = "";
 
@@ -273,7 +297,7 @@ export function generateElevationView(
     // global default.
     const houseDefaults = (houseConfig as { defaults?: { floor_height?: number } }).defaults;
     const floorHeight =
-      (floorConfig.height as number | undefined) ??
+      (floorConfig as { height?: number }).height ??
       houseDefaults?.floor_height ??
       GC.floor_height ??
       100;
@@ -557,6 +581,7 @@ export function generateElevationView(
                 type: "wall",
                 name: wallKey,
                 depth,
+                faces_viewer: direction === viewerFacingDir,
                 priority: typePriority.wall ?? 2,
                 x: roomY,
                 width: roomLength,
@@ -575,6 +600,7 @@ export function generateElevationView(
                 type: "wall",
                 name: wallKey,
                 depth,
+                faces_viewer: direction === viewerFacingDir,
                 priority: typePriority.wall ?? 2,
                 x: roomY,
                 width: roomLength,
@@ -592,6 +618,7 @@ export function generateElevationView(
                 type: "wall",
                 name: wallKey,
                 depth,
+                faces_viewer: direction === viewerFacingDir,
                 priority: typePriority.wall ?? 2,
                 x: roomX,
                 width: roomWidth,
@@ -610,6 +637,7 @@ export function generateElevationView(
                 type: "wall",
                 name: wallKey,
                 depth,
+                faces_viewer: direction === viewerFacingDir,
                 priority: typePriority.wall ?? 2,
                 x: roomX,
                 width: roomWidth,
@@ -624,6 +652,11 @@ export function generateElevationView(
         }
       } else if (objType === "wall") {
         const wallName = (obj.name as string | undefined) ?? "";
+        // Standalone walls may declare which way they face; if so, only
+        // dimension their sills on the matching elevation. Without a
+        // `facing`, fall back to dimensioning wherever the wall is drawn.
+        const wallFacing = (obj.facing as string | undefined)?.toLowerCase();
+        const wallFacesViewer = wallFacing ? wallFacing === viewerFacingDir : true;
         const startX = obj.start_x as number;
         const startY = obj.start_y as number;
         const endX = obj.end_x as number;
@@ -643,6 +676,7 @@ export function generateElevationView(
             type: "wall",
             name: wallName,
             depth,
+            faces_viewer: wallFacesViewer,
             priority: typePriority.wall ?? 2,
             x: wallPos,
             width: wallLength,
@@ -661,6 +695,7 @@ export function generateElevationView(
             type: "wall",
             name: wallName,
             depth,
+            faces_viewer: wallFacesViewer,
             priority: typePriority.wall ?? 2,
             x: wallPos,
             width: wallLength,
@@ -1054,6 +1089,18 @@ export function generateElevationView(
         const fillColor = openingType === "window" ? "#87CEEB" : "#D2691E";
         svg += `<rect x="${f(openingX)}" y="${fFloat(openingSvgTopY)}" width="${f(openingWidth)}" height="${fFloat(openingSvgHeight)}" fill="${fillColor}" stroke="#000" stroke-width="0.5"/>\n`;
 
+        // Collect every viewer-facing window for sill dimensioning, not
+        // just the front-most wall — so set-back windows (e.g. bedroom
+        // windows behind a verandah) still get an explicit sill callout.
+        if (openingType === "window" && obj.faces_viewer) {
+          sillWindows.push({
+            x: openingXWorld,
+            width: openingWidth,
+            z_bottom: openingZBottom,
+            sill_height: (opening.sill_height as number | undefined) ?? 0,
+          });
+        }
+
         if (isFrontWall) {
           elevationOpenings.push({
             type: openingType,
@@ -1222,6 +1269,24 @@ export function generateElevationView(
           );
         }
       }
+    }
+
+    // 5. Window sill heights — explicit vertical dimension from each
+    // window's floor datum up to its sill, so the sill height is never
+    // left to the reader's interpretation. Mirrors svg_2d.py section 5.
+    // Flags match section 1 (floor heights): x like the opening dims
+    // (int-typed), y from zToY (float-typed).
+    const sillOffset = -8;
+    for (const w of sillWindows) {
+      if (w.sill_height <= 0) continue;
+      const sillXSvg = worldToSvgX(w.x, w.width);
+      const sillFloorY = zToY(w.z_bottom - w.sill_height);
+      const sillTopY = zToY(w.z_bottom);
+      svg += svgDrawDimensionLine(
+        sillXSvg, sillFloorY, sillXSvg, sillTopY,
+        sillOffset, false, false, false,
+        false, false, true, false, true,
+      );
     }
   }
 

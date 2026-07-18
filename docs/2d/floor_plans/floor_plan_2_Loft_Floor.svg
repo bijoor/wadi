@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1336.56712090461" height="1709.301246738185" viewBox="0 0 1336.56712090461 1709.301246738185">
+<title>Loft Floor - Floor Plan</title>
+<defs>
+    <style>
+        text { font-family: Arial, sans-serif; }
+    </style>
+</defs>
+<g transform="translate(398.28356045230504, 400.0) scale(2.0, 2.0)">
+
+<g class="dimension">
+  <line x1="-39.14178022615252" y1="-105.0" x2="309.1417802261525" y2="-105.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="-39.14178022615252" y1="-25" x2="-39.14178022615252" y2="-105.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="309.1417802261525" y1="-25" x2="309.1417802261525" y2="-105.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="-39.14178022615252,-105.0 -36.14178022615252,-108.0 -36.14178022615252,-102.0" fill="#000"/>
+  <polygon points="309.1417802261525,-105.0 306.1417802261525,-108.0 306.1417802261525,-102.0" fill="#000"/>
+  <text x="135.0" y="-110.0" text-anchor="middle" font-size="10" fill="#000">34' 10"</text>
+</g>
+<g class="dimension">
+  <line x1="-39.14178022615252" y1="574.6506233690925" x2="309.1417802261525" y2="574.6506233690925" stroke="#000" stroke-width="0.5"/>
+  <line x1="-39.14178022615252" y1="494.6506233690925" x2="-39.14178022615252" y2="574.6506233690925" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="309.1417802261525" y1="494.6506233690925" x2="309.1417802261525" y2="574.6506233690925" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="-39.14178022615252,574.6506233690925 -36.14178022615252,571.6506233690925 -36.14178022615252,577.6506233690925" fill="#000"/>
+  <polygon points="309.1417802261525,574.6506233690925 306.1417802261525,571.6506233690925 306.1417802261525,577.6506233690925" fill="#000"/>
+  <text x="135.0" y="587.6506233690925" text-anchor="middle" font-size="10" fill="#000">34' 10"</text>
+</g>
+<g class="dimension">
+  <line x1="-119.14178022615252" y1="-25" x2="-119.14178022615252" y2="494.6506233690925" stroke="#000" stroke-width="0.5"/>
+  <line x1="-39.14178022615252" y1="-25" x2="-119.14178022615252" y2="-25" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="-39.14178022615252" y1="494.6506233690925" x2="-119.14178022615252" y2="494.6506233690925" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="-119.14178022615252,-25 -122.14178022615252,-22 -116.14178022615252,-22" fill="#000"/>
+  <polygon points="-119.14178022615252,494.6506233690925 -122.14178022615252,491.6506233690925 -116.14178022615252,491.6506233690925" fill="#000"/>
+  <text x="-132.14178022615252" y="234.82531168454625" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 -132.14178022615252 234.82531168454625)">52'</text>
+</g>
+<g class="dimension">
+  <line x1="389.1417802261525" y1="-25" x2="389.1417802261525" y2="494.6506233690925" stroke="#000" stroke-width="0.5"/>
+  <line x1="309.1417802261525" y1="-25" x2="389.1417802261525" y2="-25" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="309.1417802261525" y1="494.6506233690925" x2="389.1417802261525" y2="494.6506233690925" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="389.1417802261525,-25 386.1417802261525,-22 392.1417802261525,-22" fill="#000"/>
+  <polygon points="389.1417802261525,494.6506233690925 386.1417802261525,491.6506233690925 392.1417802261525,491.6506233690925" fill="#000"/>
+  <text x="402.1417802261525" y="234.82531168454625" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 402.1417802261525 234.82531168454625)">52'</text>
+</g>
+
+<!-- v2 roof overlay -->
+<polygon points="-39.14,-25.00 135.00,86.22 135.00,296.00 -39.14,494.65" fill="none" stroke="#8B4513" stroke-width="1" stroke-dasharray="4,2"/>
+<polygon points="309.14,-25.00 309.14,494.65 135.00,296.00 135.00,86.22" fill="none" stroke="#8B4513" stroke-width="1" stroke-dasharray="4,2"/>
+<polygon points="309.14,-25.00 -39.14,-25.00 135.00,86.22" fill="none" stroke="#8B4513" stroke-width="1" stroke-dasharray="4,2"/>
+<polygon points="-39.14,494.65 309.14,494.65 135.00,296.00" fill="none" stroke="#8B4513" stroke-width="1" stroke-dasharray="4,2"/>
+<line x1="135.00" y1="36.22" x2="135.00" y2="346.00" stroke="#dc2626" stroke-width="1.5"/>
+<line x1="135.00" y1="86.22" x2="-39.14" y2="-25.00" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="6,2"/>
+<line x1="135.00" y1="86.22" x2="309.14" y2="-25.00" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="6,2"/>
+<line x1="135.00" y1="296.00" x2="-39.14" y2="494.65" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="6,2"/>
+<line x1="135.00" y1="296.00" x2="309.14" y2="494.65" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="6,2"/>
+</g>
+<text x="668.283560452305" y="30" text-anchor="middle" font-size="16" font-weight="bold">Loft Floor</text>
+</svg>

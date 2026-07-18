@@ -6,7 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 
 interface BaseProps {
-  label: string;
+  // Optional so grouped rows (e.g. polyline point editors) can omit the
+  // label on all but the first field. FieldRow renders `{label}`, which
+  // is a no-op when undefined.
+  label?: string;
   hint?: string;
   error?: string;
 }

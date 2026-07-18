@@ -79,7 +79,9 @@ function pickJsonFile(): Promise<File> {
 
 // Serialize with 2-space indent + trailing newline — matches the
 // Python extractor so diffs against the repo copy stay clean.
-function serialize(config: HouseConfig): string {
+// Exported so the config watcher can compare on-disk content against
+// the current in-memory config and skip reloads caused by our own saves.
+export function serializeConfig(config: HouseConfig): string {
   const clean = { ...config };
   delete (clean as { _walls_expanded?: boolean })._walls_expanded;
   return JSON.stringify(clean, null, 2) + "\n";
@@ -94,7 +96,7 @@ export async function saveConfig(
   filePath: string | null,
   defaultName = "house_config.json",
 ): Promise<string | null> {
-  const text = serialize(config);
+  const text = serializeConfig(config);
   if (isTauri()) {
     let target = filePath;
     if (!target) {
@@ -116,7 +118,7 @@ export async function saveConfig(
 // Kept as an alias so any lingering call sites that only care about
 // browser-style download don't break. New code should call saveConfig.
 export function downloadConfig(config: HouseConfig, filename = "house_config.json") {
-  downloadBlob(serialize(config), filename);
+  downloadBlob(serializeConfig(config), filename);
 }
 
 function downloadBlob(text: string, filename: string) {

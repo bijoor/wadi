@@ -215,7 +215,7 @@
                   "offset": 35,
                   "width": 50,
                   "height": 40,
-                  "sill_height": 25
+                  "sill_height": 30
                 }
               ]
             },
@@ -239,7 +239,7 @@
                   "offset": 37,
                   "width": 50,
                   "height": 40,
-                  "sill_height": 25
+                  "sill_height": 30
                 }
               ]
             }
@@ -269,7 +269,7 @@
                   "offset": 71,
                   "width": 50,
                   "height": 40,
-                  "sill_height": 25
+                  "sill_height": 30
                 }
               ]
             },
@@ -292,7 +292,7 @@
                   "offset": 35,
                   "width": 50,
                   "height": 40,
-                  "sill_height": 25
+                  "sill_height": 30
                 }
               ]
             }
@@ -393,7 +393,7 @@
                   "offset": 28,
                   "width": 40,
                   "height": 40,
-                  "sill_height": 25
+                  "sill_height": 30
                 },
                 {
                   "kind": "window",
@@ -584,7 +584,7 @@
                   "offset": 25,
                   "width": 30,
                   "height": 40,
-                  "sill_height": 25
+                  "sill_height": 30
                 },
                 {
                   "kind": "door",
@@ -619,7 +619,7 @@
                   "offset": 35,
                   "width": 50,
                   "height": 40,
-                  "sill_height": 25
+                  "sill_height": 30
                 }
               ]
             }
@@ -650,7 +650,7 @@
                   "offset": 71,
                   "width": 50,
                   "height": 40,
-                  "sill_height": 25
+                  "sill_height": 30
                 }
               ]
             },
@@ -683,7 +683,7 @@
                   "offset": 35,
                   "width": 50,
                   "height": 40,
-                  "sill_height": 25
+                  "sill_height": 30
                 }
               ]
             }

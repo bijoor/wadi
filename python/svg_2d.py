@@ -1541,6 +1541,13 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
             # Back, left views: keep as is
             return coord
 
+    # Compass direction a wall must face to point at the viewer in this
+    # elevation. A window's sill is dimensioned only when its wall faces
+    # the viewer (mirrors elevationView.ts).
+    viewer_facing_dir = {
+        'front': 'north', 'back': 'south', 'left': 'west', 'right': 'east',
+    }[view_type]
+
     # Start SVG
     # Add title_space to vertical translation to push content down
     content_top_margin = vertical_margin + title_space
@@ -1576,6 +1583,11 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
 
     # Track openings for dimensioning
     elevation_openings = []
+
+    # Every window on a wall that faces the viewer — drives sill-height
+    # dimensioning (section 5). Separate from elevation_openings, which is
+    # front-most-wall only and drives the horizontal opening dimensions.
+    sill_windows = []
 
     # Track walls with non-standard heights for dimensioning
     walls_with_custom_heights = []
@@ -1923,6 +1935,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                                 'type': 'wall',
                                 'name': wall_key,
                                 'depth': depth,
+                                'faces_viewer': direction == viewer_facing_dir,
                                 'priority': type_priority.get('wall', 2),
                                 'x': room_y,
                                 'width': room_length,
@@ -1938,6 +1951,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                                 'type': 'wall',
                                 'name': wall_key,
                                 'depth': depth,
+                                'faces_viewer': direction == viewer_facing_dir,
                                 'priority': type_priority.get('wall', 2),
                                 'x': room_y,
                                 'width': room_length,
@@ -1955,6 +1969,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                                 'type': 'wall',
                                 'name': wall_key,
                                 'depth': depth,
+                                'faces_viewer': direction == viewer_facing_dir,
                                 'priority': type_priority.get('wall', 2),
                                 'x': room_x,
                                 'width': room_width,
@@ -1970,6 +1985,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                                 'type': 'wall',
                                 'name': wall_key,
                                 'depth': depth,
+                                'faces_viewer': direction == viewer_facing_dir,
                                 'priority': type_priority.get('wall', 2),
                                 'x': room_x,
                                 'width': room_width,
@@ -1982,6 +1998,12 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
 
             elif obj_type == 'wall':
                 wall_name = obj.get('name', '')
+                # Standalone walls may declare which way they face; if so, only
+                # dimension their sills on the matching elevation. Without a
+                # `facing`, fall back to dimensioning wherever the wall is drawn.
+                wall_facing = obj.get('facing')
+                wall_facing = wall_facing.lower() if isinstance(wall_facing, str) else None
+                wall_faces_viewer = (wall_facing == viewer_facing_dir) if wall_facing else True
                 start_x = obj['start_x']
                 start_y = obj['start_y']
                 end_x = obj['end_x']
@@ -2004,6 +2026,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         'type': 'wall',
                         'name': wall_name,
                         'depth': depth,
+                        'faces_viewer': wall_faces_viewer,
                         'priority': type_priority.get('wall', 2),
                         'x': wall_pos,
                         'width': wall_length,
@@ -2024,6 +2047,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         'type': 'wall',
                         'name': wall_name,
                         'depth': depth,
+                        'faces_viewer': wall_faces_viewer,
                         'priority': type_priority.get('wall', 2),
                         'x': wall_pos,
                         'width': wall_length,
@@ -2524,6 +2548,17 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                 fill_color = "#87CEEB" if opening_type == 'window' else "#D2691E"
                 svg += f'<rect x="{opening_x}" y="{opening_svg_top_y}" width="{opening_width}" height="{opening_svg_height}" fill="{fill_color}" stroke="#000" stroke-width="0.5"/>\n'
 
+                # Collect every viewer-facing window for sill dimensioning,
+                # not just the front-most wall — so set-back windows (e.g.
+                # bedroom windows behind a verandah) still get a sill callout.
+                if opening_type == 'window' and obj.get('faces_viewer'):
+                    sill_windows.append({
+                        'x': opening_x_world,
+                        'width': opening_width,
+                        'z_bottom': opening_z_bottom,
+                        'sill_height': opening.get('sill_height', 0),
+                    })
+
                 # Track opening for dimensioning ONLY if it's on a front-most wall
                 if is_front_wall:
                     elevation_openings.append({
@@ -2728,6 +2763,26 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         adjust_start=False,
                         adjust_end=False
                     )
+
+        # 5. WINDOW SILL HEIGHTS: explicit vertical dimension from each
+        # window's floor datum up to its sill, so the sill height is never
+        # left to the reader's interpretation. Mirrors elevationView.ts
+        # section 5.
+        sill_offset = -8
+        for w in sill_windows:
+            if w['sill_height'] <= 0:
+                continue
+            sill_x_svg = world_to_svg_x(w['x'], w['width'])
+            sill_floor_y = z_to_y(w['z_bottom'] - w['sill_height'])
+            sill_top_y = z_to_y(w['z_bottom'])
+            svg += svg_draw_dimension_line(
+                sill_x_svg, sill_floor_y,
+                sill_x_svg, sill_top_y,
+                sill_offset,
+                is_horizontal=False,
+                adjust_start=False,
+                adjust_end=False
+            )
 
     svg += '''</g>
 '''

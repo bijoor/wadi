@@ -35,7 +35,7 @@ import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
 import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
 import { computeRoofSections } from "../svg2d/roof/index";
-import { computeAll, computeAllRoofs } from "../svg2d/roof/geometry";
+import { computeAllRoofs } from "../svg2d/roof/geometry";
 import { generateGablePanels } from "../svg2d/roof/gableCompose";
 import { collectAllGableMembers, gableTileContribution } from "../svg2d/roof/gableBom";
 import { generateFlatPanels, collectAllFlatMembers, flatTileContribution } from "../svg2d/roof/flatCompose";
@@ -50,6 +50,7 @@ import { pickAndLoadConfig, saveConfig, saveText } from "../io/fileIO";
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
 import { mountViewer3D, mountViewerLayerPanel } from "./mount3D";
+import { startConfigWatcher } from "./configWatcher";
 
 const CONFIG_URL = "house_config.json";
 const EAVE_CROSS_SECTION_URL = "2d/roof/roof-cross-section.svg";
@@ -118,6 +119,11 @@ async function bootViewer(): Promise<void> {
   // Expose window.exportCurrentSvg for the inline lightbox toolbar.
   wireExports();
   applyStoredEditMode();
+
+  // Live-preview loop (Tauri only): poll the loaded config file and
+  // reload the model when an external editor (Claude Code / MCP) writes
+  // it. No-op in a plain browser tab.
+  startConfigWatcher();
 }
 
 function rebuildSvgMap(): void {
@@ -425,11 +431,29 @@ function reloadActiveTab(): void {
 // Header actions
 // -----------------------------------------------------------------
 
+// Brief "✓ Saved" confirmation on a Save / Save As button. The save
+// path writes silently on success, so this is the only signal the user
+// gets. Captures the real label once (so rapid re-clicks don't freeze
+// the checkmark in) and resets the revert timer on each click.
+function flashSaved(btn: HTMLElement | null): void {
+  if (!btn) return;
+  if (!btn.dataset.label) btn.dataset.label = btn.textContent ?? "";
+  btn.textContent = "✓ Saved";
+  window.clearTimeout(Number(btn.dataset.flashTimer));
+  const t = window.setTimeout(() => {
+    btn.textContent = btn.dataset.label ?? "";
+    delete btn.dataset.label;
+    delete btn.dataset.flashTimer;
+  }, 1400);
+  btn.dataset.flashTimer = String(t);
+}
+
 function wireHeaderButtons(): void {
   const btnNew = document.getElementById("btn-new");
   const btnEdit = document.getElementById("btn-edit-toggle");
   const btnLoad = document.getElementById("btn-load");
   const btnSave = document.getElementById("btn-save");
+  const btnSaveAs = document.getElementById("btn-save-as");
   const btnUndo = document.getElementById("btn-undo");
   const btnRedo = document.getElementById("btn-redo");
   const fileInput = document.getElementById("file-input-json") as HTMLInputElement | null;
@@ -462,9 +486,29 @@ function wireHeaderButtons(): void {
     try {
       const saved = await saveConfig(cfg, state.filePath, state.filename ?? "house_config.json");
       if (saved) state.setFilePath(saved);
+      // saveConfig is silent on success; give explicit feedback so the
+      // click doesn't feel like a no-op.
+      flashSaved(btnSave);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg !== "Cancelled") alert(`Save failed: ${msg}`);
+    }
+  });
+
+  // Save As — always prompts for a destination. Passing a null filePath
+  // forces the native save dialog in Tauri (or a fresh download in the
+  // browser), and we adopt the chosen path as the new working file.
+  btnSaveAs?.addEventListener("click", async () => {
+    const state = useConfigStore.getState();
+    const cfg = state.config;
+    if (!cfg) return;
+    try {
+      const saved = await saveConfig(cfg, null, state.filename ?? "house_config.json");
+      if (saved) state.setFilePath(saved);
+      flashSaved(btnSaveAs);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") alert(`Save As failed: ${msg}`);
     }
   });
 

@@ -9,7 +9,6 @@
 
 import type {
   Point3D,
-  RoofPlane,
   RoofSpec,
   StraightMember,
 } from "./model";

@@ -73,7 +73,6 @@ export function deriveHipRoofGeometry(
   const alongLen = isY ? houseLongU : houseTransU;
   const crossLen = isY ? houseTransU : houseLongU;
   const roofAlong = isY ? roofY : roofX;
-  const roofCross = isY ? roofX : roofY;
   const alongAxisLabel = isY ? "Y" : "X";
 
   const trusses = hipRoof.trusses as { positions?: number[] } | undefined;
