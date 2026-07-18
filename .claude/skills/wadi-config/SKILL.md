@@ -97,8 +97,10 @@ It writes (and prints paths to) `plans.png` (floor plans — room layout + sizes
 `elevations.png` (front/back/left/right — heights + roof profile), and `roof.png`
 (roof top view), plus all SVGs under `.../2d/`. **Read the PNGs** after a
 non-trivial edit and confirm what you built matches the request (rooms in the
-right place, not overlapping, correct sizes in feet, roof over the plinth). It
-reuses the app's own generators, so it matches the app's 2D tabs byte-for-byte.
+right place, not overlapping, correct sizes in feet, roof over the plinth).
+**If it doesn't match, fix the config and re-render — repeat until it looks
+right, and only then tell the user it's ready.** It reuses the app's own
+generators, so it matches the app's 2D tabs byte-for-byte.
 See `prompts/verify-visually.md`.
 
 ## Top pitfalls (memorize)
