@@ -1,0 +1,91 @@
+name: Release desktop app
+
+# Build and publish the Wadi desktop installers (macOS .dmg, Windows .msi,
+# Linux .AppImage/.deb) whenever a version tag is pushed, e.g.:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# tauri-action runs `tauri build` on each OS (which runs the repo's
+# beforeBuildCommand — `npm run build:tauri` from editor/ — to build the
+# frontend into docs/, then bundles the native app) and uploads the
+# installers to a GitHub Release. The release is created as a DRAFT so you
+# can review the assets and edit notes before publishing; the download
+# links on the landing page (github.com/bijoor/wadi/releases) go live once
+# you publish it.
+#
+# NOTE: builds are UNSIGNED. macOS users open via right-click → Open (once);
+# Windows users click "More info → Run anyway" on SmartScreen. Add signing
+# secrets later if you want to remove those prompts.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'      # universal (Apple Silicon + Intel)
+            args: '--target universal-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Frontend deps live in editor/ (no root package.json). The peer-dep
+      # conflict (three-bvh-csg vs three-mesh-bvh) needs --legacy-peer-deps,
+      # matching local dev.
+      - name: Install frontend dependencies
+        working-directory: editor
+        run: npm install --legacy-peer-deps
+
+      - name: Build app and create release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Wadi ${{ github.ref_name }}'
+          releaseBody: |
+            Desktop builds of Wadi.
+
+            These builds are unsigned:
+            - macOS: right-click the app → Open (once) to get past Gatekeeper.
+            - Windows: on the SmartScreen prompt, click "More info" → "Run anyway".
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
