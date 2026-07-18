@@ -50,8 +50,12 @@ in the app (or you `open -a Wadi` it). Edit that exact file.
   as the source of truth so later changes re-derive cleanly — see
   `prompts/design-brief.md`. This is Wadi's "higher-level language": the brief is
   the intent, the config is the derived artifact, you are the compiler.
-- **Sketch → house.** They attach a floor plan / elevation. Transcribe it — see
-  `prompts/sketch-to-config.md` if present; core rule below.
+- **Sketch / drawings → house (recreate an existing design).** They attach a floor
+  plan / elevation / PDF (Claude Code reads PDFs directly). **Transcribe it
+  INCREMENTALLY — one room at a time: add a room, render with `preview.sh`, compare
+  it against the original, fix, then do the next. Never author the whole plan in
+  one shot** — it's extremely hard to QC and a single slip hides in the crowd. Full
+  method in `prompts/sketch-to-config.md`.
 - **Iterate.** They react to the live model ("make Bedroom 2 bigger", "add a north
   window"). Apply a **minimal patch** — see `prompts/update-existing.md`.
 
