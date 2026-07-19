@@ -232,7 +232,7 @@ function InteriorController({
     const move = (e: PointerEvent) => {
       if (e.pointerId !== lookId) return;
       yaw.current += (e.clientX - lx) * 0.0045; // drag right → look right
-      pitch.current = Math.max(-1.45, Math.min(1.45, pitch.current - (e.clientY - ly) * 0.0045));
+      pitch.current = Math.max(-1.45, Math.min(1.45, pitch.current + (e.clientY - ly) * 0.0045));
       lx = e.clientX;
       ly = e.clientY;
     };
