@@ -103,16 +103,16 @@ export function serializeConfig(config: HouseConfig): string {
 export async function saveConfig(
   config: HouseConfig,
   filePath: string | null,
-  defaultName = "house_config.json",
+  defaultName = "house.wadi",
 ): Promise<string | null> {
   const text = serializeConfig(config);
   if (isTauri()) {
     let target = filePath;
     if (!target) {
       const chosen = await tauriSave({
-        title: "Save house config",
-        defaultPath: defaultName,
-        filters: [{ name: "House config", extensions: ["json"] }],
+        title: "Save house",
+        defaultPath: toWadiName(defaultName),
+        filters: [{ name: "Wadi house", extensions: ["wadi"] }],
       });
       if (!chosen) throw new Error("Cancelled");
       target = chosen;
@@ -120,7 +120,7 @@ export async function saveConfig(
     await writeTextFile(target, text);
     return target;
   }
-  downloadBlob(text, defaultName);
+  downloadBlob(text, toWadiName(defaultName));
   return null;
 }
 
@@ -142,8 +142,8 @@ export async function saveAsWadi(config: HouseConfig): Promise<string | null> {
 
 // Kept as an alias so any lingering call sites that only care about
 // browser-style download don't break. New code should call saveConfig.
-export function downloadConfig(config: HouseConfig, filename = "house_config.json") {
-  downloadBlob(serializeConfig(config), filename);
+export function downloadConfig(config: HouseConfig, filename = "house.wadi") {
+  downloadBlob(serializeConfig(config), toWadiName(filename));
 }
 
 function downloadBlob(text: string, filename: string) {
@@ -161,6 +161,21 @@ function downloadBlob(text: string, filename: string) {
 function basename(path: string): string {
   const i = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
   return i >= 0 ? path.slice(i + 1) : path;
+}
+
+// Normalize any prior filename or display label to a clean `.wadi`
+// filename. `.wadi` is THE house-document format now; `.json` is legacy.
+// Strips a parenthetical annotation ("house_config.json (from repo)",
+// "Blank House (template)"), any directory, and a trailing
+// .wadi.json / .json / .wadi, then appends `.wadi`.
+export function toWadiName(name?: string | null): string {
+  let base = (name ?? "").trim().replace(/\s*\([^)]*\)\s*$/, "");
+  base = basename(base)
+    .replace(/\.wadi\.json$/i, "")
+    .replace(/\.json$/i, "")
+    .replace(/\.wadi$/i, "")
+    .trim();
+  return `${base || "house"}.wadi`;
 }
 
 // Generic text-save. Tauri: native save dialog + writeTextFile.

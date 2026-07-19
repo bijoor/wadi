@@ -654,7 +654,7 @@ function wireHeaderButtons(): void {
     const cfg = state.config;
     if (!cfg) return;
     try {
-      const saved = await saveConfig(cfg, state.filePath, state.filename ?? "house_config.json");
+      const saved = await saveConfig(cfg, state.filePath, state.filename ?? undefined);
       if (saved) state.setFilePath(saved);
       // saveConfig is silent on success; give explicit feedback so the
       // click doesn't feel like a no-op.
@@ -673,7 +673,7 @@ function wireHeaderButtons(): void {
     const cfg = state.config;
     if (!cfg) return;
     try {
-      const saved = await saveConfig(cfg, null, state.filename ?? "house_config.json");
+      const saved = await saveConfig(cfg, null, state.filename ?? undefined);
       if (saved) state.setFilePath(saved);
       flashSaved(btnSaveAs);
     } catch (e) {

@@ -4,8 +4,8 @@ import { downloadConfig, pickAndLoadConfig } from "../io/fileIO";
 import { validate } from "../schema/houseConfig";
 
 // Keyboard shortcuts:
-//   ⌘/Ctrl+O          — load JSON
-//   ⌘/Ctrl+S          — download JSON
+//   ⌘/Ctrl+O          — load .wadi / .json
+//   ⌘/Ctrl+S          — download .wadi
 //   ⌘/Ctrl+Z          — undo
 //   ⌘/Ctrl+Shift+Z    — redo (also ⌘/Ctrl+Y on non-Mac)
 //   ⌘/Ctrl+D          — duplicate selected object
@@ -54,7 +54,7 @@ function useKeyboardShortcuts() {
       }
       if (isMod && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        if (config) downloadConfig(config, filename ?? "house_config.json");
+        if (config) downloadConfig(config, filename ?? undefined);
         return;
       }
       if (isMod && e.key.toLowerCase() === "d") {
@@ -106,7 +106,7 @@ export function TopBar() {
 
   const handleDownload = () => {
     if (!config) return;
-    downloadConfig(config, filename ?? "house_config.json");
+    downloadConfig(config, filename ?? undefined);
   };
 
   const handleValidate = () => {
@@ -147,19 +147,19 @@ export function TopBar() {
         <button
           type="button"
           onClick={handleLoad}
-          title="Load JSON (⌘/Ctrl+O)"
+          title="Open a Wadi house — .wadi or .json (⌘/Ctrl+O)"
           className="rounded bg-slate-700 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-600"
         >
-          Load JSON…
+          Load…
         </button>
         <button
           type="button"
           onClick={handleDownload}
           disabled={!config || !isValid}
-          title="Download JSON (⌘/Ctrl+S)"
+          title="Download .wadi (⌘/Ctrl+S)"
           className="rounded bg-emerald-600 px-3 py-1.5 text-sm text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         >
-          Download JSON
+          Download .wadi
         </button>
         <button
           type="button"
