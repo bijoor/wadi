@@ -323,6 +323,17 @@
             border-radius: 10px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
+        /* Interior walk-through room picker container. Desktop: pinned
+           top-centre, clearing the 📚 / ⚙️ corner toggles. The mobile
+           @media block re-flows it (drops it below the toggle row and
+           caps its width). */
+        .interior-panel {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 11;
+        }
         .settings-panel {
             position: absolute;
             top: 20px;
@@ -1068,6 +1079,17 @@
                 padding: 1rem;
             }
 
+            /* Interior walk-through picker: on phones the top-centre row
+               (🚶 + dropdown + hint) is too wide and crashes into the
+               📚 / ⚙️ corner toggles. Drop it below the toggle row and
+               cap its width so its contents wrap (dropdown on top, hint
+               beneath) instead of overlapping. The React panel is set to
+               flex-wrap + centre so this reflow is clean. */
+            .interior-panel {
+                top: calc(max(env(safe-area-inset-top, 0px), 60px) + 52px);
+                max-width: min(320px, calc(100vw - 24px));
+            }
+
             /* Camera-preset bar: tighter, plus lifted above the fixed
                footer that now holds the tab icons. */
             .controls {
@@ -1172,7 +1194,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CcPTtRPz.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-yEok4Y6T.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/viewer-Db2tdhkk.css">
 </head>
 <body>
@@ -1289,9 +1311,10 @@
                 <div id="viewer-lighting-list"></div>
             </div>
             <!-- Interior walk-through room picker — mounted by main.ts.
-                 Sits top-centre so it clears the 📚 / ⚙️ corner toggles. -->
-            <div id="viewer-interior-panel"
-                 style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 11;"></div>
+                 Sits top-centre so it clears the 📚 / ⚙️ corner toggles.
+                 Positioning lives in the .interior-panel CSS rule so the
+                 mobile @media block can re-flow it (see below). -->
+            <div id="viewer-interior-panel" class="interior-panel"></div>
             <!-- Three.js Canvas mounted here by src/viewer/main.ts. Uses
                  the same House3D scene the editor renders, minus the
                  editor's toolbar / section cutter / preset row. Orbit

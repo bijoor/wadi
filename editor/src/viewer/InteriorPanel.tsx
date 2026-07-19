@@ -30,7 +30,16 @@ export function ViewerInteriorPanel() {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", pointerEvents: "auto" }}>
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "0.4rem",
+        pointerEvents: "auto",
+      }}
+    >
       <span title="Walk inside a room" style={{ fontSize: "1.1rem" }}>🚶</span>
       <select
         value={target?.key ?? ""}
