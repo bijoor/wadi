@@ -59,6 +59,15 @@ export function FlatRoofForm({
 
   return (
     <div>
+      <Section title="Roof">
+        <TextField
+          label="Name"
+          hint="Shown in the object tree. Optional."
+          value={(get<string>(bag, ["name"]) as string | undefined) ?? ""}
+          onCommit={(v) => setAt(["name"], v || undefined)}
+        />
+      </Section>
+
       <Section title="Position & footprint">
         <div className="mb-2 text-[11px] text-slate-400">
           Roof rectangle in project units (10 units = 1 ft). Position

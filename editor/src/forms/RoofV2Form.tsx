@@ -89,6 +89,15 @@ export function RoofV2Form({
 
   return (
     <div>
+      <Section title="Roof">
+        <TextField
+          label="Name"
+          hint="Shown in the object tree. Optional."
+          value={(get<string>(bag, ["name"]) as string | undefined) ?? ""}
+          onCommit={(v) => setAt(["name"], v || undefined)}
+        />
+      </Section>
+
       <Section title="Roof type">
         <SelectField
           label="Roof type"
