@@ -99,7 +99,7 @@ function MoveJoystick() {
       dy = (dy / d) * KNOB_R;
     }
     setKnob({ x: dx, y: dy });
-    interiorMove.x = dx / KNOB_R; // strafe (right +)
+    interiorMove.x = -dx / KNOB_R; // strafe — pad-right strafes right (felt swapped otherwise)
     interiorMove.y = -dy / KNOB_R; // forward (up on the pad = +)
   };
   const end = (e: React.PointerEvent) => {
