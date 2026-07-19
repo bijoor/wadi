@@ -40,8 +40,11 @@ export function computeTopFloorWallTopZ(
   // represents the full floor-to-floor rise.
   floors?: Array<{ height?: number }>,
   houseDefaults?: { floor_height?: number },
+  // Actual plinth height from config.plinth.height. Falls back to the code
+  // default only when the caller can't supply it.
+  plinthHeight?: number,
 ): number {
-  let z = globalConfig.plinth_height as number;
+  let z = (plinthHeight ?? globalConfig.plinth_height) as number;
   const defaultHeight =
     houseDefaults?.floor_height ??
     (globalConfig.floor_height as number | undefined) ??

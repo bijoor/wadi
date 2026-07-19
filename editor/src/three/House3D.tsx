@@ -68,7 +68,8 @@ export function House3D({ config }: { config: HouseConfig }) {
     // House-level defaults (defaults.floor_height / slab_thickness) win
     // over the code globals; per-floor overrides win over both.
     const houseDefaults = (config as { defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number } }).defaults;
-    const globals = readGlobals(houseDefaults);
+    const plinthHeight = (config.plinth as { height?: number } | undefined)?.height;
+    const globals = readGlobals(houseDefaults, plinthHeight);
     const plot = readPlotBounds(hc);
     const bands = computeFloorZBands(
       hc.floors ?? [],

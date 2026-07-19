@@ -66,6 +66,7 @@ function computeFloorRoofOverlay(
         0,
         hc.floors as Array<{ height?: number; slab_thickness?: number }>,
         houseDefaults,
+        (hc.plinth as { height?: number } | undefined)?.height,
       );
       const cfg = obj as unknown as RoofConfig;
       let spec: RoofSpec;

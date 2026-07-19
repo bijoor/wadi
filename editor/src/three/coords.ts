@@ -102,11 +102,14 @@ export function readPlotBounds(house: Record<string, unknown>): PlotBounds {
 // with optional house-level overrides layered on top.
 export function readGlobals(
   houseDefaults?: { floor_height?: number; wall_height?: number; slab_thickness?: number; wall_thickness?: number },
+  // Actual config.plinth.height — anchors the whole floor/wall Z-stack.
+  // Falls back to the code default only when not supplied.
+  plinthHeight?: number,
 ) {
   const g = DEFAULT_GLOBAL_CONFIG;
   return {
     wallThickness: houseDefaults?.wall_thickness ?? g.wall_thickness,
-    plinthHeight: g.plinth_height,
+    plinthHeight: plinthHeight ?? g.plinth_height,
     slabThickness: houseDefaults?.slab_thickness ?? g.floor_slab_thickness,
     roofThickness: g.roof_thickness,
     beamSize: g.beam_size,
