@@ -175,15 +175,20 @@ function OrientationGizmo({ plot }: { plot: { width: number; length: number } })
   const BLU = "#2563eb";     // z / up
 
   const Label = ({
-    p, text, color,
-  }: { p: [number, number, number]; text: string; color: string }) => (
+    p, text, color, size = fs,
+  }: {
+    p: [number, number, number];
+    text: string;
+    color: string;
+    size?: number;
+  }) => (
     <Billboard position={p}>
       <Text
-        fontSize={fs}
+        fontSize={size}
         color={color}
         anchorX="center"
         anchorY="middle"
-        outlineWidth={fs * 0.14}
+        outlineWidth={size * 0.05}
         outlineColor="#ffffff"
       >
         {text}
@@ -215,10 +220,10 @@ function OrientationGizmo({ plot }: { plot: { width: number; length: number } })
       <Label p={[0, bar, L + pad]} text="S" color={GRN} />
       <Label p={[0, bar, -L - pad]} text="N" color={GRN} />
 
-      {/* Axis names. */}
-      <Label p={[L * 0.5, bar + pad * 0.6, 0]} text="x" color={RED} />
-      <Label p={[0, bar + pad * 0.6, L * 0.5]} text="y" color={GRN} />
-      <Label p={[0, bar + 2 * L + pad, 0]} text="z" color={BLU} />
+      {/* Axis names — smaller than the compass letters. */}
+      <Label p={[L * 0.5, bar + pad * 0.6, 0]} text="x" color={RED} size={fs * 0.55} />
+      <Label p={[0, bar + pad * 0.6, L * 0.5]} text="y" color={GRN} size={fs * 0.55} />
+      <Label p={[0, bar + 2 * L + pad * 0.8, 0]} text="z" color={BLU} size={fs * 0.55} />
     </group>
   );
 }
