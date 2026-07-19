@@ -6,9 +6,8 @@
 
 import { Suspense, useMemo } from "react";
 import { createRoot } from "react-dom/client";
-import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
-import { Environment, OrbitControls, Grid, Text } from "@react-three/drei";
+import { Environment, OrbitControls, Grid, Text, Billboard } from "@react-three/drei";
 import {
   EffectComposer,
   N8AO,
@@ -124,7 +123,7 @@ function ViewerScene() {
         position={[0, -0.02, 0]}
       />
       <House3D config={config} />
-      <CompassRose plot={plot} />
+      <OrientationGizmo plot={plot} />
       <OrbitControls
         makeDefault
         enableDamping
@@ -147,116 +146,81 @@ function ViewerScene() {
   );
 }
 
-// Flat compass rose laid on the ground just OUTSIDE the NW corner of the
-// GROUND plane (not just the plot) so it doesn't overlap / clutter the
-// green lawn. Standard map convention: N points to Three's -Z axis (which
-// corresponds to Inkscape Y=0, the top of the floor plan). N arrow is
-// coloured red; the other three are white/grey. Everything sits on
-// the XZ plane at y=0.01 so it renders just above the grid without
-// z-fighting.
-function CompassRose({ plot }: { plot: { width: number; length: number } }) {
+// Simple orientation gizmo sitting just OUTSIDE the NW corner of the
+// GROUND plane (so it never overlaps the green lawn). Three SOLID axis
+// bars (boxes, not coplanar flats — so nothing z-fights) show the project
+// coordinate frame, labelled with both the axis name and the compass
+// direction:
+//   Three +X → project +x → East   (red)
+//   Three +Z → project +y → South  (green)   [N = -Z, the top of the plan]
+//   Three +Y → project +z → up     (blue)
+function OrientationGizmo({ plot }: { plot: { width: number; length: number } }) {
   const halfW = plot.width / 2;
   const halfL = plot.length / 2;
-  // Radius sized to a fraction of the plot so it's readable but not
-  // dominant.
   const R = Math.max(20, Math.min(halfW, halfL) * 0.22);
-  // The GroundPlane spans plot × 1.5 centred on the origin, so its
-  // half-extent is 0.75 × plot. Place the rose fully beyond that corner
-  // (outer disc radius R*1.35 + a small gap) so it sits on the neutral
-  // grid rather than the green.
-  const groundHalfW = plot.width * 0.75;
-  const groundHalfL = plot.length * 0.75;
-  const cx = -(groundHalfW + R * 1.35 + R * 0.5);
-  const cz = -(groundHalfL + R * 1.35 + R * 0.5);
-  // Lift the rose clearly above the grid (y=-0.02) so it doesn't z-fight
-  // with it. 0.04 units apart was far too little at this distance from the
-  // camera; a small fraction of R (with a floor) separates them cleanly
-  // while staying visually flat on the ground at model scale.
-  const y = Math.max(3, R * 0.06);
-  const letterSize = R * 0.45;
+  // The GroundPlane spans plot × 1.5 centred on the origin (half-extent
+  // 0.75 × plot); place the gizmo just beyond that NW corner on the grid.
+  const cx = -(plot.width * 0.75 + R * 1.6);
+  const cz = -(plot.length * 0.75 + R * 1.6);
+  // Sit on the ground; the vertical (z) bar rises from here.
+  const y = 0;
 
-  // A single triangular "arrow" pointing along +Z (south) in local
-  // space; the caller rotates it to face N / S / E / W. Colour is red
-  // for the N arrow only, white for the other three.
-  const Arrow = ({
-    dir,
-    color,
-  }: {
-    dir: "N" | "S" | "E" | "W";
-    color: string;
-  }) => {
-    const rotY =
-      dir === "N" ? Math.PI : dir === "S" ? 0 : dir === "E" ? Math.PI / 2 : -Math.PI / 2;
-    return (
-      <group rotation={[0, rotY, 0]}>
-        <mesh position={[0, 0, R * 0.55]} rotation={[-Math.PI / 2, 0, 0]}>
-          {/* Triangle: base at hub, tip at radius R. */}
-          <shapeGeometry args={[buildTriangle(R * 0.9, R * 0.35)]} />
-          <meshBasicMaterial color={color} side={2 /* DoubleSide */} />
-        </mesh>
-      </group>
-    );
-  };
+  const L = R;               // horizontal axis half-length
+  const bar = R * 0.06;      // bar thickness
+  const fs = R * 0.55;       // label size
+  const pad = R * 0.35;      // label offset past the tip
 
-  const letter = (
-    ch: string,
-    color: string,
-    pos: [number, number, number],
-  ) => (
-    <Text
-      position={pos}
-      rotation={[-Math.PI / 2, 0, 0]}
-      fontSize={letterSize}
-      color={color}
-      anchorX="center"
-      anchorY="middle"
-      outlineWidth={letterSize * 0.08}
-      outlineColor="black"
-    >
-      {ch}
-    </Text>
+  const RED = "#dc2626";     // x / East–West
+  const GRN = "#16a34a";     // y / North–South
+  const BLU = "#2563eb";     // z / up
+
+  const Label = ({
+    p, text, color,
+  }: { p: [number, number, number]; text: string; color: string }) => (
+    <Billboard position={p}>
+      <Text
+        fontSize={fs}
+        color={color}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={fs * 0.14}
+        outlineColor="#ffffff"
+      >
+        {text}
+      </Text>
+    </Billboard>
   );
 
   return (
     <group position={[cx, y, cz]}>
-      {/* Backing disc so the rose reads against any ground colour.
-          Opaque so the grid doesn't show through it. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[R * 1.35, 48]} />
-        <meshBasicMaterial color="#0f172a" />
+      {/* x axis (E–W) */}
+      <mesh position={[0, bar, 0]}>
+        <boxGeometry args={[2 * L, bar, bar]} />
+        <meshBasicMaterial color={RED} />
       </mesh>
-      {/* Outer ring. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-        <ringGeometry args={[R * 1.3, R * 1.35, 48]} />
-        <meshBasicMaterial color="#ffffff" side={2} />
+      {/* y axis (N–S) */}
+      <mesh position={[0, bar, 0]}>
+        <boxGeometry args={[bar, bar, 2 * L]} />
+        <meshBasicMaterial color={GRN} />
       </mesh>
-      {/* Central hub. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-        <circleGeometry args={[R * 0.1, 24]} />
-        <meshBasicMaterial color="#ffffff" />
+      {/* z axis (up) */}
+      <mesh position={[0, bar + L, 0]}>
+        <boxGeometry args={[bar, 2 * L, bar]} />
+        <meshBasicMaterial color={BLU} />
       </mesh>
-      <Arrow dir="N" color="#dc2626" />
-      <Arrow dir="S" color="#e5e7eb" />
-      <Arrow dir="E" color="#e5e7eb" />
-      <Arrow dir="W" color="#e5e7eb" />
-      {letter("N", "#ffffff", [0, 0.02, -R * 1.65])}
-      {letter("S", "#ffffff", [0, 0.02, R * 1.65])}
-      {letter("E", "#ffffff", [R * 1.65, 0.02, 0])}
-      {letter("W", "#ffffff", [-R * 1.65, 0.02, 0])}
+
+      {/* Compass letters at the four horizontal tips. */}
+      <Label p={[L + pad, bar, 0]} text="E" color={RED} />
+      <Label p={[-L - pad, bar, 0]} text="W" color={RED} />
+      <Label p={[0, bar, L + pad]} text="S" color={GRN} />
+      <Label p={[0, bar, -L - pad]} text="N" color={GRN} />
+
+      {/* Axis names. */}
+      <Label p={[L * 0.5, bar + pad * 0.6, 0]} text="x" color={RED} />
+      <Label p={[0, bar + pad * 0.6, L * 0.5]} text="y" color={GRN} />
+      <Label p={[0, bar + 2 * L + pad, 0]} text="z" color={BLU} />
     </group>
   );
-}
-
-// Build an isoceles triangle Shape whose apex sits at (0, -length/2) and
-// whose base spans ±width/2 on X at (0, +length/2). Used for the compass
-// arrows — the parent group rotates it per direction.
-function buildTriangle(length: number, width: number): THREE.Shape {
-  const s = new THREE.Shape();
-  s.moveTo(0, -length / 2);
-  s.lineTo(-width / 2, length / 2);
-  s.lineTo(width / 2, length / 2);
-  s.closePath();
-  return s;
 }
 
 export function mountViewer3D(container: HTMLElement): void {
