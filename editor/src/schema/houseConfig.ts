@@ -65,6 +65,10 @@ const floorSlab = z
     // slab_thickness (which itself defaults to house.defaults or the
     // code global). In project units.
     thickness: z.number().nonnegative().optional(),
+    // Vertical lift above the floor's slab level (project units, 10 = 1 ft).
+    // Default 0. Use it to place a slab at an intermediate height — e.g. a
+    // stair landing. Matches the beam `z_offset` convention.
+    z_offset: z.number().optional(),
   })
   .strict();
 
@@ -174,6 +178,11 @@ const staircase = z
     step_tread: positive(),
     step_width: positive(),
     direction: side,
+    // Vertical lift of the stair's FIRST step above the floor's walking
+    // surface (project units, 10 = 1 ft). Default 0. Set this on a second
+    // flight so it begins at a mid-height landing — e.g. z_offset =
+    // flight-1 num_steps × step_rise.
+    z_offset: z.number().optional(),
     material: z.string().optional(),
   })
   .strict();

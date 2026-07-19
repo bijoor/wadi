@@ -452,7 +452,8 @@ export function generateElevationView(
           x: objX,
           width: objW,
           height: slabThick,
-          z: slabZ,
+          // z_offset lifts the slab (e.g. a stair landing) above the floor.
+          z: slabZ + Number(obj.z_offset ?? 0),
           fill: "#808080",
         });
       } else if (objType === "beam") {
@@ -551,7 +552,9 @@ export function generateElevationView(
           x: objX,
           width: objW,
           height: totalRise,
-          z: wallZ,
+          // z_offset lifts the first step (e.g. a second flight starting at
+          // a mid-height landing) above the floor's walking surface.
+          z: wallZ + Number(obj.z_offset ?? 0),
           num_steps: numSteps,
           fill: "#C19A6B",
         });

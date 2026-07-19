@@ -76,7 +76,9 @@ the unified `roof`.
 
 ### `floor_slab`
 The floor deck. `x`, `y` (top-left), `width` (>0, along X), `length` (>0, along Y),
-`thickness` (≥0, optional — defaults to the floor's `slab_thickness`).
+`thickness` (≥0, optional — defaults to the floor's `slab_thickness`),
+`z_offset` (optional, project units, default 0 — lifts the slab above the floor's
+slab level; use it to place a **stair landing** at mid-height).
 
 ### `room`
 The main building block. A rectangle with four walls.
@@ -122,7 +124,15 @@ vertical thickness, defaults to the floor's `slab_thickness`), `z_offset`
 ### `staircase`
 `start_x`, `start_y`, `num_steps` (int >0), `step_rise` (>0), `step_tread` (>0),
 `step_width` (>0), `direction` (required side: the way the stair climbs),
-`material` (optional).
+`z_offset` (optional, project units, default 0 — lifts the FIRST step above the
+floor's walking surface), `material` (optional).
+
+**Stairs with a landing** — compose from primitives: a first flight (`z_offset` 0),
+a `floor_slab` **landing** at the turn, and a second flight, giving both the landing
+slab and the second flight the **same** `z_offset = flight-1 num_steps × step_rise`.
+With the landing slab the same thickness as the floor slab, its top lands exactly
+where the second flight begins, so they meet cleanly. Turn `direction` between
+flights for L/U-shaped stairs.
 
 ### `kitchen_platform`
 A polyline countertop/cooking slab along the base of walls.

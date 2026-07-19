@@ -90,14 +90,23 @@ export function FloorSlabForm({
           <NumberField label="Width" value={obj.width} onCommit={(v) => v !== undefined && patch({ width: v })} min={0.01} />
           <NumberField label="Length" value={obj.length} onCommit={(v) => v !== undefined && patch({ length: v })} min={0.01} />
         </div>
-        <NumberField
-          label="Thickness"
-          value={obj.thickness}
-          onCommit={(v) => patch({ thickness: v })}
-          allowEmpty
-          min={0}
-          hint="defaults to floor's slab thickness"
-        />
+        <div className="grid grid-cols-2 gap-x-2">
+          <NumberField
+            label="Thickness"
+            value={obj.thickness}
+            onCommit={(v) => patch({ thickness: v })}
+            allowEmpty
+            min={0}
+            hint="defaults to floor's slab thickness"
+          />
+          <NumberField
+            label="Z offset"
+            value={obj.z_offset}
+            onCommit={(v) => patch({ z_offset: v })}
+            allowEmpty
+            hint="lift above floor (10u = 1ft) — e.g. a stair landing"
+          />
+        </div>
       </Section>
     </div>
   );
@@ -121,6 +130,13 @@ export function StaircaseForm({
           <NumberField label="Step tread" value={obj.step_tread} onCommit={(v) => v !== undefined && patch({ step_tread: v })} min={0.01} />
           <NumberField label="Step rise" value={obj.step_rise} onCommit={(v) => v !== undefined && patch({ step_rise: v })} min={0.01} />
           <NumberField label="# Steps" value={obj.num_steps} onCommit={(v) => v !== undefined && patch({ num_steps: Math.round(v) })} min={1} step={1} />
+          <NumberField
+            label="Z offset"
+            value={obj.z_offset}
+            onCommit={(v) => patch({ z_offset: v })}
+            allowEmpty
+            hint="first step lift above floor (10u = 1ft) — for a landing"
+          />
         </div>
         <SelectField
           label="Direction"

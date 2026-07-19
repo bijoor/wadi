@@ -377,6 +377,9 @@ export function House3D({ config }: { config: HouseConfig }) {
           // Slab thickness defaults to the floor's slab_thickness
           // (band.slabThickness). Per-object `thickness` overrides.
           const slabT = (obj.thickness as number | undefined) ?? band.slabThickness;
+          // z_offset lifts the slab above the floor's slab level — e.g. a
+          // stair landing at mid-height (matches beam's z_offset).
+          const slabZOffset = (obj.z_offset as number | undefined) ?? 0;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
           push(
             (obj.layer as string | undefined) ?? slabLayer,
@@ -386,7 +389,7 @@ export function House3D({ config }: { config: HouseConfig }) {
               cz={c.z}
               width={w}
               length={l}
-              z={band.slabZ}
+              z={band.slabZ + slabZOffset}
               thickness={slabT}
             />,
           );
@@ -451,6 +454,9 @@ export function House3D({ config }: { config: HouseConfig }) {
           const stepRise = (obj.step_rise as number | undefined) ?? 5;
           const direction =
             (obj.direction as "north" | "south" | "east" | "west" | undefined) ?? "north";
+          // z_offset lifts the first step above the floor's walking surface,
+          // so a second flight can start at a mid-height landing.
+          const stairZOffset = (obj.z_offset as number | undefined) ?? 0;
           push(
             (obj.layer as string | undefined) ?? slabLayer,
             <StaircaseMesh
@@ -462,7 +468,7 @@ export function House3D({ config }: { config: HouseConfig }) {
               stepTread={stepTread}
               stepRise={stepRise}
               direction={direction}
-              wallZ={band.wallZ}
+              wallZ={band.wallZ + stairZOffset}
               plotWidth={plot.width}
               plotLength={plot.length}
             />,
