@@ -32,6 +32,8 @@ interface ConfigState {
 
   loadConfig: (config: HouseConfig, filename?: string, filePath?: string | null) => void;
   setFilePath: (filePath: string | null) => void;
+  // Clear the dirty flag after a successful save (Save / Save As).
+  markSaved: () => void;
   clearConfig: () => void;
   select: (sel: Selection | null) => void;
   setSiteEditorOpen: (open: boolean) => void;
@@ -116,6 +118,8 @@ export const useConfigStore = create<ConfigState>()(
       },
 
       setFilePath: (filePath) => set({ filePath }),
+
+      markSaved: () => set({ dirty: false }),
 
       clearConfig: () => {
         set({

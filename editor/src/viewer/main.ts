@@ -62,6 +62,7 @@ import {
 } from "../io/shareLink";
 import { isTauri, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-manager";
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
@@ -184,6 +185,8 @@ async function bootViewer(): Promise<void> {
   wireHeaderButtons();
   // Standard keyboard shortcuts (⌘/Ctrl + S / ⇧S / O / N / Z / ⇧Z, ⌘Y).
   wireKeyboardShortcuts();
+  // Offer to save unsaved changes before the app/tab closes.
+  wireCloseGuard();
   // Expose window.exportCurrentSvg for the inline lightbox toolbar.
   wireExports();
   applyStoredEditMode();
@@ -198,6 +201,10 @@ async function bootViewer(): Promise<void> {
 // or warm via the wadi://open-file event). Passing the path to loadConfig
 // makes the live watcher track the opened file.
 async function openWadiPath(path: string): Promise<void> {
+  // Warm opens (app already running) may replace unsaved work — offer to
+  // save first. On cold start nothing is loaded yet, so the guard is a
+  // no-op (dirty is false / no config).
+  if (!(await guardUnsaved("opening another model"))) return;
   try {
     const res = await loadConfigFromPath(path);
     useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
@@ -206,6 +213,99 @@ async function openWadiPath(path: string): Promise<void> {
     alert(
       `Couldn't open ${path}:\n${e instanceof Error ? e.message : String(e)}`,
     );
+  }
+}
+
+// ------------------------------------------------------------------
+// Unsaved-changes guard (New / Open / Close)
+// ------------------------------------------------------------------
+
+type UnsavedChoice = "save" | "discard" | "cancel";
+
+// Small 3-button dialog asking whether to save unsaved changes before a
+// destructive action. A plain confirm() only offers two buttons, so we
+// build our own; works identically in the browser and the Tauri webview.
+function confirmUnsaved(actionLabel: string): Promise<UnsavedChoice> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:99999;";
+    const box = document.createElement("div");
+    box.style.cssText =
+      "background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:10px;padding:20px 22px;max-width:400px;box-shadow:0 12px 48px rgba(0,0,0,.5);font-family:system-ui,-apple-system,sans-serif;";
+    const btn = (choice: UnsavedChoice, text: string, bg: string, fg: string) =>
+      `<button data-choice="${choice}" style="cursor:pointer;border:1px solid #334155;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:600;color:${fg};background:${bg};">${text}</button>`;
+    box.innerHTML =
+      `<div style="font-size:15px;font-weight:700;margin-bottom:8px;">Unsaved changes</div>` +
+      `<div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:18px;">You have unsaved changes. Save them before ${actionLabel}?</div>` +
+      `<div style="display:flex;gap:8px;justify-content:flex-end;">` +
+      btn("cancel", "Cancel", "#334155", "#e2e8f0") +
+      btn("discard", "Don't Save", "#7f1d1d", "#fecaca") +
+      btn("save", "Save", "#059669", "#ffffff") +
+      `</div>`;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const done = (choice: UnsavedChoice) => {
+      document.removeEventListener("keydown", onKey, true);
+      overlay.remove();
+      resolve(choice);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done("cancel"); }
+      else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); done("save"); }
+    };
+    document.addEventListener("keydown", onKey, true);
+    box.querySelectorAll("button").forEach((b) =>
+      b.addEventListener("click", () =>
+        done((b as HTMLElement).dataset.choice as UnsavedChoice),
+      ),
+    );
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) done("cancel");
+    });
+    (box.querySelector('[data-choice="save"]') as HTMLElement | null)?.focus();
+  });
+}
+
+// Guard a destructive action. Returns true if the caller may proceed,
+// false to abort. On "Save" we save first (adopting the chosen path); a
+// cancelled save dialog or write error aborts the action too.
+async function guardUnsaved(actionLabel: string): Promise<boolean> {
+  const st = useConfigStore.getState();
+  if (!st.dirty || !st.config) return true;
+  const choice = await confirmUnsaved(actionLabel);
+  if (choice === "cancel") return false;
+  if (choice === "discard") return true;
+  try {
+    const saved = await saveConfig(st.config, st.filePath, st.filename ?? undefined);
+    if (saved) st.setFilePath(saved);
+    st.markSaved();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Intercept app/tab close when there are unsaved changes. In Tauri we can
+// show the full Save / Don't Save / Cancel dialog and only then destroy the
+// window; a browser tab can only trigger its own native "Leave site?"
+// prompt (it may not offer to save — a browser-security limitation).
+function wireCloseGuard(): void {
+  if (isTauri()) {
+    const win = getCurrentWindow();
+    void win.onCloseRequested(async (event) => {
+      if (!useConfigStore.getState().dirty) return; // allow close
+      event.preventDefault();
+      if (await guardUnsaved("closing")) await win.destroy();
+    });
+  } else {
+    window.addEventListener("beforeunload", (e) => {
+      if (useConfigStore.getState().dirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
   }
 }
 
@@ -643,6 +743,7 @@ function wireHeaderButtons(): void {
   btnLoad?.addEventListener("click", async () => {
     // Uses the same file picker + Zod validation the editor's TopBar does.
     try {
+      if (!(await guardUnsaved("opening another model"))) return;
       const res = await pickAndLoadConfig();
       useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
     } catch (e) {
@@ -658,6 +759,7 @@ function wireHeaderButtons(): void {
     try {
       const saved = await saveConfig(cfg, state.filePath, state.filename ?? undefined);
       if (saved) state.setFilePath(saved);
+      state.markSaved();
       // saveConfig is silent on success; give explicit feedback so the
       // click doesn't feel like a no-op.
       flashSaved(btnSave);
@@ -677,6 +779,7 @@ function wireHeaderButtons(): void {
     try {
       const saved = await saveConfig(cfg, null, state.filename ?? undefined);
       if (saved) state.setFilePath(saved);
+      state.markSaved();
       flashSaved(btnSaveAs);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -831,16 +934,8 @@ function closeNewHouseModal(): void {
 }
 
 async function selectTemplate(t: TemplateEntry): Promise<void> {
-  // Undo history is our proxy for "has unsaved edits". If the user has
-  // pushed any past states since loading, warn before wiping.
-  const hasEdits = useConfigStore.temporal.getState().pastStates.length > 0;
-  if (hasEdits) {
-    const ok = confirm(
-      `Loading "${t.title}" will replace your current work. Continue?\n\n` +
-      `Tip: click Cancel and use 💾 Save first if you want to keep it.`,
-    );
-    if (!ok) return;
-  }
+  // Loading a template replaces the current house — offer to save first.
+  if (!(await guardUnsaved("creating a new house"))) return;
   try {
     // index.json lists files relative to the site root (e.g.
     // "templates/blank.json"); anchor them at "/" so they resolve there
