@@ -131,24 +131,63 @@ export const TEXT_SCALE_REF_SPAN = 450;
 
 let activeTextScale = 1;
 
-// Physical span of a house config, used as the scaling input. The plinth
-// footprint is the stable "how big is this house" proxy; falls back to
-// the site plot if the plinth is missing.
+// Physical span of a house config, used as the scaling input.
+//
+// This must track the actual DRAWN extent — the object bounding box that
+// sets each floor plan's viewBox — NOT the plinth. The plinth can be wildly
+// out of sync with the placed objects (e.g. an early-stage model with a big
+// declared plinth but only a slab drawn), which would over/under-scale the
+// text. We mirror floorPlan's bbox (floor_slab/beam/room + wall endpoints)
+// and take the largest span across all floors so text is uniform across a
+// house's drawings. Plinth, then site, are fallbacks only when nothing is
+// drawn yet.
 export function houseSpanUnits(hc: unknown): number {
   const o = hc as {
+    floors?: Array<{ objects?: Array<Record<string, unknown>> }>;
     plinth?: { length?: number; width?: number };
     site?: { plot_length?: number; plot_width?: number };
   } | null;
+
+  const num = (v: unknown): number | undefined =>
+    typeof v === "number" && Number.isFinite(v) ? v : undefined;
+
+  let best = 0;
+  for (const fl of o?.floors ?? []) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const obj of fl.objects ?? []) {
+      const t = obj.type as string;
+      if (t === "floor_slab" || t === "beam" || t === "room") {
+        const x = num(obj.x), y = num(obj.y);
+        const w = num(obj.width), l = num(obj.length);
+        if (x !== undefined && y !== undefined && w !== undefined && l !== undefined) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x + w > maxX) maxX = x + w;
+          if (y + l > maxY) maxY = y + l;
+        }
+      } else if (t === "wall") {
+        const sx = num(obj.start_x), sy = num(obj.start_y);
+        const ex = num(obj.end_x), ey = num(obj.end_y);
+        if (sx !== undefined && sy !== undefined && ex !== undefined && ey !== undefined) {
+          minX = Math.min(minX, sx, ex);
+          maxX = Math.max(maxX, sx, ex);
+          minY = Math.min(minY, sy, ey);
+          maxY = Math.max(maxY, sy, ey);
+        }
+      }
+    }
+    if (Number.isFinite(minX) && Number.isFinite(maxX)) {
+      best = Math.max(best, maxX - minX, maxY - minY);
+    }
+  }
+  if (best > 0) return best;
+
+  // Fallbacks: nothing drawable yet — use the plinth, then the site plot.
   const pl = o?.plinth;
-  const l = typeof pl?.length === "number" ? pl.length : 0;
-  const w = typeof pl?.width === "number" ? pl.width : 0;
-  const span = Math.max(l, w);
+  const span = Math.max(num(pl?.length) ?? 0, num(pl?.width) ?? 0);
   if (span > 0) return span;
   const s = o?.site;
-  return Math.max(
-    typeof s?.plot_length === "number" ? s.plot_length : 0,
-    typeof s?.plot_width === "number" ? s.plot_width : 0,
-  );
+  return Math.max(num(s?.plot_length) ?? 0, num(s?.plot_width) ?? 0);
 }
 
 // Factor from a physical span (project units). Clamped so tiny houses
