@@ -239,6 +239,16 @@ function LayersSection() {
 
   const removeAt = (i: number) => commit(layers.filter((_, j) => j !== i));
 
+  // Swap a layer with its neighbour. Array order = display order in the
+  // 3D view's 📚 layers menu, so this reorders the menu.
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= layers.length) return;
+    const next = layers.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    commit(next);
+  };
+
   const add = () => {
     // Unique id: layerN not already taken.
     const taken = new Set(layers.map((l) => l.id));
@@ -252,12 +262,33 @@ function LayersSection() {
       <div className="mb-2 text-[11px] text-slate-400">
         Toggle-able groups in the 3D view's 📚 layers menu. Assign an object
         to a layer with the <b>Layer</b> dropdown at the top of its editor;
-        unassigned objects fall back to an automatic mapping. Editing here
-        overrides the built-in defaults for this house.
+        unassigned objects fall back to an automatic mapping. Use <b>▲▼</b> to
+        reorder — the list order is the menu order. Editing here overrides the
+        built-in defaults for this house.
       </div>
       <div className="space-y-1">
         {layers.map((l, i) => (
           <div key={i} className="flex items-center gap-2">
+            <div className="flex shrink-0 flex-col">
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                className="rounded-t bg-slate-800 px-1 text-[9px] leading-tight text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
+                title="Move up"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === layers.length - 1}
+                className="rounded-b bg-slate-800 px-1 text-[9px] leading-tight text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
+                title="Move down"
+              >
+                ▼
+              </button>
+            </div>
             <input
               type="color"
               value={l.color ?? "#888888"}
