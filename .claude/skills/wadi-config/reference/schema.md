@@ -74,11 +74,28 @@ Every object has a `"type"`. Valid types: `floor_slab`, `pillar`, `beam`, `room`
 `hip_roof`/`gable_roof`/`flat_roof`/`shed_roof`). Prefer `room`+nested walls, and
 the unified `roof`.
 
+### Vertical placement — the unified `z_offset` convention
+Every object is placed at **`floor_base + z_offset`**, where the **floor base** is
+the plinth top for floor 0, else the floor below's top (driven purely by
+`plinth.height` + floor `height`s). `z_offset` is in project units (10 = 1 ft) and
+may be negative (a sunken area).
+
+The only per-type difference is the **default** when `z_offset` is omitted:
+- `floor_slab`, `beam`, `pillar` → **0** (they define / rise from the floor base).
+- `room`, `wall`, `staircase`, `kitchen_platform` → the floor's **resolved slab
+  thickness** (`floor.slab_thickness → house.defaults.slab_thickness → code
+  default`), so by default they sit on top of the slab — exactly as before.
+
+**Split-level floors**: to raise part of a floor, set the raised area's slab so its
+top lands at height `T` above the floor base, then give the `room`/`wall` on it
+`z_offset: T`. Everything references the same floor base, so the numbers line up.
+(`kitchen_platform` also accepts an absolute `base_z` that overrides `z_offset`.)
+
 ### `floor_slab`
 The floor deck. `x`, `y` (top-left), `width` (>0, along X), `length` (>0, along Y),
 `thickness` (≥0, optional — defaults to the floor's `slab_thickness`),
-`z_offset` (optional, project units, default 0 — lifts the slab above the floor's
-slab level; use it to place a **stair landing** at mid-height).
+`z_offset` (optional, project units, **default 0** — lift above the floor base;
+raise it for a **stair landing** or a raised split-level deck).
 
 ### `room`
 The main building block. A rectangle with four walls.
@@ -93,6 +110,10 @@ The main building block. A rectangle with four walls.
   (NOTE: a standalone `wall` object below is different — its `start`/`end` are the
   wall **centerline**, not the outer face.)
 - `height` (≥0, optional; 0 or absent = "use floor default"), `material` (optional).
+- `z_offset` (optional, project units) — vertical position above the floor base.
+  Omitted → the floor's slab thickness (sits on the slab, as before). Set it for a
+  **split-level** room (see the unified z_offset convention above). Its walls +
+  their openings move with it.
 - `walls` (optional): the **nested form** (canonical) is an object with any of
   `north`/`south`/`east`/`west`, each `{ height?, height_end?, openings?: [...] }`.
   (A legacy array-of-sides form also parses but don't emit it.)
@@ -111,37 +132,46 @@ A standalone (non-room-enclosing) wall segment.
 - `name` (required), `start_x`, `start_y`, `end_x`, `end_y`, `height` (>0, optional),
   `height_end` (optional — sloping top: `height` at the start end, `height_end`
   at the end end; the 3D model and 2D elevations both render the slope),
-  `material` (optional), `facing` (optional side), `openings` (optional array of
+  `material` (optional), `facing` (optional side),
+  `z_offset` (optional — vertical position above the floor base; omitted → the
+  floor's slab thickness, i.e. sits on the slab), `openings` (optional array of
   Openings).
 
 ### `pillar`
 `name` (required), `x`, `y`, `height` (>0). `width` and `length` are **both
 optional** (a missing one is defaulted by the builder → square/round pillar).
+`z_offset` (optional, **default 0**) — rises from the floor base, same convention
+as `beam`.
 
 ### `beam`
 `x`, `y`, `width` (>0, along X), `length` (>0, along Y), `height` (>0, optional —
 vertical thickness, defaults to the floor's `slab_thickness`), `z_offset`
-(optional — vertical lift above the floor slab, project units).
+(optional, **default 0** — vertical lift above the floor base, project units).
 
 ### `staircase`
 `start_x`, `start_y`, `num_steps` (int >0), `step_rise` (>0), `step_tread` (>0),
 `step_width` (>0), `direction` (required side: the way the stair climbs),
-`z_offset` (optional, project units, default 0 — lifts the FIRST step above the
-floor's walking surface), `material` (optional).
+`z_offset` (optional, project units — position of the FIRST step above the floor
+base; omitted → the floor's slab thickness, i.e. the walking surface),
+`material` (optional).
 
-**Stairs with a landing** — compose from primitives: a first flight (`z_offset` 0),
-a `floor_slab` **landing** at the turn, and a second flight, giving both the landing
-slab and the second flight the **same** `z_offset = flight-1 num_steps × step_rise`.
-With the landing slab the same thickness as the floor slab, its top lands exactly
-where the second flight begins, so they meet cleanly. Turn `direction` between
-flights for L/U-shaped stairs.
+**Stairs with a landing** — compose from primitives: a first flight (no `z_offset`
+→ starts on the slab), a `floor_slab` **landing** at the turn, and a second flight.
+With everything now measured from the **floor base**: give the landing slab
+`z_offset = flight-1 num_steps × step_rise` (its top then sits at
+`slab_thickness + that`), and give the second flight `z_offset = slab_thickness +
+flight-1 num_steps × step_rise` so its first step lands on the landing top. Turn
+`direction` between flights for L/U-shaped stairs.
 
 ### `kitchen_platform`
 A polyline countertop/cooking slab along the base of walls.
 - `name` (optional), `path` (array of `[x, y]` points, **min 2**),
   `side` (`"left"` | `"right"` — which side of the path the platform extends to),
-  `depth` (>0, perpendicular extent), `height` (>0, above floor slab top),
-  `base_z` (optional Z override), `material` (optional).
+  `depth` (>0, perpendicular extent), `height` (>0, above its base),
+  `z_offset` (optional — above the floor base; omitted → the floor's slab
+  thickness, i.e. sits on the slab top),
+  `base_z` (optional **absolute** Z override, wins over `z_offset` — prefer
+  `z_offset`), `material` (optional).
 
 ### `roof`  (the unified v2 roof)
 `{ "type": "roof", … }`. Schema is permissive (validated at compute time). Its

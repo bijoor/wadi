@@ -407,8 +407,16 @@ export function generateElevationView(
     // is plinth + Σ floor_heights only — slab_thickness is NOT
     // summed into currentZ. Slab still lives at the bottom of the
     // floor band as a mesh; walls sit above it.
-    const slabZ = currentZ;                       // floor's start Z (includes slab)
-    const wallZ = currentZ + slabThickness;       // top of slab / bottom of walls
+    // Per-floor resolved slab thickness (floor override → house default →
+    // code default). This is the default "sits on the slab" lift for on-slab
+    // objects under the unified z_offset convention, and where the walls
+    // start above the deck.
+    const floorSlabThickness =
+      (floorConfig as { slab_thickness?: number }).slab_thickness ??
+      (houseDefaults as { slab_thickness?: number } | undefined)?.slab_thickness ??
+      slabThickness;
+    const slabZ = currentZ;                       // floor's start Z (= floor base)
+    const wallZ = currentZ + floorSlabThickness;  // top of slab / bottom of walls
     const wallTop = currentZ + floorHeight;       // top of floor = next floor's start
 
     const floorName = floorConfig.name ?? `Floor ${floorNum}`;
@@ -431,7 +439,7 @@ export function generateElevationView(
         const slabY = obj.y as number;
         const slabWidth = obj.width as number;
         const slabLength = obj.length as number;
-        const slabThick = (obj.thickness as number | undefined) ?? slabThickness;
+        const slabThick = (obj.thickness as number | undefined) ?? floorSlabThickness;
 
         let objX: number, objW: number, objDepth: number;
         if (viewType === "left") {
@@ -552,9 +560,9 @@ export function generateElevationView(
           x: objX,
           width: objW,
           height: totalRise,
-          // z_offset lifts the first step (e.g. a second flight starting at
-          // a mid-height landing) above the floor's walking surface.
-          z: wallZ + Number(obj.z_offset ?? 0),
+          // Unified z_offset from the floor base; omitted → slab thickness so
+          // the first step sits on the walking surface (= wallZ) as before.
+          z: obj.z_offset != null ? slabZ + Number(obj.z_offset) : wallZ,
           num_steps: numSteps,
           fill: "#C19A6B",
         });
@@ -570,6 +578,9 @@ export function generateElevationView(
         const roomY = obj.y as number;
         const roomWidth = obj.width as number;
         const roomLength = obj.length as number;
+        // Unified z_offset from the floor base; omitted → sits on the slab
+        // top (= wallZ) as before. Split-level rooms set it explicitly.
+        const objBaseZ = obj.z_offset != null ? slabZ + Number(obj.z_offset) : wallZ;
 
         for (const direction of wallsList) {
           const wallKey = `${roomName}_${direction}`;
@@ -595,7 +606,7 @@ export function generateElevationView(
                 x: roomY,
                 width: roomLength,
                 height: wallHeight,
-                z: wallZ,
+                z: objBaseZ,
                 openings: wallOpenings[wallKey] ?? [],
                 coord_key: "y",
                 floor_height_expected: floorHeight,
@@ -614,7 +625,7 @@ export function generateElevationView(
                 x: roomY,
                 width: roomLength,
                 height: wallHeight,
-                z: wallZ,
+                z: objBaseZ,
                 openings: wallOpenings[wallKey] ?? [],
                 coord_key: "y",
                 floor_height_expected: floorHeight,
@@ -632,7 +643,7 @@ export function generateElevationView(
                 x: roomX,
                 width: roomWidth,
                 height: wallHeight,
-                z: wallZ,
+                z: objBaseZ,
                 openings: wallOpenings[wallKey] ?? [],
                 coord_key: "x",
                 floor_height_expected: floorHeight,
@@ -651,7 +662,7 @@ export function generateElevationView(
                 x: roomX,
                 width: roomWidth,
                 height: wallHeight,
-                z: wallZ,
+                z: objBaseZ,
                 openings: wallOpenings[wallKey] ?? [],
                 coord_key: "x",
                 floor_height_expected: floorHeight,
@@ -673,6 +684,9 @@ export function generateElevationView(
         const wallHeightVal = (obj.height as number | undefined) ?? floorHeight;
         const wallHeightEnd =
           (obj.height_end as number | undefined) ?? wallHeightVal;
+        // Unified z_offset from the floor base; omitted → sits on the slab
+        // top (= wallZ) as before.
+        const objBaseZ = obj.z_offset != null ? slabZ + Number(obj.z_offset) : wallZ;
 
         const isHorizontal = Math.abs(endY - startY) < 1;
         const isVertical = Math.abs(endX - startX) < 1;
@@ -691,7 +705,7 @@ export function generateElevationView(
             width: wallLength,
             height: wallHeightVal,
             height_end: wallHeightEnd,
-            z: wallZ,
+            z: objBaseZ,
             openings: wallOpenings[wallName] ?? [],
             coord_key: "x",
             floor_height_expected: floorHeight,
@@ -710,7 +724,7 @@ export function generateElevationView(
             width: wallLength,
             height: wallHeightVal,
             height_end: wallHeightEnd,
-            z: wallZ,
+            z: objBaseZ,
             openings: wallOpenings[wallName] ?? [],
             coord_key: "y",
             floor_height_expected: floorHeight,

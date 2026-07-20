@@ -65,9 +65,11 @@ const floorSlab = z
     // slab_thickness (which itself defaults to house.defaults or the
     // code global). In project units.
     thickness: z.number().nonnegative().optional(),
-    // Vertical lift above the floor's slab level (project units, 10 = 1 ft).
-    // Default 0. Use it to place a slab at an intermediate height — e.g. a
-    // stair landing. Matches the beam `z_offset` convention.
+    // Vertical position, as a lift above the FLOOR BASE (slabZ = plinth top
+    // for floor 0, else the floor below's top; project units, 10 = 1 ft).
+    // Default 0 → the slab's bottom sits at the floor base. Raise it to
+    // place a slab at an intermediate height (e.g. a stair landing). See
+    // the unified z_offset convention on `room`.
     z_offset: z.number().optional(),
   })
   .strict();
@@ -83,6 +85,10 @@ const pillar = z
     width: positive().optional(),
     length: positive().optional(),
     height: positive(),
+    // Lift above the FLOOR BASE (slabZ), project units. Default 0 — a pillar
+    // rises from the floor base (plinth top on floor 0) through the slab to
+    // the ring beam. Same convention as `beam`/`floor_slab`.
+    z_offset: z.number().optional(),
   })
   .strict();
 
@@ -100,8 +106,9 @@ const beam = z
     // `thickness` key instead (wadi_config.py) — see the known
     // field-name mismatch.
     height: positive().optional(),
-    // Vertical lift above the floor slab, in PROJECT UNITS
-    // (10 units = 1 ft). Was previously z_offset_ft in feet.
+    // Lift above the FLOOR BASE (slabZ), in PROJECT UNITS (10 units = 1 ft).
+    // Default 0 — the beam's bottom sits at the floor base. Same convention
+    // as `floor_slab`. (Was previously z_offset_ft in feet.)
     z_offset: z.number().optional(),
   })
   .strict();
@@ -130,6 +137,17 @@ const room = z
     // form treats 0 as "no override" and doesn't write it back.
     height: nonNegative().optional(),
     material: z.string().optional(),
+    // Vertical position of the room (its floor + walls), as a lift above the
+    // FLOOR BASE (slabZ = plinth top for floor 0, else the floor below's
+    // top; project units, 10 = 1 ft). This is the UNIFIED z_offset
+    // convention: every object is placed at `slabZ + z_offset`. When
+    // OMITTED, on-slab objects (room, wall, staircase, kitchen_platform)
+    // default z_offset to the floor's resolved slab thickness
+    // (floor.slab_thickness → house.defaults.slab_thickness → code default),
+    // so by default they sit on top of the slab, exactly as before. Set it
+    // explicitly for split-level floors — e.g. a room raised onto a thicker
+    // slab uses the same value the raised slab's top sits at.
+    z_offset: z.number().optional(),
     walls: z
       .union([
         z.array(side).describe("Legacy list form"),
@@ -162,6 +180,10 @@ const wall = z
     height_end: z.number().optional(),
     material: z.string().optional(),
     facing: side.optional(),
+    // Lift above the FLOOR BASE (slabZ), project units. Omitted → defaults
+    // to the floor's resolved slab thickness (sits on the slab, as before).
+    // Set it for a split-level wall. Same convention as `room`.
+    z_offset: z.number().optional(),
     openings: z.array(opening).optional(),
   })
   .strict();
@@ -178,10 +200,12 @@ const staircase = z
     step_tread: positive(),
     step_width: positive(),
     direction: side,
-    // Vertical lift of the stair's FIRST step above the floor's walking
-    // surface (project units, 10 = 1 ft). Default 0. Set this on a second
-    // flight so it begins at a mid-height landing — e.g. z_offset =
-    // flight-1 num_steps × step_rise.
+    // Vertical position of the stair's FIRST step, as a lift above the
+    // FLOOR BASE (slabZ; project units, 10 = 1 ft). Omitted → defaults to
+    // the floor's resolved slab thickness, so it sits on the walking surface
+    // as before. Set it for a second flight starting at a mid-height
+    // landing — e.g. z_offset = slab_thickness + flight-1 num_steps ×
+    // step_rise. Same convention as `room`.
     z_offset: z.number().optional(),
     material: z.string().optional(),
   })
@@ -270,8 +294,12 @@ const kitchenPlatform = z
     path: z.array(z.tuple([z.number(), z.number()])).min(2),
     side: z.enum(["left", "right"]),
     depth: positive(),           // horizontal extent from path (project units)
-    height: positive(),          // vertical extent above floor slab top (project units)
-    base_z: z.number().optional(),   // override base Z (defaults to floor slab top)
+    height: positive(),          // vertical extent above its base (project units)
+    // Lift above the FLOOR BASE (slabZ), project units. Omitted → defaults
+    // to the floor's resolved slab thickness (sits on the slab top, as
+    // before). Same convention as `room`.
+    z_offset: z.number().optional(),
+    base_z: z.number().optional(),   // ABSOLUTE base Z override (world units); wins over z_offset. Prefer z_offset.
     material: z.string().optional(),
   })
   .strict();

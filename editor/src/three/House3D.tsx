@@ -430,11 +430,12 @@ export function House3D({ config }: { config: HouseConfig }) {
               cz={c.z}
               width={w}
               length={l}
-              // Pillars start at the TOP OF THE PLINTH (Z = plinth
-              // height) and rise up through the slab to the ring beam
-              // above. Height should equal ring-beam Z minus plinth
-              // top (e.g. 226 − 30 = 196 in the current default config).
-              z={globals.plinthHeight}
+              // Pillars rise from the FLOOR BASE (band.slabZ = plinth top on
+              // floor 0, else the floor below's top) through the slab to the
+              // ring beam above. Unified z_offset convention (default 0),
+              // matching beams/slabs. On floor 0 this equals the plinth top,
+              // preserving the previous behaviour.
+              z={band.slabZ + ((obj.z_offset as number | undefined) ?? 0)}
               height={h}
             />,
           );
@@ -454,9 +455,12 @@ export function House3D({ config }: { config: HouseConfig }) {
           const stepRise = (obj.step_rise as number | undefined) ?? 5;
           const direction =
             (obj.direction as "north" | "south" | "east" | "west" | undefined) ?? "north";
-          // z_offset lifts the first step above the floor's walking surface,
-          // so a second flight can start at a mid-height landing.
-          const stairZOffset = (obj.z_offset as number | undefined) ?? 0;
+          // Unified z_offset: measured from the FLOOR BASE (band.slabZ).
+          // Omitted → the floor's slab thickness, so the first step sits on
+          // the walking surface (= band.wallZ) as before. Set it for a
+          // second flight starting at a mid-height landing.
+          const stairBaseZ =
+            band.slabZ + ((obj.z_offset as number | undefined) ?? band.slabThickness);
           push(
             (obj.layer as string | undefined) ?? slabLayer,
             <StaircaseMesh
@@ -468,7 +472,7 @@ export function House3D({ config }: { config: HouseConfig }) {
               stepTread={stepTread}
               stepRise={stepRise}
               direction={direction}
-              wallZ={band.wallZ + stairZOffset}
+              wallZ={stairBaseZ}
               plotWidth={plot.width}
               plotLength={plot.length}
             />,
@@ -483,7 +487,11 @@ export function House3D({ config }: { config: HouseConfig }) {
           const depth = obj.depth as number;
           const height = obj.height as number;
           const side = (obj.side as "left" | "right" | undefined) ?? "right";
-          const baseZ = (obj.base_z as number | undefined) ?? band.wallZ;
+          // Absolute `base_z` still wins; otherwise unified z_offset from the
+          // floor base (default = slab thickness → sits on the slab top).
+          const baseZ =
+            (obj.base_z as number | undefined) ??
+            band.slabZ + ((obj.z_offset as number | undefined) ?? band.slabThickness);
           for (let i = 0; i < path.length - 1; i++) {
             const a = path[i], b = path[i + 1];
             const dx = b[0] - a[0], dy = b[1] - a[1];
@@ -685,6 +693,10 @@ function emitRoomWalls(
   const rx = obj.x as number, ry = obj.y as number;
   const rw = obj.width as number, rl = obj.length as number;
   const t = (obj.wall_thickness as number | undefined) ?? globals.wallThickness;
+  // Unified z_offset from the FLOOR BASE. Omitted → the floor's slab
+  // thickness, so walls sit on the slab top (= band.wallZ) as before; set it
+  // for a split-level room.
+  const baseZ = band.slabZ + ((obj.z_offset as number | undefined) ?? band.slabThickness);
 
   for (const sideRaw of wallsList) {
     const side = sideRaw.toLowerCase() as "north" | "south" | "east" | "west";
@@ -720,7 +732,7 @@ function emitRoomWalls(
       <WallWithOpenings
         key={`${key}-${side}`}
         cx={c.x}
-        cy={band.wallZ + wh / 2}
+        cy={baseZ + wh / 2}
         cz={c.z}
         length={wallLen}
         depth={t}
@@ -743,7 +755,7 @@ function emitRoomWalls(
         <OpeningPane
           key={`${key}-${side}-op-${m.along.toFixed(2)}`}
           cx={c.x + dx}
-          cy={band.wallZ + wh / 2 + localFrom}
+          cy={baseZ + wh / 2 + localFrom}
           cz={c.z + dz}
           width={m.width}
           height={m.height}
@@ -776,6 +788,9 @@ function emitStandaloneWall(
   // flat top when absent. The start end (h) anchors the bottom, so cy/opening
   // maths below are unchanged.
   const hEnd = (obj.height_end as number | undefined) ?? h;
+  // Unified z_offset from the FLOOR BASE. Omitted → slab thickness, so the
+  // wall sits on the slab top (= band.wallZ) as before.
+  const baseZ = band.slabZ + ((obj.z_offset as number | undefined) ?? band.slabThickness);
   const dx = ex - sx, dy = ey - sy;
   const wallLen = Math.hypot(dx, dy);
   if (wallLen < 1e-6) return;
@@ -794,7 +809,7 @@ function emitStandaloneWall(
     <WallWithOpenings
       key={key}
       cx={c.x}
-      cy={band.wallZ + h / 2}
+      cy={baseZ + h / 2}
       cz={c.z}
       length={wallLen}
       depth={t}
@@ -815,7 +830,7 @@ function emitStandaloneWall(
       <OpeningPane
         key={`${key}-op-${m.along.toFixed(2)}`}
         cx={c.x + dxL}
-        cy={band.wallZ + h / 2 + localFrom}
+        cy={baseZ + h / 2 + localFrom}
         cz={c.z + dzL}
         width={m.width}
         height={m.height}
