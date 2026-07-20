@@ -57,6 +57,7 @@ const floorSlab = z
   .object({
     type: z.literal("floor_slab"),
     layer: z.string().optional(),
+    name: z.string().optional(),
     x: z.number(),
     y: z.number(),
     width: positive(),
@@ -96,6 +97,7 @@ const beam = z
   .object({
     type: z.literal("beam"),
     layer: z.string().optional(),
+    name: z.string().optional(),
     x: z.number(),
     y: z.number(),
     width: positive(),
@@ -193,6 +195,7 @@ const staircase = z
   .object({
     type: z.literal("staircase"),
     layer: z.string().optional(),
+    name: z.string().optional(),
     start_x: z.number(),
     start_y: z.number(),
     num_steps: z.number().int().positive(),

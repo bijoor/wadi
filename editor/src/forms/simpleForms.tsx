@@ -44,6 +44,9 @@ export function BeamForm({
   const patch = (next: Partial<typeof obj>) => replace(selection, { ...obj, ...next });
   return (
     <div>
+      <Section title="Identity">
+        <TextField label="Name" value={obj.name ?? ""} onCommit={(v) => patch({ name: v || undefined })} />
+      </Section>
       <Section title="Position & size">
         <div className="grid grid-cols-2 gap-x-2">
           <NumberField label="X" value={obj.x} onCommit={(v) => v !== undefined && patch({ x: v })} />
@@ -83,6 +86,9 @@ export function FloorSlabForm({
   const patch = (next: Partial<typeof obj>) => replace(selection, { ...obj, ...next });
   return (
     <div>
+      <Section title="Identity">
+        <TextField label="Name" value={obj.name ?? ""} onCommit={(v) => patch({ name: v || undefined })} />
+      </Section>
       <Section title="Slab footprint">
         <div className="grid grid-cols-2 gap-x-2">
           <NumberField label="X" value={obj.x} onCommit={(v) => v !== undefined && patch({ x: v })} />
@@ -122,6 +128,9 @@ export function StaircaseForm({
   const patch = (next: Partial<typeof obj>) => replace(selection, { ...obj, ...next });
   return (
     <div>
+      <Section title="Identity">
+        <TextField label="Name" value={obj.name ?? ""} onCommit={(v) => patch({ name: v || undefined })} />
+      </Section>
       <Section title="Position & shape">
         <div className="grid grid-cols-2 gap-x-2">
           <NumberField label="Start X" value={obj.start_x} onCommit={(v) => v !== undefined && patch({ start_x: v })} />
