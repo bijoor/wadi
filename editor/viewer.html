@@ -376,7 +376,13 @@
             font-size: 0.9rem;
             display: none;             /* opened via the matching toggle */
             max-width: 260px;
-            max-height: calc(100vh - 200px);
+            /* Fit within the viewport so a long list scrolls instead of
+               running off-screen. The panel's top sits ~240px down (fixed
+               header + tab strip + its own 124px offset); leave a 16px gap
+               at the bottom. (A `%` max-height can't be used here — the
+               positioned ancestor's height is indefinite, so it doesn't
+               resolve; `vh` is reliable.) */
+            max-height: calc(100vh - 256px);
             overflow-y: auto;
         }
         .layers-panel.active, .camera-panel.active {
@@ -1038,8 +1044,13 @@
                 left: max(env(safe-area-inset-left, 0px), 12px);
                 right: auto;
                 max-width: 220px;
-                /* Leave room for the fixed footer + safe area. */
-                max-height: calc(100vh - max(env(safe-area-inset-top, 0px), 60px) - 184px - env(safe-area-inset-bottom, 0px));
+                /* Fit between the two-toggle stack and the fixed bottom tab
+                   footer, so a long list scrolls rather than sliding under
+                   the footer. Panel top ≈ 232px (header + toggle stack);
+                   footer ≈ 48px; 16px gap. Kept as a flat vh constant plus a
+                   bare env() — max()/nested-env inside calc() isn't reliably
+                   parsed by every WebView. */
+                max-height: calc(100vh - 296px - env(safe-area-inset-bottom, 0px));
                 overflow-y: auto;
             }
             .layers-panel.active, .camera-panel.active {
