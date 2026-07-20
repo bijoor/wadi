@@ -306,12 +306,21 @@ export function generateElevationView(
     const floorNum = floorConfig.floor_number ?? 0;
     // Fallback chain: per-floor override → house-level defaults →
     // global default.
-    const houseDefaults = (houseConfig as { defaults?: { floor_height?: number } }).defaults;
+    const houseDefaults = (houseConfig as { defaults?: { floor_height?: number; wall_height?: number } }).defaults;
     const floorHeight =
       (floorConfig as { height?: number }).height ??
       houseDefaults?.floor_height ??
       GC.floor_height ??
       100;
+    // A room/wall's DEFAULT drawn height is the floor's WALL height — NOT
+    // the floor-to-floor height. These are independent fields; the 3D model
+    // uses wall_height, so the elevation must too, or the walls come out
+    // taller (by floor_height − wall_height) than the 3D.
+    const floorWallHeight =
+      (floorConfig as { wall_height?: number }).wall_height ??
+      houseDefaults?.wall_height ??
+      GC.wall_height ??
+      floorHeight;
 
     const floorObjectsWithDepth: [number, number, Obj][] = [];
 
@@ -592,10 +601,10 @@ export function generateElevationView(
           const whEntry =
             wallHeights[direction] ??
             (obj.height as number | undefined) ??
-            floorHeight;
+            floorWallHeight;
           const wallHeight =
             typeof whEntry === "object" && whEntry !== null
-              ? ((whEntry as { height?: number }).height ?? floorHeight)
+              ? ((whEntry as { height?: number }).height ?? floorWallHeight)
               : (whEntry as number);
 
           if (viewType === "left" || viewType === "right") {
@@ -686,7 +695,7 @@ export function generateElevationView(
         const startY = obj.start_y as number;
         const endX = obj.end_x as number;
         const endY = obj.end_y as number;
-        const wallHeightVal = (obj.height as number | undefined) ?? floorHeight;
+        const wallHeightVal = (obj.height as number | undefined) ?? floorWallHeight;
         const wallHeightEnd =
           (obj.height_end as number | undefined) ?? wallHeightVal;
         // Unified z_offset from the floor base; omitted → sits on the slab
