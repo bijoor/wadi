@@ -1837,10 +1837,20 @@
 
             // Update state
             svgState.scale = scale;
+            // Remember the fit scale so the zoom clamps can go below it —
+            // large composite sheets fit at a tiny scale (e.g. 0.037), and a
+            // fixed 0.1 minimum would block all zooming on them.
+            svgState.fitScale = scale;
             svgState.translateX = translateX;
             svgState.translateY = translateY;
 
             updateTransform();
+        }
+
+        // Minimum allowed zoom: below the current fit scale so even very
+        // large sheets can be zoomed in from their fitted (tiny) scale.
+        function minZoom() {
+            return Math.min(0.1, (svgState.fitScale || 1) * 0.5);
         }
 
         // Setup pan and zoom - loads SVG via fetch if filename provided
@@ -1901,7 +1911,7 @@
                 const y = e.clientY - rect.top;
 
                 const newScale = svgState.scale * delta;
-                if (newScale < 0.1 || newScale > 10) return;
+                if (newScale < minZoom() || newScale > 10) return;
 
                 // Zoom towards mouse position
                 svgState.translateX = x - (x - svgState.translateX) * delta;
@@ -1973,7 +1983,7 @@
                     const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
                     const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
                     const newScale = svgState.scale * delta;
-                    if (newScale >= 0.1 && newScale <= 10) {
+                    if (newScale >= minZoom() && newScale <= 10) {
                         svgState.translateX = mx - (mx - svgState.translateX) * delta;
                         svgState.translateY = my - (my - svgState.translateY) * delta;
                         svgState.scale = newScale;
@@ -2027,7 +2037,7 @@
         // the wheel handler does keeps the pivot where the user expects.
         function zoomAround(factor, anchorX, anchorY) {
             const newScale = svgState.scale * factor;
-            if (newScale < 0.1 || newScale > 10) return;
+            if (newScale < minZoom() || newScale > 10) return;
             svgState.translateX = anchorX - (anchorX - svgState.translateX) * factor;
             svgState.translateY = anchorY - (anchorY - svgState.translateY) * factor;
             svgState.scale = newScale;
