@@ -1,5 +1,6 @@
 import { DEFAULT_GLOBAL_CONFIG, scaledTextSize, scaledSpacing } from "./config";
 import { formatDimension, f, fFloat } from "./format";
+import { resolveDim } from "./dimResolve";
 
 // Port of svg_2d.py::svg_draw_dimension_line. Produces the same nested
 // `<g class="dimension">...</g>` block as the Python original, including
@@ -46,6 +47,21 @@ export function svgDrawDimensionLine(
   const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   if (length < minLength) return "";
   const dimText = formatDimension(length);
+
+  // Intelligent-dimensioning seam. A strict no-op unless the Layout composite
+  // has begun a resolve pass — then it may skip a dimension already drawn in
+  // this view (dedup) and/or push this one's offset out so its label clears
+  // the ones already placed (overlap). The label-gap constants below mirror
+  // the textY/textX formulas so the estimated box matches what we emit.
+  {
+    const r = resolveDim({
+      x1, y1, x2, y2, offset, isHorizontal,
+      text: dimText, fontSize: textSize,
+      gapAbove: scaledSpacing(5), gapBelow: scaledSpacing(3),
+    });
+    if (r.skip) return "";
+    offset = r.offset;
+  }
 
   let svg = '<g class="dimension">\n';
   // Per-coord format selectors: choose Python-int vs Python-float

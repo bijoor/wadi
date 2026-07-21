@@ -16,6 +16,7 @@
 import { DEFAULT_GLOBAL_CONFIG, activeDimensions, scaledTextSize, scaledSpacing } from "./config";
 import { f, fFloat } from "./format";
 import { svgDrawDimensionLine } from "./dimensions";
+import { resetDimView } from "./dimResolve";
 import { deriveAllHipRoofs } from "./roofGeometry";
 import { deriveAllGableRoofs } from "./roof/gableGeometry";
 import type { HouseConfig } from "./expand";
@@ -95,7 +96,17 @@ export function generateElevationView(
   // (north) elevation so its world-X runs east→right, matching the plan for
   // projection alignment. Position-only (text stays upright).
   flipX = false,
+  // Cross-view dedup: when the plan already carries every horizontal span
+  // (the composite case), suppress the elevation's HORIZONTAL outer dims
+  // (overall width + opening widths) and keep only the vertical height dims
+  // the plan can't show. Draw-only — never touches the margin maths, so the
+  // composite's layout stays put. Defaults false → standalone tabs unchanged.
+  suppressSpanDims = false,
 ): string {
+  // Each elevation is its own coordinate space — start a fresh dimension
+  // registry so its label boxes are never compared against the plan's or
+  // another elevation's. No-op unless the Layout composite began a resolve pass.
+  resetDimView();
   const site = (houseConfig.site as Record<string, unknown> | undefined) ?? {};
   void site;
   const plinthConfig =
@@ -1233,17 +1244,22 @@ export function generateElevationView(
       }
     }
 
-    // 2. Top overall width
-    const topY = zToY(totalHeight);
-    const topOffset = -baseOffset;
-    svg += svgDrawDimensionLine(
-      0, topY, width, topY,
-      topOffset, true, false, false,
-      false, false, true, false, true,
-    );
+    // 2. Top overall width — a HORIZONTAL span the plan already carries.
+    // Cross-view dedup (composite) suppresses the draw call; the margin math
+    // above/below is untouched so the composite layout stays put.
+    if (!suppressSpanDims) {
+      const topY = zToY(totalHeight);
+      const topOffset = -baseOffset;
+      svg += svgDrawDimensionLine(
+        0, topY, width, topY,
+        topOffset, true, false, false,
+        false, false, true, false, true,
+      );
+    }
 
-    // 3. Opening dimensions
-    if (elevationOpenings.length > 0) {
+    // 3. Opening dimensions — HORIZONTAL widths + gaps, also carried by the
+    // plan's opening chain. Suppressed under cross-view dedup.
+    if (!suppressSpanDims && elevationOpenings.length > 0) {
       const wallGroups: Record<string, ElevationOpening[]> = {};
       for (const opening of elevationOpenings) {
         const wk = opening.wall_name;

@@ -15,6 +15,7 @@ import { generateFloorPlanSvg } from "./floorPlan";
 import { generateElevationView } from "./elevationView";
 import { expandRoomWalls, type HouseConfig } from "./expand";
 import { applyDrawFilter, dimShowFlags, type DrawFilter } from "./drawFilter";
+import { beginDimResolve, endDimResolve } from "./dimResolve";
 
 interface Dim {
   w: number;
@@ -86,13 +87,26 @@ export function generateCompositeSheet(
   opts: CompositeSheetOptions = {},
 ): string {
   const scale = opts.scale ?? 2.0;
+  // Smart dimensioning flags (composite-only; renderer-level default OFF so
+  // the standalone tabs stay byte-identical). The UI defaults these ON.
+  const smart = opts.filter?.smart ?? {};
   try {
     // Object selection: pre-filter the config so the renderers only see the
     // chosen objects. Annotation toggles: set the active dimension flags.
     const selected = applyDrawFilter(houseConfig, opts.filter);
     setActiveDimFlags(dimShowFlags(opts.filter));
-    return renderSheet(selected as HouseConfig & Record<string, unknown>, floorNum, scale);
+    // Within-view dedup + overlap resolution run through the shared resolver
+    // seam in dimensions.ts. crossView is threaded separately (it suppresses
+    // whole elevation blocks, not individual dims).
+    beginDimResolve({ dedup: !!smart.withinView, overlap: !!smart.overlap });
+    return renderSheet(
+      selected as HouseConfig & Record<string, unknown>,
+      floorNum,
+      scale,
+      { crossView: !!smart.crossView },
+    );
   } finally {
+    endDimResolve(); // clear resolver state — never leak to other renders
     setActiveDimFlags(null); // never leak the override to other renders
   }
 }
@@ -101,6 +115,7 @@ function renderSheet(
   houseConfig: HouseConfig & Record<string, unknown>,
   floorNum: number,
   scale: number,
+  smart: { crossView: boolean },
 ): string {
   // Both the plan and elevation renderers expect room walls expanded to the
   // legacy list form (the All* wrappers do this too). Expand once.
@@ -123,10 +138,16 @@ function renderSheet(
   // aligns. "back" already runs east→right, so no flip. Elevations keep their
   // full dimension set; the gap below is sized to clear each view's
   // dimension/label overflow so nothing overlaps.
-  const north = generateElevationView(hc, "front", scale, true); // top
-  const south = generateElevationView(hc, "back", scale); // bottom
-  const left = generateElevationView(hc, "left", scale); // West (left)
-  const right = generateElevationView(hc, "right", scale); // East (right)
+  // Cross-view dedup: the plan already carries every HORIZONTAL span (widths
+  // via N/S chains, depths via E/W chains) and every opening width, so the
+  // elevations suppress those and keep only their vertical HEIGHT dims (the
+  // plan has no Z info). Margin math inside the elevations is untouched, so
+  // the layout below stays put whether or not the flag is on.
+  const ss = smart.crossView;
+  const north = generateElevationView(hc, "front", scale, true, ss); // top
+  const south = generateElevationView(hc, "back", scale, false, ss); // bottom
+  const left = generateElevationView(hc, "left", scale, false, ss); // West (left)
+  const right = generateElevationView(hc, "right", scale, false, ss); // East (right)
 
   const P = svgDims(plan);
   const N = svgDims(north);

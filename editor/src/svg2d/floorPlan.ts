@@ -21,6 +21,7 @@ import {
 } from "./dimensions";
 import type { RoofSpec } from "./roof/v2/model";
 import { renderV2ToFloorPlan } from "./roof/v2/projections";
+import { resetDimView, setDimBump } from "./dimResolve";
 
 interface FloorConfig {
   floor_number?: number;
@@ -54,6 +55,10 @@ export function generateFloorPlanSvg(
   const floorNum = floorConfig.floor_number ?? 0;
   const floorName = floorConfig.name ?? `Floor ${floorNum}`;
   const dim = activeDimensions();
+
+  // Start a fresh per-view dimension registry (dedup keys + occupied label
+  // boxes). No-op unless the Layout composite began a resolve pass.
+  resetDimView();
 
   // -----------------------------------------------------------------
   // Bounds
@@ -514,6 +519,14 @@ export function generateFloorPlanSvg(
 
     if (dim.show_inner_dimensions) {
       const innerOffset = scaledSpacing(dim.inner_dimension_offset);
+      // Inner dims are all authored at the SINGLE innerOffset, so dense plans
+      // pile their labels on top of each other. Give this block a generous
+      // bump budget (overlap pass only) so colliding inner labels fan out into
+      // stacked levels — steering around the outer/floor-extent boxes already
+      // registered above (which stay put, register-don't-bump). Dense plans
+      // (the sam house) need many levels to fully separate, so allow a deep
+      // stack. No-op unless the composite's overlap flag is on.
+      setDimBump(16, offsetIncrement);
       const perimN_S_keys = new Set(
         perimeter.north.concat(perimeter.south).map((e) => normalizeEdgeKey(e.x1, e.y1, e.x2, e.y2)),
       );
@@ -532,6 +545,9 @@ export function generateFloorPlanSvg(
           svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, innerOffset, false, true, true);
         }
       }
+      // Restore register-don't-bump for any dimensions emitted afterward
+      // (slab / room chains own their own placement).
+      setDimBump(0, 0);
     }
   }
 

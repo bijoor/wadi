@@ -701,7 +701,12 @@ function wireLayoutApi(): void {
     // composite is correct on its own (not reliant on a prior rebuildSvgMap
     // having set the module-level "active" values).
     setDimensionUnits((cfg as { units?: Parameters<typeof setDimensionUnits>[0] }).units);
-    setTextScale(computeTextScale(houseSpanUnits(cfg)));
+    // Auto legibility scale × the panel's manual multiplier (default 1). The
+    // manual lever lets the user tame oversized text on large houses, where
+    // the span-based auto factor can reach its cap.
+    const manual = filter?.textScale;
+    const factor = typeof manual === "number" && manual > 0 ? manual : 1;
+    setTextScale(computeTextScale(houseSpanUnits(cfg)) * factor);
     return generateCompositeSheet(cfg as never, floorNum, { filter });
   };
 

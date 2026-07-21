@@ -22,6 +22,17 @@ export interface DrawFilter {
   // Room-name label toggles: whether to show room names at all, and whether
   // to draw short mnemonic keys + a legend instead of full names.
   labels?: Partial<{ roomNames: boolean; roomAbbrev: boolean }>;
+  // Smart-dimensioning toggles (composite sheet only). crossView: elevations
+  // drop horizontal spans the plan already carries. withinView: skip a chain
+  // re-measuring an edge already dimensioned in the same view. overlap: bump
+  // colliding dimension labels to stacked offset levels. Read directly by
+  // compositeSheet (not via dimShowFlags).
+  smart?: Partial<{ crossView: boolean; withinView: boolean; overlap: boolean }>;
+  // Manual text-size multiplier (composite only). The composite auto-scales
+  // fonts with the house's physical span so text stays legible at fit-to-view;
+  // on a large house that can render labels oversized. This multiplies that
+  // auto factor (1 = unchanged). Read by main.ts::wadiRenderLayout, not here.
+  textScale?: number;
 }
 
 const OPENING_TYPES = new Set(["door", "window"]);

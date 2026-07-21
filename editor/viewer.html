@@ -1628,7 +1628,23 @@
                             <div class="layout-filter-head"><span>Room labels</span></div>
                             <div class="layout-filter-list" id="layout-labels-list">
                                 <label><input type="checkbox" data-label="names" checked onchange="onLayoutFilterChange()"> Room names</label>
-                                <label><input type="checkbox" data-label="abbrev" onchange="onLayoutFilterChange()"> Abbreviate + legend</label>
+                                <label><input type="checkbox" data-label="abbrev" checked onchange="onLayoutFilterChange()"> Abbreviate + legend</label>
+                            </div>
+                        </div>
+                        <div class="layout-filter-group">
+                            <div class="layout-filter-head"><span>Smart dimensions</span></div>
+                            <div class="layout-filter-list" id="layout-smart-list">
+                                <label><input type="checkbox" data-smart="crossView" checked onchange="onLayoutFilterChange()"> Skip cross-view repeats</label>
+                                <label><input type="checkbox" data-smart="withinView" checked onchange="onLayoutFilterChange()"> Skip in-view repeats</label>
+                                <label><input type="checkbox" data-smart="overlap" checked onchange="onLayoutFilterChange()"> Un-overlap labels</label>
+                            </div>
+                        </div>
+                        <div class="layout-filter-group">
+                            <div class="layout-filter-head"><span>Text size</span><span id="layout-textscale-val" style="opacity:.7;font-variant-numeric:tabular-nums;">1.0&times;</span></div>
+                            <div class="layout-filter-list">
+                                <input type="range" id="layout-textscale" min="0.3" max="1.5" step="0.1" value="1" style="width:100%;"
+                                    oninput="document.getElementById('layout-textscale-val').innerHTML = (parseFloat(this.value).toFixed(1) + '&times;'); onLayoutFilterChange();">
+                                <div style="opacity:.6;font-size:.85em;">Shrinks/grows all labels. Lower it on large houses where text looks oversized.</div>
                             </div>
                         </div>
                     </aside>
@@ -2002,7 +2018,16 @@
             layersOff: new Set(),
             objectsOff: new Set(),
             dims: { outer: true, inner: true, room: true, opening: true },
-            labels: { names: true, abbrev: false },
+            // Abbreviate room names by default in the composite (declutters the
+            // sheet — the whole point of the feature). The standalone Floor
+            // Plans tab is unaffected (renderer default stays full names).
+            labels: { names: true, abbrev: true },
+            // Smart dimensioning: default ON in the composite (decluttering the
+            // sheet is the whole point). Renderer-level defaults stay OFF so the
+            // standalone Floor Plan / Elevation tabs are unaffected.
+            smart: { crossView: true, withinView: true, overlap: true },
+            // Manual text-size multiplier on top of the auto span-based scale.
+            textScale: 1,
         };
         let layoutMeta = null;
 
@@ -2074,6 +2099,16 @@
             document.querySelectorAll('#layout-labels-list input[data-label]').forEach((cb) => {
                 cb.checked = f.labels[cb.dataset.label] === true;
             });
+            document.querySelectorAll('#layout-smart-list input[data-smart]').forEach((cb) => {
+                cb.checked = (f.smart || {})[cb.dataset.smart] !== false;
+            });
+            const ts = document.getElementById('layout-textscale');
+            if (ts) {
+                const v = (typeof f.textScale === 'number' && f.textScale > 0) ? f.textScale : 1;
+                ts.value = String(v);
+                const lbl = document.getElementById('layout-textscale-val');
+                if (lbl) lbl.innerHTML = v.toFixed(1) + '&times;';
+            }
         }
 
         // Pull the current checkbox states back into window.layoutFilter.
@@ -2089,6 +2124,10 @@
             document.querySelectorAll('#layout-dims-list input[data-dim]').forEach((cb) => { f.dims[cb.dataset.dim] = cb.checked; });
             f.labels = {};
             document.querySelectorAll('#layout-labels-list input[data-label]').forEach((cb) => { f.labels[cb.dataset.label] = cb.checked; });
+            f.smart = {};
+            document.querySelectorAll('#layout-smart-list input[data-smart]').forEach((cb) => { f.smart[cb.dataset.smart] = cb.checked; });
+            const ts = document.getElementById('layout-textscale');
+            if (ts) { const v = parseFloat(ts.value); f.textScale = (v > 0) ? v : 1; }
         }
 
         function onLayoutFilterChange() {
@@ -2282,6 +2321,8 @@
                 hiddenObjects: Array.from(f.objectsOff),
                 dims: f.dims,
                 labels: { roomNames: f.labels.names, roomAbbrev: f.labels.abbrev },
+                smart: f.smart,
+                textScale: f.textScale,
             };
             const floor = layoutMeta.floors.find((fl) => fl.num === f.floorNum);
             layoutFloorName = floor ? floor.name : 'Floor ' + f.floorNum;
