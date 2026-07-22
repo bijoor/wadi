@@ -117,11 +117,14 @@ describe("expandStaircase", () => {
     for (const l of landings(out)) expect(l.width).toBe(72); // 2×30 + 12
   });
 
-  it("turn mirrors the return lane", () => {
-    const cwX = bbox(expand({ max_run: 100 })).x1;
-    const ccwX = bbox(expand({ max_run: 100, turn: "anticlockwise" })).x0;
-    // clockwise extends to +X of the start (100); anticlockwise to −X
-    expect(cwX).toBeGreaterThan(100);
-    expect(ccwX).toBeLessThan(100);
+  it("turn mirrors the return lane (opposite handedness)", () => {
+    const cw = bbox(expand({ max_run: 100, turn: "clockwise" }));
+    const ccw = bbox(expand({ max_run: 100, turn: "anticlockwise" }));
+    // mirror images across the anchored flight's lateral centre (start_x+width/2)
+    const mid2 = 2 * (100 + 30 / 2);
+    expect(cw.x0 + ccw.x1).toBeCloseTo(mid2, 3);
+    expect(cw.x1 + ccw.x0).toBeCloseTo(mid2, 3);
+    // and they are an actual mirror, not identical
+    expect(cw.x0).not.toBeCloseTo(ccw.x0, 3);
   });
 });

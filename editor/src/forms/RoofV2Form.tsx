@@ -18,7 +18,7 @@
 import type { HouseObject } from "../schema/houseConfig";
 import type { Selection } from "../state/configStore";
 import { useConfigStore } from "../state/configStore";
-import { NumberField, SelectField, Section, TextField } from "./fields";
+import { NumberField, SelectField, Section, TextField, ObjectMeasureField } from "./fields";
 import { isLeafEndpoint, resolveEndpoints } from "../svg2d/roof/v2/segments";
 import type { RoofSegment } from "../svg2d/roof/v2/model";
 
@@ -81,6 +81,16 @@ export function RoofV2Form({
     replace(selection, next as unknown as RoofV2);
   };
 
+  // Formula-aware patches for ObjectMeasureField: it emits `{ field: value,
+  // formulas }` (or just `{ formulas }`), which we merge into the target
+  // container in ONE write so the value and its formula stay consistent.
+  const patchRoof = (p: Record<string, unknown>) =>
+    replace(selection, { ...bag, ...p } as unknown as RoofV2);
+  const patchSlope = (p: Record<string, unknown>) => {
+    const slope = (get<Bag>(bag, ["slope"]) ?? {}) as Record<string, unknown>;
+    setAt(["slope"], { ...slope, ...p });
+  };
+
   const roofType = (get<string>(bag, ["roof_type"]) as
     | "flat" | "shed" | "pitched" | undefined) ?? "pitched";
   const segments = (get<Bag[]>(bag, ["segments"]) ?? []) as Bag[];
@@ -137,26 +147,29 @@ export function RoofV2Form({
           ]}
         />
         {slopeBy === "height" ? (
-          <NumberField
+          <ObjectMeasureField
+            object={(get<Bag>(bag, ["slope"]) ?? {}) as Record<string, unknown>}
+            field="ridge_h"
             label="Ridge height"
             hint="Rise above wall_top. 10 units = 1 ft."
-            value={get<number>(bag, ["slope", "ridge_h"])}
-            onCommit={(n) => setAt(["slope", "ridge_h"], n)}
+            patch={patchSlope}
             min={1} suffix="u"
           />
         ) : (
-          <NumberField
+          <ObjectMeasureField
+            object={(get<Bag>(bag, ["slope"]) ?? {}) as Record<string, unknown>}
+            field="angle_deg"
             label="Pitch angle"
-            value={get<number>(bag, ["slope", "angle_deg"])}
-            onCommit={(n) => setAt(["slope", "angle_deg"], n)}
+            patch={patchSlope}
             min={1} max={89} suffix="°"
           />
         )}
-        <NumberField
+        <ObjectMeasureField
+          object={bag as Record<string, unknown>}
+          field="min_overhang"
           label="Min overhang"
           hint="Eave overhang past the wall. 10 u = 1 ft."
-          value={get<number>(bag, ["min_overhang"])}
-          onCommit={(n) => setAt(["min_overhang"], n)}
+          patch={patchRoof}
           min={0} suffix="u"
         />
       </Section>
@@ -253,6 +266,7 @@ export function RoofV2Form({
                 startIsLeaf={startIsLeaf}
                 endIsLeaf={endIsLeaf}
                 onUpdate={(path, value) => setAt(["segments", i, ...path], value)}
+                onPatch={(p) => setAt(["segments", i], { ...(seg as Bag), ...p })}
                 onRemove={() => {
                   const next = segments.slice();
                   next.splice(i, 1);
@@ -444,6 +458,7 @@ function SegmentEditor({
   startIsLeaf,
   endIsLeaf,
   onUpdate,
+  onPatch,
   onRemove,
 }: {
   segment: Bag;
@@ -453,11 +468,14 @@ function SegmentEditor({
   startIsLeaf: boolean;
   endIsLeaf: boolean;
   onUpdate: (path: (string | number)[], value: unknown) => void;
+  // Merge a partial into the whole segment in one write — used by the
+  // formula-aware fields (they emit `{ field, formulas }`).
+  onPatch: (patch: Record<string, unknown>) => void;
   onRemove: () => void;
 }) {
+  const seg = segment as Record<string, unknown>;
   const start = (get<number[]>(segment, ["start"]) ?? [0, 0]).slice(0, 2);
   const end = (get<number[]>(segment, ["end"]) ?? [0, 0]).slice(0, 2);
-  const width = get<number>(segment, ["width"]) ?? 100;
   const id = get<string>(segment, ["id"]) ?? `seg${index}`;
   const startStyle =
     (get<string>(segment, ["start_endpoint"]) as "open" | "closed" | undefined) ??
@@ -504,17 +522,19 @@ function SegmentEditor({
           onCommit={(n) => onUpdate(["end"], [end[0], n ?? 0])}
         />
       </div>
-      <NumberField
+      <ObjectMeasureField
+        object={seg}
+        field="width"
         label="Width (perpendicular)"
-        value={width}
-        onCommit={(n) => onUpdate(["width"], n ?? 100)}
+        patch={onPatch}
         min={1} suffix="u"
       />
-      <NumberField
+      <ObjectMeasureField
+        object={seg}
+        field="min_overhang"
         label="Min overhang (segment override)"
         hint="Overrides the roof-level min_overhang for this segment only. Leave blank to inherit."
-        value={get<number>(segment, ["min_overhang"])}
-        onCommit={(n) => onUpdate(["min_overhang"], n)}
+        patch={onPatch}
         min={0} suffix="u" allowEmpty
       />
 
@@ -570,54 +590,60 @@ function SegmentEditor({
             )}
             {startIsLeaf && startStyle === "closed" && (
               <>
-                <NumberField
+                <ObjectMeasureField
+                  object={seg}
+                  field="hip_setback_start"
                   label="Start hip setback"
                   hint="Ridge trim at start end. Default = width/2 (equal-pitch pyramid)."
-                  value={get<number>(segment, ["hip_setback_start"])}
-                  onCommit={(n) => onUpdate(["hip_setback_start"], n)}
+                  patch={onPatch}
                   min={0} suffix="u" allowEmpty
                 />
-                <NumberField
+                <ObjectMeasureField
+                  object={seg}
+                  field="hip_ridge_extension_start"
                   label="Start ridge vent extension"
                   hint="How far the ridge extends PAST the hip apex (flying ridge for ventilation). Default 0."
-                  value={get<number>(segment, ["hip_ridge_extension_start"])}
-                  onCommit={(n) => onUpdate(["hip_ridge_extension_start"], n)}
+                  patch={onPatch}
                   min={0} suffix="u" allowEmpty
                 />
               </>
             )}
             {endIsLeaf && endStyle === "closed" && (
               <>
-                <NumberField
+                <ObjectMeasureField
+                  object={seg}
+                  field="hip_setback_end"
                   label="End hip setback"
-                  value={get<number>(segment, ["hip_setback_end"])}
-                  onCommit={(n) => onUpdate(["hip_setback_end"], n)}
+                  patch={onPatch}
                   min={0} suffix="u" allowEmpty
                 />
-                <NumberField
+                <ObjectMeasureField
+                  object={seg}
+                  field="hip_ridge_extension_end"
                   label="End ridge vent extension"
                   hint="Default 0."
-                  value={get<number>(segment, ["hip_ridge_extension_end"])}
-                  onCommit={(n) => onUpdate(["hip_ridge_extension_end"], n)}
+                  patch={onPatch}
                   min={0} suffix="u" allowEmpty
                 />
               </>
             )}
             {startIsLeaf && startStyle === "open" && (
-              <NumberField
+              <ObjectMeasureField
+                object={seg}
+                field="gable_overhang_start"
                 label="Start gable overhang"
                 hint="Eave + ridge extension past segment endpoint. Default = min_overhang. Set to 0 to disable."
-                value={get<number>(segment, ["gable_overhang_start"])}
-                onCommit={(n) => onUpdate(["gable_overhang_start"], n)}
+                patch={onPatch}
                 min={0} suffix="u" allowEmpty
               />
             )}
             {endIsLeaf && endStyle === "open" && (
-              <NumberField
+              <ObjectMeasureField
+                object={seg}
+                field="gable_overhang_end"
                 label="End gable overhang"
                 hint="Default = min_overhang."
-                value={get<number>(segment, ["gable_overhang_end"])}
-                onCommit={(n) => onUpdate(["gable_overhang_end"], n)}
+                patch={onPatch}
                 min={0} suffix="u" allowEmpty
               />
             )}

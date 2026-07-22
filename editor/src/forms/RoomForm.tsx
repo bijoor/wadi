@@ -257,31 +257,35 @@ function OpeningRow({
         options={KINDS}
       />
       <div className="grid grid-cols-2 gap-x-2">
-        <NumberField
+        <ObjectMeasureField
+          object={opening as unknown as Record<string, unknown>}
+          field="offset"
           label="Offset"
-          value={opening.offset}
-          onCommit={(v) => v !== undefined && onChange({ offset: v })}
+          patch={(p) => onChange(p as Partial<Opening>)}
           min={0}
           max={wallLength}
           hint={`along wall (0..${wallLength})`}
         />
-        <NumberField
+        <ObjectMeasureField
+          object={opening as unknown as Record<string, unknown>}
+          field="width"
           label="Width"
-          value={opening.width}
-          onCommit={(v) => v !== undefined && onChange({ width: v })}
+          patch={(p) => onChange(p as Partial<Opening>)}
           min={0.01}
         />
-        <NumberField
+        <ObjectMeasureField
+          object={opening as unknown as Record<string, unknown>}
+          field="height"
           label="Height"
-          value={opening.height}
-          onCommit={(v) => v !== undefined && onChange({ height: v })}
+          patch={(p) => onChange(p as Partial<Opening>)}
           min={0.01}
         />
         {opening.kind === "window" && (
-          <NumberField
+          <ObjectMeasureField
+            object={opening as unknown as Record<string, unknown>}
+            field="sill_height"
             label="Sill height"
-            value={opening.sill_height}
-            onCommit={(v) => onChange({ sill_height: v })}
+            patch={(p) => onChange(p as Partial<Opening>)}
             min={0}
             allowEmpty
           />

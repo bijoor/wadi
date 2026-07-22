@@ -80,8 +80,11 @@ export function expandStaircase(
       : width;
   const landingThickness =
     typeof sc.landing_thickness === "number" ? sc.landing_thickness : riser;
-  // Handedness — which side the return lane falls on (a mirror across flight 0).
-  const latSign = sc.turn === "anticlockwise" ? -1 : 1;
+  // Handedness (which side the return lane falls on), reckoned DESCENDING from
+  // the top. Signs are chosen so the label matches the rendered spiral: since the
+  // canonical build descends +Y, clockwise-going-down puts the return lane on the
+  // −lateral side. (Default = clockwise.)
+  const latSign = sc.turn === "anticlockwise" ? 1 : -1;
   const gap =
     typeof sc.flight_gap === "number" && sc.flight_gap > 0 ? sc.flight_gap : 0;
   const laneOffset = latSign * (width + gap);

@@ -126,6 +126,104 @@ function hasFormulas(c: unknown): boolean {
   return !!fm && Object.keys(fm).length > 0;
 }
 
+// Openings are nested one level down (wall.openings / room.walls[side].openings)
+// and carry their own `formulas` maps. Yield each opening list on an object so
+// detection can walk them; resolution rebuilds immutably in resolveOpenings.
+function openingLists(obj: unknown): unknown[][] {
+  const o = obj as Record<string, unknown> | null | undefined;
+  if (!o) return [];
+  if (o.type === "wall" && Array.isArray(o.openings)) return [o.openings as unknown[]];
+  if (o.type === "room") {
+    const walls = o.walls as Record<string, { openings?: unknown[] }> | undefined;
+    if (walls && !Array.isArray(walls) && typeof walls === "object") {
+      return Object.values(walls)
+        .map((wc) => wc?.openings)
+        .filter((ops): ops is unknown[] => Array.isArray(ops));
+    }
+  }
+  return [];
+}
+
+function hasOpeningFormulas(obj: unknown): boolean {
+  return openingLists(obj).some((ops) => ops.some(hasFormulas));
+}
+
+// A roof carries a `segments[]` array and a `slope` object, each of which can
+// hold its own `formulas` (segment width / overhangs / setbacks; slope ridge_h).
+function hasRoofNestedFormulas(obj: unknown): boolean {
+  const o = obj as Record<string, unknown> | null | undefined;
+  if (o?.type !== "roof") return false;
+  const segs = o.segments;
+  if (Array.isArray(segs) && segs.some(hasFormulas)) return true;
+  return hasFormulas(o.slope);
+}
+
+function resolveRoofNested(
+  obj: unknown,
+  scope: Scope,
+  warnings: FormulaWarning[],
+  where: string,
+): { value: unknown; changed: boolean } {
+  const o = obj as Record<string, unknown>;
+  if (o?.type !== "roof") return { value: obj, changed: false };
+  let changed = false;
+  const patch: Record<string, unknown> = {};
+  if (Array.isArray(o.segments)) {
+    let segChanged = false;
+    const next = (o.segments as unknown[]).map((s, i) => {
+      const r = applyContainerFormulas(s, scope, warnings, `${where}/seg${i}`);
+      if (r.changed) segChanged = true;
+      return r.value;
+    });
+    if (segChanged) { patch.segments = next; changed = true; }
+  }
+  if (o.slope && typeof o.slope === "object") {
+    const r = applyContainerFormulas(o.slope, scope, warnings, `${where}/slope`);
+    if (r.changed) { patch.slope = r.value; changed = true; }
+  }
+  return changed ? { value: { ...o, ...patch }, changed: true } : { value: obj, changed: false };
+}
+
+// Resolve every opening's `formulas` on an object (wall / room). Rebuilds the
+// object (and its walls dict) immutably only when something actually changed.
+function resolveOpenings(
+  obj: unknown,
+  scope: Scope,
+  warnings: FormulaWarning[],
+  where: string,
+): { value: unknown; changed: boolean } {
+  const o = obj as Record<string, unknown>;
+  if (o?.type === "wall" && Array.isArray(o.openings)) {
+    let changed = false;
+    const next = (o.openings as unknown[]).map((op, i) => {
+      const r = applyContainerFormulas(op, scope, warnings, `${where}/opening${i}`);
+      if (r.changed) changed = true;
+      return r.value;
+    });
+    return changed ? { value: { ...o, openings: next }, changed: true } : { value: obj, changed: false };
+  }
+  if (o?.type === "room") {
+    const walls = o.walls as Record<string, { openings?: unknown[] }> | undefined;
+    if (!walls || Array.isArray(walls) || typeof walls !== "object") return { value: obj, changed: false };
+    let changed = false;
+    const nextWalls: Record<string, unknown> = {};
+    for (const [side, wc] of Object.entries(walls)) {
+      const ops = wc?.openings;
+      if (!Array.isArray(ops)) { nextWalls[side] = wc; continue; }
+      let sideChanged = false;
+      const nextOps = ops.map((op, i) => {
+        const r = applyContainerFormulas(op, scope, warnings, `${where}/${side}/opening${i}`);
+        if (r.changed) sideChanged = true;
+        return r.value;
+      });
+      nextWalls[side] = sideChanged ? { ...wc, openings: nextOps } : wc;
+      if (sideChanged) changed = true;
+    }
+    return changed ? { value: { ...o, walls: nextWalls }, changed: true } : { value: obj, changed: false };
+  }
+  return { value: obj, changed: false };
+}
+
 // Fields that are semantically whole numbers: a formula may resolve to a
 // fractional value (e.g. num_steps = "= floor_height / step_rise"), but every
 // consumer expects an integer, so we round here — the single point where a
@@ -252,7 +350,13 @@ export function resolveParametric(config: HouseConfig): ResolveResult {
     const hasContainerFormulas =
       hasFormulas(config.site) ||
       hasFormulas((config as { defaults?: unknown }).defaults) ||
-      config.floors.some((f) => hasFormulas(f) || f.objects.some((o) => hasFormulas(o)));
+      config.floors.some(
+        (f) =>
+          hasFormulas(f) ||
+          f.objects.some(
+            (o) => hasFormulas(o) || hasOpeningFormulas(o) || hasRoofNestedFormulas(o),
+          ),
+      );
     // Fast path: non-parametric house → same reference, no work.
     if (!hasVars && !hasPts && !hasContainerFormulas) {
       return { config, warnings: [] };
@@ -270,8 +374,12 @@ export function resolveParametric(config: HouseConfig): ResolveResult {
       let objectsChanged = false;
       const objects = f.objects.map((o, oi) => {
         const res = applyContainerFormulas(o, scope, warnings, `floor${fi}/obj${oi}`);
-        if (res.changed) objectsChanged = true;
-        return res.value;
+        // Nested one level down, with their own formulas: wall/room openings,
+        // and roof segments + slope.
+        const opRes = resolveOpenings(res.value, scope, warnings, `floor${fi}/obj${oi}`);
+        const roofRes = resolveRoofNested(opRes.value, scope, warnings, `floor${fi}/obj${oi}`);
+        if (res.changed || opRes.changed || roofRes.changed) objectsChanged = true;
+        return roofRes.value as typeof o;
       });
       // Apply the floor's OWN formulas (height / wall_height / slab_thickness)
       // to a container carrying the possibly-updated objects.

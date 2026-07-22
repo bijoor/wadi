@@ -85,6 +85,10 @@ const opening = z
   .object({
     kind: z.enum(["door", "window"]),
     name: z.string().optional(),
+    // Numeric fields hold the RESOLVED value; a `= formula` for any of them lives
+    // in `formulas` (e.g. formulas.offset), evaluated by resolveParametric against
+    // the house variables/points — same pattern as every other object.
+    formulas: formulaMap.optional(),
     offset: nonNegative(),
     width: positive(),
     height: positive(),
@@ -291,8 +295,8 @@ const staircase = z
     landing_depth: positive().optional(),
     // Turn-landing slab thickness. Omitted → equals step_rise.
     landing_thickness: z.number().nonnegative().optional(),
-    // Switchback handedness, reckoned DESCENDING from the anchored top. Omitted
-    // → "clockwise" (return lane on +lateral). Only affects split stairs.
+    // Switchback handedness, reckoned DESCENDING from the top. Omitted →
+    // "clockwise". Only affects split stairs.
     turn: z.enum(["clockwise", "anticlockwise"]).optional(),
     // Lateral gap between the two switchback flights (a stairwell void for a
     // spine wall). Omitted/0 → flights are adjacent. The turn landings widen to

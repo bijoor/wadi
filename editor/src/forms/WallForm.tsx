@@ -1,7 +1,7 @@
 import type { Wall, Opening, Side } from "../schema/houseConfig";
 import type { Selection } from "../state/configStore";
 import { useConfigStore } from "../state/configStore";
-import { NumberField, SelectField, TextField, Section, ObjectMeasureField } from "./fields";
+import { SelectField, TextField, Section, ObjectMeasureField } from "./fields";
 
 const SIDES: Side[] = ["north", "south", "east", "west"];
 const KINDS = [
@@ -144,30 +144,34 @@ export function WallForm({ wall, selection }: { wall: Wall; selection: Selection
               options={KINDS}
             />
             <div className="grid grid-cols-2 gap-x-2">
-              <NumberField
+              <ObjectMeasureField
+                object={op as unknown as Record<string, unknown>}
+                field="offset"
                 label="Offset"
-                value={op.offset}
-                onCommit={(v) => v !== undefined && updateOpening(i, { offset: v })}
+                patch={(p) => updateOpening(i, p as Partial<Opening>)}
                 min={0}
                 max={wallLength}
               />
-              <NumberField
+              <ObjectMeasureField
+                object={op as unknown as Record<string, unknown>}
+                field="width"
                 label="Width"
-                value={op.width}
-                onCommit={(v) => v !== undefined && updateOpening(i, { width: v })}
+                patch={(p) => updateOpening(i, p as Partial<Opening>)}
                 min={0.01}
               />
-              <NumberField
+              <ObjectMeasureField
+                object={op as unknown as Record<string, unknown>}
+                field="height"
                 label="Height"
-                value={op.height}
-                onCommit={(v) => v !== undefined && updateOpening(i, { height: v })}
+                patch={(p) => updateOpening(i, p as Partial<Opening>)}
                 min={0.01}
               />
               {op.kind === "window" && (
-                <NumberField
+                <ObjectMeasureField
+                  object={op as unknown as Record<string, unknown>}
+                  field="sill_height"
                   label="Sill height"
-                  value={op.sill_height}
-                  onCommit={(v) => updateOpening(i, { sill_height: v })}
+                  patch={(p) => updateOpening(i, p as Partial<Opening>)}
                   min={0}
                   allowEmpty
                 />

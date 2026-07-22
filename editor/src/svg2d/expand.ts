@@ -447,7 +447,7 @@ function roomOpeningToFlat(
   };
   if (kind === "window") flat.sill_height = op.sill_height ?? 0;
   for (const [k, v] of Object.entries(op)) {
-    if (["kind", "name", "offset", "width", "height", "sill_height", "direction"].includes(k)) {
+    if (["kind", "name", "offset", "width", "height", "sill_height", "direction", "formulas"].includes(k)) {
       continue;
     }
     if (!(k in flat)) flat[k] = v;
@@ -580,7 +580,7 @@ function wallOpeningToFlat(
   };
   if (kind === "window") flat.sill_height = op.sill_height ?? 0;
   for (const [k, v] of Object.entries(op)) {
-    if (["kind", "name", "offset", "width", "height", "sill_height", "facing"].includes(k)) {
+    if (["kind", "name", "offset", "width", "height", "sill_height", "facing", "formulas"].includes(k)) {
       continue;
     }
     if (!(k in flat)) flat[k] = v;

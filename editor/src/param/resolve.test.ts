@@ -137,6 +137,61 @@ describe("resolveParametric", () => {
     expect((out.config.floors[1] as unknown as Record<string, number>).height).toBe(100);
   });
 
+  it("resolves opening formulas (room walls[side] + standalone wall)", () => {
+    const cfg = {
+      variables: { winW: 60, doorOff: 20 },
+      floors: [
+        { floor_number: 0, name: "F", objects: [
+          { type: "room", name: "R", x: 0, y: 0, width: 200, length: 150, walls: {
+              north: { openings: [
+                { kind: "window", name: "W1", offset: 0, width: 1, height: 50,
+                  formulas: { width: "= winW", offset: "= doorOff + 5" } },
+              ] },
+            } },
+          { type: "wall", name: "WA", start_x: 0, start_y: 0, end_x: 100, end_y: 0,
+            openings: [ { kind: "door", offset: 5, width: 1, height: 80, formulas: { width: "= winW / 2" } } ] },
+        ] },
+      ],
+    } as unknown as HouseConfig;
+    const out = resolveParametric(cfg);
+    expect(out.warnings).toEqual([]);
+    const room = out.config.floors[0].objects[0] as unknown as { walls: { north: { openings: Record<string, number>[] } } };
+    expect(room.walls.north.openings[0].width).toBe(60);
+    expect(room.walls.north.openings[0].offset).toBe(25);
+    const wall = out.config.floors[0].objects[1] as unknown as { openings: Record<string, number>[] };
+    expect(wall.openings[0].width).toBe(30);
+    // source config is untouched (immutable resolve)
+    expect((cfg.floors[0].objects[1] as unknown as { openings: Record<string, number>[] }).openings[0].width).toBe(1);
+  });
+
+  it("resolves roof segment + slope formulas", () => {
+    const cfg = {
+      variables: { roofW: 1046, oh: 50, ridge: 250 },
+      floors: [
+        { floor_number: 0, name: "F", objects: [
+          { type: "roof", roof_type: "pitched", name: "R", min_overhang: 1,
+            formulas: { min_overhang: "= oh" },
+            segments: [
+              { id: "s0", start: [0, 0], end: [0, 800], width: 1,
+                formulas: { width: "= roofW", hip_setback_start: "= oh / 2" } },
+              { id: "s1", start: [0, 800], end: [800, 800], width: 800 },
+            ],
+            slope: { by: "height", ridge_h: 1, formulas: { ridge_h: "= ridge" } } },
+        ] },
+      ],
+    } as unknown as HouseConfig;
+    const out = resolveParametric(cfg);
+    expect(out.warnings).toEqual([]);
+    const roof = out.config.floors[0].objects[0] as unknown as {
+      min_overhang: number; segments: Record<string, number>[]; slope: { ridge_h: number };
+    };
+    expect(roof.min_overhang).toBe(50);
+    expect(roof.segments[0].width).toBe(1046);
+    expect(roof.segments[0].hip_setback_start).toBe(25);
+    expect(roof.segments[1].width).toBe(800); // untouched
+    expect(roof.slope.ridge_h).toBe(250);
+  });
+
   it("formulaFieldError flags unknown refs and syntax errors, null when clean", () => {
     const cfg = mkConfig({ variables: { colA: 0, bay: 150 } });
     expect(formulaFieldError(cfg, "= colA + bay")).toBeNull();
