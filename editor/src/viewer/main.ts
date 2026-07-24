@@ -68,6 +68,8 @@ import {
   buildShareUrl,
 } from "../io/shareLink";
 import { isTauri, invoke } from "@tauri-apps/api/core";
+import { getPersona, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona } from "./persona";
+import { mountConfiguratorPanel } from "./configuratorPanel";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-manager";
@@ -83,6 +85,7 @@ import { startConfigWatcher } from "./configWatcher";
 const CONFIG_URL = "/house_config.json";
 const EAVE_CROSS_SECTION_URL = "/2d/roof/roof-cross-section.svg";
 const EDIT_MODE_KEY = "wadi:edit-mode";
+const LEFT_PANEL_KEY = "wadi:left-panel";
 
 // State shared with the fetch patch — mutated whenever the config
 // changes so that subsequent fetches return the fresh SVG strings.
@@ -201,12 +204,17 @@ async function bootViewer(): Promise<void> {
   if (lightingContainer) mountViewerLightingPanel(lightingContainer);
   const interiorContainer = document.getElementById("viewer-interior-panel");
   if (interiorContainer) mountViewerInteriorPanel(interiorContainer);
+  // Gharkul (owner) Configurator panel — self-gates on persona + a template's
+  // `configurator` section; stays hidden otherwise.
+  mountConfiguratorPanel();
 
-  // Mount the editor's Sidebar (object tree) and PropertyPanel
-  // (per-object form) into the two edit slots. React state via
-  // useConfigStore is shared with everything else, so an edit here
-  // rebuilds the SVGs + re-renders the 3D scene via subscribeConfig
-  // below.
+  // Persona (Gharkul owner / Nakasha architect). Resolve + brand before mounting.
+  applyPersona();
+
+  // Mount the editor's Sidebar (object tree) and PropertyPanel (per-object form).
+  // Always mounted (React state via useConfigStore is shared) but hidden by CSS in
+  // owner mode — so switching persona in place needs no re-mount and never loses
+  // the loaded model.
   mountEditPanels();
 
   // Reactivity: whenever config mutates, rebuild the SVG map and
@@ -215,6 +223,10 @@ async function bootViewer(): Promise<void> {
 
   // Header buttons: Edit toggle, Load, Save, Undo, Redo.
   wireHeaderButtons();
+  // Persona cross-nav (Gharkul ⇄ Nakasha), switched in place.
+  wirePersonaSwitch();
+  // Header ☰ — collapse/expand the left panel (config dock or sidebar).
+  wireLeftToggle();
   // Standard keyboard shortcuts (⌘/Ctrl + S / ⇧S / O / N / Z / ⇧Z, ⌘Y).
   wireKeyboardShortcuts();
   // Offer to save unsaved changes before the app/tab closes.
@@ -226,7 +238,6 @@ async function bootViewer(): Promise<void> {
   // Surface geometry warnings (invalid openings dropped during expansion)
   // as a banner instead of silently blanking the 3D model.
   wireGeometryWarnings();
-  applyStoredEditMode();
 
   // Live-preview loop (Tauri only): poll the loaded config file and
   // reload the model when an external editor (Claude Code / MCP) writes
@@ -1214,6 +1225,8 @@ function wireHeaderButtons(): void {
     }
   });
 
+  // Edit toggle: always wired; it's CSS-hidden on the owner (Gharkul) surface so
+  // owners never reach it, but architects keep it after an in-place persona switch.
   btnEdit?.addEventListener("click", () => {
     const next = document.body.dataset.editMode === "on" ? "off" : "on";
     document.body.dataset.editMode = next;
@@ -1361,10 +1374,68 @@ function updateHistoryButtons(): void {
   if (btnRedo) btnRedo.disabled = t.futureStates.length === 0;
 }
 
-function applyStoredEditMode(): void {
+// Apply the resolved persona: set body data attributes (which the CSS uses to
+// show/hide the architect-only edit UI), and brand the header. In owner
+// (Gharkul) mode structural editing is never available; in architect (Nakasha)
+// mode the edit panels default visible (respecting the stored collapse pref).
+function applyPersona(): void {
+  const persona = getPersona();
+  document.body.dataset.persona = persona;
+  if (persona === "architect") {
+    let stored: string | null = null;
+    try { stored = localStorage.getItem(EDIT_MODE_KEY); } catch { /* ignore */ }
+    document.body.dataset.editMode = stored === "off" ? "off" : "on";
+  } else {
+    document.body.dataset.editMode = "off";
+  }
+  const sub = document.querySelector("header .subtitle");
+  if (sub) sub.textContent = `${PERSONA_NAME[persona]} · ${PERSONA_TAGLINE[persona]}`;
+  const sw = document.getElementById("persona-switch") as HTMLAnchorElement | null;
+  if (sw) {
+    const o = otherPersona();
+    sw.href = o.url;
+    sw.textContent =
+      persona === "architect" ? "Preview as owner (Gharkul) →" : "Design mode (Nakasha) →";
+    sw.title = `Switch to ${o.name}`;
+  }
+}
+
+// Collapse/expand the left panel (Gharkul configurator dock or Nakasha sidebar)
+// via the header ☰. Persisted; defaults collapsed on narrow screens so the
+// model is visible on mobile.
+function wireLeftToggle(): void {
+  const btn = document.getElementById("left-toggle");
   let stored: string | null = null;
-  try { stored = localStorage.getItem(EDIT_MODE_KEY); } catch { /* ignore */ }
-  document.body.dataset.editMode = stored === "on" ? "on" : "off";
+  try { stored = localStorage.getItem(LEFT_PANEL_KEY); } catch { /* ignore */ }
+  // Default OPEN so the panel is always visible on first open (on mobile it's a
+  // dismissible overlay); only a stored preference collapses it.
+  document.body.dataset.left = stored === "closed" ? "closed" : "open";
+  btn?.addEventListener("click", () => {
+    const next = document.body.dataset.left === "open" ? "closed" : "open";
+    document.body.dataset.left = next;
+    try { localStorage.setItem(LEFT_PANEL_KEY, next); } catch { /* ignore */ }
+  });
+}
+
+// Switch persona IN PLACE (no page reload) so the currently-loaded model is
+// preserved. Reload-based navigation would drop back to the default config
+// (which has no configurator). Wired once; applyPersona() reruns the gating.
+function wirePersonaSwitch(): void {
+  const sw = document.getElementById("persona-switch");
+  sw?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const target = otherPersona().persona;
+    setPersona(target);
+    try {
+      const u = new URL(location.href);
+      u.searchParams.set("mode", target === "architect" ? "studio" : "owner");
+      history.replaceState(null, "", u.pathname + u.search + u.hash);
+    } catch {
+      /* ignore */
+    }
+    applyPersona();
+    window.dispatchEvent(new Event("wadi:persona-changed"));
+  });
 }
 
 // -----------------------------------------------------------------

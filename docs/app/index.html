@@ -92,6 +92,23 @@
         body[data-edit-mode="on"] #btn-edit-toggle:hover:not(:disabled) {
             background: #a04620;
         }
+        /* Persona split: Gharkul (owner) never shows structural-editing
+           controls; Nakasha (architect) keeps them. */
+        body[data-persona="owner"] #btn-edit-toggle,
+        body[data-persona="owner"] #viewer-sidebar,
+        body[data-persona="owner"] #viewer-property-panel {
+            display: none !important;
+        }
+        .persona-switch {
+            display: inline-block;
+            margin-top: 2px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #B85028;
+            text-decoration: none;
+            opacity: 0.8;
+        }
+        .persona-switch:hover { text-decoration: underline; opacity: 1; }
         /* Group that holds the actual buttons; hamburger toggles it on
            narrow screens. */
         .header-actions-buttons {
@@ -447,6 +464,59 @@
             width: 12px; height: 12px; border-radius: 3px;
             border: 1px solid rgba(0,0,0,0.15);
         }
+        /* Configurator (Gharkul owner): a docked, collapsible LEFT panel. */
+        #viewer-config-dock {
+            display: none;
+            flex: 0 0 300px;
+            overflow-y: auto;
+            background: #faf7f4;
+            border-right: 1px solid #e6ddd4;
+            padding: 0.9rem 1.1rem;
+            color: #1e293b;
+        }
+        /* Visible only for the owner persona with a loaded configurator, unless
+           the left panel is collapsed. main.ts sets data-config + data-left. */
+        body[data-config="on"][data-left="open"] #viewer-config-dock { display: block; }
+        #cfg-dock-title { margin: 0 0 0.5rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
+        /* Collapse the editor (Nakasha) sidebar with the same header toggle. */
+        body[data-edit-mode="on"][data-left="closed"] #viewer-sidebar { display: none; }
+        /* Header ☰ — shown only when a left panel exists (owner config OR
+           architect edit mode). */
+        #left-toggle {
+            display: none; align-self: center; margin-right: 0.5rem;
+            width: 34px; height: 34px;
+            border: 1px solid #e0dfda; border-radius: 8px;
+            background: #fff; color: #444; font-size: 1.05rem; cursor: pointer;
+        }
+        #left-toggle:hover { background: #f3efea; }
+        body[data-config="on"] #left-toggle,
+        body[data-edit-mode="on"] #left-toggle { display: inline-flex; align-items: center; justify-content: center; }
+        /* Mobile: the config dock overlays the model instead of squeezing it. */
+        @media (max-width: 900px) {
+            body[data-config="on"][data-left="open"] #viewer-config-dock {
+                position: absolute; top: 0; left: 0;
+                width: min(88%, 340px); height: 100%;
+                z-index: 60; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            }
+        }
+        .cfg-desc { margin: 0 0 0.6rem 0; font-size: 0.78rem; color: #64748b; }
+        .cfg-group { margin: 0.7rem 0 0.3rem; font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.03em; color: #94a3b8; }
+        .cfg-row { margin: 0.55rem 0; }
+        .cfg-label { font-size: 0.82rem; font-weight: 600; color: #334155;
+            display: flex; align-items: center; gap: 0.4rem; }
+        .cfg-help { font-size: 0.72rem; color: #94a3b8; margin: 0.1rem 0 0.25rem; line-height: 1.3; }
+        .cfg-slider-wrap { display: flex; align-items: center; gap: 0.5rem; }
+        .cfg-slider-wrap input[type="range"] { flex: 1; accent-color: #B85028; }
+        .cfg-value { font-size: 0.78rem; font-variant-numeric: tabular-nums;
+            color: #B85028; font-weight: 600; min-width: 54px; text-align: right; }
+        select.cfg-control, input[type="number"].cfg-control {
+            width: 100%; padding: 0.2rem 0.3rem; border: 1px solid #cbd5e1;
+            border-radius: 6px; font-size: 0.82rem; }
+        .cfg-reset { margin-top: 0.8rem; width: 100%; padding: 0.35rem;
+            border: 1px solid #e6d5ca; background: #f2e7e0; color: #7a4b34;
+            border-radius: 8px; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+        .cfg-reset:hover { background: #e9d7cc; }
         /* Top-left toggle stack — 🎥 walk-through camera on top, 📚 layers
            below it. Both open a popup on every screen width. */
         .camera-toggle, .layers-toggle {
@@ -1445,18 +1515,24 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CGNmI3bC.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/viewer-CsMKjoL0.css">
+  <script type="module" crossorigin src="./assets/viewer-Bbfqp_cd.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/viewer-Dt-8nddA.css">
 </head>
 <body>
     <header>
         <div class="header-row">
+            <!-- Collapse/expand the left panel (Gharkul configurator or Nakasha
+                 sidebar). Shown by main.ts only when a left panel exists. -->
+            <button id="left-toggle" type="button" title="Show / hide the panel" aria-label="Toggle panel">☰</button>
             <div>
                 <h1>
                     <a href="/" title="Home" aria-label="Home"><img src="./favicon.svg" alt="" class="hdr-logo" width="28" height="28"/></a>
                     Wadi
                 </h1>
                 <div class="subtitle">3D Home Designer</div>
+                <!-- Cross-navigation between the two persona surfaces (Gharkul
+                     owner ⇄ Nakasha architect). href + label set by applyPersona(). -->
+                <a id="persona-switch" class="persona-switch" href="?"></a>
             </div>
             <div class="header-actions">
                 <!-- Mobile-only hamburger: on narrow screens the button
@@ -1501,6 +1577,14 @@
     </div>
 
     <div id="viewer-container">
+        <!-- Gharkul (owner) Configurator: a docked, collapsible LEFT panel,
+             tab-independent (works over 3D and every 2D view). Populated by
+             configuratorPanel.ts; shown only for the owner persona with a
+             template that exposes inputs, and collapsed via the header ☰. -->
+        <aside id="viewer-config-dock" aria-label="Configure your home">
+            <h4 id="cfg-dock-title">Configure your home</h4>
+            <div id="viewer-config-list"></div>
+        </aside>
         <!-- Mobile-only "back to tree" — visible when a selection is
              active on a narrow viewport so the user can dismiss the
              property panel and return to the object tree. -->

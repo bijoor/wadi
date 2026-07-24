@@ -71,6 +71,9 @@ interface ConfigState {
   // floors→objects, copy variables/points, seed params from its variable names).
   importComponentFromWadi: (id: string, wadiConfig: HouseConfig) => void;
   updatePoints: (points: NonNullable<HouseConfig["points"]> | undefined) => void;
+  // Owner-facing Configurator metadata (which variables/points a template
+  // exposes to the Gharkul app + how to present them). Ignored by the resolver.
+  updateConfigurator: (configurator: NonNullable<HouseConfig["configurator"]> | undefined) => void;
   // Patches a floor's top-level fields (name, height, slab_thickness).
   // The `objects` array is edited via updateObject / insertObject etc.
   updateFloor: (floorIdx: number, patch: Partial<HouseConfig["floors"][number]>) => void;
@@ -271,6 +274,17 @@ export const useConfigStore = create<ConfigState>()(
             variables && Object.keys(variables).length > 0 ? variables : undefined;
           return {
             config: { ...state.config, variables: cleaned } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      updateConfigurator: (configurator) =>
+        set((state) => {
+          if (!state.config) return state;
+          const cleaned =
+            configurator && configurator.inputs?.length ? configurator : undefined;
+          return {
+            config: { ...state.config, configurator: cleaned } as HouseConfig,
             dirty: true,
           };
         }),

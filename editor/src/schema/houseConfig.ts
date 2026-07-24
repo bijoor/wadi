@@ -555,6 +555,41 @@ export const layerDef = z
   .strict();
 export type LayerDef = z.infer<typeof layerDef>;
 
+// ---- Configurator (Gharkul owner UI) --------------------------------------
+// Optional, author-supplied metadata: which `variables`/`points` a template
+// exposes to end users, and how to present them. IGNORED by the resolver and
+// every geometry consumer — read only by the owner-facing Configurator UI.
+// `target` is a variable name (e.g. "floorH") or a point coordinate
+// ("House.W" → points.House.x; W/L/X/Y/x/y are resolver synonyms). `min`/`max`/
+// `step` are in RAW project units; `unit` only affects display.
+const configuratorInput = z
+  .object({
+    target: z.string().min(1),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    control: z.enum(["slider", "number", "select", "toggle"]).optional(),
+    unit: z.enum(["ft", "in", "m", "units", "percent", "count", "none"]).optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    step: z.number().positive().optional(),
+    options: z.array(z.object({ value: z.number(), label: z.string() }).strict()).optional(),
+    group: z.string().optional(),
+  })
+  .strict();
+export type ConfiguratorInput = z.infer<typeof configuratorInput>;
+
+const configuratorSection = z
+  .object({
+    title: z.string().optional(),
+    description: z.string().optional(),
+    groups: z
+      .array(z.object({ id: z.string().min(1), label: z.string(), description: z.string().optional() }).strict())
+      .optional(),
+    inputs: z.array(configuratorInput).min(1),
+  })
+  .strict();
+export type ConfiguratorSection = z.infer<typeof configuratorSection>;
+
 export const HouseConfig = z
   .object({
     site,
@@ -580,6 +615,8 @@ export const HouseConfig = z
     // `component` object instantiates one by `ref`. Stored once; referenced by
     // many instances; edit here to update every instance.
     components: z.record(z.string(), componentDef).optional(),
+    // Configurator metadata (Gharkul owner UI). Optional; see plans/configurator-plan.md.
+    configurator: configuratorSection.optional(),
     floors: z.array(floor).min(1),
     _walls_expanded: z.boolean().optional(),
   })

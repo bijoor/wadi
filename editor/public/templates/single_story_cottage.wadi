@@ -10,8 +10,8 @@
   }
  },
  "defaults": {
-  "floor_height": 98,
-  "wall_height": 90,
+  "floor_height": 100,
+  "wall_height": 92,
   "slab_thickness": 8,
   "wall_thickness": 8,
   "formulas": {
@@ -22,7 +22,7 @@
   }
  },
  "variables": {
-  "floorH": 98,
+  "floorH": 100,
   "slabH": 8,
   "wallT": 8,
   "wallC": "=2*wallT",
@@ -156,6 +156,120 @@
    "y": "=House.L-pillarT"
   }
  },
+ "configurator": {
+  "title": "Configure your cottage",
+  "description": "Adjust the plot, rooms and construction — the whole house re-flows to fit.",
+  "groups": [
+   {
+    "id": "size",
+    "label": "Plot"
+   },
+   {
+    "id": "rooms",
+    "label": "Rooms"
+   },
+   {
+    "id": "build",
+    "label": "Construction"
+   }
+  ],
+  "inputs": [
+   {
+    "target": "House.W",
+    "label": "Plot width",
+    "description": "Overall east–west width.",
+    "unit": "ft",
+    "min": 220,
+    "max": 400,
+    "step": 10,
+    "group": "size"
+   },
+   {
+    "target": "House.L",
+    "label": "Plot length",
+    "description": "Overall north–south length.",
+    "unit": "ft",
+    "min": 340,
+    "max": 560,
+    "step": 10,
+    "group": "size"
+   },
+   {
+    "target": "pctVerandahL",
+    "label": "Verandah depth",
+    "description": "Front verandah depth, as a share of the plot length.",
+    "unit": "percent",
+    "min": 0.1,
+    "max": 0.22,
+    "step": 0.01,
+    "group": "rooms"
+   },
+   {
+    "target": "pctBedroomW",
+    "label": "Bedroom width",
+    "description": "Bedroom width as a share of the plot width.",
+    "unit": "percent",
+    "min": 0.3,
+    "max": 0.5,
+    "step": 0.02,
+    "group": "rooms"
+   },
+   {
+    "target": "minBathroomW",
+    "label": "Min bathroom size",
+    "description": "Smallest the bathroom gets on tight plots.",
+    "unit": "ft",
+    "min": 54,
+    "max": 96,
+    "step": 2,
+    "group": "rooms"
+   },
+   {
+    "target": "floorH",
+    "label": "Ceiling height",
+    "description": "Floor-to-floor height.",
+    "group": "build",
+    "options": [
+     {
+      "value": 90,
+      "label": "9 ft"
+     },
+     {
+      "value": 100,
+      "label": "10 ft (standard)"
+     },
+     {
+      "value": 110,
+      "label": "11 ft"
+     },
+     {
+      "value": 120,
+      "label": "12 ft"
+     }
+    ]
+   },
+   {
+    "target": "wallT",
+    "label": "Wall thickness",
+    "description": "External wall thickness.",
+    "group": "build",
+    "options": [
+     {
+      "value": 6,
+      "label": "Thin"
+     },
+     {
+      "value": 8,
+      "label": "Standard"
+     },
+     {
+      "value": 10,
+      "label": "Thick"
+     }
+    ]
+   }
+  ]
+ },
  "floors": [
   {
    "floor_number": 0,
@@ -224,7 +338,7 @@
      "y": 0,
      "width": 10,
      "length": 10,
-     "height": 98
+     "height": 100
     },
     {
      "type": "pillar",
@@ -240,7 +354,7 @@
      "y": 0,
      "width": 10,
      "length": 10,
-     "height": 98
+     "height": 100
     },
     {
      "type": "pillar",
@@ -256,7 +370,7 @@
      "y": 0,
      "width": 10,
      "length": 10,
-     "height": 98
+     "height": 100
     },
     {
      "type": "pillar",
@@ -272,7 +386,7 @@
      "y": 0,
      "width": 10,
      "length": 10,
-     "height": 98
+     "height": 100
     },
     {
      "type": "pillar",
@@ -288,7 +402,7 @@
      "y": 450,
      "width": 10,
      "length": 10,
-     "height": 98
+     "height": 100
     },
     {
      "type": "pillar",
@@ -304,7 +418,7 @@
      "y": 450,
      "width": 10,
      "length": 10,
-     "height": 98
+     "height": 100
     },
     {
      "type": "pillar",
@@ -320,7 +434,7 @@
      "y": 450,
      "width": 10,
      "length": 10,
-     "height": 98
+     "height": 100
     },
     {
      "type": "pillar",
@@ -336,7 +450,7 @@
      "y": 450,
      "width": 10,
      "length": 10,
-     "height": 98
+     "height": 100
     },
     {
      "type": "room",

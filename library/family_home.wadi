@@ -2,8 +2,8 @@
  "site": {
   "reference_x": 0,
   "reference_y": 0,
-  "plot_length": 460,
-  "plot_width": 300,
+  "plot_length": 520,
+  "plot_width": 400,
   "formulas": {
    "plot_width": "=House.W",
    "plot_length": "=House.L"
@@ -37,51 +37,76 @@
   "bathWinW": 28,
   "entranceW": 56,
   "rearDoorW": 72,
-  "pctVerandahL": 0.15,
+  "pctLivW": 0.34,
+  "minLivW": 140,
+  "pctVerandahL": 0.12,
   "minVerandahL": 60,
-  "pctBedroomW": 0.4,
-  "minBedroomW": 100,
-  "pctBedroomL": 0.28,
-  "minBedroomL": 110,
-  "pctKitchenL": 0.2,
-  "minKitchenL": 84,
-  "pctBathroomW": 0.2,
-  "minBathroomW": 70,
-  "pctBathroomL": 0.13,
-  "minBathroomL": 70
+  "pctBed1L": 0.26,
+  "minBed1L": 120,
+  "pctBed3L": 0.2,
+  "minBed3L": 100,
+  "pctKitchenL": 0.22,
+  "minKitchenL": 110,
+  "pctBathL": 0.13,
+  "minBathL": 66,
+  "passageL": 40
  },
  "points": {
   "House": {
-   "x": 300,
-   "y": 460
+   "x": 400,
+   "y": 520
   },
   "Verandah": {
    "x": "=House.W-wallC",
    "y": "=max(minVerandahL, round(pctVerandahL*House.L))"
   },
-  "Bedroom": {
-   "x": "=max(minBedroomW, round(pctBedroomW*House.W))",
-   "y": "=max(minBedroomL, round(pctBedroomL*House.L))"
+  "LivCol": {
+   "x": "=max(minLivW, round(pctLivW*House.W))",
+   "y": 0
+  },
+  "BedCol": {
+   "x": "=LivCol.W",
+   "y": 0
+  },
+  "MajCol": {
+   "x": "=House.W-BedCol.W-LivCol.W-4*wallT",
+   "y": 0
+  },
+  "Bath": {
+   "x": "=(LivCol.W-wallT)/2",
+   "y": "=max(minBathL, round(pctBathL*House.L))"
+  },
+  "Passage": {
+   "x": "=LivCol.W",
+   "y": "=passageL"
+  },
+  "Bed1": {
+   "x": "=BedCol.W",
+   "y": "=max(minBed1L, round(pctBed1L*House.L))"
+  },
+  "Bed3": {
+   "x": "=BedCol.W",
+   "y": "=max(minBed3L, round(pctBed3L*House.L))"
+  },
+  "Bed2": {
+   "x": "=BedCol.W",
+   "y": "=House.L-Verandah.L-Bed1.L-Bed3.L-Bath.L-6*wallT"
   },
   "Kitchen": {
-   "x": "=Living.W",
+   "x": "=LivCol.W",
    "y": "=max(minKitchenL, round(pctKitchenL*House.L))"
   },
-  "Bathroom": {
-   "x": "=max(minBathroomW, round(pctBathroomW*House.W))",
-   "y": "=max(minBathroomL, round(pctBathroomL*House.L))"
-  },
-  "Padvi": {
-   "x": "=House.W-Bathroom.W-3*wallT",
-   "y": "=Bathroom.L"
-  },
   "Living": {
-   "x": "=House.W-Bedroom.W-3*wallT",
-   "y": "=House.L-Verandah.L-Kitchen.L-Padvi.L-5*wallT"
+   "x": "=LivCol.W",
+   "y": "=House.L-Verandah.L-Kitchen.L-Passage.L-Bath.L-6*wallT"
   },
   "Majghar": {
-   "x": "=Bedroom.W",
-   "y": "=House.L-Verandah.L-Bedroom.L-Bathroom.L-5*wallT"
+   "x": "=MajCol.W",
+   "y": "=House.L-Verandah.L-Bath.L-4*wallT"
+  },
+  "Padvi": {
+   "x": "=BedCol.W+MajCol.W+wallT",
+   "y": "=Bath.L"
   },
   "Ver_TL": {
    "x": 0,
@@ -91,24 +116,40 @@
    "x": "=House.W",
    "y": "=Verandah.L+wallC"
   },
-  "Bed_TL": {
+  "Bed1_TL": {
    "x": 0,
    "y": "=Verandah.L+wallT"
   },
-  "Bed_BR": {
-   "x": "=Bedroom.W+wallC",
-   "y": "=Bed_TL.Y+Bedroom.L+wallC"
+  "Bed1_BR": {
+   "x": "=BedCol.W+wallC",
+   "y": "=Bed1_TL.Y+Bed1.L+wallC"
+  },
+  "Bed2_TL": {
+   "x": 0,
+   "y": "=Bed1_TL.Y+Bed1.L+wallT"
+  },
+  "Bed2_BR": {
+   "x": "=BedCol.W+wallC",
+   "y": "=Bed2_TL.Y+Bed2.L+wallC"
+  },
+  "Bed3_TL": {
+   "x": 0,
+   "y": "=Bed2_TL.Y+Bed2.L+wallT"
+  },
+  "Bed3_BR": {
+   "x": "=BedCol.W+wallC",
+   "y": "=House.L-Bath.L-wallT"
   },
   "Maj_TL": {
-   "x": 0,
-   "y": "=Bed_TL.Y+Bedroom.L+wallT"
+   "x": "=BedCol.W+wallT",
+   "y": "=Verandah.L+wallT"
   },
   "Maj_BR": {
-   "x": "=Bedroom.W+wallC",
-   "y": "=Maj_TL.Y+Majghar.L+wallC"
+   "x": "=BedCol.W+wallT+MajCol.W+wallC",
+   "y": "=House.L-Bath.L-wallT"
   },
   "Liv_TL": {
-   "x": "=Bedroom.W+wallT",
+   "x": "=BedCol.W+MajCol.W+2*wallT",
    "y": "=Verandah.L+wallT"
   },
   "Liv_BR": {
@@ -116,26 +157,42 @@
    "y": "=Liv_TL.Y+Living.L+wallC"
   },
   "Kit_TL": {
-   "x": "=Bedroom.W+wallT",
+   "x": "=BedCol.W+MajCol.W+2*wallT",
    "y": "=Liv_TL.Y+Living.L+wallT"
   },
   "Kit_BR": {
    "x": "=House.W",
    "y": "=Kit_TL.Y+Kitchen.L+wallC"
   },
+  "Pass_TL": {
+   "x": "=BedCol.W+MajCol.W+2*wallT",
+   "y": "=Kit_TL.Y+Kitchen.L+wallT"
+  },
+  "Pass_BR": {
+   "x": "=House.W",
+   "y": "=House.L-Bath.L-wallT"
+  },
   "Padvi_TL": {
    "x": 0,
-   "y": "=House.L-Padvi.L-wallC"
+   "y": "=House.L-Bath.L-wallC"
   },
   "Padvi_BR": {
-   "x": "=House.W-Bathroom.W-wallT",
+   "x": "=BedCol.W+wallT+MajCol.W+wallC",
    "y": "=House.L"
   },
-  "Bath_TL": {
-   "x": "=House.W-Bathroom.W-wallC",
-   "y": "=House.L-Padvi.L-wallC"
+  "Bath1_TL": {
+   "x": "=BedCol.W+MajCol.W+2*wallT",
+   "y": "=House.L-Bath.L-wallC"
   },
-  "Bath_BR": {
+  "Bath1_BR": {
+   "x": "=BedCol.W+MajCol.W+2*wallT+Bath.W+wallC",
+   "y": "=House.L"
+  },
+  "Bath2_TL": {
+   "x": "=Bath1_BR.X-wallT",
+   "y": "=House.L-Bath.L-wallC"
+  },
+  "Bath2_BR": {
    "x": "=House.W",
    "y": "=House.L"
   },
@@ -157,7 +214,7 @@
   }
  },
  "configurator": {
-  "title": "Configure your cottage",
+  "title": "Configure your family home",
   "description": "Adjust the plot, rooms and construction — the whole house re-flows to fit.",
   "groups": [
    {
@@ -179,8 +236,8 @@
     "label": "Plot width",
     "description": "Overall east–west width.",
     "unit": "ft",
-    "min": 220,
-    "max": 400,
+    "min": 340,
+    "max": 520,
     "step": 10,
     "group": "size"
    },
@@ -189,8 +246,8 @@
     "label": "Plot length",
     "description": "Overall north–south length.",
     "unit": "ft",
-    "min": 340,
-    "max": 560,
+    "min": 460,
+    "max": 640,
     "step": 10,
     "group": "size"
    },
@@ -200,27 +257,27 @@
     "description": "Front verandah depth, as a share of the plot length.",
     "unit": "percent",
     "min": 0.1,
-    "max": 0.22,
+    "max": 0.2,
     "step": 0.01,
     "group": "rooms"
    },
    {
-    "target": "pctBedroomW",
-    "label": "Bedroom width",
-    "description": "Bedroom width as a share of the plot width.",
+    "target": "pctLivW",
+    "label": "Side-room width",
+    "description": "Bedroom & living column width as a share of the plot.",
     "unit": "percent",
     "min": 0.3,
-    "max": 0.5,
-    "step": 0.02,
+    "max": 0.4,
+    "step": 0.01,
     "group": "rooms"
    },
    {
-    "target": "minBathroomW",
-    "label": "Min bathroom size",
-    "description": "Smallest the bathroom gets on tight plots.",
+    "target": "minBathL",
+    "label": "Bathroom depth (min)",
+    "description": "Smallest the two bathrooms get.",
     "unit": "ft",
-    "min": 54,
-    "max": 96,
+    "min": 60,
+    "max": 90,
     "step": 2,
     "group": "rooms"
    },
@@ -288,8 +345,8 @@
      },
      "x": 0,
      "y": 0,
-     "width": 300,
-     "length": 460
+     "width": 400,
+     "length": 520
     },
     {
      "type": "plinth",
@@ -303,8 +360,8 @@
      },
      "x": 0,
      "y": 0,
-     "width": 300,
-     "length": 460,
+     "width": 400,
+     "length": 520,
      "height": 30
     }
    ]
@@ -321,8 +378,8 @@
      },
      "x": 0,
      "y": 0,
-     "width": 300,
-     "length": 460
+     "width": 400,
+     "length": 520
     },
     {
      "type": "pillar",
@@ -350,7 +407,7 @@
       "length": "=pillarT",
       "height": "=floorH"
      },
-     "x": 112,
+     "x": 162,
      "y": 0,
      "width": 10,
      "length": 10,
@@ -366,7 +423,7 @@
       "length": "=pillarT",
       "height": "=floorH"
      },
-     "x": 178,
+     "x": 228,
      "y": 0,
      "width": 10,
      "length": 10,
@@ -382,7 +439,7 @@
       "length": "=pillarT",
       "height": "=floorH"
      },
-     "x": 290,
+     "x": 390,
      "y": 0,
      "width": 10,
      "length": 10,
@@ -399,7 +456,7 @@
       "height": "=floorH"
      },
      "x": 0,
-     "y": 450,
+     "y": 510,
      "width": 10,
      "length": 10,
      "height": 100
@@ -414,8 +471,8 @@
       "length": "=pillarT",
       "height": "=floorH"
      },
-     "x": 65,
-     "y": 450,
+     "x": 80,
+     "y": 510,
      "width": 10,
      "length": 10,
      "height": 100
@@ -430,8 +487,8 @@
       "length": "=pillarT",
       "height": "=floorH"
      },
-     "x": 147,
-     "y": 450,
+     "x": 162,
+     "y": 510,
      "width": 10,
      "length": 10,
      "height": 100
@@ -440,14 +497,14 @@
      "type": "pillar",
      "name": "Padvi_Pillar_4",
      "formulas": {
-      "x": "=House.W-pillarT",
+      "x": "=Padvi_BR.X-pillarT",
       "y": "=House.L-pillarT",
       "width": "=pillarT",
       "length": "=pillarT",
       "height": "=floorH"
      },
-     "x": 290,
-     "y": 450,
+     "x": 242,
+     "y": 510,
      "width": 10,
      "length": 10,
      "height": 100
@@ -464,8 +521,8 @@
      },
      "x": 0,
      "y": 0,
-     "width": 300,
-     "length": 85,
+     "width": 400,
+     "length": 78,
      "height": 30,
      "walls": {
       "north": {
@@ -473,7 +530,7 @@
         {
          "kind": "door",
          "name": "Entrance",
-         "offset": 122,
+         "offset": 172,
          "width": 56,
          "height": 70,
          "formulas": {
@@ -490,58 +547,93 @@
     },
     {
      "type": "room",
-     "name": "Bedroom",
+     "name": "Master_Bedroom",
      "material": "bedroom",
      "formulas": {
-      "x": "=Bed_TL.X",
-      "y": "=Bed_TL.Y",
-      "width": "=Bed_BR.X-Bed_TL.X",
-      "length": "=Bed_BR.Y-Bed_TL.Y"
+      "x": "=Bed1_TL.X",
+      "y": "=Bed1_TL.Y",
+      "width": "=Bed1_BR.X-Bed1_TL.X",
+      "length": "=Bed1_BR.Y-Bed1_TL.Y"
      },
      "x": 0,
-     "y": 77,
-     "width": 136,
-     "length": 145,
+     "y": 70,
+     "width": 156,
+     "length": 151,
      "walls": {
-      "north": {
-       "openings": [
-        {
-         "kind": "window",
-         "name": "Bed_Win_N",
-         "offset": 45.5,
-         "width": 45,
-         "height": 45,
-         "sill_height": 30,
-         "formulas": {
-          "offset": "=((Bed_BR.X-Bed_TL.X)-(winW))/2",
-          "width": "=winW",
-          "height": "=winH"
-         }
-        }
-       ]
-      },
       "west": {
        "openings": [
         {
          "kind": "window",
-         "name": "Bed_Win_W",
-         "offset": 50,
+         "name": "Bed1_Win_W",
+         "offset": 53,
          "width": 45,
          "height": 45,
          "sill_height": 30,
          "formulas": {
-          "offset": "=((Bed_BR.Y-Bed_TL.Y)-(winW))/2",
+          "offset": "=((Bed1_BR.Y-Bed1_TL.Y)-(winW))/2",
           "width": "=winW",
           "height": "=winH"
          }
         }
        ]
       },
-      "south": {
+      "east": {
        "openings": [
         {
          "kind": "door",
-         "name": "Bed_to_Majghar",
+         "name": "Bed1_to_Majghar",
+         "offset": 111,
+         "width": 32,
+         "height": 70,
+         "formulas": {
+          "offset": "=(Bed1_BR.Y-Bed1_TL.Y)-(doorW)-doorMargin",
+          "width": "=doorW",
+          "height": "=doorH"
+         }
+        }
+       ]
+      },
+      "north": {},
+      "south": {}
+     }
+    },
+    {
+     "type": "room",
+     "name": "Bedroom_2",
+     "material": "bedroom",
+     "formulas": {
+      "x": "=Bed2_TL.X",
+      "y": "=Bed2_TL.Y",
+      "width": "=Bed2_BR.X-Bed2_TL.X",
+      "length": "=Bed2_BR.Y-Bed2_TL.Y"
+     },
+     "x": 0,
+     "y": 213,
+     "width": 156,
+     "length": 119,
+     "walls": {
+      "west": {
+       "openings": [
+        {
+         "kind": "window",
+         "name": "Bed2_Win_W",
+         "offset": 37,
+         "width": 45,
+         "height": 45,
+         "sill_height": 30,
+         "formulas": {
+          "offset": "=((Bed2_BR.Y-Bed2_TL.Y)-(winW))/2",
+          "width": "=winW",
+          "height": "=winH"
+         }
+        }
+       ]
+      },
+      "east": {
+       "openings": [
+        {
+         "kind": "door",
+         "name": "Bed2_to_Majghar",
          "offset": 8,
          "width": 32,
          "height": 70,
@@ -553,7 +645,58 @@
         }
        ]
       },
-      "east": {}
+      "south": {}
+     }
+    },
+    {
+     "type": "room",
+     "name": "Bedroom_3",
+     "material": "bedroom",
+     "formulas": {
+      "x": "=Bed3_TL.X",
+      "y": "=Bed3_TL.Y",
+      "width": "=Bed3_BR.X-Bed3_TL.X",
+      "length": "=Bed3_BR.Y-Bed3_TL.Y"
+     },
+     "x": 0,
+     "y": 324,
+     "width": 156,
+     "length": 120,
+     "walls": {
+      "west": {
+       "openings": [
+        {
+         "kind": "window",
+         "name": "Bed3_Win_W",
+         "offset": 37.5,
+         "width": 45,
+         "height": 45,
+         "sill_height": 30,
+         "formulas": {
+          "offset": "=((Bed3_BR.Y-Bed3_TL.Y)-(winW))/2",
+          "width": "=winW",
+          "height": "=winH"
+         }
+        }
+       ]
+      },
+      "east": {
+       "openings": [
+        {
+         "kind": "door",
+         "name": "Bed3_to_Majghar",
+         "offset": 8,
+         "width": 32,
+         "height": 70,
+         "formulas": {
+          "offset": "=doorMargin",
+          "width": "=doorW",
+          "height": "=doorH"
+         }
+        }
+       ]
+      },
+      "south": {}
      }
     },
     {
@@ -566,24 +709,23 @@
       "width": "=Maj_BR.X-Maj_TL.X",
       "length": "=Maj_BR.Y-Maj_TL.Y"
      },
-     "x": 0,
-     "y": 214,
-     "width": 136,
-     "length": 168,
+     "x": 148,
+     "y": 70,
+     "width": 104,
+     "length": 374,
      "walls": {
-      "west": {
+      "north": {
        "openings": [
         {
-         "kind": "window",
-         "name": "Majghar_Win_W",
-         "offset": 61.5,
-         "width": 45,
-         "height": 45,
-         "sill_height": 30,
+         "kind": "door",
+         "name": "Majghar_Entry",
+         "offset": 24,
+         "width": 56,
+         "height": 70,
          "formulas": {
-          "offset": "=((Maj_BR.Y-Maj_TL.Y)-(winW))/2",
-          "width": "=winW",
-          "height": "=winH"
+          "offset": "=((Maj_BR.X-Maj_TL.X)-(entranceW))/2",
+          "width": "=entranceW",
+          "height": "=doorH"
          }
         }
        ]
@@ -593,7 +735,7 @@
         {
          "kind": "door",
          "name": "Majghar_to_Padvi",
-         "offset": 96,
+         "offset": 64,
          "width": 32,
          "height": 70,
          "formulas": {
@@ -616,33 +758,17 @@
       "width": "=Liv_BR.X-Liv_TL.X",
       "length": "=Liv_BR.Y-Liv_TL.Y"
      },
-     "x": 128,
-     "y": 77,
-     "width": 172,
-     "length": 205,
+     "x": 244,
+     "y": 70,
+     "width": 156,
+     "length": 204,
      "walls": {
-      "north": {
-       "openings": [
-        {
-         "kind": "door",
-         "name": "Living_Entry",
-         "offset": 58,
-         "width": 56,
-         "height": 70,
-         "formulas": {
-          "offset": "=((Liv_BR.X-Liv_TL.X)-(entranceW))/2",
-          "width": "=entranceW",
-          "height": "=doorH"
-         }
-        }
-       ]
-      },
       "east": {
        "openings": [
         {
          "kind": "window",
          "name": "Living_Win_E1",
-         "offset": 28.75,
+         "offset": 28.5,
          "width": 45,
          "height": 45,
          "sill_height": 30,
@@ -655,7 +781,7 @@
         {
          "kind": "window",
          "name": "Living_Win_E2",
-         "offset": 131.25,
+         "offset": 130.5,
          "width": 45,
          "height": 45,
          "sill_height": 30,
@@ -672,17 +798,18 @@
         {
          "kind": "door",
          "name": "Living_to_Majghar",
-         "offset": 165,
+         "offset": 8,
          "width": 32,
          "height": 70,
          "formulas": {
-          "offset": "=(Liv_BR.Y-Liv_TL.Y)-(doorW)-doorMargin",
+          "offset": "=doorMargin",
           "width": "=doorW",
           "height": "=doorH"
          }
         }
        ]
-      }
+      },
+      "north": {}
      }
     },
     {
@@ -695,10 +822,10 @@
       "width": "=Kit_BR.X-Kit_TL.X",
       "length": "=Kit_BR.Y-Kit_TL.Y"
      },
-     "x": 128,
-     "y": 274,
-     "width": 172,
-     "length": 108,
+     "x": 244,
+     "y": 266,
+     "width": 156,
+     "length": 130,
      "walls": {
       "north": {},
       "east": {
@@ -706,7 +833,7 @@
         {
          "kind": "window",
          "name": "Kitchen_Win_E",
-         "offset": 31.5,
+         "offset": 42.5,
          "width": 45,
          "height": 45,
          "sill_height": 30,
@@ -734,73 +861,25 @@
         }
        ]
       },
-      "south": {
-       "openings": [
-        {
-         "kind": "door",
-         "name": "Kitchen_to_Padvi",
-         "offset": 8,
-         "width": 32,
-         "height": 70,
-         "formulas": {
-          "offset": "=doorMargin",
-          "width": "=doorW",
-          "height": "=doorH"
-         }
-        }
-       ]
-      }
+      "south": {}
      }
     },
     {
      "type": "room",
-     "name": "Bathroom",
-     "material": "bathroom",
+     "name": "Passage",
+     "material": "hall",
      "formulas": {
-      "x": "=Bath_TL.X",
-      "y": "=Bath_TL.Y",
-      "width": "=Bath_BR.X-Bath_TL.X",
-      "length": "=Bath_BR.Y-Bath_TL.Y"
+      "x": "=Pass_TL.X",
+      "y": "=Pass_TL.Y",
+      "width": "=Pass_BR.X-Pass_TL.X",
+      "length": "=Pass_BR.Y-Pass_TL.Y"
      },
-     "x": 214,
-     "y": 374,
-     "width": 86,
-     "length": 86,
+     "x": 244,
+     "y": 388,
+     "width": 156,
+     "length": 56,
      "walls": {
-      "west": {
-       "openings": [
-        {
-         "kind": "door",
-         "name": "Bath_to_Padvi",
-         "offset": 8,
-         "width": 32,
-         "height": 70,
-         "formulas": {
-          "offset": "=doorMargin",
-          "width": "=doorW",
-          "height": "=doorH"
-         }
-        }
-       ]
-      },
-      "east": {
-       "openings": [
-        {
-         "kind": "window",
-         "name": "Bath_Win_E",
-         "offset": 29,
-         "width": 28,
-         "height": 45,
-         "sill_height": 40,
-         "formulas": {
-          "offset": "=((Bath_BR.Y-Bath_TL.Y)-(bathWinW))/2",
-          "width": "=bathWinW",
-          "height": "=winH"
-         }
-        }
-       ]
-      },
-      "south": {}
+      "east": {}
      }
     },
     {
@@ -814,9 +893,9 @@
       "length": "=Padvi_BR.Y-Padvi_TL.Y"
      },
      "x": 0,
-     "y": 374,
-     "width": 222,
-     "length": 86,
+     "y": 436,
+     "width": 252,
+     "length": 84,
      "height": 30,
      "walls": {
       "south": {
@@ -824,7 +903,7 @@
         {
          "kind": "door",
          "name": "Rear_Entrance",
-         "offset": 75,
+         "offset": 90,
          "width": 72,
          "height": 70,
          "formulas": {
@@ -836,6 +915,109 @@
        ]
       },
       "west": {}
+     }
+    },
+    {
+     "type": "room",
+     "name": "Bathroom_1",
+     "material": "bathroom",
+     "formulas": {
+      "x": "=Bath1_TL.X",
+      "y": "=Bath1_TL.Y",
+      "width": "=Bath1_BR.X-Bath1_TL.X",
+      "length": "=Bath1_BR.Y-Bath1_TL.Y"
+     },
+     "x": 244,
+     "y": 436,
+     "width": 82,
+     "length": 84,
+     "walls": {
+      "north": {
+       "openings": [
+        {
+         "kind": "door",
+         "name": "Bath1_to_Passage",
+         "offset": 42,
+         "width": 32,
+         "height": 70,
+         "formulas": {
+          "offset": "=(Bath1_BR.X-Bath1_TL.X)-(doorW)-doorMargin",
+          "width": "=doorW",
+          "height": "=doorH"
+         }
+        }
+       ]
+      },
+      "west": {},
+      "south": {
+       "openings": [
+        {
+         "kind": "window",
+         "name": "Bath1_Win_S",
+         "offset": 27,
+         "width": 28,
+         "height": 45,
+         "sill_height": 40,
+         "formulas": {
+          "offset": "=((Bath1_BR.X-Bath1_TL.X)-(bathWinW))/2",
+          "width": "=bathWinW",
+          "height": "=winH"
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "type": "room",
+     "name": "Bathroom_2",
+     "material": "bathroom",
+     "formulas": {
+      "x": "=Bath2_TL.X",
+      "y": "=Bath2_TL.Y",
+      "width": "=Bath2_BR.X-Bath2_TL.X",
+      "length": "=Bath2_BR.Y-Bath2_TL.Y"
+     },
+     "x": 318,
+     "y": 436,
+     "width": 82,
+     "length": 84,
+     "walls": {
+      "north": {
+       "openings": [
+        {
+         "kind": "door",
+         "name": "Bath2_to_Passage",
+         "offset": 8,
+         "width": 32,
+         "height": 70,
+         "formulas": {
+          "offset": "=doorMargin",
+          "width": "=doorW",
+          "height": "=doorH"
+         }
+        }
+       ]
+      },
+      "west": {},
+      "east": {
+       "openings": [
+        {
+         "kind": "window",
+         "name": "Bath2_Win_E",
+         "offset": 28,
+         "width": 28,
+         "height": 45,
+         "sill_height": 40,
+         "formulas": {
+          "offset": "=((Bath2_BR.Y-Bath2_TL.Y)-(bathWinW))/2",
+          "width": "=bathWinW",
+          "height": "=winH"
+         }
+        }
+       ]
+      },
+      "south": {}
      }
     }
    ]
@@ -854,16 +1036,16 @@
       {
        "id": "seg0",
        "start": [
-        150,
+        200,
         0
        ],
        "end": [
-        150,
-        460
+        200,
+        520
        ],
-       "width": 300,
-       "hip_setback_start": 69,
-       "hip_setback_end": 70,
+       "width": 400,
+       "hip_setback_start": 62,
+       "hip_setback_end": 68,
        "hip_ridge_extension_start": 40,
        "hip_ridge_extension_end": 40,
        "formulas": {
@@ -872,14 +1054,14 @@
         "end_y": "=House.L",
         "width": "=House.W",
         "hip_setback_start": "=Verandah.L",
-        "hip_setback_end": "=Padvi.L"
+        "hip_setback_end": "=Bath.L"
        },
        "tie_beam_count": 3
       }
      ],
      "slope": {
       "by": "height",
-      "ridge_h": 75
+      "ridge_h": 80
      },
      "min_overhang": 25,
      "trusses": [
@@ -887,14 +1069,14 @@
        "segment_id": "seg0",
        "type": "fink",
        "positions_along": [
-        77,
-        225.5,
-        374
+        70,
+        253,
+        436
        ],
        "formulas": {
-        "pos0": "=Bed_TL.Y",
-        "pos1": "=(Bed_TL.Y+Bath_TL.Y)/2",
-        "pos2": "=Bath_TL.Y"
+        "pos0": "=Bed1_TL.Y",
+        "pos1": "=(Bed1_TL.Y+Padvi_TL.Y)/2",
+        "pos2": "=Padvi_TL.Y"
        }
       }
      ]

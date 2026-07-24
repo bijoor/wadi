@@ -10,7 +10,7 @@
 import { writeFileSync } from "node:fs";
 
 const variables = {
-  floorH: 98, slabH: 8, wallT: 8,
+  floorH: 100, slabH: 8, wallT: 8,
   wallC: "=2*wallT", wallH: "=floorH-slabH",
   pillarT: 10,
   doorW: 32, doorH: 70,
@@ -199,11 +199,36 @@ const plinthObj = (type, layer, name, extra = {}) => ({
   x: 0, y: 0, width: 300, length: 460, ...extra,
 });
 
+// Gharkul (owner) configurator: the handful of knobs an end user tunes. Points
+// (House.W/L) + variables, presented with friendly labels/units/ranges.
+const configurator = {
+  title: "Configure your cottage",
+  description: "Adjust the plot, rooms and construction — the whole house re-flows to fit.",
+  groups: [
+    { id: "size", label: "Plot" },
+    { id: "rooms", label: "Rooms" },
+    { id: "build", label: "Construction" },
+  ],
+  inputs: [
+    { target: "House.W", label: "Plot width", description: "Overall east–west width.", unit: "ft", min: 220, max: 400, step: 10, group: "size" },
+    { target: "House.L", label: "Plot length", description: "Overall north–south length.", unit: "ft", min: 340, max: 560, step: 10, group: "size" },
+    { target: "pctVerandahL", label: "Verandah depth", description: "Front verandah depth, as a share of the plot length.", unit: "percent", min: 0.1, max: 0.22, step: 0.01, group: "rooms" },
+    { target: "pctBedroomW", label: "Bedroom width", description: "Bedroom width as a share of the plot width.", unit: "percent", min: 0.3, max: 0.5, step: 0.02, group: "rooms" },
+    { target: "minBathroomW", label: "Min bathroom size", description: "Smallest the bathroom gets on tight plots.", unit: "ft", min: 54, max: 96, step: 2, group: "rooms" },
+    // Constants shown as OPTIONS (dropdowns) rather than sliders.
+    { target: "floorH", label: "Ceiling height", description: "Floor-to-floor height.", group: "build",
+      options: [{ value: 90, label: "9 ft" }, { value: 100, label: "10 ft (standard)" }, { value: 110, label: "11 ft" }, { value: 120, label: "12 ft" }] },
+    { target: "wallT", label: "Wall thickness", description: "External wall thickness.", group: "build",
+      options: [{ value: 6, label: "Thin" }, { value: 8, label: "Standard" }, { value: 10, label: "Thick" }] },
+  ],
+};
+
 const config = {
   site: { reference_x: 0, reference_y: 0, plot_length: 460, plot_width: 300, formulas: { plot_width: "=House.W", plot_length: "=House.L" } },
   defaults: { floor_height: 98, wall_height: 90, slab_thickness: 8, wall_thickness: 8, formulas: { wall_thickness: "=wallT", slab_thickness: "=wallT", floor_height: "=floorH", wall_height: "=wallH" } },
   variables,
   points: { ...sizePoints, ...gridPoints },
+  configurator,
   floors: [
     { floor_number: 0, name: "Plinth", height: 30, objects: [
       plinthObj("ground", "ground", "Ground"),

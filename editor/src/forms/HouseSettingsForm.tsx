@@ -125,6 +125,7 @@ export function HouseSettingsForm() {
 
       <VariablesSection />
       <PointsSection />
+      <ConfiguratorSection />
       <ComponentsSection />
 
       <LayersSection />
@@ -286,6 +287,120 @@ function VariablesSection() {
         className="mt-2 rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
       >
         + Add variable
+      </button>
+    </Section>
+  );
+}
+
+// Author the Gharkul (owner) configurator: expose variables/points as friendly
+// inputs. Writes config.configurator; ignored by the resolver / geometry.
+type CfgInput = NonNullable<HouseConfig["configurator"]>["inputs"][number];
+const CFG_UNIT_OPTIONS: { value: string; label: string }[] = [
+  { value: "none", label: "— (raw)" },
+  { value: "ft", label: "Feet" },
+  { value: "in", label: "Inches" },
+  { value: "m", label: "Meters" },
+  { value: "percent", label: "Percent" },
+  { value: "count", label: "Count" },
+];
+
+function ConfiguratorSection() {
+  const config = useConfigStore((s) => s.config);
+  const updateConfigurator = useConfigStore((s) => s.updateConfigurator);
+  const cfg = ((config as { configurator?: NonNullable<HouseConfig["configurator"]> })?.configurator ??
+    { inputs: [] }) as NonNullable<HouseConfig["configurator"]>;
+  const inputs = cfg.inputs ?? [];
+
+  const vars = Object.keys((config as { variables?: Record<string, unknown> })?.variables ?? {});
+  const points = Object.keys((config as { points?: Record<string, unknown> })?.points ?? {});
+  const targetOptions = [...points.flatMap((p) => [`${p}.W`, `${p}.L`]), ...vars].map((t) => ({
+    value: t,
+    label: t,
+  }));
+
+  const commit = (nextInputs: CfgInput[], patch: Partial<typeof cfg> = {}) => {
+    const next = { ...cfg, ...patch, inputs: nextInputs } as NonNullable<HouseConfig["configurator"]>;
+    updateConfigurator(nextInputs.length ? next : undefined);
+  };
+  const setAt = (i: number, patch: Record<string, unknown>) =>
+    commit(inputs.map((inp, j) => (j === i ? ({ ...inp, ...patch } as CfgInput) : inp)));
+  const removeAt = (i: number) => commit(inputs.filter((_, j) => j !== i));
+  const add = () => {
+    const target = targetOptions[0]?.value ?? "";
+    commit([...inputs, { target, label: target, unit: "ft" } as CfgInput]);
+  };
+
+  return (
+    <Section title="Configurator (Gharkul owner inputs)">
+      <div className="mb-2 text-[11px] text-slate-400">
+        Expose a few variables / points to the <b>Gharkul</b> owner app as friendly
+        controls. Each input targets a variable or a point's <code>.W</code>/<code>.L</code>,
+        with a label, unit and range (min/max in raw project units).
+      </div>
+      <TextField
+        label="Panel title"
+        value={cfg.title ?? ""}
+        onCommit={(v) => commit(inputs, { title: v || undefined })}
+        placeholder="e.g. Configure your home"
+      />
+      <div className="mt-2 space-y-2">
+        {inputs.map((inp, i) => (
+          <div key={i} className="rounded border border-slate-700 p-2">
+            <div className="mb-1 flex items-end gap-2">
+              <div className="flex-1">
+                <SelectField
+                  label="Target"
+                  value={inp.target}
+                  options={targetOptions.length ? targetOptions : [{ value: inp.target, label: inp.target }]}
+                  onChange={(v) => setAt(i, { target: v, label: inp.label || v })}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeAt(i)}
+                className="mb-1 shrink-0 rounded bg-slate-800 px-2 py-1 text-[10px] text-red-300 hover:bg-red-900"
+                title="Remove input"
+              >
+                ✕
+              </button>
+            </div>
+            <TextField label="Label" value={inp.label} onCommit={(v) => setAt(i, { label: v })} />
+            <TextField
+              label="Description"
+              value={inp.description ?? ""}
+              onCommit={(v) => setAt(i, { description: v || undefined })}
+              placeholder="optional help text"
+            />
+            <div className="grid grid-cols-2 gap-x-2">
+              <SelectField
+                label="Unit"
+                value={inp.unit ?? "none"}
+                options={CFG_UNIT_OPTIONS}
+                onChange={(v) => setAt(i, { unit: v === "none" ? undefined : v })}
+              />
+              <TextField
+                label="Group"
+                value={inp.group ?? ""}
+                onCommit={(v) => setAt(i, { group: v || undefined })}
+                placeholder="e.g. size"
+              />
+              <NumberField label="Min" value={inp.min} onCommit={(v) => setAt(i, { min: v })} allowEmpty />
+              <NumberField label="Max" value={inp.max} onCommit={(v) => setAt(i, { max: v })} allowEmpty />
+              <NumberField label="Step" value={inp.step} onCommit={(v) => setAt(i, { step: v })} allowEmpty min={0} />
+            </div>
+          </div>
+        ))}
+        {inputs.length === 0 && (
+          <div className="text-[11px] text-slate-500">No owner inputs exposed yet.</div>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={add}
+        disabled={!targetOptions.length}
+        className="mt-2 rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600 disabled:opacity-40"
+      >
+        + Add input
       </button>
     </Section>
   );
