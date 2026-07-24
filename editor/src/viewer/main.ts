@@ -1405,14 +1405,19 @@ function applyPersona(): void {
 // model is visible on mobile.
 function wireLeftToggle(): void {
   const btn = document.getElementById("left-toggle");
+  const setIcon = () => {
+    if (btn) btn.textContent = document.body.dataset.left === "open" ? "❮" : "❯";
+  };
   let stored: string | null = null;
   try { stored = localStorage.getItem(LEFT_PANEL_KEY); } catch { /* ignore */ }
   // Default OPEN so the panel is always visible on first open (on mobile it's a
   // dismissible overlay); only a stored preference collapses it.
   document.body.dataset.left = stored === "closed" ? "closed" : "open";
+  setIcon();
   btn?.addEventListener("click", () => {
     const next = document.body.dataset.left === "open" ? "closed" : "open";
     document.body.dataset.left = next;
+    setIcon();
     try { localStorage.setItem(LEFT_PANEL_KEY, next); } catch { /* ignore */ }
   });
 }

@@ -467,7 +467,7 @@
         /* Configurator (Gharkul owner): a docked, collapsible LEFT panel. */
         #viewer-config-dock {
             display: none;
-            flex: 0 0 300px;
+            flex: 0 0 288px;
             overflow-y: auto;
             background: #faf7f4;
             border-right: 1px solid #e6ddd4;
@@ -480,23 +480,39 @@
         #cfg-dock-title { margin: 0 0 0.5rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
         /* Collapse the editor (Nakasha) sidebar with the same header toggle. */
         body[data-edit-mode="on"][data-left="closed"] #viewer-sidebar { display: none; }
-        /* Header ☰ — shown only when a left panel exists (owner config OR
-           architect edit mode). */
+        /* Left-edge collapse tab — a chevron (distinct from the toolbar ☰),
+           on the panel's right edge when open, at the screen edge when closed.
+           Shown only when a left panel exists (owner config OR architect edit). */
         #left-toggle {
-            display: none; align-self: center; margin-right: 0.5rem;
-            width: 34px; height: 34px;
-            border: 1px solid #e0dfda; border-radius: 8px;
-            background: #fff; color: #444; font-size: 1.05rem; cursor: pointer;
+            display: none;
+            position: fixed; top: 50%; left: 0; transform: translateY(-50%);
+            z-index: 55;
+            width: 24px; height: 54px;
+            border: 1px solid #e0dfda; border-left: none;
+            border-radius: 0 10px 10px 0;
+            background: #fff; color: #B85028;
+            font-size: 1rem; line-height: 1; cursor: pointer;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.10);
         }
-        #left-toggle:hover { background: #f3efea; }
+        #left-toggle:hover { background: #faf3ee; }
         body[data-config="on"] #left-toggle,
-        body[data-edit-mode="on"] #left-toggle { display: inline-flex; align-items: center; justify-content: center; }
-        /* Mobile: the config dock overlays the model instead of squeezing it. */
+        body[data-edit-mode="on"] #left-toggle { display: flex; align-items: center; justify-content: center; }
+        /* Open: the panel occupies 288px, so the tab sits at its right edge. */
+        body[data-left="open"] #left-toggle { left: 288px; }
+        /* Mobile: the config dock overlays the model instead of squeezing it;
+           the tab rides the overlay's right edge. */
         @media (max-width: 900px) {
             body[data-config="on"][data-left="open"] #viewer-config-dock {
                 position: absolute; top: 0; left: 0;
                 width: min(88%, 340px); height: 100%;
                 z-index: 60; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            }
+            body[data-config="on"][data-left="open"] #left-toggle { left: min(88%, 340px); z-index: 61; }
+            /* Architect sidebar is a full-width overlay on mobile → tab at the right edge. */
+            body[data-edit-mode="on"][data-left="open"] #left-toggle {
+                left: auto; right: 0;
+                border-radius: 10px 0 0 10px;
+                border: 1px solid #e0dfda; border-right: none;
             }
         }
         .cfg-desc { margin: 0 0 0.6rem 0; font-size: 0.78rem; color: #64748b; }
@@ -1520,9 +1536,6 @@
 <body>
     <header>
         <div class="header-row">
-            <!-- Collapse/expand the left panel (Gharkul configurator or Nakasha
-                 sidebar). Shown by main.ts only when a left panel exists. -->
-            <button id="left-toggle" type="button" title="Show / hide the panel" aria-label="Toggle panel">☰</button>
             <div>
                 <h1>
                     <a href="/" title="Home" aria-label="Home"><img src="/favicon.svg" alt="" class="hdr-logo" width="28" height="28"/></a>
@@ -1575,6 +1588,10 @@
         <div class="ip-body" id="issues-panel-body"></div>
     </div>
 
+    <!-- Collapse/expand the left panel (Gharkul configurator or Nakasha sidebar).
+         A chevron tab on the LEFT EDGE (distinct from the toolbar ☰). Shown by
+         main.ts only when a left panel exists; icon flips with the state. -->
+    <button id="left-toggle" type="button" title="Show / hide the panel" aria-label="Toggle panel">❯</button>
     <div id="viewer-container">
         <!-- Gharkul (owner) Configurator: a docked, collapsible LEFT panel,
              tab-independent (works over 3D and every 2D view). Populated by
