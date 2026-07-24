@@ -668,6 +668,9 @@ declare global {
     // dialog in the desktop app.
     exportSvgElement?: (svg: SVGSVGElement, defaultName: string) => Promise<void>;
     exportSvgElementAsPdf?: (svg: SVGSVGElement, defaultName: string) => Promise<void>;
+    // HTML → PDF (BOM / quantities cards) — raster via html2canvas since the
+    // content is HTML tables, not SVG. Same native-save path as the SVG export.
+    exportHtmlElementAsPdf?: (el: HTMLElement, defaultName: string) => Promise<void>;
     // On-demand Layout composite render, driven by the filter panel.
     // Returns the composite SVG string for `floorNum` with `filter`
     // applied (object/type/layer selection + dimension toggles).
@@ -834,6 +837,54 @@ function wireExports(): void {
         width: dw,
         height: dh,
       });
+      const bytes = pdf.output("arraybuffer");
+      await saveBinary(
+        new Uint8Array(bytes),
+        defaultName,
+        "PDF document",
+        ["pdf"],
+        "application/pdf",
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") alert(`PDF export failed: ${msg}`);
+    }
+  };
+
+  // HTML → PDF for the BOM / quantities cards. window.print() is a no-op in
+  // the desktop WKWebview, so rasterise the card with html2canvas and place it
+  // on A4 pages (paginating when the table is taller than one page), then save
+  // via the native dialog — same path as the SVG export above.
+  window.exportHtmlElementAsPdf = async (el: HTMLElement, defaultName: string) => {
+    try {
+      const [{ jsPDF }, html2canvasMod] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+      const html2canvas = (html2canvasMod as { default: typeof import("html2canvas").default }).default;
+      const canvas = await html2canvas(el, {
+        scale: 2, backgroundColor: "#ffffff", useCORS: true,
+        windowWidth: el.scrollWidth, windowHeight: el.scrollHeight,
+      });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4", compress: true });
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const margin = 24;
+      const imgW = pw - margin * 2;
+      const pxPerPt = canvas.width / imgW;     // source px per PDF point
+      const sliceHpx = (ph - margin * 2) * pxPerPt; // page-worth of source px
+      let y = 0, page = 0;
+      while (y < canvas.height - 1) {
+        const hpx = Math.min(sliceHpx, canvas.height - y);
+        const slice = document.createElement("canvas");
+        slice.width = canvas.width;
+        slice.height = hpx;
+        slice.getContext("2d")!.drawImage(canvas, 0, y, canvas.width, hpx, 0, 0, canvas.width, hpx);
+        if (page > 0) pdf.addPage();
+        pdf.addImage(slice, "PNG", margin, margin, imgW, hpx / pxPerPt);
+        y += hpx;
+        page++;
+      }
       const bytes = pdf.output("arraybuffer");
       await saveBinary(
         new Uint8Array(bytes),

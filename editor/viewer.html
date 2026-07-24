@@ -2784,27 +2784,18 @@
             }
         }
 
+        // Export the displayed SVG to a vector PDF (svg2pdf → jsPDF → native
+        // save), the same mechanism the Layout tab uses. window.print() is a
+        // no-op in the desktop WKWebview; this works in the app and the browser.
         function exportToPDF() {
-            // Temporarily reset zoom and center the SVG for printing
-            const currentScale = svgState.scale;
-            const currentX = svgState.translateX;
-            const currentY = svgState.translateY;
-
-            // Fit to view for printing
-            fitToView();
-
-            // Trigger print dialog (user can save as PDF)
-            setTimeout(() => {
-                window.print();
-
-                // Restore previous zoom state after print dialog
-                setTimeout(() => {
-                    svgState.scale = currentScale;
-                    svgState.translateX = currentX;
-                    svgState.translateY = currentY;
-                    updateTransform();
-                }, 100);
-            }, 100);
+            const svg = document.querySelector('#svg-container svg');
+            if (svg && typeof window.exportSvgElementAsPdf === 'function') {
+                const base = ((svgLightboxCurrentFile || 'diagram').split('/').pop() || 'diagram')
+                    .replace(/\.svg$/i, '');
+                window.exportSvgElementAsPdf(svg, base + '.pdf');
+            } else {
+                window.print();  // last-resort fallback (plain browser)
+            }
         }
 
         // Open individual SVG - show container and load the SVG
@@ -2876,11 +2867,19 @@
             document.body.classList.remove('html-lb-open');
         }
 
-        // Print → user picks "Save as PDF" in the browser's print dialog.
-        // The @media print block in <style> hides everything except the
-        // lightbox content so the PDF is just the table.
+        // Export the card to a real PDF (html2canvas → jsPDF → native save),
+        // the same mechanism the Layout tab uses. window.print() is a no-op in
+        // the desktop WKWebview; this works in both the app and the browser.
         function printHtmlLightbox() {
-            window.print();
+            const el = document.getElementById('html-lightbox-content');
+            const box = document.getElementById('html-lightbox');
+            const caption = (box && box.dataset.caption) || 'quantities';
+            const name = caption.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '') + '.pdf';
+            if (el && typeof window.exportHtmlElementAsPdf === 'function') {
+                window.exportHtmlElementAsPdf(el, name);
+            } else {
+                window.print();  // last-resort fallback (plain browser)
+            }
         }
 
         // Keyboard navigation — Esc closes whichever lightbox is open.
