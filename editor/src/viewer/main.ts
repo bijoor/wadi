@@ -1371,11 +1371,43 @@ function applyStoredEditMode(): void {
 // Template picker modal
 // -----------------------------------------------------------------
 
+interface TemplateMeta {
+  bedrooms?: number;
+  bathrooms?: number;
+  floors?: number;
+  style?: string;
+  roof?: string;
+  minWidthFt?: number;
+  minLengthFt?: number;
+  parametric?: boolean;
+}
 interface TemplateEntry {
   id: string;
   title: string;
   description: string;
   file: string;
+  meta?: TemplateMeta;
+}
+
+// Render a template's key features as small chips so a user can pick by
+// requirements (bedrooms, min plot size, style…) rather than reading prose.
+function templateMetaChips(m: TemplateMeta | undefined): string {
+  if (!m) return "";
+  const chips: string[] = [];
+  const n = (v: number | undefined) => (typeof v === "number" ? v : undefined);
+  if (n(m.bedrooms) !== undefined) chips.push(`${m.bedrooms} bed`);
+  if (n(m.bathrooms) !== undefined) chips.push(`${m.bathrooms} bath`);
+  if (n(m.floors) !== undefined) chips.push(`${m.floors} floor${m.floors === 1 ? "" : "s"}`);
+  if (m.style && m.style !== "—") chips.push(escapeHtml(m.style));
+  if (m.roof && m.roof !== "—") chips.push(`${escapeHtml(m.roof)} roof`);
+  if (n(m.minWidthFt) !== undefined && n(m.minLengthFt) !== undefined)
+    chips.push(`min ${m.minWidthFt}×${m.minLengthFt} ft`);
+  if (m.parametric) chips.push("parametric");
+  return chips.length
+    ? `<div class="template-card-meta">${chips
+        .map((c) => `<span class="template-chip">${c}</span>`)
+        .join("")}</div>`
+    : "";
 }
 async function openNewHouseModal(): Promise<void> {
   const modal = document.getElementById("new-house-modal");
@@ -1406,7 +1438,8 @@ async function openNewHouseModal(): Promise<void> {
     card.className = "template-card";
     card.innerHTML = `
       <div class="template-card-title">${escapeHtml(t.title)}</div>
-      <div class="template-card-desc">${escapeHtml(t.description)}</div>`;
+      <div class="template-card-desc">${escapeHtml(t.description)}</div>
+      ${templateMetaChips(t.meta)}`;
     card.addEventListener("click", () => void selectTemplate(t));
     grid.appendChild(card);
   }

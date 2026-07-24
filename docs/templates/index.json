@@ -4,37 +4,50 @@
       "id": "blank",
       "title": "Blank plot",
       "description": "Empty 30 × 40 ft plot with a single floor slab. Best when you want to build your house entirely from scratch.",
-      "file": "templates/blank.json"
+      "file": "templates/blank.json",
+      "meta": { "bedrooms": 0, "bathrooms": 0, "floors": 1, "style": "—", "roof": "—", "minWidthFt": 30, "minLengthFt": 40, "parametric": false }
+    },
+    {
+      "id": "single_story_cottage",
+      "title": "Single-story cottage (parametric)",
+      "description": "Fully-parametric Konkan cottage: front verandah, bedroom, central hall (Majghar), living, kitchen, bathroom, and a rear Padvi — hip roof. Resize the plot and the rooms re-flow. Default 30 × 46 ft.",
+      "file": "templates/single_story_cottage.wadi",
+      "meta": { "bedrooms": 1, "bathrooms": 1, "floors": 1, "style": "Konkan", "roof": "Hip", "minWidthFt": 22, "minLengthFt": 34, "parametric": true }
     },
     {
       "id": "verandah_cottage",
       "title": "Verandah cottage",
       "description": "Single-story Konkan cottage: front verandah (4 pillars), living room, kitchen, bedroom, bathroom, hip roof. Small footprint (30 × 40 ft).",
-      "file": "templates/verandah_cottage.json"
+      "file": "templates/verandah_cottage.json",
+      "meta": { "bedrooms": 1, "bathrooms": 1, "floors": 1, "style": "Konkan", "roof": "Hip", "minWidthFt": 30, "minLengthFt": 40, "parametric": false }
     },
     {
-      "id": "two_story_wadi",
+      "id": "two_story_konkan",
       "title": "Two-story Konkan",
       "description": "Full two-story house: verandah, living / kitchen / staircase / store / bath on ground; two bedrooms + study + bath on first; hip roof over a loft. 30 × 45 ft plot.",
-      "file": "templates/two_story_wadi.json"
+      "file": "templates/two_story_konkan.json",
+      "meta": { "bedrooms": 2, "bathrooms": 2, "floors": 2, "style": "Konkan", "roof": "Hip", "minWidthFt": 30, "minLengthFt": 45, "parametric": false }
     },
     {
       "id": "l_shape_villa",
       "title": "L-shape villa",
       "description": "Villa with a main house + east wing at right angles. Mixed roof types — hip over the main mass, shed over the wing. 50 × 50 ft plot.",
-      "file": "templates/l_shape_villa.json"
+      "file": "templates/l_shape_villa.json",
+      "meta": { "bedrooms": 2, "bathrooms": 2, "floors": 1, "style": "Contemporary", "roof": "Mixed", "minWidthFt": 50, "minLengthFt": 50, "parametric": false }
     },
     {
       "id": "courtyard_home",
       "title": "Courtyard home",
       "description": "Four wings around an open central courtyard, each with its own hip roof. Front hall, kitchen, three bedrooms + bathrooms. 60 × 50 ft plot.",
-      "file": "templates/courtyard_home.json"
+      "file": "templates/courtyard_home.json",
+      "meta": { "bedrooms": 3, "bathrooms": 2, "floors": 1, "style": "Konkan", "roof": "Hip", "minWidthFt": 60, "minLengthFt": 50, "parametric": false }
     },
     {
       "id": "modern_flat",
       "title": "Modern flat-roof home",
       "description": "Contemporary layout: main flat roof with parapet, plus a shed-roofed porch. Foyer, living, kitchen, master bedroom + bath, utility. 36 × 45 ft plot.",
-      "file": "templates/modern_flat.json"
+      "file": "templates/modern_flat.json",
+      "meta": { "bedrooms": 1, "bathrooms": 1, "floors": 1, "style": "Modern", "roof": "Flat", "minWidthFt": 36, "minLengthFt": 45, "parametric": false }
     }
   ]
 }

@@ -71,6 +71,12 @@ in the app (or you `open -a Wadi` it). Edit that exact file.
   Read before placing anything.
 - **`reference/roof-v2-guide.md`** — the unified `roof` object (segments, hip vs
   gable, joints, trusses, shed). Read before touching a roof.
+- **`reference/parametric-conventions.md`** — how to build a **fully-parametric**
+  model (a reusable template that stays valid under any knob change): the
+  variables → size-points → grid-corners recipe, wall compensation, proportional
+  rooms with minimums, opening/door placement, pillar–opening alignment, the
+  two-step build-and-resolve flow, and the scale-sweep verification. Read before
+  authoring or editing a parametric template (atale, `library/`).
 - **`examples/`** — six real, valid houses (`two_story_konkan.json`,
   `courtyard_home.json`, `l_shape_villa.json`, `modern_flat.json`,
   `verandah_cottage.json`, `blank.json`). Use as few-shot references; copy shapes
