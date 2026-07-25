@@ -95,6 +95,9 @@ const opening = z
     sill_height: z.number().optional(),
     direction: side.optional(),
     facing: side.optional(),
+    // When true, the opening is left BARE (just a hole) — no glazing/frame for a
+    // window, no leaf for a door — e.g. an open doorway or unglazed vent.
+    open: z.boolean().optional(),
   })
   .strict();
 export type Opening = z.infer<typeof opening>;
@@ -327,6 +330,7 @@ const door = z
     direction: side,
     room: z.string().optional(),
     wall: z.string().optional(),
+    open: z.boolean().optional(),
   })
   .strict();
 
@@ -345,6 +349,7 @@ const windowObj = z
     direction: side,
     room: z.string().optional(),
     wall: z.string().optional(),
+    open: z.boolean().optional(),
   })
   .strict();
 

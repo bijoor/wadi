@@ -23,6 +23,8 @@ export interface WallOpening {
   width: number;
   height: number;
   kind: "door" | "window";
+  // When true, leave the opening bare (hole only) — no window/door fill.
+  open?: boolean;
 }
 
 interface Props {
@@ -241,16 +243,5 @@ function buildSlopedWall(
   return g;
 }
 
-// Openings render as empty holes cut through the wall — no glass, no
-// door slab. The wall's CSG hole is left open so you can see straight
-// through. Kept as a component (rather than deleted at the call site)
-// so a future toggle can bring back glass/door slab treatments without
-// touching every caller.
-export function OpeningPane(_: {
-  cx: number; cy: number; cz: number;
-  width: number; height: number; rotY: number;
-  kind: "door" | "window";
-  wallDepth?: number;
-}) {
-  return null;
-}
+// Openings are filled by <OpeningPane> (see ./openings) — a framed, glazed
+// window or a slab door dropped into the CSG hole.

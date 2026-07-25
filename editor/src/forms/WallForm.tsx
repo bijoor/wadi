@@ -177,6 +177,15 @@ export function WallForm({ wall, selection }: { wall: Wall; selection: Selection
                 />
               )}
             </div>
+            <label className="mt-1 flex items-center gap-2 text-[11px] text-slate-300">
+              <input
+                type="checkbox"
+                checked={op.open ?? false}
+                onChange={(e) => updateOpening(i, { open: e.target.checked || undefined })}
+                className="accent-emerald-500"
+              />
+              Open — no {op.kind === "door" ? "door leaf" : "glazing/frame"} (bare hole)
+            </label>
           </div>
         ))}
       </Section>

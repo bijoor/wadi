@@ -298,6 +298,15 @@ function OpeningRow({
         onChange={(v) => onChange({ direction: v as Side })}
         options={SIDES.map((s) => ({ value: s, label: s }))}
       />
+      <label className="mt-1 flex items-center gap-2 text-[11px] text-slate-300">
+        <input
+          type="checkbox"
+          checked={opening.open ?? false}
+          onChange={(e) => onChange({ open: e.target.checked || undefined })}
+          className="accent-emerald-500"
+        />
+        Open — no {opening.kind === "door" ? "door leaf" : "glazing/frame"} (bare hole)
+      </label>
     </div>
   );
 }

@@ -40,7 +40,8 @@ import { deriveAllHipRoofs } from "../svg2d/roofGeometry";
 import { RoofFrameMesh, computeShellLift, type RoofFraming, type RoofFrameGeom, type RoofTrusses } from "./roofFrame";
 import { V2RoofFrame, V2RoofSolid, V2RoofSurface } from "./V2RoofSolid";
 import { StaircaseMesh } from "./staircase";
-import { OpeningPane, WallWithOpenings, type WallOpening } from "./wallCSG";
+import { WallWithOpenings, type WallOpening } from "./wallCSG";
+import { OpeningPane } from "./openings";
 import { effectiveLayers, useLayerStore } from "./layers";
 import {
   buildRoomRects,
@@ -759,22 +760,22 @@ function matchOpeningToRoomWall(
     // Wall at y ~ ry
     if (Math.abs(y - ry) > POS_TOL) return null;
     if (x < rx - POS_TOL || x + w > rx + rw + POS_TOL) return null;
-    return { along: x - rx, from: sill, width: w, height: h, kind };
+    return { along: x - rx, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
   }
   if (side === "south") {
     if (Math.abs(y - (ry + rl - t)) > POS_TOL) return null;
     if (x < rx - POS_TOL || x + w > rx + rw + POS_TOL) return null;
-    return { along: x - rx, from: sill, width: w, height: h, kind };
+    return { along: x - rx, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
   }
   if (side === "west") {
     if (Math.abs(x - rx) > POS_TOL) return null;
     if (y < ry - POS_TOL || y + w > ry + rl + POS_TOL) return null;
-    return { along: y - ry, from: sill, width: w, height: h, kind };
+    return { along: y - ry, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
   }
   // east
   if (Math.abs(x - (rx + rw - t)) > POS_TOL) return null;
   if (y < ry - POS_TOL || y + w > ry + rl + POS_TOL) return null;
-  return { along: y - ry, from: sill, width: w, height: h, kind };
+  return { along: y - ry, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
 }
 
 function matchOpeningToStandaloneWall(
@@ -812,7 +813,7 @@ function matchOpeningToStandaloneWall(
   const perp = Math.abs((cx - sx) * nx + (cy - sy) * ny);
   if (perp > POS_TOL) return null;
   if (proj < -POS_TOL || proj + w > length + POS_TOL) return null;
-  return { along: proj, from: sill, width: w, height: h, kind };
+  return { along: proj, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
 }
 
 function emitRoomWalls(
@@ -917,8 +918,10 @@ function emitRoomWalls(
           outerSign={outerSign}
         />,
       );
-      // Paint a translucent pane back into each opening (glass / timber).
+      // Fill each opening with a framed window / slab door — unless it's
+      // flagged `open` (left as a bare hole).
       for (const m of sub) {
+        if (m.open) continue;
         const localAlong = m.along + m.width / 2 - subLen / 2;
         const localFrom = m.from + m.height / 2 - wh / 2;
         const dx = Math.cos(rotY) * localAlong;
@@ -1005,6 +1008,7 @@ function emitStandaloneWall(
         <WallWithOpenings key={`${key}-${ws.toFixed(1)}`} cx={cc.x} cy={baseZ + h / 2} cz={cc.z} length={subLen} depth={t} height={h} rotY={rotY} color="#f5c9a0" openings={sub} units={globals.units} external={isExternal} outerSign={outerSign} />,
       );
       for (const m of sub) {
+        if (m.open) continue;
         const localAlong = m.along + m.width / 2 - subLen / 2;
         const localFrom = m.from + m.height / 2 - h / 2;
         push(
@@ -1038,6 +1042,7 @@ function emitStandaloneWall(
     />,
   );
   for (const m of matched) {
+    if (m.open) continue;
     const localAlong = m.along + m.width / 2 - wallLen / 2;
     const localFrom = m.from + m.height / 2 - h / 2;
     const dxL = Math.cos(rotY) * localAlong;
