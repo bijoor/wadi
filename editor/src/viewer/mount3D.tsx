@@ -7,7 +7,8 @@
 import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, OrbitControls, Grid, Text, Billboard } from "@react-three/drei";
+import { Environment, OrbitControls, Text, Billboard, ContactShadows } from "@react-three/drei";
+import { grassTexture } from "../three/procTextures";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
   EffectComposer,
@@ -105,12 +106,23 @@ function ViewerScene() {
       style={{ width: "100%", height: "100%", display: "block" }}
     >
       <ambientLight intensity={ambient} />
+      <hemisphereLight args={["#cfe0f0", "#5a4a34", 0.35]} />
       <directionalLight
         position={[camDist * 0.6, camDist * 0.85, camDist * 0.35]}
         intensity={sun}
+        color="#fff2df"
         castShadow
-        shadow-mapSize={[2048, 2048]}
-      />
+        shadow-mapSize={[4096, 4096]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.6}
+      >
+        {/* Tighten the shadow frustum to the model so the higher-res map
+            is spent on the house, not empty ground. */}
+        <orthographicCamera
+          attach="shadow-camera"
+          args={[-boundRadius * 1.6, boundRadius * 1.6, boundRadius * 1.6, -boundRadius * 1.6, 1, camDist * 6]}
+        />
+      </directionalLight>
       {/* Same HDRI the original <model-viewer> used for the skybox +
           image-based lighting. Loaded from Poly Haven's CDN so we
           don't have to bundle the ~1 MB file. `environmentIntensity`
@@ -122,17 +134,20 @@ function ViewerScene() {
           background={background}
         />
       </Suspense>
-      <Grid
-        args={[plot.width * 2, plot.length * 2]}
-        cellSize={10}
-        cellThickness={0.5}
-        cellColor="#334155"
-        sectionSize={100}
-        sectionThickness={1}
-        sectionColor="#475569"
-        fadeDistance={camDist * 3}
-        infiniteGrid={false}
-        position={[0, -0.02, 0]}
+      {/* Grass surroundings extending past the plot lawn (the plot itself
+          is the textured GroundPlane inside House3D). */}
+      <GroundSurround plot={plot} />
+      {/* Soft ambient-occlusion contact shadow grounding the house on the
+          lawn — subtle, layered under the directional shadow. */}
+      <ContactShadows
+        position={[0, 0.4, 0]}
+        scale={Math.max(plot.width, plot.length) * 1.8}
+        resolution={1024}
+        blur={2.6}
+        far={Math.max(plot.width, plot.length) * 0.6}
+        opacity={0.5}
+        color="#20180e"
+        frames={1}
       />
       <House3D config={config} />
       <OrientationGizmo plot={plot} />
@@ -312,6 +327,20 @@ function InteriorController({
   });
 
   return null;
+}
+
+// Large grass plane extending past the plot lawn to the horizon, so the
+// house sits in a field rather than floating on a bare grid. Sits just
+// below the plot's own GroundPlane (which covers plot × 1.5).
+function GroundSurround({ plot }: { plot: { width: number; length: number } }) {
+  const span = Math.max(plot.width, plot.length) * 6;
+  const grass = useMemo(() => grassTexture(span / 50), [span]);
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.15, 0]} receiveShadow>
+      <planeGeometry args={[span, span]} />
+      <meshStandardMaterial map={grass} color="#7d8c68" roughness={1} metalness={0} />
+    </mesh>
+  );
 }
 
 // Simple orientation gizmo sitting just OUTSIDE the NW corner of the

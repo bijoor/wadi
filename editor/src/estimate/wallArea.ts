@@ -66,8 +66,8 @@ function readUnits(config: HouseConfig): AreaUnits {
 
 // ---- geometry helpers ------------------------------------------------------
 
-interface Rect { x: number; y: number; w: number; l: number }
-type Side = "north" | "south" | "east" | "west";
+export interface Rect { x: number; y: number; w: number; l: number }
+export type Side = "north" | "south" | "east" | "west";
 
 // Room rectangles across ALL floors — the building footprint used to decide
 // whether a wall face looks onto interior space (a room below counts, so
@@ -104,6 +104,63 @@ function openingsArea(wc: Bag | undefined): number {
   let a = 0;
   for (const op of ops) a += num(op.width) * num(op.height);
   return a;
+}
+
+// ---- external/internal wall classification (shared with the 3D renderer) ----
+// The same face-probing rule computeWallAreas uses, exposed so House3D can
+// texture external walls and leave internal partitions plain-painted, without
+// duplicating the geometry logic.
+
+// All room rectangles across every floor — the footprint a wall face is tested
+// against.
+export function buildRoomRects(config: HouseConfig): Rect[] {
+  return allRoomRects(config);
+}
+
+function probeDist(wallT: number): number {
+  return Math.max(6, wallT * 1.5);
+}
+
+// A room side's OUTSIDE face is external (weather-facing) iff the point just
+// beyond it doesn't fall inside any room on any floor.
+export function roomSideIsExternal(
+  rects: Rect[], rx: number, ry: number, rw: number, rl: number, side: Side, wallT: number,
+): boolean {
+  const probe = probeDist(wallT);
+  const [nx, ny] = OUT_NORMAL[side];
+  const cx = side === "east" ? rx + rw : side === "west" ? rx : rx + rw / 2;
+  const cy = side === "south" ? ry + rl : side === "north" ? ry : ry + rl / 2;
+  return !inAnyRoom(rects, cx + nx * probe, cy + ny * probe);
+}
+
+// A standalone wall is external iff EITHER of its faces is weather-facing.
+export function standaloneWallIsExternal(
+  rects: Rect[], sx: number, sy: number, ex: number, ey: number, wallT: number,
+): boolean {
+  return classifyStandaloneWall(rects, sx, sy, ex, ey, wallT).external;
+}
+
+// Classify a standalone wall AND report which of its two faces is the weather
+// face, expressed as the sign of the wall's LOCAL +Z (thickness) axis. The
+// wall's local +Z maps to the world perpendicular (-dy, dx) (see the rotY the
+// 3D renderer uses), so:
+//   +1  → the local +Z face is the weather face
+//   -1  → the local -Z face is the weather face
+//    0  → both faces weather-facing (freestanding), or neither (internal)
+export function classifyStandaloneWall(
+  rects: Rect[], sx: number, sy: number, ex: number, ey: number, wallT: number,
+): { external: boolean; outerSign: 1 | -1 | 0 } {
+  const len = Math.hypot(ex - sx, ey - sy);
+  if (len <= 0) return { external: false, outerSign: 0 };
+  const probe = probeDist(wallT);
+  const mx = (sx + ex) / 2, my = (sy + ey) / 2;
+  const dx = (ex - sx) / len, dy = (ey - sy) / len;
+  // Local +Z ↔ perpendicular (-dy, dx); local -Z ↔ (dy, -dx).
+  const plusExt = !inAnyRoom(rects, mx + -dy * probe, my + dx * probe);
+  const minusExt = !inAnyRoom(rects, mx + dy * probe, my + -dx * probe);
+  const external = plusExt || minusExt;
+  const outerSign: 1 | -1 | 0 = plusExt && !minusExt ? 1 : minusExt && !plusExt ? -1 : 0;
+  return { external, outerSign };
 }
 
 // ---- report types ----------------------------------------------------------

@@ -7,7 +7,9 @@
 //   ThreeY = worldZ (up)     height = Z extent
 //   ThreeZ = worldY (south)  depth  = Y extent
 
+import { useMemo } from "react";
 import type { Vec3 } from "./coords";
+import { grassTexture } from "./procTextures";
 
 interface CommonBoxProps {
   position: Vec3;
@@ -35,16 +37,19 @@ function Box({ position, size, color, opacity = 1, onClick }: CommonBoxProps) {
   );
 }
 
-// Ground plane — flat green rectangle covering the plot.
+// Ground plane — grassy lawn covering the plot (procedural, offline texture).
 export function GroundPlane({ width, length }: { width: number; length: number }) {
+  const w = width * 1.5;
+  const l = length * 1.5;
+  const grass = useMemo(() => grassTexture(Math.max(w, l) / 45), [w, l]);
   return (
     <mesh
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, -0.05, 0]}
       receiveShadow
     >
-      <planeGeometry args={[width * 1.5, length * 1.5]} />
-      <meshStandardMaterial color="#5c7346" />
+      <planeGeometry args={[w, l]} />
+      <meshStandardMaterial map={grass} color="#8f9e78" roughness={1} metalness={0} />
     </mesh>
   );
 }
@@ -64,6 +69,10 @@ export function PlinthBox({
   );
 }
 
+// Shared RCC/concrete grey for slabs and beams — they're the same material,
+// so they render identically (also used by the CSG-cut variants in House3D).
+export const CONCRETE_COLOR = "#b8b8b8";
+
 // Floor slab. `z` is the world-Z of the slab's bottom face.
 export function FloorSlabBox({
   cx, cz, width, length, z, thickness,
@@ -75,12 +84,12 @@ export function FloorSlabBox({
     <Box
       position={{ x: cx, y: z + thickness / 2, z: cz }}
       size={{ x: width, y: thickness, z: length }}
-      color="#b8b8b8"
+      color={CONCRETE_COLOR}
     />
   );
 }
 
-// Beam — concrete/RCC beam, rendered as neutral grey.
+// Beam — same concrete/RCC material as the slab, so it matches.
 export function BeamBox({
   cx, cz, width, length, z, height,
 }: {
@@ -91,7 +100,7 @@ export function BeamBox({
     <Box
       position={{ x: cx, y: z + height / 2, z: cz }}
       size={{ x: width, y: height, z: length }}
-      color="#8a8a8a"
+      color={CONCRETE_COLOR}
     />
   );
 }

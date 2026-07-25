@@ -14,7 +14,7 @@ export const DEFAULT_LAYERS: LayerDef[] = [
   { id: "loft", label: "Roof shell", color: "#e88968" },
   { id: "frame_surface", label: "Purlins & rafters", color: "#8a8a8a" },
   { id: "frame_spine", label: "Ridges & trusses", color: "#5a5a5a" },
-  { id: "f1_beam", label: "First floor top beams", color: "#8a8a8a" },
+  { id: "f1_beam", label: "First floor top beams", color: "#b8b8b8" },
   { id: "f1", label: "First floor walls", color: "#f5c9a0" },
   { id: "f1_slab", label: "First floor slab", color: "#b8b8b8" },
   { id: "f0", label: "Ground floor walls", color: "#f5c9a0" },

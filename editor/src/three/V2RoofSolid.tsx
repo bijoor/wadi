@@ -13,6 +13,7 @@
 
 import { useMemo } from "react";
 import * as THREE from "three";
+import { roofTileMaps, roofUvK } from "./procTextures";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 import { computeTopFloorWallTopZ } from "../svg2d/roofGeometry";
@@ -49,6 +50,9 @@ export function V2RoofSolid({ config }: { config: HouseConfig }) {
   }, [config]);
 
   const plot = useMemo(() => readPlotBounds(expandRoomWalls(config)), [config]);
+  // Tile UV scale keyed to the project's units→feet ratio, so the physical
+  // tile size stays constant across projects with different ratios.
+  const uvK = roofUvK((config as { units?: { system?: string; per_unit?: number } }).units);
 
   if (bundles.length === 0) return null;
 
@@ -57,7 +61,7 @@ export function V2RoofSolid({ config }: { config: HouseConfig }) {
       {bundles.map((b, idx) => (
         <group key={idx}>
           {b.spec.planes.map((p) => (
-            <SolidPlane key={p.id} plane={p} plotWidth={plot.width} plotLength={plot.length} />
+            <SolidPlane key={p.id} plane={p} plotWidth={plot.width} plotLength={plot.length} uvK={uvK} />
           ))}
         </group>
       ))}
@@ -464,14 +468,19 @@ function SolidPlane({
   plane,
   plotWidth,
   plotLength,
+  uvK,
 }: {
   plane: RoofPlane;
   plotWidth: number;
   plotLength: number;
+  uvK: number;
 }) {
+  const tiled = plane.role === "slope" || plane.role === "hip_face";
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
     const verts: number[] = [];
+    const uvs: number[] = [];
+    const UV_K = uvK; // per-project scale → constant physical tile size
     // Compute the plane's outward normal (Newell) so we can lift the
     // shell along it, matching the tilt of the roof. Only slope +
     // hip_face planes get lifted; horizontal shells (flat_slab, etc.)
@@ -494,25 +503,33 @@ function SolidPlane({
       v[0] + liftX, v[1] + liftY, v[2] + liftZ,
       plotWidth, plotLength,
     ));
-    // Fan-triangulate.
+    // Fan-triangulate. Planar (X,Z) UVs so the clay-tile texture tiles
+    // across the slope (the roof polygons ship without UVs).
+    const uvOf = (p: { x: number; z: number }) => [p.x * UV_K, p.z * UV_K];
     for (let i = 1; i < pts.length - 1; i++) {
       verts.push(pts[0].x, pts[0].y, pts[0].z);
       verts.push(pts[i].x, pts[i].y, pts[i].z);
       verts.push(pts[i + 1].x, pts[i + 1].y, pts[i + 1].z);
+      uvs.push(...uvOf(pts[0]), ...uvOf(pts[i]), ...uvOf(pts[i + 1]));
     }
     g.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
     g.computeVertexNormals();
     return g;
-  }, [plane, plotWidth, plotLength]);
+  }, [plane, plotWidth, plotLength, uvK]);
 
   const color = PLANE_MATERIAL[plane.role] ?? "#8b8680";
+  const tiles = tiled ? roofTileMaps() : null;
 
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
       <meshStandardMaterial
-        color={color}
+        color={tiled ? "#ffffff" : color}
+        map={tiles?.map ?? null}
+        bumpMap={tiles?.bump ?? null}
+        bumpScale={tiled ? 1.5 : 0}
         side={THREE.DoubleSide}
-        roughness={0.85}
+        roughness={tiled ? 0.92 : 0.85}
         metalness={0.0}
       />
     </mesh>

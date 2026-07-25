@@ -18,6 +18,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import type { Vec3 } from "./coords";
+import { roofTileMaps, roofUvK } from "./procTextures";
 
 export interface HipRoofGeom {
   eave_x_west: number;
@@ -54,6 +55,9 @@ interface Props {
   // structurally correct and lets the frame remain visible when the
   // shell layer is hidden.
   shellLift?: number;
+  // Project units settings (system + per_unit) — keeps the physical tile size
+  // constant across projects with different units.
+  units?: { system?: string; per_unit?: number };
 }
 
 export function HipRoofMesh({
@@ -63,11 +67,27 @@ export function HipRoofMesh({
   color = "#c8582f",
   ridgeThickness: _ridgeThickness = 3,
   shellLift = 5,
+  units,
 }: Props) {
   void _ridgeThickness;
+  void color;
+  const tiles = useMemo(() => roofTileMaps(), []);
+  const k = roofUvK(units);
   const { geometry } = useMemo(() => {
-    return buildHipRoof(geom, plotWidth, plotLength, shellLift);
-  }, [geom, plotWidth, plotLength, shellLift]);
+    const built = buildHipRoof(geom, plotWidth, plotLength, shellLift);
+    // Planar (X,Z) UVs so the clay-tile texture tiles across the slopes — the
+    // procedural roof geometry ships without UVs.
+    const pos = built.geometry.getAttribute("position");
+    if (pos) {
+      const uv = new Float32Array(pos.count * 2);
+      for (let i = 0; i < pos.count; i++) {
+        uv[i * 2] = pos.getX(i) * k;
+        uv[i * 2 + 1] = pos.getZ(i) * k;
+      }
+      built.geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    }
+    return built;
+  }, [geom, plotWidth, plotLength, shellLift, k]);
 
   // Ridge line / cap was a decorative dark bar drawn on top of the
   // shell. Now that the structural ridge beam is drawn as part of the
@@ -79,10 +99,12 @@ export function HipRoofMesh({
     <group>
       <mesh geometry={geometry} castShadow receiveShadow>
         <meshStandardMaterial
-          color={color}
+          map={tiles.map}
+          bumpMap={tiles.bump}
+          bumpScale={2}
           side={THREE.DoubleSide}
-          roughness={0.85}
-          metalness={0.05}
+          roughness={0.92}
+          metalness={0.02}
         />
       </mesh>
     </group>

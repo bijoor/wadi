@@ -8,6 +8,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { Brush, Evaluator, SUBTRACTION } from "three-bvh-csg";
+import { lateriteMaps, wallUvK } from "./procTextures";
 
 export interface WallOpening {
   // Local-space (wall-relative) rectangle to subtract. All coords are
@@ -44,6 +45,18 @@ interface Props {
   rotY: number;
   color: string;
   openings: WallOpening[];
+  // Project units settings (system + per_unit). Scales the laterite texture so
+  // its physical block size stays constant across projects with different units.
+  units?: { system?: string; per_unit?: number };
+  // External (weather-facing) walls get the laterite stone texture; internal
+  // partitions stay flat-painted (`color`) so the two read distinctly. Default
+  // external when unspecified.
+  external?: boolean;
+  // For external walls, which face is the weather face — the sign of the wall's
+  // LOCAL +Z (thickness) axis (+1, -1, or 0 = both). Only that face gets the
+  // laterite texture; the inner face, top, ends and opening reveals stay
+  // flat-painted (as interior surfaces).
+  outerSign?: number;
 }
 
 // A single shared evaluator — creating one per mesh is wasteful.
@@ -51,11 +64,19 @@ const evaluator = new Evaluator();
 evaluator.useGroups = false;
 
 export function WallWithOpenings(props: Props) {
-  const { cx, cy, cz, length, depth, height, heightEnd, rotY, color, openings } = props;
+  const { cx, cy, cz, length, depth, height, heightEnd, rotY, color, openings, units, external = true, outerSign = 0 } = props;
 
+  const uvK = wallUvK(units);
   const geometry = useMemo(() => {
-    return buildWallGeometry(length, depth, height, heightEnd, openings);
-  }, [length, depth, height, heightEnd, openings]);
+    const g = buildWallGeometry(length, depth, height, heightEnd, openings, uvK);
+    // Split the mesh into two material groups: the outward (weather) face →
+    // laterite, everything else (inner face, top, ends, opening reveals) →
+    // plain paint. Only needed for external walls.
+    if (external) splitOuterFaceGroups(g, outerSign);
+    return g;
+  }, [length, depth, height, heightEnd, openings, uvK, external, outerSign]);
+
+  const laterite = lateriteMaps();
 
   return (
     <mesh
@@ -65,9 +86,59 @@ export function WallWithOpenings(props: Props) {
       castShadow
       receiveShadow
     >
-      <meshStandardMaterial color={color} />
+      {external ? (
+        // group 0 = outward face (laterite stone); group 1 = every other face
+        // (interior paint) — so the inside of an external wall reads as interior.
+        <>
+          <meshStandardMaterial
+            attach="material-0"
+            map={laterite.map}
+            bumpMap={laterite.bump}
+            bumpScale={1.2}
+            roughness={0.95}
+            metalness={0}
+          />
+          <meshStandardMaterial attach="material-1" color={color} roughness={0.9} metalness={0} />
+        </>
+      ) : (
+        // Interior partitions: flat paint (as before), for clear contrast.
+        <meshStandardMaterial color={color} roughness={0.9} metalness={0} />
+      )}
     </mesh>
   );
+}
+
+// Reorder a wall's triangles into two contiguous index runs — the outward
+// (weather) face first, then everything else — and set two geometry groups
+// (materialIndex 0 = outer/laterite, 1 = inner/plain). The wall is authored in
+// its LOCAL frame with thickness along Z, so the outward face is the big face
+// whose triangle normal points along `outerSign * Z`. outerSign 0 (both faces
+// weather-facing) textures both big faces.
+function splitOuterFaceGroups(geom: THREE.BufferGeometry, outerSign: number): void {
+  const pos = geom.getAttribute("position");
+  if (!pos) return;
+  const existing = geom.getIndex();
+  const triCount = existing ? existing.count / 3 : pos.count / 3;
+  const gi = (i: number) => (existing ? existing.getX(i) : i);
+  const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3(), n = new THREE.Vector3();
+  const outer: number[] = [], inner: number[] = [];
+  for (let t = 0; t < triCount; t++) {
+    const a = gi(t * 3), b = gi(t * 3 + 1), c = gi(t * 3 + 2);
+    vA.fromBufferAttribute(pos, a);
+    vB.fromBufferAttribute(pos, b);
+    vC.fromBufferAttribute(pos, c);
+    ab.subVectors(vB, vA);
+    ac.subVectors(vC, vA);
+    n.crossVectors(ab, ac).normalize();
+    // A big (weather-capable) face has a normal dominantly along Z.
+    const isOuter = Math.abs(n.z) > 0.5 && (outerSign === 0 || Math.sign(n.z) === outerSign);
+    (isOuter ? outer : inner).push(a, b, c);
+  }
+  geom.setIndex(outer.concat(inner));
+  geom.clearGroups();
+  if (outer.length) geom.addGroup(0, outer.length, 0);
+  if (inner.length) geom.addGroup(outer.length, inner.length, 1);
 }
 
 // The wall is built in its LOCAL frame — origin at the wall's centre,
@@ -79,6 +150,7 @@ function buildWallGeometry(
   height: number,
   heightEnd: number | undefined,
   openings: WallOpening[],
+  uvK: number,
 ): THREE.BufferGeometry {
   // Flat top (box) unless a distinct end height is given, in which case
   // build a sloped-top prism. Both share the same bottom (local Y =
@@ -88,7 +160,7 @@ function buildWallGeometry(
     heightEnd === undefined || heightEnd === height
       ? new THREE.BoxGeometry(length, height, depth)
       : buildSlopedWall(length, depth, height, heightEnd);
-  if (openings.length === 0) return wallGeom;
+  if (openings.length === 0) return applyPlanarUV(wallGeom, uvK);
 
   let brush = new Brush(wallGeom);
   brush.updateMatrixWorld();
@@ -120,7 +192,24 @@ function buildWallGeometry(
   // Extract the final geometry from the resulting brush.
   const outGeom = brush.geometry.clone();
   wallGeom.dispose();
-  return outGeom;
+  return applyPlanarUV(outGeom, uvK);
+}
+
+// Project UVs onto the wall's principal face using its LOCAL frame: U = local
+// x (along the wall's length), V = local y (up). Because every wall is built
+// axis-aligned in local space with its face normal along ±Z, this maps the
+// laterite texture cleanly across the visible faces at a consistent world
+// scale (thin end/reveal faces smear a little but are largely hidden).
+function applyPlanarUV(geom: THREE.BufferGeometry, uvK: number): THREE.BufferGeometry {
+  const pos = geom.getAttribute("position");
+  if (!pos) return geom;
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    uv[i * 2] = pos.getX(i) * uvK;
+    uv[i * 2 + 1] = pos.getY(i) * uvK;
+  }
+  geom.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  return geom;
 }
 
 // A wall with a sloped top: same bottom (local Y = -heightStart/2) as the

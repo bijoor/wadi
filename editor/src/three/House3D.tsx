@@ -22,6 +22,7 @@ import {
 } from "./coords";
 import {
   BeamBox,
+  CONCRETE_COLOR,
   FloorSlabBox,
   GroundPlane,
   PillarBox,
@@ -41,6 +42,12 @@ import { V2RoofFrame, V2RoofSolid, V2RoofSurface } from "./V2RoofSolid";
 import { StaircaseMesh } from "./staircase";
 import { OpeningPane, WallWithOpenings, type WallOpening } from "./wallCSG";
 import { effectiveLayers, useLayerStore } from "./layers";
+import {
+  buildRoomRects,
+  roomSideIsExternal,
+  classifyStandaloneWall,
+  type Rect,
+} from "../estimate/wallArea";
 
 interface Obj {
   type: string;
@@ -99,7 +106,11 @@ export function House3D({ config }: { config: HouseConfig }) {
     // House-level defaults (defaults.floor_height / slab_thickness) win
     // over the code globals; per-floor overrides win over both.
     const houseDefaults = (config as { defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number } }).defaults;
-    const globals = readGlobals(houseDefaults);
+    const globals: Globals = {
+      ...readGlobals(houseDefaults),
+      units: (hc as { units?: { system?: string; per_unit?: number } }).units,
+      roomRects: buildRoomRects(hc as unknown as Parameters<typeof buildRoomRects>[0]),
+    };
     const plot = readPlotBounds(hc);
     // The plinth is now the first floor (number 0); its `height` seeds the
     // stack from ground(0). computeFloorZBands no longer takes a plinth height.
@@ -109,6 +120,26 @@ export function House3D({ config }: { config: HouseConfig }) {
       globals.floorHeight,
       globals.wallHeight,
     );
+
+    // Pillars are full-height structural columns that can rise through several
+    // floors (e.g. a 196u column declared on the ground floor spans the first
+    // floor too). Trimming each floor's walls against ONLY that floor's own
+    // pillars misses those — so collect every pillar with its vertical extent
+    // and, per floor, trim against any whose extent overlaps that floor's slot.
+    const allPillars: Array<{ rect: PillarRect; z0: number; z1: number }> = [];
+    for (let pfi = 0; pfi < (hc.floors ?? []).length; pfi++) {
+      const pband = bands[pfi];
+      const pobjs = ((hc.floors![pfi].objects as Obj[] | undefined) ?? []);
+      for (const rect of pillarRects(pobjs as Array<Record<string, unknown>>)) {
+        // Match the render's z placement (obj.type === "pillar" branch).
+        const src = pobjs.find(
+          (o) => o.type === "pillar" && (o.x as number) === rect.x0 && (o.y as number) === rect.y0,
+        );
+        const z0 = pband.slabZ + ((src?.z_offset as number | undefined) ?? 0);
+        const h = (src?.height as number | undefined) ?? pband.floorHeight;
+        allPillars.push({ rect, z0, z1: z0 + h });
+      }
+    }
 
     const groups: Record<string, React.ReactNode[]> = {};
     const push = (layer: string, node: React.ReactNode) => {
@@ -175,6 +206,7 @@ export function House3D({ config }: { config: HouseConfig }) {
             plotWidth={plot.width}
             plotLength={plot.length}
             shellLift={shellLift}
+            units={globals.units}
           />,
         );
         const trusses = hipConfig.trusses as
@@ -387,8 +419,15 @@ export function House3D({ config }: { config: HouseConfig }) {
       const roomLayer = effFloor === 0 ? "f0" : "f1";
       const slabLayer = effFloor === 0 ? "plinth" : "f1_slab";
       const openings = objects.filter((o) => o.type === "door" || o.type === "window");
-      // Pillar footprints on this floor — walls trim to their faces (no overlap).
-      const pillars = pillarRects(objects);
+      // Pillar footprints that pass through this floor — walls trim to their
+      // faces (no overlap). Include full-height columns declared on lower floors
+      // whose vertical extent reaches this floor's slot, not just this floor's
+      // own pillars.
+      const floorLo = band.slabZ;
+      const floorHi = band.slabZ + band.floorHeight;
+      const pillars = allPillars
+        .filter((p) => Math.min(p.z1, floorHi) - Math.max(p.z0, floorLo) > 1e-6)
+        .map((p) => p.rect);
 
       for (let oi = 0; oi < objects.length; oi++) {
         const obj = objects[oi];
@@ -442,7 +481,7 @@ export function House3D({ config }: { config: HouseConfig }) {
                 width={w}
                 length={l}
                 thickness={slabT}
-                color="#b8b8b8"
+                color={CONCRETE_COLOR}
                 holes={slabHoles}
               />,
             );
@@ -484,7 +523,7 @@ export function House3D({ config }: { config: HouseConfig }) {
                 width={w}
                 length={l}
                 thickness={h}
-                color="#8a8a8a"
+                color={CONCRETE_COLOR}
                 holes={beamHoles}
               />,
             );
@@ -655,8 +694,26 @@ interface Globals {
   beamSize: number;
   floorHeight: number;
   wallHeight: number;
+  // Project units settings (system + per_unit) — used to keep wall/roof
+  // texture block size physically constant across projects.
+  units?: { system?: string; per_unit?: number };
+  // Room rectangles across all floors — used to classify each wall as
+  // external (weather-facing → laterite texture) or internal (partition →
+  // plain paint).
+  roomRects: Rect[];
 }
 interface Plot { width: number; length: number }
+
+// Outward (weather) normal per room side, in Inkscape coords (X-right, Y-down).
+const SIDE_OUT_NORMAL: Record<string, [number, number]> = {
+  north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0],
+};
+// The sign of a wall's LOCAL +Z (thickness) axis that points toward `outward`.
+// A wall's local +Z maps to Inkscape (sin rotY, cos rotY); the outer (weather)
+// face is whichever big face's normal aligns with the outward direction.
+function outerLocalZSign(rotY: number, nx: number, ny: number): 1 | -1 {
+  return Math.sin(rotY) * nx + Math.cos(rotY) * ny >= 0 ? 1 : -1;
+}
 
 function heightFor(
   room: Obj,
@@ -785,6 +842,9 @@ function emitRoomWalls(
     const side = sideRaw.toLowerCase() as "north" | "south" | "east" | "west";
     // Walls use the floor's WALL height (independent of floor_height).
     const wh = heightFor(obj, side, band.wallHeight);
+    // External (weather-facing) sides get the laterite texture; interior
+    // partitions stay plain-painted. All sub-segments of this side share it.
+    const isExternal = roomSideIsExternal(globals.roomRects, rx, ry, rw, rl, side, t);
 
     const matched: WallOpening[] = [];
     for (const op of openings) {
@@ -807,6 +867,8 @@ function emitRoomWalls(
     // East/west walls are inset by `t` on each end (corners belong to N/S), so
     // measure `along` from the inset span start.
     if (side === "east" || side === "west") for (const m of matched) m.along -= t;
+    // Which local-Z face is the weather face (only meaningful when external).
+    const outerSign = outerLocalZSign(rotY, SIDE_OUT_NORMAL[side][0], SIDE_OUT_NORMAL[side][1]);
 
     // Trim the run so it stops at any overlapping pillar's faces; a wall with
     // no overlap yields the single full span (unchanged geometry).
@@ -840,6 +902,9 @@ function emitRoomWalls(
           rotY={rotY}
           color="#f5c9a0"
           openings={sub}
+          units={globals.units}
+          external={isExternal}
+          outerSign={outerSign}
         />,
       );
       // Paint a translucent pane back into each opening (glass / timber).
@@ -895,6 +960,9 @@ function emitStandaloneWall(
   const wallLen = Math.hypot(dx, dy);
   if (wallLen < 1e-6) return;
   const rotY = Math.atan2(-dy, dx);
+  // External if either face is weather-facing; interior partitions stay plain.
+  // `outerSign` marks which local-Z face is the weather face for texturing.
+  const { external: isExternal, outerSign } = classifyStandaloneWall(globals.roomRects, sx, sy, ex, ey, t);
 
   const matched: WallOpening[] = [];
   for (const op of openings) {
@@ -923,7 +991,7 @@ function emitStandaloneWall(
       const cc = toThreePos(horiz ? ws + subLen / 2 : sx, horiz ? sy : ws + subLen / 2, 0, plot.width, plot.length);
       push(
         layer,
-        <WallWithOpenings key={`${key}-${ws.toFixed(1)}`} cx={cc.x} cy={baseZ + h / 2} cz={cc.z} length={subLen} depth={t} height={h} rotY={rotY} color="#f5c9a0" openings={sub} />,
+        <WallWithOpenings key={`${key}-${ws.toFixed(1)}`} cx={cc.x} cy={baseZ + h / 2} cz={cc.z} length={subLen} depth={t} height={h} rotY={rotY} color="#f5c9a0" openings={sub} units={globals.units} external={isExternal} outerSign={outerSign} />,
       );
       for (const m of sub) {
         const localAlong = m.along + m.width / 2 - subLen / 2;
@@ -953,6 +1021,9 @@ function emitStandaloneWall(
       rotY={rotY}
       color="#f5c9a0"
       openings={matched}
+      units={globals.units}
+      external={isExternal}
+      outerSign={outerSign}
     />,
   );
   for (const m of matched) {
