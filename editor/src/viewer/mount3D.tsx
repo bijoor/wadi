@@ -194,6 +194,7 @@ function ViewerScene() {
 // composited frame back work.
 function CaptureBridge() {
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
 
@@ -203,6 +204,17 @@ function CaptureBridge() {
     const grab = (maxW: number): string | null => {
       const src = gl.domElement;
       if (!src.width || !src.height) return null;
+      // Force a fresh render into the DEFAULT framebuffer right before reading.
+      // WKWebView/Safari otherwise returns a BLANK image from toDataURL for a
+      // post-processed WebGL canvas even with preserveDrawingBuffer, because the
+      // on-screen frame came from the EffectComposer's targets, not the default
+      // buffer. This direct render (sans post-effects) guarantees pixels exist.
+      try {
+        gl.setRenderTarget(null);
+        gl.render(scene, camera);
+      } catch {
+        /* fall back to whatever is already in the buffer */
+      }
       const scale = Math.min(1, maxW / src.width);
       const w = Math.max(1, Math.round(src.width * scale));
       const h = Math.max(1, Math.round(src.height * scale));
@@ -213,8 +225,13 @@ function CaptureBridge() {
       if (!ctx) return null;
       ctx.fillStyle = "#bcd3e8";
       ctx.fillRect(0, 0, w, h);
-      ctx.drawImage(src, 0, 0, w, h);
-      return off.toDataURL("image/jpeg", 0.82);
+      try {
+        ctx.drawImage(src, 0, 0, w, h);
+        return off.toDataURL("image/jpeg", 0.82);
+      } catch {
+        // Tainted canvas (e.g. a cross-origin background) → can't read pixels.
+        return null;
+      }
     };
     const raf = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
@@ -274,7 +291,7 @@ function CaptureBridge() {
       delete window.wadiCapture3D;
       delete window.wadiCaptureAngles;
     };
-  }, [gl, camera, controls]);
+  }, [gl, scene, camera, controls]);
   return null;
 }
 

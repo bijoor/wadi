@@ -79,20 +79,64 @@ export function mountConfiguratorPanel(): void {
       if (ri.displayMax != null) rng.max = String(round2(ri.displayMax));
       if (ri.displayStep != null) rng.step = String(ri.displayStep);
       rng.value = String(round2(ri.displayValue));
-      const valueEl = document.createElement("span");
-      valueEl.className = "cfg-value";
-      valueEl.textContent = fmtVal(ri.displayValue, ri.conv.suffix);
-      rng.addEventListener("input", () => {
+
+      // Apply a DISPLAY-unit number: convert to raw, clamp, push to the store,
+      // and return the (possibly clamped) display value to reflect back.
+      const applyDisp = (dispNum: number): number => {
         const c = controls.get(input.target);
         const conv = c ? c.meta.conv : ri.conv;
-        let raw = conv.toRaw(Number(rng.value));
+        let raw = conv.toRaw(dispNum);
         if (typeof input.min === "number") raw = Math.max(input.min, raw);
         if (typeof input.max === "number") raw = Math.min(input.max, raw);
-        valueEl.textContent = fmtVal(conv.toDisplay(raw), conv.suffix);
         applyRaw(input.target, raw);
-      });
+        return round2(conv.toDisplay(raw));
+      };
+
+      // Sliders get an editable number box beside them so a value can be typed
+      // as well as dragged; they stay in sync. (A plain number control is
+      // already type-able, so it needs no extra box.)
+      let valueEl: HTMLInputElement | undefined;
+      if (ri.control === "slider") {
+        const box = document.createElement("input");
+        box.type = "number";
+        box.className = "cfg-value";
+        if (ri.displayMin != null) box.min = String(round2(ri.displayMin));
+        if (ri.displayMax != null) box.max = String(round2(ri.displayMax));
+        if (ri.displayStep != null) box.step = String(ri.displayStep);
+        box.value = String(round2(ri.displayValue));
+        rng.addEventListener("input", () => {
+          const d = applyDisp(Number(rng.value));
+          if (document.activeElement !== box) box.value = String(d);
+        });
+        // Live update while typing (don't rewrite the box mid-keystroke) …
+        box.addEventListener("input", () => {
+          const n = Number(box.value);
+          if (!Number.isFinite(n)) return;
+          rng.value = String(applyDisp(n));
+        });
+        // … and normalise/clamp on commit (blur / Enter).
+        box.addEventListener("change", () => {
+          const n = Number(box.value);
+          if (!Number.isFinite(n)) {
+            box.value = String(round2((controls.get(input.target)?.meta ?? ri).displayValue));
+            return;
+          }
+          const d = applyDisp(n);
+          box.value = String(d);
+          rng.value = String(d);
+        });
+        valueEl = box;
+      } else {
+        rng.addEventListener("input", () => applyDisp(Number(rng.value)));
+      }
+
+      const unit = document.createElement("span");
+      unit.className = "cfg-unit";
+      unit.textContent = ri.conv.suffix;
+
       wrap.appendChild(rng);
-      wrap.appendChild(valueEl);
+      if (valueEl) wrap.appendChild(valueEl);
+      if (ri.conv.suffix) wrap.appendChild(unit);
       row.appendChild(wrap);
       controls.set(input.target, { input: rng, valueEl, meta: ri });
     }
@@ -143,8 +187,13 @@ export function mountConfiguratorPanel(): void {
       } else if (c.input.type === "checkbox") {
         c.input.checked = ri.rawValue !== 0;
       } else {
-        c.input.value = String(round2(ri.displayValue));
-        if (c.valueEl) c.valueEl.textContent = fmtVal(ri.displayValue, ri.conv.suffix);
+        // Don't clobber an input the user is currently typing into.
+        if (document.activeElement !== c.input) c.input.value = String(round2(ri.displayValue));
+        if (c.valueEl instanceof HTMLInputElement) {
+          if (document.activeElement !== c.valueEl) c.valueEl.value = String(round2(ri.displayValue));
+        } else if (c.valueEl) {
+          c.valueEl.textContent = fmtVal(ri.displayValue, ri.conv.suffix);
+        }
       }
     }
   }

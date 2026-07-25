@@ -1,24 +1,19 @@
 // Persona split. The same viewer bundle serves two clearly-separated surfaces:
 //   • Gharkul  (owner)     — view + configure a template's exposed inputs.
 //   • Nakasha  (architect) — full structural authoring (the edit panels).
-// Resolved from the URL (`?mode=studio` → architect); otherwise the desktop
-// app defaults to architect (that's its live-editing workflow), and the plain
-// browser defaults to owner. See plans/configurator-plan.md.
-import { isTauri } from "@tauri-apps/api/core";
+// Resolved from the URL (`?mode=studio` → architect); otherwise everything —
+// web AND the desktop app — defaults to the owner (Gharkul) surface, so opening
+// the app lands on "Choose your home". Switch to Nakasha to edit. See
+// plans/configurator-plan.md.
 
 export type Persona = "owner" | "architect";
 
 const ARCHITECT_TOKENS = new Set(["studio", "architect", "nakasha"]);
 const OWNER_TOKENS = new Set(["owner", "gharkul", "home", "configure"]);
 
-// No explicit signal → the desktop app is the architect's live-editing tool;
-// the plain browser defaults to the owner surface.
+// No explicit signal → default to the owner (Gharkul) surface everywhere.
 function defaultPersona(): Persona {
-  try {
-    return isTauri() ? "architect" : "owner";
-  } catch {
-    return "owner";
-  }
+  return "owner";
 }
 
 let cached: Persona | null = null;

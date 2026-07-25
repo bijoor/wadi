@@ -95,12 +95,67 @@
         /* Persona split: Gharkul (owner) never shows structural-editing
            controls; Nakasha (architect) keeps them. */
         body[data-persona="owner"] #btn-edit-toggle,
-        body[data-persona="owner"] #viewer-3d-toolbar,
         body[data-persona="owner"] #layout-capture-btn,
         body[data-persona="owner"] #viewer-sidebar,
         body[data-persona="owner"] #viewer-property-panel {
             display: none !important;
         }
+        /* Owners get the always-visible layer chips too, but not the capture
+           tools (those are architect-only). */
+        body[data-persona="owner"] #viewer-3d-toolbar .v3d-actions {
+            display: none !important;
+        }
+        /* Retire the old 📚 layer popup and 🎥 camera popup — the toolbar's
+           "Show/hide layers" and "Change view" dropdowns replace them. (The
+           interior walk-through panel stays MOUNTED but hidden so its joystick
+           + hint still render when a room is entered from "Change view".) */
+        .layers-toggle,
+        #viewer-layer-panel,
+        .camera-toggle,
+        #viewer-camera-panel {
+            display: none !important;
+        }
+
+        /* ---- Owner welcome / empty state -------------------------------- */
+        #owner-welcome {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 1500;
+            background: linear-gradient(160deg, #eaf2fb 0%, #f2f6ee 55%, #f7f3ec 100%);
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        /* Show only for an owner who hasn't chosen a home yet. */
+        body[data-persona="owner"][data-home-chosen="no"] #owner-welcome {
+            display: flex;
+        }
+        .ow-card {
+            text-align: center;
+            max-width: 460px;
+            background: #fff;
+            border: 1px solid #e6e3dc;
+            border-radius: 16px;
+            padding: 2.5rem 2.25rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.10);
+        }
+        .ow-logo { font-size: 3rem; line-height: 1; margin-bottom: 0.5rem; }
+        .ow-card h2 { margin: 0 0 0.5rem; font-size: 1.6rem; color: #2C2A26; }
+        .ow-card p { margin: 0 0 1.6rem; color: #6b675f; font-size: 0.98rem; line-height: 1.5; }
+        .ow-actions { display: flex; flex-direction: column; gap: 0.6rem; align-items: stretch; }
+        .ow-btn-primary, .ow-btn {
+            font-size: 0.98rem;
+            font-weight: 600;
+            border-radius: 9px;
+            padding: 0.7rem 1rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .ow-btn-primary { color: #fff; background: #B85028; border-color: #a2461f; }
+        .ow-btn-primary:hover { filter: brightness(1.06); }
+        .ow-btn { color: #2c5aa0; background: #eef3fb; border-color: #cddcf1; }
+        .ow-btn:hover { background: #e2ecfa; border-color: #9db8de; }
         .persona-switch {
             display: inline-block;
             margin-top: 2px;
@@ -524,10 +579,15 @@
         .cfg-label { font-size: 0.82rem; font-weight: 600; color: #334155;
             display: flex; align-items: center; gap: 0.4rem; }
         .cfg-help { font-size: 0.72rem; color: #94a3b8; margin: 0.1rem 0 0.25rem; line-height: 1.3; }
-        .cfg-slider-wrap { display: flex; align-items: center; gap: 0.5rem; }
-        .cfg-slider-wrap input[type="range"] { flex: 1; accent-color: #B85028; }
-        .cfg-value { font-size: 0.78rem; font-variant-numeric: tabular-nums;
-            color: #B85028; font-weight: 600; min-width: 54px; text-align: right; }
+        .cfg-slider-wrap { display: flex; align-items: center; gap: 0.4rem; }
+        .cfg-slider-wrap input[type="range"] { flex: 1; accent-color: #B85028; min-width: 0; }
+        /* Editable value box beside a slider — type or drag. */
+        input.cfg-value { font-size: 0.8rem; font-variant-numeric: tabular-nums;
+            color: #B85028; font-weight: 600; width: 56px; flex: 0 0 auto;
+            text-align: right; padding: 0.25rem 0.35rem; border: 1px solid #e6d5ca;
+            border-radius: 6px; background: #fff; }
+        input.cfg-value:focus { outline: none; border-color: #B85028; }
+        .cfg-unit { font-size: 0.74rem; color: #94a3b8; font-weight: 600; flex: 0 0 auto; }
         select.cfg-control, input[type="number"].cfg-control {
             width: 100%; padding: 0.2rem 0.3rem; border: 1px solid #cbd5e1;
             border-radius: 6px; font-size: 0.82rem; }
@@ -862,7 +922,19 @@
             padding: 1.5rem;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
+            position: relative;
         }
+        /* Per-view "add to previews" button (architect only). */
+        .svg-shot-btn {
+            position: absolute; top: 10px; right: 10px; z-index: 3;
+            width: 32px; height: 32px; border-radius: 8px;
+            background: #B85028; color: #fff; border: none; cursor: pointer;
+            font-size: 0.95rem; line-height: 1; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            opacity: 0; transition: opacity 0.15s ease;
+        }
+        .svg-item:hover .svg-shot-btn { opacity: 0.9; }
+        .svg-shot-btn:hover { opacity: 1 !important; }
+        body[data-persona="owner"] .svg-shot-btn { display: none !important; }
         .svg-item:hover {
             box-shadow: 0 8px 30px rgba(0,0,0,0.15);
             transform: translateY(-4px);
@@ -1206,10 +1278,29 @@
             color: #000;
         }
         .new-house-modal-subtitle {
-            margin: 0 0 1.25rem 0;
+            margin: 0 0 0.75rem 0;
             color: #555;
             font-size: 0.95rem;
         }
+        .new-house-open-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin: 0 0 1.25rem 0;
+            font-size: 0.9rem;
+            color: #777;
+        }
+        .new-house-open-btn {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #2c5aa0;
+            background: #eef3fb;
+            border: 1px solid #cddcf1;
+            border-radius: 7px;
+            padding: 0.35rem 0.7rem;
+            cursor: pointer;
+        }
+        .new-house-open-btn:hover { background: #e2ecfa; border-color: #9db8de; }
         .new-house-modal-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -1322,6 +1413,41 @@
         }
         .tpl-filters-reset:hover { background: rgba(184, 80, 40, 0.08); }
 
+        /* Catalog source footer (architect) */
+        .tpl-source-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1.1rem;
+            padding-top: 0.8rem;
+            border-top: 1px solid #ece9e2;
+            font-size: 0.82rem;
+            color: #8a8579;
+        }
+        .tpl-source-bar:empty { display: none; }
+        .tpl-source-label b { color: #2C2A26; font-weight: 600; }
+        .tpl-source-btn {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #B85028;
+            background: transparent;
+            border: 1px solid #e6d5ca;
+            border-radius: 6px;
+            padding: 0.2rem 0.5rem;
+            cursor: pointer;
+        }
+        .tpl-source-btn:hover { background: rgba(184, 80, 40, 0.08); }
+        .tpl-source-input {
+            flex: 1 1 220px;
+            min-width: 160px;
+            font-size: 0.82rem;
+            padding: 0.3rem 0.5rem;
+            border: 1px solid #d9d5cc;
+            border-radius: 6px;
+            color: #2C2A26;
+        }
+
         /* ---- Template gallery: card thumbnail --------------------------- */
         .template-card { padding: 0; overflow: hidden; }
         .template-card-body {
@@ -1433,16 +1559,13 @@
             border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
         #viewer-3d-toolbar:empty { display: none; }
-        /* Chips scroll; the capture actions stay pinned on the right. */
-        .v3d-chips {
+        /* Left: the two dropdown menus. Right: capture actions (architect). */
+        .v3d-menus {
             flex: 1 1 auto;
             min-width: 0;
             display: flex;
             align-items: center;
             gap: 0.4rem;
-            overflow-x: auto;
-            scrollbar-width: thin;
-            padding-bottom: 2px;
         }
         .v3d-actions {
             flex: 0 0 auto;
@@ -1450,6 +1573,85 @@
             align-items: center;
             gap: 0.4rem;
         }
+
+        /* ---- Dropdown menus (Show/hide layers · Change view) ------------ */
+        .v3d-menu { position: relative; }
+        .v3d-menu-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #e6edf3;
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            padding: 0.4rem 0.65rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .v3d-menu-btn:hover { background: rgba(255, 255, 255, 0.18); }
+        .v3d-caret { opacity: 0.7; font-size: 0.68rem; }
+        .v3d-pop {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 0;
+            min-width: 244px;
+            max-width: 88vw;
+            max-height: 62vh;
+            overflow-y: auto;
+            background: #fff;
+            color: #2C2A26;
+            border: 1px solid #e3e0d9;
+            border-radius: 11px;
+            box-shadow: 0 14px 44px rgba(0, 0, 0, 0.30);
+            padding: 0.4rem;
+            z-index: 20;
+        }
+        .v3d-pop-head {
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em; color: #8a8579; padding: 0.35rem 0.5rem 0.45rem;
+        }
+        .v3d-pop-allnone button {
+            font-size: 0.72rem; font-weight: 700; color: #B85028;
+            background: none; border: none; cursor: pointer; padding: 0.1rem 0.3rem;
+        }
+        .v3d-pop-row {
+            display: flex; align-items: center; gap: 0.55rem;
+            padding: 0.55rem 0.5rem; border-radius: 8px;
+        }
+        .v3d-pop-row:hover { background: #f5f3ee; }
+        .v3d-pop-row input[type="checkbox"],
+        .v3d-pop-subrow input[type="checkbox"] { accent-color: #B85028; flex: 0 0 auto; }
+        .v3d-pop-row input[type="checkbox"] { width: 18px; height: 18px; }
+        .v3d-grp-label { flex: 1; font-size: 0.94rem; font-weight: 600; color: #2C2A26; cursor: pointer; }
+        .v3d-grp-exp {
+            background: none; border: none; cursor: pointer; color: #a8a29a;
+            font-size: 0.85rem; padding: 0.2rem 0.4rem; border-radius: 6px;
+        }
+        .v3d-grp-exp:hover { background: #ece9e2; }
+        .v3d-sublist { padding: 0 0 0.25rem 1.95rem; }
+        .v3d-pop-subrow {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.42rem 0.4rem; font-size: 0.86rem; color: #555;
+            cursor: pointer; border-radius: 6px;
+        }
+        .v3d-pop-subrow:hover { background: #f5f3ee; }
+        .v3d-pop-subrow input { width: 15px; height: 15px; }
+        .v3d-swatch { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25); }
+        .v3d-pop-item {
+            display: block; width: 100%; text-align: left; background: none;
+            border: none; cursor: pointer; font-size: 0.94rem; color: #333;
+            padding: 0.6rem 0.6rem; border-radius: 8px;
+        }
+        .v3d-pop-item:hover { background: #f5f3ee; }
+        .v3d-pop-item.active { background: #eef0ff; color: #4348c9; font-weight: 700; }
+        .v3d-pop-floor {
+            font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em; color: #a8a29a; padding: 0.5rem 0.6rem 0.15rem;
+        }
+        .v3d-pop-empty { color: #999; font-size: 0.85rem; padding: 0.6rem; }
         .v3d-chip {
             display: inline-flex;
             align-items: center;
@@ -1862,6 +2064,21 @@
          main.ts only when a left panel exists; icon flips with the state. -->
     <button id="left-toggle" type="button" title="Show / hide the panel" aria-label="Toggle panel">❯</button>
     <div id="viewer-container">
+        <!-- Owner welcome / empty state — covers the viewer until a home is
+             chosen, so a fresh owner never lands on a model they didn't pick.
+             Shown only for owner + body[data-home-chosen="no"]. Buttons wired in
+             main.ts (Choose = gallery, Open = disk .wadi). -->
+        <div id="owner-welcome">
+            <div class="ow-card">
+                <div class="ow-logo">🏡</div>
+                <h2>Design your home</h2>
+                <p>Start from a ready-made home, or open a design you saved earlier.</p>
+                <div class="ow-actions">
+                    <button type="button" id="ow-choose" class="ow-btn-primary">🏠 Choose your home</button>
+                    <button type="button" id="ow-open" class="ow-btn">📂 Open a saved .wadi…</button>
+                </div>
+            </div>
+        </div>
         <!-- Gharkul (owner) Configurator: a docked, collapsible LEFT panel,
              tab-independent (works over 3D and every 2D view). Populated by
              configuratorPanel.ts; shown only for the owner persona with a
@@ -2152,12 +2369,20 @@
                     <button class="new-house-modal-close" onclick="closeNewHouseModal()" aria-label="Close">✕</button>
                 </div>
                 <p class="new-house-modal-subtitle" id="new-house-modal-subtitle">Pick a template to start from. You can edit everything after loading.</p>
+                <!-- Already have a design? Open a .wadi from disk (owner + architect). -->
+                <div class="new-house-open-row">
+                    <span>Already have a design?</span>
+                    <button type="button" id="new-house-open-existing" class="new-house-open-btn">📂 Open a saved .wadi…</button>
+                </div>
                 <!-- Filter bar: narrow the templates by requirements. Populated by
                      openNewHouseModal() from the templates' meta blocks. -->
                 <div class="tpl-filters" id="new-house-modal-filters"></div>
                 <div class="new-house-modal-grid" id="new-house-modal-grid">
                     <div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 2rem;">Loading templates…</div>
                 </div>
+                <!-- Catalog source footer (architect only) — where templates
+                     come from + change/refresh. Populated by renderCatalogSourceBar(). -->
+                <div class="tpl-source-bar" id="new-house-modal-source"></div>
             </div>
         </div>
 
@@ -2267,6 +2492,28 @@
         // `let` would be invisible to main.ts and the loader would
         // early-return with stale content.
         window.floorPlansLoaded = false;
+        // Add a per-card "📸 Add this view to previews" button to every SVG
+        // card in a 2D grid (architect only; CSS-hidden for owners). Idempotent.
+        function wadiDecorateCaptureButtons(grid) {
+            if (!grid) return;
+            for (const item of grid.querySelectorAll('.svg-item')) {
+                if (item.querySelector('.svg-shot-btn')) continue;
+                const svg = item.querySelector('svg');
+                if (!svg) continue;
+                const btn = document.createElement('button');
+                btn.className = 'svg-shot-btn';
+                btn.title = 'Add this view to the template previews';
+                btn.textContent = '📸';
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const ok = window.wadiAddSvgShot ? await window.wadiAddSvgShot(svg) : false;
+                    btn.textContent = ok ? '✓' : '⚠';
+                    setTimeout(() => { btn.textContent = '📸'; }, 1200);
+                });
+                item.appendChild(btn);
+            }
+        }
+
         async function loadFloorPlans() {
             if (window.floorPlansLoaded) return;
 
@@ -2328,6 +2575,7 @@
                 `;
             }
 
+            wadiDecorateCaptureButtons(document.getElementById('floor-plans-grid'));
             window.floorPlansLoaded = true;
         }
 
@@ -2405,6 +2653,7 @@
                 `;
             }
 
+            wadiDecorateCaptureButtons(document.getElementById('elevations-grid'));
             window.elevationsLoaded = true;
         }
 
@@ -2475,6 +2724,7 @@
             // Quantities tab (window.roofBomManifest, rendered by
             // loadQuantities) — this tab shows only the roof drawings.
             if (myToken !== window.__roofPanelsToken) return;
+            wadiDecorateCaptureButtons(document.getElementById('roof-panels-grid'));
             window.roofPanelsLoaded = true;
         }
 

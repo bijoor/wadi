@@ -8,20 +8,24 @@ export interface LayerDef {
   id: string;
   label: string;
   color: string;
+  // Friendly group this layer rolls up into for the "Show/hide layers" menu
+  // (owners toggle whole groups; the granular layers sit under them). Editable
+  // per-house via the config's `layers` array; these are the defaults.
+  group?: string;
 }
 
 export const DEFAULT_LAYERS: LayerDef[] = [
-  { id: "loft", label: "Roof shell", color: "#e88968" },
-  { id: "frame_surface", label: "Purlins & rafters", color: "#8a8a8a" },
-  { id: "frame_spine", label: "Ridges & trusses", color: "#5a5a5a" },
-  { id: "f1_beam", label: "First floor top beams", color: "#b8b8b8" },
-  { id: "f1", label: "First floor walls", color: "#f5c9a0" },
-  { id: "f1_slab", label: "First floor slab", color: "#b8b8b8" },
-  { id: "f0", label: "Ground floor walls", color: "#f5c9a0" },
-  { id: "openings", label: "Doors & windows", color: "#7ab6ff" },
-  { id: "pillars", label: "Pillars", color: "#ffffff" },
-  { id: "plinth", label: "Plinth", color: "#a0826d" },
-  { id: "ground", label: "Ground", color: "#5c7346" },
+  { id: "loft", label: "Roof shell", color: "#e88968", group: "Roof" },
+  { id: "frame_surface", label: "Purlins & rafters", color: "#8a8a8a", group: "Roof" },
+  { id: "frame_spine", label: "Ridges & trusses", color: "#5a5a5a", group: "Roof" },
+  { id: "f1_beam", label: "First floor top beams", color: "#b8b8b8", group: "Structure" },
+  { id: "f1", label: "First floor walls", color: "#f5c9a0", group: "Walls" },
+  { id: "f1_slab", label: "First floor slab", color: "#b8b8b8", group: "Structure" },
+  { id: "f0", label: "Ground floor walls", color: "#f5c9a0", group: "Walls" },
+  { id: "openings", label: "Doors & windows", color: "#7ab6ff", group: "Doors & windows" },
+  { id: "pillars", label: "Pillars", color: "#ffffff", group: "Structure" },
+  { id: "plinth", label: "Plinth", color: "#a0826d", group: "Site" },
+  { id: "ground", label: "Ground", color: "#5c7346", group: "Site" },
 ];
 
 interface LayerState {
@@ -32,6 +36,8 @@ interface LayerState {
   visible: Record<string, boolean>;
   toggle: (id: string) => void;
   setAll: (ids: string[], visible: boolean) => void;
+  // Set a subset of layers on/off without disturbing the rest (group toggles).
+  setMany: (ids: string[], visible: boolean) => void;
 }
 
 export const useLayerStore = create<LayerState>((set) => ({
@@ -40,6 +46,10 @@ export const useLayerStore = create<LayerState>((set) => ({
     set((s) => ({ visible: { ...s.visible, [id]: !(s.visible[id] ?? true) } })),
   setAll: (ids, visible) =>
     set(() => ({ visible: Object.fromEntries(ids.map((id) => [id, visible])) })),
+  setMany: (ids, visible) =>
+    set((s) => ({
+      visible: { ...s.visible, ...Object.fromEntries(ids.map((id) => [id, visible])) },
+    })),
 }));
 
 // The built-in fallback: which layer id an object lands in when it has no
@@ -135,16 +145,41 @@ export function resolveLayers(config: unknown): LayerDef[] {
   const raw = (config as { layers?: unknown } | null)?.layers;
   if (Array.isArray(raw) && raw.length > 0) {
     return raw.map((l, i) => {
-      const o = (l ?? {}) as { id?: unknown; label?: unknown; color?: unknown };
+      const o = (l ?? {}) as { id?: unknown; label?: unknown; color?: unknown; group?: unknown };
       const id = typeof o.id === "string" && o.id ? o.id : `layer${i}`;
       return {
         id,
         label: typeof o.label === "string" && o.label ? o.label : id,
         color: typeof o.color === "string" && o.color ? o.color : "#888888",
+        group: typeof o.group === "string" && o.group ? o.group : undefined,
       };
     });
   }
   return DEFAULT_LAYERS;
+}
+
+// Roll the effective layers up into friendly groups for the "Show/hide layers"
+// menu, in first-appearance order. A layer with no `group` becomes its own
+// single-member group (labelled by the layer), so nothing is ever hidden from
+// the menu. The membership is fully config-driven (see LayerDef.group).
+export interface LayerGroup {
+  label: string;
+  layerIds: string[];
+}
+export function layerGroups(config: unknown): LayerGroup[] {
+  const order: string[] = [];
+  const byLabel = new Map<string, string[]>();
+  for (const l of effectiveLayers(config)) {
+    const g = l.group && l.group.trim() ? l.group : l.label;
+    let ids = byLabel.get(g);
+    if (!ids) {
+      ids = [];
+      byLabel.set(g, ids);
+      order.push(g);
+    }
+    ids.push(l.id);
+  }
+  return order.map((label) => ({ label, layerIds: byLabel.get(label) ?? [] }));
 }
 
 // Which layer a per-floor object belongs to. Ground floor rooms/walls

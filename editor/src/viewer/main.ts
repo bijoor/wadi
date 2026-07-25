@@ -69,6 +69,16 @@ import {
 } from "../io/shareLink";
 import { isTauri, invoke } from "@tauri-apps/api/core";
 import { getPersona, isOwner, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona } from "./persona";
+import {
+  fetchCatalogText,
+  templatesBaseUrl,
+  setTemplatesBaseUrl,
+  isRemoteCatalog,
+  sourceKind,
+  driveApiKey,
+  setDriveApiKey,
+  resetCatalogSource,
+} from "../io/templateSource";
 import { mountConfiguratorPanel } from "./configuratorPanel";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -251,11 +261,18 @@ async function bootViewer(): Promise<void> {
   // it. No-op in a plain browser tab.
   startConfigWatcher();
 
+  // Owner welcome/empty state: a home counts as "chosen" only if a share link
+  // or an opened file drove this load. A fresh default load = not chosen, so the
+  // owner sees the welcome overlay (not the leftover default model) until they
+  // pick something. Architects never see it (CSS-gated to owner).
+  document.body.dataset.homeChosen =
+    loadedFromOpenFile || loadedFromHash ? "yes" : "no";
+  wireOwnerWelcome();
+
   // Owner first-step: on a fresh default load (no shared link, no opened
   // file), greet the owner (Gharkul) with the template gallery so they START
   // by choosing a home to customize. Architects, share-link recipients, and
-  // file-opens skip straight to the model. This is the seed of the future
-  // dedicated landing page (same gallery, standalone route).
+  // file-opens skip straight to the model.
   if (isOwner() && !loadedFromOpenFile && !loadedFromHash) {
     void openNewHouseModal();
   }
@@ -713,6 +730,9 @@ declare global {
     wadiCaptureFloorPlan?: () => Promise<string | null>;
     // Layout-tab capture button handler (inline onclick).
     captureLayoutShot?: (btn?: HTMLElement) => Promise<void>;
+    // Rasterize one 2D view's SVG element and add it to the previews. Returns
+    // true on success. Used by the per-card 📸 buttons on the 2D grids.
+    wadiAddSvgShot?: (svg: SVGSVGElement) => Promise<boolean>;
   }
 }
 
@@ -795,6 +815,19 @@ function wireCaptureBridges(): void {
     }
     useConfigStore.getState().addThumbnail(url);
     if (btn) flashSaved(btn, "✓");
+  };
+
+  // Per-card "📸" on the 2D grids (Floor Plans / Elevations / Roof Details) —
+  // rasterize THAT individual view's SVG and add it to the template previews.
+  window.wadiAddSvgShot = async (svg: SVGSVGElement): Promise<boolean> => {
+    try {
+      const url = await rasterizeSvgString(new XMLSerializer().serializeToString(svg));
+      if (!url) return false;
+      useConfigStore.getState().addThumbnail(url);
+      return true;
+    } catch {
+      return false;
+    }
   };
 }
 
@@ -1344,17 +1377,7 @@ function wireHeaderButtons(): void {
   });
 
 
-  btnLoad?.addEventListener("click", async () => {
-    // Uses the same file picker + Zod validation the editor's TopBar does.
-    try {
-      if (!(await guardUnsaved("opening another model"))) return;
-      const res = await pickAndLoadConfig();
-      useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg !== "Cancelled") alert(`Load failed: ${msg}`);
-    }
-  });
+  btnLoad?.addEventListener("click", () => void openExistingFromDisk());
 
   btnSave?.addEventListener("click", async () => {
     const state = useConfigStore.getState();
@@ -1538,6 +1561,9 @@ function wirePersonaSwitch(): void {
     e.preventDefault();
     const target = otherPersona().persona;
     setPersona(target);
+    // Entering architect means working with the loaded model — never show the
+    // owner welcome overlay over it (e.g. after switching back to owner).
+    if (target === "architect") markHomeChosen();
     try {
       const u = new URL(location.href);
       u.searchParams.set("mode", target === "architect" ? "studio" : "owner");
@@ -1638,23 +1664,87 @@ async function openNewHouseModal(): Promise<void> {
   tplFilters = emptyFilters();
 
   // Always refetch on open — the manifest is small, and caching it
-  // meant users saw a stale template list until they hard-reloaded.
-  // Cache-buster on the URL side-steps browser HTTP caching too.
+  // meant users saw a stale template list until they hard-reloaded. The
+  // catalog source (bundled or a cloud bucket) is resolved by templateSource.
   try {
-    const r = await fetch(`/templates/index.json?t=${Date.now()}`);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const parsed = (await r.json()) as { templates: TemplateEntry[] };
+    const parsed = JSON.parse(await fetchCatalogText("index.json")) as {
+      templates: TemplateEntry[];
+    };
     galleryTemplates = parsed.templates;
   } catch (e) {
     grid.innerHTML =
       `<div class="new-house-modal-empty" style="color:#b00">
-        Failed to load templates/index.json: ${e instanceof Error ? e.message : String(e)}
+        Couldn't load the template catalog from ${escapeHtml(templatesBaseUrl())}: ${e instanceof Error ? e.message : String(e)}
       </div>`;
     return;
   }
 
+  // "Open a saved .wadi" — reuse the disk-load flow, close the modal on success.
+  const openBtn = document.getElementById("new-house-open-existing");
+  if (openBtn) {
+    (openBtn as HTMLButtonElement).onclick = async () => {
+      if (await openExistingFromDisk()) closeNewHouseModal();
+    };
+  }
+
+  renderCatalogSourceBar();
   buildTemplateFilterBar();
   renderTemplateCards();
+}
+
+// Small footer control (architect only) showing where templates come from and
+// letting anyone point the app at a cloud catalog + refresh. Shown to owners
+// too so they can see (and change) where their homes come from.
+function renderCatalogSourceBar(): void {
+  const bar = document.getElementById("new-house-modal-source");
+  if (!bar) return;
+  const base = templatesBaseUrl();
+  const kindLabel = isRemoteCatalog()
+    ? `${escapeHtml(base)}${sourceKind() === "gdrive" ? " (Google Drive)" : ""}`
+    : "bundled with the app";
+  bar.innerHTML =
+    `<span class="tpl-source-label">Templates: <b>${kindLabel}</b></span>
+     <button type="button" class="tpl-source-btn" id="tpl-source-set">Change source…</button>
+     <button type="button" class="tpl-source-btn" id="tpl-source-refresh">↻ Refresh</button>`;
+  document.getElementById("tpl-source-refresh")?.addEventListener("click", () => {
+    resetCatalogSource();
+    thumbCache.clear();
+    void openNewHouseModal();
+  });
+  document.getElementById("tpl-source-set")?.addEventListener("click", () => {
+    // Inline editor (window.prompt is unavailable in the Tauri WKWebView). The
+    // Drive API-key row appears only when the URL looks like a Google Drive folder.
+    bar.innerHTML =
+      `<span class="tpl-source-label">Catalog URL:</span>
+       <input type="text" id="tpl-source-input" class="tpl-source-input"
+              placeholder="https://… R2/jsDelivr, or a Drive folder link (blank = bundled)"
+              value="${isRemoteCatalog() ? escapeHtml(base) : ""}" />
+       <input type="text" id="tpl-drive-key" class="tpl-source-input tpl-drive-key"
+              placeholder="Google Drive API key" value="${escapeHtml(driveApiKey())}" />
+       <button type="button" class="tpl-source-btn" id="tpl-source-save">Save</button>
+       <button type="button" class="tpl-source-btn" id="tpl-source-cancel">Cancel</button>`;
+    const input = document.getElementById("tpl-source-input") as HTMLInputElement | null;
+    const keyInput = document.getElementById("tpl-drive-key") as HTMLInputElement | null;
+    const syncKeyVisibility = () => {
+      if (keyInput) keyInput.style.display = sourceKind(input?.value ?? "") === "gdrive" ? "" : "none";
+    };
+    syncKeyVisibility();
+    input?.addEventListener("input", syncKeyVisibility);
+    input?.focus();
+    const save = () => {
+      setTemplatesBaseUrl(input?.value.trim() || null);
+      setDriveApiKey(keyInput?.value.trim() || null);
+      resetCatalogSource();
+      thumbCache.clear();
+      void openNewHouseModal();
+    };
+    document.getElementById("tpl-source-save")?.addEventListener("click", save);
+    input?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") save();
+      else if (e.key === "Escape") renderCatalogSourceBar();
+    });
+    document.getElementById("tpl-source-cancel")?.addEventListener("click", () => renderCatalogSourceBar());
+  });
 }
 
 // Distinct non-placeholder values of a meta field across the loaded templates.
@@ -1804,16 +1894,14 @@ function renderTemplateCards(): void {
 // placeholder stays.
 async function loadTemplateThumb(t: TemplateEntry, thumbEl: HTMLElement | null): Promise<void> {
   if (!thumbEl) return;
-  const file = t.file.replace(/^\//, "");
+  const file = t.file;
   let images = thumbCache.get(file);
   if (images === undefined) {
     try {
-      // Cache-bust like index.json — otherwise a browser that fetched this
-      // template file before its previews were (re)captured serves the stale
-      // copy and they never appear.
-      const r = await fetch(`/${file}?t=${Date.now()}`);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const raw = (await r.json()) as { thumbnails?: unknown; thumbnail?: unknown };
+      const raw = JSON.parse(await fetchCatalogText(file)) as {
+        thumbnails?: unknown;
+        thumbnail?: unknown;
+      };
       const arr = Array.isArray(raw.thumbnails)
         ? raw.thumbnails.filter((x): x is string => typeof x === "string")
         : typeof raw.thumbnail === "string"
@@ -1933,16 +2021,47 @@ function closeNewHouseModal(): void {
   if (modal) modal.style.display = "none";
 }
 
+// Open an existing .wadi from local disk — same picker + Zod validation the
+// architect's Load button uses, exposed to owners too (from the gallery) so a
+// returning owner can reopen their saved design instead of starting fresh.
+// Returns true on a successful load.
+async function openExistingFromDisk(): Promise<boolean> {
+  try {
+    if (!(await guardUnsaved("opening another model"))) return false;
+    const res = await pickAndLoadConfig();
+    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
+    markHomeChosen();
+    return true;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg !== "Cancelled") alert(`Load failed: ${msg}`);
+    return false;
+  }
+}
+
+// Owner welcome/empty state: `body[data-home-chosen]` gates the #owner-welcome
+// overlay so a fresh owner never lands on a model they didn't pick. Flipped to
+// "yes" once they choose a template, open a file, or enter architect mode.
+function markHomeChosen(): void {
+  document.body.dataset.homeChosen = "yes";
+}
+
+function wireOwnerWelcome(): void {
+  document
+    .getElementById("ow-choose")
+    ?.addEventListener("click", () => void openNewHouseModal());
+  document
+    .getElementById("ow-open")
+    ?.addEventListener("click", () => void openExistingFromDisk());
+}
+
 async function selectTemplate(t: TemplateEntry): Promise<void> {
   // Loading a template replaces the current house — offer to save first.
   if (!(await guardUnsaved("creating a new house"))) return;
   try {
-    // index.json lists files relative to the site root (e.g.
-    // "templates/blank.json"); anchor them at "/" so they resolve there
-    // and not under /app/ where the designer is served.
-    const r = await fetch(`/${t.file.replace(/^\//, "")}`);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const raw = await r.json();
+    // Files are named relative to the catalog base (bundled dir or cloud
+    // bucket); templateSource resolves + caches them.
+    const raw = JSON.parse(await fetchCatalogText(t.file));
     const parsed = validate(raw);
     if (!parsed.ok || !parsed.data) {
       alert(
@@ -1952,6 +2071,7 @@ async function selectTemplate(t: TemplateEntry): Promise<void> {
       return;
     }
     useConfigStore.getState().loadConfig(parsed.data, `${t.title} (template)`);
+    markHomeChosen();
     // Clear undo history so the freshly-loaded template becomes the new
     // baseline — Ctrl+Z shouldn't revert to the pre-template state.
     useConfigStore.temporal.getState().clear();

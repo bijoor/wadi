@@ -1,20 +1,21 @@
-// Permanent slim toolbar for the viewer's 3D tab (architect only; CSS-hidden
-// for owners). Two jobs:
-//   1. Layer quick-toggles — the visibility layers, always visible as pills,
-//      so layers are obvious instead of hidden behind the 📚 icon.
-//   2. Template-preview capture — 📸 add the current 3D view, ✨ auto-capture a
-//      set of oblique angles + the floor plan, and 🗂 manage the shot list
-//      (reorder / set cover / delete).
+// Slim toolbar for the viewer's 3D tab. Two dropdown menus (mobile-first,
+// space-efficient) for everyone:
+//   • "Show/hide layers" — layers rolled up into friendly, config-driven groups
+//     (owners toggle whole groups; expand a group to reach its granular layers).
+//   • "Change view"      — "Fly around" (orbit) + "Enter <room>" walk-throughs.
+// Plus (architect only, via CSS on .v3d-actions) template-preview capture:
+//   📸 add current view · ✨ auto angles + plan · 🗂 manage shots.
 //
 // Mounted into #viewer-3d-toolbar by mount3D.tsx. Capture goes through the
-// window bridges registered by mount3D (wadiCapture3D / wadiCaptureAngles) and
-// main.ts (wadiCaptureFloorPlan); the shots persist on config.thumbnails via
-// the store and are written out on Save.
+// window bridges (wadiCapture3D / wadiCaptureAngles / wadiCaptureFloorPlan);
+// layers via useLayerStore; camera via useInteriorStore.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { effectiveLayers, useLayerStore } from "../three/layers";
+import { effectiveLayers, layerGroups, useLayerStore } from "../three/layers";
 import { useConfigStore } from "../state/configStore";
+import { listRooms, useInteriorStore } from "../three/interiorView";
 
 function readThumbs(config: unknown): string[] {
   const c = config as { thumbnails?: string[]; thumbnail?: string } | null;
@@ -22,14 +23,24 @@ function readThumbs(config: unknown): string[] {
   return c?.thumbnail ? [c.thumbnail] : [];
 }
 
+// Close a popover when the user clicks/taps outside it.
+function useOutsideClose(open: boolean, onClose: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [open, onClose]);
+  return ref;
+}
+
 export function ViewerToolbar3D() {
   const config = useConfigStore((s) => s.config);
   const addThumbnail = useConfigStore((s) => s.addThumbnail);
   const setThumbnails = useConfigStore((s) => s.setThumbnails);
-
-  const layers = useMemo(() => effectiveLayers(config), [config]);
-  const visible = useLayerStore((s) => s.visible);
-  const toggle = useLayerStore((s) => s.toggle);
 
   const thumbs = useMemo(() => readThumbs(config), [config]);
   const [busy, setBusy] = useState(false);
@@ -73,21 +84,9 @@ export function ViewerToolbar3D() {
 
   return (
     <>
-      <div className="v3d-chips">
-        {layers.map((l) => {
-          const on = visible[l.id] !== false;
-          return (
-            <span
-              key={l.id}
-              className={`v3d-chip${on ? "" : " off"}`}
-              onClick={() => toggle(l.id)}
-              title={`${on ? "Hide" : "Show"} ${l.label}`}
-            >
-              <span className="v3d-dot" style={{ backgroundColor: l.color }} />
-              <span className="v3d-lbl">{l.label}</span>
-            </span>
-          );
-        })}
+      <div className="v3d-menus">
+        <LayersMenu />
+        <ViewMenu />
       </div>
 
       <div className="v3d-actions">
@@ -105,13 +104,166 @@ export function ViewerToolbar3D() {
       </div>
 
       {managerOpen && (
-        <ShotManager
-          thumbs={thumbs}
-          onChange={setThumbnails}
-          onClose={() => setManagerOpen(false)}
-        />
+        <ShotManager thumbs={thumbs} onChange={setThumbnails} onClose={() => setManagerOpen(false)} />
       )}
     </>
+  );
+}
+
+// --- "Show/hide layers" dropdown --------------------------------------------
+
+function LayersMenu() {
+  const config = useConfigStore((s) => s.config);
+  const groups = useMemo(() => layerGroups(config), [config]);
+  const defs = useMemo(() => effectiveLayers(config), [config]);
+  const defById = useMemo(() => new Map(defs.map((d) => [d.id, d])), [defs]);
+  const allIds = useMemo(() => defs.map((d) => d.id), [defs]);
+
+  const visible = useLayerStore((s) => s.visible);
+  const toggle = useLayerStore((s) => s.toggle);
+  const setMany = useLayerStore((s) => s.setMany);
+
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const ref = useOutsideClose(open, () => setOpen(false));
+
+  const isOn = (id: string) => visible[id] !== false;
+  const groupState = (ids: string[]): "on" | "off" | "some" => {
+    const on = ids.filter(isOn).length;
+    return on === 0 ? "off" : on === ids.length ? "on" : "some";
+  };
+
+  return (
+    <div className="v3d-menu" ref={ref}>
+      <button className="v3d-menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        🗂 Show/hide layers <span className="v3d-caret">▾</span>
+      </button>
+      {open && (
+        <div className="v3d-pop" role="menu">
+          <div className="v3d-pop-head">
+            <span>Show/hide layers</span>
+            <span className="v3d-pop-allnone">
+              <button onClick={() => setMany(allIds, true)}>All</button>
+              <button onClick={() => setMany(allIds, false)}>None</button>
+            </span>
+          </div>
+          {groups.map((g) => {
+            const st = groupState(g.layerIds);
+            const canExpand = g.layerIds.length > 1;
+            const isExp = !!expanded[g.label];
+            return (
+              <div key={g.label} className="v3d-grp">
+                <div className="v3d-pop-row">
+                  <input
+                    type="checkbox"
+                    checked={st !== "off"}
+                    ref={(el) => {
+                      if (el) el.indeterminate = st === "some";
+                    }}
+                    onChange={() => setMany(g.layerIds, st !== "on")}
+                  />
+                  <span className="v3d-grp-label" onClick={() => setMany(g.layerIds, st !== "on")}>
+                    {g.label}
+                  </span>
+                  {canExpand && (
+                    <button
+                      className="v3d-grp-exp"
+                      title={isExp ? "Hide layers" : "Show individual layers"}
+                      onClick={() => setExpanded((e) => ({ ...e, [g.label]: !isExp }))}
+                    >
+                      {isExp ? "▾" : "▸"}
+                    </button>
+                  )}
+                </div>
+                {canExpand && isExp && (
+                  <div className="v3d-sublist">
+                    {g.layerIds.map((id) => {
+                      const def = defById.get(id);
+                      return (
+                        <label key={id} className="v3d-pop-subrow">
+                          <input type="checkbox" checked={isOn(id)} onChange={() => toggle(id)} />
+                          <span className="v3d-swatch" style={{ backgroundColor: def?.color ?? "#888" }} />
+                          {def?.label ?? id}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- "Change view" dropdown --------------------------------------------------
+
+function ViewMenu() {
+  const config = useConfigStore((s) => s.config);
+  const rooms = useMemo(() => listRooms(config), [config]);
+  const target = useInteriorStore((s) => s.target);
+  const enter = useInteriorStore((s) => s.enter);
+  const exit = useInteriorStore((s) => s.exit);
+
+  const [open, setOpen] = useState(false);
+  const ref = useOutsideClose(open, () => setOpen(false));
+
+  // Group the walk-into rooms by floor, preserving listRooms order.
+  const floors = useMemo(() => {
+    const out: { name: string; rooms: typeof rooms }[] = [];
+    for (const r of rooms) {
+      let g = out.find((f) => f.name === r.floorName);
+      if (!g) {
+        g = { name: r.floorName, rooms: [] };
+        out.push(g);
+      }
+      g.rooms.push(r);
+    }
+    return out;
+  }, [rooms]);
+
+  const pretty = (s: string) => s.replace(/_/g, " ");
+
+  return (
+    <div className="v3d-menu" ref={ref}>
+      <button className="v3d-menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        📷 Change view <span className="v3d-caret">▾</span>
+      </button>
+      {open && (
+        <div className="v3d-pop" role="menu">
+          <div className="v3d-pop-head"><span>Change view</span></div>
+          <button
+            className={`v3d-pop-item${!target ? " active" : ""}`}
+            onClick={() => {
+              exit();
+              setOpen(false);
+            }}
+          >
+            🕊️ Fly around
+          </button>
+          {floors.map((f) => (
+            <div key={f.name}>
+              <div className="v3d-pop-floor">{f.name}</div>
+              {f.rooms.map((r) => (
+                <button
+                  key={r.key}
+                  className={`v3d-pop-item${target?.key === r.key ? " active" : ""}`}
+                  onClick={() => {
+                    enter({ key: r.key, label: `${f.name}: ${r.name}`, eye: r.eye });
+                    setOpen(false);
+                  }}
+                >
+                  Enter {pretty(r.name)}
+                </button>
+              ))}
+            </div>
+          ))}
+          {rooms.length === 0 && <div className="v3d-pop-empty">No rooms to enter.</div>}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -140,7 +292,10 @@ function ShotManager({
   };
   const del = (i: number) => onChange(thumbs.filter((_, k) => k !== i));
 
-  return (
+  // Portal to <body>: the toolbar's `backdrop-filter` makes it a containing
+  // block for `position: fixed`, so an in-tree modal anchors to the thin
+  // toolbar strip (bottom of screen) instead of the viewport. Escape it.
+  return createPortal(
     <div className="shot-mgr-backdrop" onClick={onClose}>
       <div className="shot-mgr-card" onClick={(e) => e.stopPropagation()}>
         <div className="shot-mgr-head">
@@ -162,11 +317,7 @@ function ShotManager({
                 <img src={url} alt={`preview ${i + 1}`} />
               </div>
               <div className="shot-mgr-row">
-                {i === 0 ? (
-                  <span className="cover-tag">Cover</span>
-                ) : (
-                  <span className="idx">#{i + 1}</span>
-                )}
+                {i === 0 ? <span className="cover-tag">Cover</span> : <span className="idx">#{i + 1}</span>}
                 <button className="shot-mgr-ibtn" onClick={() => move(i, -1)} disabled={i === 0} title="Move left">◀</button>
                 <button className="shot-mgr-ibtn" onClick={() => move(i, 1)} disabled={i === thumbs.length - 1} title="Move right">▶</button>
                 {i !== 0 && (
@@ -184,7 +335,8 @@ function ShotManager({
           <button className="shot-mgr-ibtn shot-mgr-close" onClick={onClose}>Done</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

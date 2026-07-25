@@ -556,6 +556,9 @@ export const layerDef = z
     id: z.string().min(1),
     label: z.string(),
     color: z.string().optional(),
+    // Friendly group for the owner "Show/hide layers" menu (e.g. "Roof",
+    // "Walls"). Layers sharing a group toggle together. Optional.
+    group: z.string().optional(),
   })
   .strict();
 export type LayerDef = z.infer<typeof layerDef>;

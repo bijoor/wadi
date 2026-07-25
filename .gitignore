@@ -46,3 +46,6 @@ docs.backup.*/
 
 # House Designer CLI — not finalized yet
 designer/
+
+# Local Cloudflare R2 credentials for scripts/publish-templates.sh
+.env.r2
