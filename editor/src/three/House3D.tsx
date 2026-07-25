@@ -44,9 +44,9 @@ import { OpeningPane, WallWithOpenings, type WallOpening } from "./wallCSG";
 import { effectiveLayers, useLayerStore } from "./layers";
 import {
   buildRoomRects,
-  roomSideIsExternal,
+  splitWallByCoverage,
   classifyStandaloneWall,
-  type Rect,
+  type RoomRect,
 } from "../estimate/wallArea";
 
 interface Obj {
@@ -567,9 +567,9 @@ export function House3D({ config }: { config: HouseConfig }) {
             />,
           );
         } else if (obj.type === "room") {
-          emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, pillars);
+          emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, pillars, fi);
         } else if (obj.type === "wall") {
-          emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, pillars);
+          emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, pillars, fi);
         } else if (obj.type === "staircase") {
           // Supports the "new" schema (start_x/start_y + step_* +
           // compass direction). Legacy format (x/y/width/length) can be
@@ -697,10 +697,10 @@ interface Globals {
   // Project units settings (system + per_unit) — used to keep wall/roof
   // texture block size physically constant across projects.
   units?: { system?: string; per_unit?: number };
-  // Room rectangles across all floors — used to classify each wall as
-  // external (weather-facing → laterite texture) or internal (partition →
-  // plain paint).
-  roomRects: Rect[];
+  // Room rectangles across all floors (each tagged with its floor index) —
+  // used to classify each wall as external (weather-facing → laterite texture)
+  // or internal (partition → plain paint).
+  roomRects: RoomRect[];
 }
 interface Plot { width: number; length: number }
 
@@ -825,6 +825,7 @@ function emitRoomWalls(
   push: PushFn,
   layer: string,
   pillars: PillarRect[],
+  floorIdx: number,
 ) {
   const rawWalls = obj.walls as string[] | Record<string, unknown> | undefined;
   const wallsList: string[] = rawWalls
@@ -842,9 +843,6 @@ function emitRoomWalls(
     const side = sideRaw.toLowerCase() as "north" | "south" | "east" | "west";
     // Walls use the floor's WALL height (independent of floor_height).
     const wh = heightFor(obj, side, band.wallHeight);
-    // External (weather-facing) sides get the laterite texture; interior
-    // partitions stay plain-painted. All sub-segments of this side share it.
-    const isExternal = roomSideIsExternal(globals.roomRects, rx, ry, rw, rl, side, t);
 
     const matched: WallOpening[] = [];
     for (const op of openings) {
@@ -872,11 +870,23 @@ function emitRoomWalls(
 
     // Trim the run so it stops at any overlapping pillar's faces; a wall with
     // no overlap yields the single full span (unchanged geometry).
-    const spans = pillars.length
+    const trimmed = pillars.length
       ? trimSpans(axis === "x" ? "h" : "v", perp, aStart, aEnd, t, pillars)
       : ([[aStart, aEnd]] as [number, number][]);
+    // Sample line just past the outer face; split each span where a porch /
+    // balcony / room-above starts or stops covering the wall, so the exposed
+    // length reads as exterior (laterite) and the covered length as interior.
+    const probe = Math.max(6, t * 1.5);
+    const beyond =
+      side === "north" ? ry - probe
+      : side === "south" ? ry + rl + probe
+      : side === "east" ? rx + rw + probe
+      : rx - probe;
+    const segments = trimmed.flatMap(([ws, we]) =>
+      splitWallByCoverage(globals.roomRects, axis, beyond, ws, we, floorIdx),
+    );
 
-    for (const [ws, we] of spans) {
+    for (const { s: ws, e: we, external } of segments) {
       const subLen = we - ws;
       if (subLen < 1e-6) continue;
       const off = ws - aStart; // this piece's offset into the original wall
@@ -903,7 +913,7 @@ function emitRoomWalls(
           color="#f5c9a0"
           openings={sub}
           units={globals.units}
-          external={isExternal}
+          external={external}
           outerSign={outerSign}
         />,
       );
@@ -942,6 +952,7 @@ function emitStandaloneWall(
   push: PushFn,
   layer: string,
   pillars: PillarRect[],
+  floorIdx: number,
 ) {
   const sx = obj.start_x as number, sy = obj.start_y as number;
   const ex = obj.end_x as number, ey = obj.end_y as number;
@@ -962,7 +973,7 @@ function emitStandaloneWall(
   const rotY = Math.atan2(-dy, dx);
   // External if either face is weather-facing; interior partitions stay plain.
   // `outerSign` marks which local-Z face is the weather face for texturing.
-  const { external: isExternal, outerSign } = classifyStandaloneWall(globals.roomRects, sx, sy, ex, ey, t);
+  const { external: isExternal, outerSign } = classifyStandaloneWall(globals.roomRects, sx, sy, ex, ey, t, floorIdx);
 
   const matched: WallOpening[] = [];
   for (const op of openings) {

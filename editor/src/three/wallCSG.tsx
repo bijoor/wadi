@@ -53,9 +53,10 @@ interface Props {
   // external when unspecified.
   external?: boolean;
   // For external walls, which face is the weather face — the sign of the wall's
-  // LOCAL +Z (thickness) axis (+1, -1, or 0 = both). Only that face gets the
-  // laterite texture; the inner face, top, ends and opening reveals stay
-  // flat-painted (as interior surfaces).
+  // LOCAL +Z (thickness) axis (+1, -1, or 0 = both). Everything except the
+  // opposite (inner) face gets the laterite texture — outer face, top, ends and
+  // opening reveals included — so exposed edges wrap in brick; only the inner
+  // face stays flat-painted (interior surface).
   outerSign?: number;
 }
 
@@ -122,7 +123,7 @@ function splitOuterFaceGroups(geom: THREE.BufferGeometry, outerSign: number): vo
   const gi = (i: number) => (existing ? existing.getX(i) : i);
   const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
   const ab = new THREE.Vector3(), ac = new THREE.Vector3(), n = new THREE.Vector3();
-  const outer: number[] = [], inner: number[] = [];
+  const brick: number[] = [], plain: number[] = [];
   for (let t = 0; t < triCount; t++) {
     const a = gi(t * 3), b = gi(t * 3 + 1), c = gi(t * 3 + 2);
     vA.fromBufferAttribute(pos, a);
@@ -131,14 +132,18 @@ function splitOuterFaceGroups(geom: THREE.BufferGeometry, outerSign: number): vo
     ab.subVectors(vB, vA);
     ac.subVectors(vC, vA);
     n.crossVectors(ab, ac).normalize();
-    // A big (weather-capable) face has a normal dominantly along Z.
-    const isOuter = Math.abs(n.z) > 0.5 && (outerSign === 0 || Math.sign(n.z) === outerSign);
-    (isOuter ? outer : inner).push(a, b, c);
+    // ONLY the inner big face (the Z-face opposite the weather face) is interior
+    // paint; every other face — outer face, top, ends, opening reveals — is
+    // exterior brick, so the wall's exposed edges/corners wrap in brick rather
+    // than showing bare plaster trim. outerSign 0 (freestanding) ⇒ no inner
+    // face, so the whole wall is brick.
+    const isInnerFace = outerSign !== 0 && Math.abs(n.z) > 0.5 && Math.sign(n.z) === -outerSign;
+    (isInnerFace ? plain : brick).push(a, b, c);
   }
-  geom.setIndex(outer.concat(inner));
+  geom.setIndex(brick.concat(plain));
   geom.clearGroups();
-  if (outer.length) geom.addGroup(0, outer.length, 0);
-  if (inner.length) geom.addGroup(outer.length, inner.length, 1);
+  if (brick.length) geom.addGroup(0, brick.length, 0);
+  if (plain.length) geom.addGroup(brick.length, plain.length, 1);
 }
 
 // The wall is built in its LOCAL frame — origin at the wall's centre,

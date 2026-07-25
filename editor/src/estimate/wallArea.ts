@@ -86,7 +86,7 @@ function allRoomRects(config: HouseConfig): Rect[] {
 
 // Is (px,py) inside any room interior? `eps` insets each rect so a point exactly
 // on a shared edge is not counted as inside.
-function inAnyRoom(rects: Rect[], px: number, py: number, eps = 1): boolean {
+function inAnyRoom(rects: ReadonlyArray<Rect>, px: number, py: number, eps = 1): boolean {
   for (const r of rects) {
     if (px > r.x + eps && px < r.x + r.w - eps && py > r.y + eps && py < r.y + r.l - eps) return true;
   }
@@ -111,10 +111,23 @@ function openingsArea(wc: Bag | undefined): number {
 // texture external walls and leave internal partitions plain-painted, without
 // duplicating the geometry logic.
 
-// All room rectangles across every floor — the footprint a wall face is tested
-// against.
-export function buildRoomRects(config: HouseConfig): Rect[] {
-  return allRoomRects(config);
+// A room footprint tagged with the index of the floor it sits on, so wall
+// coverage can require the covering room to be on the SAME floor or HIGHER (a
+// room BELOW a wall doesn't shelter its outer face — the wall rises above that
+// lower room's roof and faces outside).
+export interface RoomRect extends Rect { floor: number }
+
+// All room rectangles across every floor, each tagged with its floor index.
+export function buildRoomRects(config: HouseConfig): RoomRect[] {
+  const out: RoomRect[] = [];
+  const floors = ((config as Bag).floors ?? []) as Bag[];
+  for (let fi = 0; fi < floors.length; fi++) {
+    for (const o of ((floors[fi].objects ?? []) as Bag[])) {
+      if (o.type !== "room" || o.enabled === false) continue;
+      out.push({ x: num(o.x), y: num(o.y), w: num(o.width), l: num(o.length), floor: fi });
+    }
+  }
+  return out;
 }
 
 function probeDist(wallT: number): number {
@@ -133,6 +146,54 @@ export function roomSideIsExternal(
   return !inAnyRoom(rects, cx + nx * probe, cy + ny * probe);
 }
 
+// Split a wall run [lo,hi] (varying along `alongAxis`) into exposed/covered
+// segments, based on which sub-intervals have a room JUST BEYOND the outer face.
+// `beyond` is the fixed perpendicular coordinate of the sample line (already a
+// probe distance past the face). A partially-covered wall (e.g. one a porch or
+// balcony covers over part of its length, or that has a room/terrace above part
+// of it) therefore reads as exterior finish where it's exposed and interior
+// finish where it's protected — instead of the whole wall taking one verdict
+// from a single centre sample.
+export function splitWallByCoverage(
+  rects: ReadonlyArray<Rect & { floor?: number }>,
+  alongAxis: "x" | "y",
+  beyond: number,
+  lo: number,
+  hi: number,
+  minFloor = -Infinity,
+): Array<{ s: number; e: number; external: boolean }> {
+  const EPS = 0.5;
+  const covered: Array<[number, number]> = [];
+  for (const r of rects) {
+    // Only rooms on the same floor or higher shelter this wall's outer face.
+    if ((r.floor ?? 0) < minFloor) continue;
+    // The rect's span on the axis the sample line is fixed on.
+    const perpLo = alongAxis === "x" ? r.y : r.x;
+    const perpHi = alongAxis === "x" ? r.y + r.l : r.x + r.w;
+    if (beyond <= perpLo + EPS || beyond >= perpHi - EPS) continue; // line not inside this rect
+    const aLo = alongAxis === "x" ? r.x : r.y;
+    const aHi = alongAxis === "x" ? r.x + r.w : r.y + r.l;
+    const s = Math.max(aLo, lo), e = Math.min(aHi, hi);
+    if (e - s > EPS) covered.push([s, e]);
+  }
+  covered.sort((a, b) => a[0] - b[0]);
+  const merged: Array<[number, number]> = [];
+  for (const iv of covered) {
+    const last = merged[merged.length - 1];
+    if (last && iv[0] <= last[1] + EPS) last[1] = Math.max(last[1], iv[1]);
+    else merged.push([iv[0], iv[1]]);
+  }
+  const out: Array<{ s: number; e: number; external: boolean }> = [];
+  let cur = lo;
+  for (const [cs, ce] of merged) {
+    if (cs > cur + EPS) out.push({ s: cur, e: cs, external: true });
+    out.push({ s: Math.max(cs, cur), e: ce, external: false });
+    cur = Math.max(cur, ce);
+  }
+  if (cur < hi - EPS) out.push({ s: cur, e: hi, external: true });
+  return out.filter((g) => g.e - g.s > EPS);
+}
+
 // A standalone wall is external iff EITHER of its faces is weather-facing.
 export function standaloneWallIsExternal(
   rects: Rect[], sx: number, sy: number, ex: number, ey: number, wallT: number,
@@ -148,10 +209,12 @@ export function standaloneWallIsExternal(
 //   -1  → the local -Z face is the weather face
 //    0  → both faces weather-facing (freestanding), or neither (internal)
 export function classifyStandaloneWall(
-  rects: Rect[], sx: number, sy: number, ex: number, ey: number, wallT: number,
+  rects: ReadonlyArray<Rect & { floor?: number }>,
+  sx: number, sy: number, ex: number, ey: number, wallT: number, minFloor = -Infinity,
 ): { external: boolean; outerSign: 1 | -1 | 0 } {
   const len = Math.hypot(ex - sx, ey - sy);
   if (len <= 0) return { external: false, outerSign: 0 };
+  rects = rects.filter((r) => (r.floor ?? 0) >= minFloor);
   const probe = probeDist(wallT);
   const mx = (sx + ex) / 2, my = (sy + ey) / 2;
   const dx = (ex - sx) / len, dy = (ey - sy) / len;
