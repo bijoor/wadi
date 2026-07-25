@@ -15,6 +15,13 @@
       "meta": { "bedrooms": 1, "bathrooms": 1, "floors": 1, "style": "Konkan", "roof": "Hip", "minWidthFt": 22, "minLengthFt": 34, "parametric": true }
     },
     {
+      "id": "family_home",
+      "title": "Family home (parametric)",
+      "description": "Fully-parametric Konkan family home: front verandah, three bedrooms, two bathrooms, central hall (Majghar), living, kitchen, passage and a rear Padvi under a hip roof with a loft. Resize the plot and the rooms re-flow. Default 40 × 52 ft.",
+      "file": "templates/family_home.wadi",
+      "meta": { "bedrooms": 3, "bathrooms": 2, "floors": 1, "style": "Konkan", "roof": "Hip", "minWidthFt": 34, "minLengthFt": 44, "parametric": true }
+    },
+    {
       "id": "verandah_cottage",
       "title": "Verandah cottage",
       "description": "Single-story Konkan cottage: front verandah (4 pillars), living room, kitchen, bedroom, bathroom, hip roof. Small footprint (30 × 40 ft).",

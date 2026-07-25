@@ -102,7 +102,10 @@ function ViewerScene() {
         near: 1,
         far: camDist * 20,
       }}
-      gl={{ antialias: true }}
+      // preserveDrawingBuffer lets us read the composited frame back with
+      // toDataURL() for the "Capture preview" thumbnail (CaptureBridge below).
+      // Minor perf cost; harmless for this always-rendering viewer scene.
+      gl={{ antialias: true, preserveDrawingBuffer: true }}
       style={{ width: "100%", height: "100%", display: "block" }}
     >
       <ambientLight intensity={ambient} />
@@ -150,6 +153,7 @@ function ViewerScene() {
         frames={1}
       />
       <House3D config={config} />
+      <CaptureBridge />
       <OrientationGizmo plot={plot} />
       {!interior && (
         <OrbitControls
@@ -180,6 +184,109 @@ function ViewerScene() {
       </EffectComposer>
     </Canvas>
   );
+}
+
+// Registers the architect "capture" bridges so the slim toolbar can grab the
+// current 3D frame — or auto-orbit to several oblique angles — as downscaled
+// JPEG data URLs stored on the config as template previews. Lives inside the
+// Canvas so it can reach the live WebGLRenderer + camera + OrbitControls via
+// useThree(). preserveDrawingBuffer (on <Canvas gl>) is what makes reading the
+// composited frame back work.
+function CaptureBridge() {
+  const gl = useThree((s) => s.gl);
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
+
+  useEffect(() => {
+    // Downscale the live canvas to a JPEG data URL (sky-filled so transparent
+    // pixels don't come out black).
+    const grab = (maxW: number): string | null => {
+      const src = gl.domElement;
+      if (!src.width || !src.height) return null;
+      const scale = Math.min(1, maxW / src.width);
+      const w = Math.max(1, Math.round(src.width * scale));
+      const h = Math.max(1, Math.round(src.height * scale));
+      const off = document.createElement("canvas");
+      off.width = w;
+      off.height = h;
+      const ctx = off.getContext("2d");
+      if (!ctx) return null;
+      ctx.fillStyle = "#bcd3e8";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(src, 0, 0, w, h);
+      return off.toDataURL("image/jpeg", 0.82);
+    };
+    const raf = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+
+    window.wadiCapture3D = (maxW = 720) => grab(maxW);
+
+    // Auto-capture: orbit the camera to a few oblique 3/4 angles (relative to
+    // wherever it currently points, so it respects any orientation the
+    // architect framed) and grab each. Distinct, feature-revealing views —
+    // fixes "every template looks the same from the top". Offsets: front-left,
+    // front-right, rear; all at a lower elevation than the default so walls,
+    // doors and windows read, not just the roof.
+    window.wadiCaptureAngles = async (n = 3, maxW = 720) => {
+      const src = gl.domElement;
+      if (!src.width || !src.height) return [];
+      // Frame from the current camera: aim + distance to the orbit target.
+      const t = controls ? controls.target : { x: 0, y: 0, z: 0 };
+      const dx = camera.position.x - t.x;
+      const dy = camera.position.y - t.y;
+      const dz = camera.position.z - t.z;
+      const dist = Math.hypot(dx, dy, dz) || 1;
+      const baseAz = Math.atan2(dx, dz); // azimuth around Y, from +Z
+      const savePos = camera.position.clone();
+      const saveTarget = controls ? controls.target.clone() : null;
+      const wasEnabled = controls ? controls.enabled : false;
+      if (controls) controls.enabled = false;
+
+      const el = (22 * Math.PI) / 180; // elevation above the horizon
+      const offsetsDeg = n <= 1 ? [-45] : n === 2 ? [-45, 45] : [-50, 50, 180];
+      const offsets = offsetsDeg.slice(0, n).map((d) => (d * Math.PI) / 180);
+      const out: string[] = [];
+      const cosEl = Math.cos(el);
+      const sinEl = Math.sin(el);
+      for (const off of offsets) {
+        const az = baseAz + off;
+        camera.position.set(
+          t.x + dist * cosEl * Math.sin(az),
+          t.y + dist * sinEl,
+          t.z + dist * cosEl * Math.cos(az),
+        );
+        camera.lookAt(t.x, t.y, t.z);
+        controls?.update?.();
+        await raf();
+        await raf(); // let the EffectComposer render the new angle
+        const url = grab(maxW);
+        if (url) out.push(url);
+      }
+      // Restore the architect's view.
+      camera.position.copy(savePos);
+      if (controls && saveTarget) controls.target.copy(saveTarget);
+      controls?.update?.();
+      if (controls) controls.enabled = wasEnabled;
+      await raf();
+      return out;
+    };
+
+    return () => {
+      delete window.wadiCapture3D;
+      delete window.wadiCaptureAngles;
+    };
+  }, [gl, camera, controls]);
+  return null;
+}
+
+declare global {
+  interface Window {
+    /** Capture the CURRENT 3D frame as a downscaled JPEG data URL (manual
+     *  "take a shot"). Returns null if the canvas isn't ready. */
+    wadiCapture3D?: (maxW?: number) => string | null;
+    /** Orbit to `n` oblique angles and capture each — returns the data URLs.
+     *  Restores the camera afterwards. Async (waits for each frame to render). */
+    wadiCaptureAngles?: (n?: number, maxW?: number) => Promise<string[]>;
+  }
 }
 
 // First-person "walk-through" rig. Active only when a room is selected in

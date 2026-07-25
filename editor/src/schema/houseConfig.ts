@@ -622,6 +622,14 @@ export const HouseConfig = z
     components: z.record(z.string(), componentDef).optional(),
     // Configurator metadata (Gharkul owner UI). Optional; see plans/configurator-plan.md.
     configurator: configuratorSection.optional(),
+    // Preview snapshots (data: URLs) captured by the architect editor and saved
+    // WITH the template so the owner gallery can show real previews — multiple
+    // angles + the floor plan. `thumbnails[0]` is the gallery cover. Optional;
+    // excluded from share links (a preview isn't model data — see
+    // io/shareLink.ts). `thumbnail` (singular) is the legacy one-image form,
+    // still read as a fallback so old template files keep working.
+    thumbnails: z.array(z.string()).optional(),
+    thumbnail: z.string().optional(),
     floors: z.array(floor).min(1),
     _walls_expanded: z.boolean().optional(),
   })

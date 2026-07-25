@@ -68,7 +68,7 @@ import {
   buildShareUrl,
 } from "../io/shareLink";
 import { isTauri, invoke } from "@tauri-apps/api/core";
-import { getPersona, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona } from "./persona";
+import { getPersona, isOwner, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona } from "./persona";
 import { mountConfiguratorPanel } from "./configuratorPanel";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -76,6 +76,7 @@ import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-m
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
 import { mountViewer3D, mountViewerLayerPanel, mountViewerLightingPanel, mountViewerInteriorPanel } from "./mount3D";
+import { mountViewer3DToolbar } from "./Toolbar3D";
 import { startConfigWatcher } from "./configWatcher";
 
 // Root-absolute so they resolve to the site root no matter where the app
@@ -198,6 +199,10 @@ async function bootViewer(): Promise<void> {
   // scene automatically.
   const threeContainer = document.getElementById("viewer-3d-scene");
   if (threeContainer) mountViewer3D(threeContainer);
+  // Slim architect toolbar (layer quick-toggles + preview capture). Owner-hidden
+  // via CSS; always mounted so an in-place persona switch needs no re-mount.
+  const toolbarContainer = document.getElementById("viewer-3d-toolbar");
+  if (toolbarContainer) mountViewer3DToolbar(toolbarContainer);
   const layerContainer = document.getElementById("viewer-layer-list");
   if (layerContainer) mountViewerLayerPanel(layerContainer);
   const lightingContainer = document.getElementById("viewer-lighting-list");
@@ -235,6 +240,8 @@ async function bootViewer(): Promise<void> {
   wireExports();
   // Expose the on-demand Layout render + panel metadata.
   wireLayoutApi();
+  // Expose the 2D capture bridges (architect "take a shot" + auto floor plan).
+  wireCaptureBridges();
   // Surface geometry warnings (invalid openings dropped during expansion)
   // as a banner instead of silently blanking the 3D model.
   wireGeometryWarnings();
@@ -243,6 +250,15 @@ async function bootViewer(): Promise<void> {
   // reload the model when an external editor (Claude Code / MCP) writes
   // it. No-op in a plain browser tab.
   startConfigWatcher();
+
+  // Owner first-step: on a fresh default load (no shared link, no opened
+  // file), greet the owner (Gharkul) with the template gallery so they START
+  // by choosing a home to customize. Architects, share-link recipients, and
+  // file-opens skip straight to the model. This is the seed of the future
+  // dedicated landing page (same gallery, standalone route).
+  if (isOwner() && !loadedFromOpenFile && !loadedFromHash) {
+    void openNewHouseModal();
+  }
 }
 
 // Load a .wadi/.json file the desktop app was asked to open (cold start
@@ -689,7 +705,97 @@ declare global {
     // Panel metadata: the floors, object types, layers, and per-object
     // list the filter panel builds its checkbox groups from.
     wadiLayoutMeta?: () => LayoutMeta | null;
+    // Rasterize the SVG in the currently active 2D tab (Layout / Floor Plans /
+    // Elevations / Roof) to a JPEG data URL — architect "take a shot".
+    wadiCaptureActiveSvg?: () => Promise<string | null>;
+    // Rasterize the ground-floor plan SVG to a JPEG data URL — used by
+    // auto-capture so every template carries a legible plan.
+    wadiCaptureFloorPlan?: () => Promise<string | null>;
+    // Layout-tab capture button handler (inline onclick).
+    captureLayoutShot?: (btn?: HTMLElement) => Promise<void>;
   }
+}
+
+// Rasterize an SVG string to a JPEG data URL on a white ground. Ensures the
+// root <svg> carries width/height (some browsers won't rasterize a viewBox-only
+// SVG) and preserves aspect from the viewBox.
+async function rasterizeSvgString(svg: string, maxW = 900): Promise<string | null> {
+  const vb = /viewBox\s*=\s*["']([\d.\-eE\s]+)["']/.exec(svg);
+  let w = 900;
+  let h = 700;
+  if (vb) {
+    const p = vb[1].trim().split(/[\s,]+/).map(Number);
+    if (p.length === 4 && p[2] > 0 && p[3] > 0) {
+      w = p[2];
+      h = p[3];
+    }
+  }
+  // Inject width/height on the first <svg …> tag if absent.
+  let sized = svg;
+  if (!/<svg[^>]*\bwidth\s*=/.test(svg)) {
+    sized = svg.replace(/<svg\b/, `<svg width="${w}" height="${h}"`);
+  }
+  const blob = new Blob([sized], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res();
+      img.onerror = () => rej(new Error("svg image load failed"));
+      img.src = url;
+    });
+    const tw = Math.round(Math.min(maxW, w));
+    const th = Math.round((tw * h) / w);
+    const canvas = document.createElement("canvas");
+    canvas.width = tw;
+    canvas.height = th;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, tw, th);
+    ctx.drawImage(img, 0, 0, tw, th);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Register the 2D capture bridges (used by the slim toolbar + auto-capture).
+function wireCaptureBridges(): void {
+  window.wadiCaptureActiveSvg = async () => {
+    const svg = document.querySelector<SVGSVGElement>(
+      "#viewer-views .view-container.active svg",
+    );
+    if (!svg) return null;
+    return rasterizeSvgString(new XMLSerializer().serializeToString(svg));
+  };
+
+  window.wadiCaptureFloorPlan = async () => {
+    const manifest = window.floorPlanManifest ?? [];
+    if (manifest.length === 0) return null;
+    // Prefer the "Ground" floor; else the first plan that isn't a plinth.
+    const pick =
+      manifest.find((m) => /ground/i.test(m.displayName)) ??
+      manifest.find((m) => !/plinth/i.test(m.displayName)) ??
+      manifest[0];
+    const svg = svgMap.get(pick.filename);
+    if (!svg) return null;
+    return rasterizeSvgString(svg);
+  };
+
+  // Layout tab "📸" — rasterize the current composite sheet and append it to
+  // this template's previews. Flashes ✓ on the button.
+  window.captureLayoutShot = async (btn?: HTMLElement) => {
+    const url = await window.wadiCaptureActiveSvg?.();
+    if (!url) {
+      alert("Couldn't capture the sheet — make sure a Layout sheet is visible.");
+      return;
+    }
+    useConfigStore.getState().addThumbnail(url);
+    if (btn) flashSaved(btn, "✓");
+  };
 }
 
 interface LayoutMeta {
@@ -1237,6 +1343,7 @@ function wireHeaderButtons(): void {
     void openNewHouseModal();
   });
 
+
   btnLoad?.addEventListener("click", async () => {
     // Uses the same file picker + Zod validation the editor's TopBar does.
     try {
@@ -1485,40 +1592,340 @@ function templateMetaChips(m: TemplateMeta | undefined): string {
         .join("")}</div>`
     : "";
 }
+// Gallery state. Held at module scope so the filter controls can re-render the
+// card grid without refetching the manifest, and thumbnails fetched once per
+// template file are reused across filter changes.
+let galleryTemplates: TemplateEntry[] = [];
+const thumbCache = new Map<string, string[]>();
+interface TemplateFilters {
+  bedrooms: number; // minimum
+  bathrooms: number; // minimum
+  floors: number; // 0 = any, else exact
+  style: string; // "" = any
+  roof: string; // "" = any
+  plotW: number | null; // my plot width (ft); template must fit
+  plotL: number | null;
+}
+const emptyFilters = (): TemplateFilters => ({
+  bedrooms: 0,
+  bathrooms: 0,
+  floors: 0,
+  style: "",
+  roof: "",
+  plotW: null,
+  plotL: null,
+});
+let tplFilters: TemplateFilters = emptyFilters();
+
 async function openNewHouseModal(): Promise<void> {
   const modal = document.getElementById("new-house-modal");
   const grid = document.getElementById("new-house-modal-grid");
   if (!modal || !grid) return;
   modal.style.display = "block";
 
+  // Persona-aware framing: owners are "choosing a home to make theirs";
+  // architects are "starting a new house from a template".
+  const owner = isOwner();
+  const titleEl = document.getElementById("new-house-modal-title");
+  const subEl = document.getElementById("new-house-modal-subtitle");
+  if (titleEl) titleEl.textContent = owner ? "Choose your home" : "Start a new house";
+  if (subEl)
+    subEl.textContent = owner
+      ? "Browse ready-made homes and pick one to make your own. Filter by size and rooms, then customize everything."
+      : "Pick a template to start from. You can edit everything after loading.";
+
+  // Reset filters each open so a fresh visit starts unfiltered.
+  tplFilters = emptyFilters();
+
   // Always refetch on open — the manifest is small, and caching it
   // meant users saw a stale template list until they hard-reloaded.
   // Cache-buster on the URL side-steps browser HTTP caching too.
-  let templates: TemplateEntry[];
   try {
     const r = await fetch(`/templates/index.json?t=${Date.now()}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const parsed = (await r.json()) as { templates: TemplateEntry[] };
-    templates = parsed.templates;
+    galleryTemplates = parsed.templates;
   } catch (e) {
     grid.innerHTML =
-      `<div style="grid-column: 1 / -1; color: #b00; padding: 1rem;">
+      `<div class="new-house-modal-empty" style="color:#b00">
         Failed to load templates/index.json: ${e instanceof Error ? e.message : String(e)}
       </div>`;
     return;
   }
 
+  buildTemplateFilterBar();
+  renderTemplateCards();
+}
+
+// Distinct non-placeholder values of a meta field across the loaded templates.
+function distinctMeta(key: "style" | "roof"): string[] {
+  const set = new Set<string>();
+  for (const t of galleryTemplates) {
+    const v = t.meta?.[key];
+    if (v && v !== "—") set.add(v);
+  }
+  return [...set].sort();
+}
+
+// Build the filter controls from the loaded templates' meta. Re-invoked on
+// reset so the DOM inputs reflect the (now-default) filter state.
+function buildTemplateFilterBar(): void {
+  const bar = document.getElementById("new-house-modal-filters");
+  if (!bar) return;
+
+  const opt = (value: string, label: string, sel: boolean) =>
+    `<option value="${escapeHtml(value)}"${sel ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  const minSel = (id: string, label: string, cur: number, max: number) => {
+    let opts = opt("0", "Any", cur === 0);
+    for (let i = 1; i <= max; i++) opts += opt(String(i), `${i}+`, cur === i);
+    return `<div class="tpl-filter"><label for="${id}">${label}</label><select id="${id}">${opts}</select></div>`;
+  };
+  const enumSel = (id: string, label: string, cur: string, values: string[]) => {
+    let opts = opt("", "Any", cur === "");
+    for (const v of values) opts += opt(v, v, cur === v);
+    return `<div class="tpl-filter"><label for="${id}">${label}</label><select id="${id}">${opts}</select></div>`;
+  };
+  // Floors: exact (1 / 2 / 3), plus Any.
+  const floorMax = Math.max(1, ...galleryTemplates.map((t) => t.meta?.floors ?? 1));
+  let floorOpts = opt("0", "Any", tplFilters.floors === 0);
+  for (let i = 1; i <= floorMax; i++)
+    floorOpts += opt(String(i), i === 1 ? "1 floor" : `${i} floors`, tplFilters.floors === i);
+
+  bar.innerHTML =
+    minSel("tpl-f-bed", "Bedrooms", tplFilters.bedrooms, 4) +
+    minSel("tpl-f-bath", "Bathrooms", tplFilters.bathrooms, 3) +
+    `<div class="tpl-filter"><label for="tpl-f-floors">Floors</label><select id="tpl-f-floors">${floorOpts}</select></div>` +
+    enumSel("tpl-f-style", "Style", tplFilters.style, distinctMeta("style")) +
+    enumSel("tpl-f-roof", "Roof", tplFilters.roof, distinctMeta("roof")) +
+    `<div class="tpl-filter"><label>My plot (ft)</label><div class="tpl-filter-plot">
+        <input id="tpl-f-plotw" type="number" min="1" placeholder="W" value="${tplFilters.plotW ?? ""}" />
+        <span>×</span>
+        <input id="tpl-f-plotl" type="number" min="1" placeholder="L" value="${tplFilters.plotL ?? ""}" />
+      </div></div>` +
+    `<span class="tpl-filters-count" id="tpl-filters-count"></span>` +
+    `<button type="button" class="tpl-filters-reset" id="tpl-filters-reset">Reset</button>`;
+
+  const num = (id: string) => document.getElementById(id) as HTMLSelectElement | null;
+  const inp = (id: string) => document.getElementById(id) as HTMLInputElement | null;
+  num("tpl-f-bed")?.addEventListener("change", (e) => {
+    tplFilters.bedrooms = Number((e.target as HTMLSelectElement).value);
+    renderTemplateCards();
+  });
+  num("tpl-f-bath")?.addEventListener("change", (e) => {
+    tplFilters.bathrooms = Number((e.target as HTMLSelectElement).value);
+    renderTemplateCards();
+  });
+  num("tpl-f-floors")?.addEventListener("change", (e) => {
+    tplFilters.floors = Number((e.target as HTMLSelectElement).value);
+    renderTemplateCards();
+  });
+  num("tpl-f-style")?.addEventListener("change", (e) => {
+    tplFilters.style = (e.target as HTMLSelectElement).value;
+    renderTemplateCards();
+  });
+  num("tpl-f-roof")?.addEventListener("change", (e) => {
+    tplFilters.roof = (e.target as HTMLSelectElement).value;
+    renderTemplateCards();
+  });
+  const readPlot = () => {
+    const w = parseFloat(inp("tpl-f-plotw")?.value ?? "");
+    const l = parseFloat(inp("tpl-f-plotl")?.value ?? "");
+    tplFilters.plotW = Number.isFinite(w) && w > 0 ? w : null;
+    tplFilters.plotL = Number.isFinite(l) && l > 0 ? l : null;
+    renderTemplateCards();
+  };
+  inp("tpl-f-plotw")?.addEventListener("input", readPlot);
+  inp("tpl-f-plotl")?.addEventListener("input", readPlot);
+  document.getElementById("tpl-filters-reset")?.addEventListener("click", () => {
+    tplFilters = emptyFilters();
+    buildTemplateFilterBar();
+    renderTemplateCards();
+  });
+}
+
+// Does a template satisfy the active filters?
+function templatePasses(t: TemplateEntry): boolean {
+  const m = t.meta;
+  const f = tplFilters;
+  if (f.bedrooms > 0 && (m?.bedrooms ?? 0) < f.bedrooms) return false;
+  if (f.bathrooms > 0 && (m?.bathrooms ?? 0) < f.bathrooms) return false;
+  if (f.floors > 0 && (m?.floors ?? 1) !== f.floors) return false;
+  if (f.style && (m?.style ?? "") !== f.style) return false;
+  if (f.roof && (m?.roof ?? "") !== f.roof) return false;
+  // Plot fit: the template's minimum footprint must not exceed the owner's
+  // plot. A missing min is treated as "fits anything" (0).
+  if (f.plotW !== null && (m?.minWidthFt ?? 0) > f.plotW) return false;
+  if (f.plotL !== null && (m?.minLengthFt ?? 0) > f.plotL) return false;
+  return true;
+}
+
+// Render the filtered card grid. Owners never see the "Blank plot" card —
+// they're choosing a finished home, not starting from an empty slab.
+function renderTemplateCards(): void {
+  const grid = document.getElementById("new-house-modal-grid");
+  if (!grid) return;
+  const owner = isOwner();
+  const matches = galleryTemplates.filter(
+    (t) => (!owner || t.id !== "blank") && templatePasses(t),
+  );
+
+  const countEl = document.getElementById("tpl-filters-count");
+  if (countEl) {
+    const n = matches.length;
+    countEl.textContent = `${n} home${n === 1 ? "" : "s"}`;
+  }
+
   grid.innerHTML = "";
-  for (const t of templates) {
+  if (matches.length === 0) {
+    grid.innerHTML =
+      `<div class="new-house-modal-empty">No homes match these filters. Try widening your plot size or clearing a filter.</div>`;
+    return;
+  }
+
+  for (const t of matches) {
     const card = document.createElement("div");
     card.className = "template-card";
     card.innerHTML = `
-      <div class="template-card-title">${escapeHtml(t.title)}</div>
-      <div class="template-card-desc">${escapeHtml(t.description)}</div>
-      ${templateMetaChips(t.meta)}`;
+      <div class="template-card-thumb"><span class="thumb-placeholder">🏠</span></div>
+      <div class="template-card-body">
+        <div class="template-card-title">${escapeHtml(t.title)}</div>
+        <div class="template-card-desc">${escapeHtml(t.description)}</div>
+        ${templateMetaChips(t.meta)}
+      </div>`;
     card.addEventListener("click", () => void selectTemplate(t));
     grid.appendChild(card);
+    void loadTemplateThumb(t, card.querySelector(".template-card-thumb") as HTMLElement);
   }
+}
+
+// Lazily fetch a template file's embedded preview images (`thumbnails[]`, or
+// the legacy singular `thumbnail`) and build a mini carousel in the card.
+// Cached per file so re-filtering is free. Silent on failure — the 🏠
+// placeholder stays.
+async function loadTemplateThumb(t: TemplateEntry, thumbEl: HTMLElement | null): Promise<void> {
+  if (!thumbEl) return;
+  const file = t.file.replace(/^\//, "");
+  let images = thumbCache.get(file);
+  if (images === undefined) {
+    try {
+      // Cache-bust like index.json — otherwise a browser that fetched this
+      // template file before its previews were (re)captured serves the stale
+      // copy and they never appear.
+      const r = await fetch(`/${file}?t=${Date.now()}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const raw = (await r.json()) as { thumbnails?: unknown; thumbnail?: unknown };
+      const arr = Array.isArray(raw.thumbnails)
+        ? raw.thumbnails.filter((x): x is string => typeof x === "string")
+        : typeof raw.thumbnail === "string"
+          ? [raw.thumbnail]
+          : [];
+      images = arr;
+    } catch {
+      images = [];
+    }
+    thumbCache.set(file, images);
+  }
+  if (images.length > 0 && thumbEl.isConnected) buildTemplateCarousel(thumbEl, images, t.title);
+}
+
+// Build an in-card carousel (dots + arrows when >1) with a magnify button that
+// opens the full-screen lightbox. All controls stopPropagation so they don't
+// trigger the card's select-template click.
+function buildTemplateCarousel(thumbEl: HTMLElement, images: string[], title: string): void {
+  let idx = 0;
+  thumbEl.classList.add("has-carousel");
+  const render = () => {
+    const dots =
+      images.length > 1
+        ? `<div class="tpl-dots">${images
+            .map((_, i) => `<span class="tpl-dot${i === idx ? " on" : ""}"></span>`)
+            .join("")}</div>`
+        : "";
+    const arrows =
+      images.length > 1
+        ? `<button class="tpl-arrow tpl-prev" aria-label="Previous">‹</button>
+           <button class="tpl-arrow tpl-next" aria-label="Next">›</button>`
+        : "";
+    thumbEl.innerHTML = `
+      <img src="${images[idx]}" alt="${escapeHtml(title)} preview ${idx + 1}" loading="lazy" />
+      <button class="tpl-magnify" aria-label="View larger">⤢</button>
+      ${arrows}${dots}`;
+    const stop = (fn: () => void) => (e: Event) => {
+      e.stopPropagation();
+      fn();
+    };
+    thumbEl.querySelector(".tpl-prev")?.addEventListener(
+      "click",
+      stop(() => {
+        idx = (idx - 1 + images.length) % images.length;
+        render();
+      }),
+    );
+    thumbEl.querySelector(".tpl-next")?.addEventListener(
+      "click",
+      stop(() => {
+        idx = (idx + 1) % images.length;
+        render();
+      }),
+    );
+    thumbEl.querySelector(".tpl-magnify")?.addEventListener(
+      "click",
+      stop(() => openTemplateLightbox(images, idx, title)),
+    );
+  };
+  render();
+}
+
+// Full-screen lightbox to flip through a template's preview images at size —
+// the clearest way for an owner to read the layout.
+function openTemplateLightbox(images: string[], start: number, title: string): void {
+  let idx = start;
+  const overlay = document.createElement("div");
+  overlay.className = "tpl-lightbox";
+  const draw = () => {
+    overlay.innerHTML = `
+      <div class="tpl-lb-inner">
+        <img src="${images[idx]}" alt="${escapeHtml(title)} preview ${idx + 1}" />
+        ${images.length > 1
+          ? `<button class="tpl-lb-arrow tpl-lb-prev" aria-label="Previous">‹</button>
+             <button class="tpl-lb-arrow tpl-lb-next" aria-label="Next">›</button>
+             <div class="tpl-lb-count">${idx + 1} / ${images.length}</div>`
+          : ""}
+        <button class="tpl-lb-close" aria-label="Close">✕</button>
+      </div>`;
+    overlay.querySelector(".tpl-lb-prev")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      idx = (idx - 1 + images.length) % images.length;
+      draw();
+    });
+    overlay.querySelector(".tpl-lb-next")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      idx = (idx + 1) % images.length;
+      draw();
+    });
+    overlay.querySelector(".tpl-lb-close")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      close();
+    });
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") close();
+    else if (e.key === "ArrowLeft" && images.length > 1) {
+      idx = (idx - 1 + images.length) % images.length;
+      draw();
+    } else if (e.key === "ArrowRight" && images.length > 1) {
+      idx = (idx + 1) % images.length;
+      draw();
+    }
+  };
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    overlay.remove();
+  };
+  overlay.addEventListener("click", close);
+  document.addEventListener("keydown", onKey);
+  draw();
+  document.body.appendChild(overlay);
 }
 
 function closeNewHouseModal(): void {

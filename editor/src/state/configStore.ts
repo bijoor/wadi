@@ -74,6 +74,11 @@ interface ConfigState {
   // Owner-facing Configurator metadata (which variables/points a template
   // exposes to the Gharkul app + how to present them). Ignored by the resolver.
   updateConfigurator: (configurator: NonNullable<HouseConfig["configurator"]> | undefined) => void;
+  // Template preview snapshots (data: URLs) captured by the architect. Ordered;
+  // [0] is the gallery cover. Saved with the template.
+  addThumbnail: (dataUrl: string) => void; // append one shot
+  setThumbnails: (thumbnails: string[]) => void; // replace/reorder/delete
+  removeThumbnail: (index: number) => void;
   // Patches a floor's top-level fields (name, height, slab_thickness).
   // The `objects` array is edited via updateObject / insertObject etc.
   updateFloor: (floorIdx: number, patch: Partial<HouseConfig["floors"][number]>) => void;
@@ -285,6 +290,53 @@ export const useConfigStore = create<ConfigState>()(
             configurator && configurator.inputs?.length ? configurator : undefined;
           return {
             config: { ...state.config, configurator: cleaned } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      // Read the current shot list, folding the legacy single `thumbnail` in.
+      addThumbnail: (dataUrl) =>
+        set((state) => {
+          if (!state.config || !dataUrl) return state;
+          const cur =
+            state.config.thumbnails ??
+            (state.config.thumbnail ? [state.config.thumbnail] : []);
+          return {
+            config: {
+              ...state.config,
+              thumbnails: [...cur, dataUrl],
+              thumbnail: undefined, // migrate away from the singular form
+            } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      setThumbnails: (thumbnails) =>
+        set((state) => {
+          if (!state.config) return state;
+          return {
+            config: {
+              ...state.config,
+              thumbnails: thumbnails.length ? thumbnails : undefined,
+              thumbnail: undefined,
+            } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      removeThumbnail: (index) =>
+        set((state) => {
+          if (!state.config) return state;
+          const cur =
+            state.config.thumbnails ??
+            (state.config.thumbnail ? [state.config.thumbnail] : []);
+          const next = cur.filter((_, i) => i !== index);
+          return {
+            config: {
+              ...state.config,
+              thumbnails: next.length ? next : undefined,
+              thumbnail: undefined,
+            } as HouseConfig,
             dirty: true,
           };
         }),
