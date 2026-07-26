@@ -13,6 +13,7 @@ import { resolveParametric } from "../param/resolve";
 import { buildScope } from "../param/resolve";
 import { evalFormula } from "../param/formula";
 import { expandStaircase } from "./stairExpand";
+import { anchorItem, type RoomRect } from "./furnitureAnchor";
 
 type Side = "north" | "south" | "east" | "west";
 const SIDES: readonly Side[] = ["north", "south", "east", "west"];
@@ -109,6 +110,27 @@ export function expandRoomWalls(
   // upper floor simply doesn't exist and the house becomes single-storey.
   if (hc.floors) hc.floors = activeObjects(hc.floors);
   const floorList = (hc.floors ?? []) as Floor[];
+  // Scope (variables + points) for resolving furniture-item `= formula` fields.
+  // Nested room items aren't reached by resolveParametric, so we evaluate their
+  // rotation/scale/gap/z_offset formulas here; free items are already resolved
+  // top-level (re-eval is idempotent).
+  const { scope: itemScope } = buildScope(houseConfig as Parameters<typeof buildScope>[0]);
+  const ITEM_FORMULA_FIELDS = ["rotation", "scale", "z_offset", "gap_x", "gap_y"] as const;
+  const resolveItemFormulas = (spec: Obj): Obj => {
+    const fm = spec.formulas as Record<string, string> | undefined;
+    if (!fm) return spec;
+    const out: Obj = { ...spec };
+    for (const f of ITEM_FORMULA_FIELDS) {
+      const src = fm[f];
+      if (!src) continue;
+      const r = evalFormula(src, itemScope);
+      if (r.value !== null) (out as Record<string, unknown>)[f] = r.value;
+      else if (opts?.lenient) {
+        opts.onWarning?.(`item '${(spec.name as string) ?? "?"}' ${f}: ${r.error ?? "invalid formula"}`);
+      }
+    }
+    return out;
+  };
   for (let fi = 0; fi < floorList.length; fi++) {
     const floor = floorList[fi];
     // Drop switched-off objects up front, so they generate no walls and reach
@@ -135,6 +157,49 @@ export function expandRoomWalls(
       typeof belowHeightRaw === "number" && belowHeightRaw > 0
         ? belowHeightRaw
         : houseDefaults?.floor_height ?? DEFAULT_GLOBAL_CONFIG.floor_height;
+    // Room footprints on this floor, for furniture anchoring (nested items + free
+    // items with `anchor_to`). Rooms are already resolved to concrete x/y/w/l.
+    const units = (hc as { units?: { system?: string; per_unit?: number } }).units;
+    const roomRects = new Map<string, RoomRect>();
+    for (const o of objs) {
+      if (o.type === "room" && typeof o.name === "string") {
+        roomRects.set(o.name, {
+          x: o.x as number,
+          y: o.y as number,
+          w: o.width as number,
+          l: o.length as number,
+        });
+      }
+    }
+    // Build a flattened `item` from an anchor spec relative to a room rect. Resolves
+    // the spec's `= formula` fields (rotation/scale/gap/z_offset) first.
+    const anchoredItem = (rect: RoomRect, specIn: Obj): Obj => {
+      const spec = resolveItemFormulas(specIn);
+      const p = anchorItem(
+        rect,
+        {
+          anchor: spec.anchor as string | undefined,
+          gapX: spec.gap_x as number | undefined,
+          gapY: spec.gap_y as number | undefined,
+          rotation: spec.rotation as number | undefined,
+          scale: spec.scale as number | undefined,
+          dimensions: (spec.asset as { dimensions: [number, number, number] }).dimensions,
+        },
+        t,
+        units,
+      );
+      return {
+        type: "item",
+        name: spec.name,
+        asset: spec.asset,
+        x: p.x,
+        y: p.y,
+        rotation: (spec.rotation as number | undefined) ?? 0,
+        scale: spec.scale,
+        z_offset: spec.z_offset,
+        layer: spec.layer,
+      } as Obj;
+    };
     for (const obj of objs) {
       // A component instance expands into a whole set of already-flattened
       // primitives (resolve the referenced component with param+placement
@@ -171,6 +236,23 @@ export function expandRoomWalls(
         for (const f of flights) head.push(f);
         continue;
       }
+      // A free-standing item may anchor to a named room — derive its x/y from that
+      // room's footprint so it follows a parametric resize. Absolute otherwise.
+      if (obj.type === "item") {
+        const at = (obj as { anchor_to?: string }).anchor_to;
+        if (at) {
+          const rr = roomRects.get(at);
+          if (rr) {
+            const p = anchoredItem(rr, obj);
+            obj.x = p.x;
+            obj.y = p.y;
+          } else if (opts?.lenient) {
+            opts.onWarning?.(`item '${obj.name ?? "?"}': anchor_to room '${at}' not found`);
+          }
+        }
+        head.push(obj);
+        continue;
+      }
       let first: Obj;
       let extras: Obj[];
       try {
@@ -186,6 +268,20 @@ export function expandRoomWalls(
       head.push(first);
       for (const e of extras) {
         (e.type === "door" ? deferredDoors : deferredWindows).push(e);
+      }
+      // Flatten a room's nested furniture into absolute-positioned `item`s, anchored
+      // to the (resolved) room footprint. Renderers only ever see the flat items.
+      if (obj.type === "room" && Array.isArray((obj as { items?: unknown[] }).items)) {
+        const rr: RoomRect = {
+          x: obj.x as number,
+          y: obj.y as number,
+          w: obj.width as number,
+          l: obj.length as number,
+        };
+        for (const it of activeObjects((obj as { items?: Obj[] }).items)) {
+          head.push(anchoredItem(rr, it));
+        }
+        delete (first as { items?: unknown }).items; // strip from the expanded room
       }
     }
     floor.objects = [...head, ...deferredDoors, ...deferredWindows];

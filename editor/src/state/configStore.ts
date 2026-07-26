@@ -92,7 +92,7 @@ interface ConfigState {
   insertObject: (floor: number, obj: HouseObject) => Selection;
   // Convenience wrappers used by Sidebar's "+" buttons. Both auto-select
   // the freshly created item so the property panel opens for editing.
-  addObject: (floor: number, type: AddableObjectType) => Selection | null;
+  addObject: (floor: number, type: AddableObjectType | string) => Selection | null;
   addFloor: () => number | null;
   // Reorder a floor within the stack. delta -1 moves it DOWN (earlier in the
   // array = lower z), +1 moves it UP. floor_number is renumbered to the new

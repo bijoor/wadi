@@ -1,8 +1,10 @@
 import { Fragment } from "react";
-import type { Room, Opening, Side } from "../schema/houseConfig";
+import type { Room, Opening, RoomItem, Side } from "../schema/houseConfig";
 import type { Selection } from "../state/configStore";
 import { useConfigStore } from "../state/configStore";
 import { NumberField, TextField, Section, SelectField, ObjectMeasureField } from "./fields";
+import { AnchorPicker } from "./AnchorPicker";
+import { FURNITURE_CATALOG, furnitureAsset, DEFAULT_FURNITURE_ID } from "../furniture/catalog";
 
 const SIDES: Side[] = ["north", "south", "east", "west"];
 const KINDS = [
@@ -123,6 +125,24 @@ export function RoomForm({ room, selection }: { room: Room; selection: Selection
     replace(selection, { ...room, walls: dict });
   };
 
+  // --- Furniture nested in this room -----------------------------------------
+  const items = room.items ?? [];
+  const setItems = (next: RoomItem[]) =>
+    replace(selection, { ...room, items: next.length ? next : undefined });
+  const addItem = () =>
+    setItems([
+      ...items,
+      {
+        name: `Furniture ${items.length + 1}`,
+        asset: furnitureAsset(DEFAULT_FURNITURE_ID),
+        anchor: "center",
+        rotation: 0,
+      } as RoomItem,
+    ]);
+  const updateItem = (i: number, p: Partial<RoomItem>) =>
+    setItems(items.map((it, idx) => (idx === i ? { ...it, ...p } : it)));
+  const deleteItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
+
   return (
     <div>
       <Section title="Identity">
@@ -217,6 +237,74 @@ export function RoomForm({ room, selection }: { room: Room; selection: Selection
           );
         })}
       </Section>
+
+      <Section title="Furniture">
+        <div className="mb-2 text-[11px] text-slate-400">
+          Furniture anchored inside this room — it reflows when the room is resized.
+        </div>
+        {items.map((it, i) => (
+          <RoomItemRow
+            key={i}
+            item={it}
+            onChange={(p) => updateItem(i, p)}
+            onDelete={() => deleteItem(i)}
+          />
+        ))}
+        <button
+          type="button"
+          onClick={addItem}
+          className="mt-1 rounded bg-slate-800 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-700"
+        >
+          + Add furniture
+        </button>
+      </Section>
+    </div>
+  );
+}
+
+function RoomItemRow({
+  item,
+  onChange,
+  onDelete,
+}: {
+  item: RoomItem;
+  onChange: (p: Partial<RoomItem>) => void;
+  onDelete: () => void;
+}) {
+  const asset = item.asset;
+  const io = item as unknown as Record<string, unknown>;
+  const mpatch = (p: Record<string, unknown>) => onChange(p as Partial<RoomItem>);
+  return (
+    <div className="mb-2 rounded border border-slate-800 bg-slate-950/50 p-2">
+      <div className="mb-1 flex items-center justify-between text-[11px] text-slate-300">
+        <span>{item.name ?? asset.name ?? asset.id}</span>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="rounded bg-slate-800 px-1 py-0.5 text-[10px] text-red-300 hover:bg-red-900"
+        >
+          Delete
+        </button>
+      </div>
+      <SelectField
+        label="Piece"
+        value={asset.id}
+        onChange={(id) => onChange({ asset: furnitureAsset(id) })}
+        options={FURNITURE_CATALOG.map((a) => ({
+          value: a.id,
+          label: `${a.name} · ${a.category}`,
+        }))}
+      />
+      <div className="mt-1 flex gap-3">
+        <AnchorPicker label="Anchor" value={item.anchor} onChange={(a) => onChange({ anchor: a as RoomItem["anchor"] })} />
+        <div className="grid flex-1 grid-cols-2 gap-x-2">
+          <ObjectMeasureField object={io} field="gap_x" label="Gap X" patch={mpatch} allowEmpty hint="off wall (east+)" />
+          <ObjectMeasureField object={io} field="gap_y" label="Gap Y" patch={mpatch} allowEmpty hint="off wall (south+)" />
+          <ObjectMeasureField object={io} field="rotation" label="Rotation" patch={mpatch} allowEmpty hint="yaw°" />
+          <ObjectMeasureField object={io} field="scale" label="Scale" patch={mpatch} allowEmpty min={0.01} hint="1 = real size" />
+          <ObjectMeasureField object={io} field="z_offset" label="Z offset" patch={mpatch} allowEmpty hint="above floor" />
+        </div>
+      </div>
     </div>
   );
 }

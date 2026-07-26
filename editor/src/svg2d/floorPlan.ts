@@ -10,10 +10,11 @@ import { DEFAULT_GLOBAL_CONFIG, activeDimensions, scaledTextSize, scaledSpacing 
 import { activeObjects } from "../schema/enabled";
 import { pillarRects } from "./wallTrim";
 import { formatDimension, f, fFloat } from "./format";
+import { getNode } from "../registry/registry";
 import {
   svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawFloorSlab,
   svgDrawPillar, svgDrawBeam, svgDrawStaircase, svgDrawKitchenPlatform,
-  svgDrawGround, svgDrawPlinth,
+  svgDrawGround, svgDrawPlinth, svgDrawItem,
 } from "./shapes";
 import {
   extractFloorEdges, classifyPerimeterEdges, detectWallConnections,
@@ -88,6 +89,16 @@ export function generateFloorPlanSvg(
       if (Math.max(sx, ex) > maxX) maxX = Math.max(sx, ex);
       if (Math.min(sy, ey) < minY) minY = Math.min(sy, ey);
       if (Math.max(sy, ey) > maxY) maxY = Math.max(sy, ey);
+    } else {
+      // Registry-driven types (item, + future ports) contribute their plan footprint.
+      const fp = getNode(t)?.planFootprint?.(obj);
+      if (fp) {
+        const hw = fp.w / 2, hd = fp.d / 2;
+        if (fp.cx - hw < minX) minX = fp.cx - hw;
+        if (fp.cy - hd < minY) minY = fp.cy - hd;
+        if (fp.cx + hw > maxX) maxX = fp.cx + hw;
+        if (fp.cy + hd > maxY) maxY = fp.cy + hd;
+      }
     }
   }
   // Extend bounds with roof geometry so overhangs stay visible.
@@ -668,6 +679,15 @@ export function generateFloorPlanSvg(
   // -----------------------------------------------------------------
   for (const p of pillarsToDraw) {
     svg += svgDrawPillar(p.x, p.y, p.size, p.width, p.length);
+  }
+
+  // -----------------------------------------------------------------
+  // Registry-driven footprints (GLB furniture, + future ports) — on top of
+  // the plan. Each node supplies its footprint (project units) via planFootprint.
+  // -----------------------------------------------------------------
+  for (const obj of objects) {
+    const fp = getNode(obj.type as string)?.planFootprint?.(obj);
+    if (fp) svg += svgDrawItem(fp.cx, fp.cy, fp.w, fp.d, fp.rot ?? 0);
   }
 
   // -----------------------------------------------------------------

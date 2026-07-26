@@ -7,10 +7,24 @@ import {
   ADDABLE_TYPE_LABEL,
   type AddableObjectType,
 } from "../state/defaultFactory";
+import { addableNodeTypes, getNode } from "../registry/registry";
+
+// The "+ Add object" menu: legacy per-type entries plus any registry-driven node
+// types (item, + future ports) that aren't already listed — so a new registry node
+// appears in the menu with no edit here.
+function addMenuOptions(): { value: string; label: string }[] {
+  const legacy = ADDABLE_TYPES.map((t) => ({ value: t as string, label: ADDABLE_TYPE_LABEL[t] }));
+  const seen = new Set(ADDABLE_TYPES as string[]);
+  const extra = addableNodeTypes()
+    .filter((t) => !seen.has(t))
+    .map((t) => ({ value: t, label: getNode(t)?.label ?? t }));
+  return [...legacy, ...extra];
+}
 
 // Order used to group the object tree so it's easier to scan by category.
 const TYPE_ORDER: HouseObject["type"][] = [
   "component",
+  "item",
   "ground",
   "plinth",
   "floor_slab",
@@ -31,6 +45,7 @@ const TYPE_ORDER: HouseObject["type"][] = [
 
 const TYPE_LABEL: Record<HouseObject["type"], string> = {
   component: "Components",
+  item: "Furniture",
   ground: "Ground",
   plinth: "Plinth",
   floor_slab: "Floor slabs",
@@ -212,9 +227,9 @@ export function Sidebar() {
           aria-label="Add object"
         >
           <option value="">+ Add object…</option>
-          {ADDABLE_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {ADDABLE_TYPE_LABEL[t]}
+          {addMenuOptions().map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
             </option>
           ))}
         </select>

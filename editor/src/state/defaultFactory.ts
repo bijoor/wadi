@@ -11,12 +11,17 @@
 //    fit inside any starter plot.
 
 import type { HouseConfig, HouseObject } from "../schema/houseConfig";
+import { getNode } from "../registry/registry";
+import { uniqueName } from "./naming";
+
+export { uniqueName };
 
 // Types the sidebar exposes via "+" buttons. Roofs are intentionally
 // omitted — one hip_roof per house is the norm, and its structure is
 // too rich for a one-click default.
 export type AddableObjectType =
   | "component"
+  | "item"
   | "ground"
   | "plinth"
   | "floor_slab"
@@ -35,6 +40,7 @@ export type AddableObjectType =
 
 export const ADDABLE_TYPES: AddableObjectType[] = [
   "component",
+  "item",
   "ground",
   "plinth",
   "floor_slab",
@@ -54,6 +60,7 @@ export const ADDABLE_TYPES: AddableObjectType[] = [
 
 export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
   component: "Component",
+  item: "Furniture",
   ground: "Ground",
   plinth: "Plinth",
   floor_slab: "Floor slab",
@@ -76,14 +83,18 @@ export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
 // clash. Plot dims (from cfg.site) size the floor_slab default so a
 // single-click add produces the full-plot slab.
 export function makeDefault(
-  type: AddableObjectType,
+  type: AddableObjectType | string,
   cfg: HouseConfig,
   existing: HouseObject[],
 ): HouseObject {
+  // Registry-driven object types own their own default (item, + future ports).
+  const def = getNode(type);
+  if (def?.makeDefault) return def.makeDefault(cfg, existing);
+
   const plotW = cfg.site.plot_width;
   const plotL = cfg.site.plot_length;
 
-  switch (type) {
+  switch (type as AddableObjectType) {
     case "component": {
       // Default to the first library component if one exists; otherwise an empty
       // ref the user fills in via the form.
@@ -275,20 +286,9 @@ export function makeDefault(
         depth: 24,
         height: 32,
       };
+    default:
+      throw new Error(`makeDefault: unknown object type "${type}"`);
   }
-}
-
-// Ensures the new object's name doesn't collide with anything already
-// on the floor. Appends _1, _2, … until free.
-function uniqueName(existing: HouseObject[], base: string): string {
-  const taken = new Set<string>();
-  for (const o of existing) {
-    const n = (o as { name?: unknown }).name;
-    if (typeof n === "string") taken.add(n);
-  }
-  let i = 1;
-  while (taken.has(`${base}_${i}`)) i += 1;
-  return `${base}_${i}`;
 }
 
 // Default shape for a fresh floor added via "+ Floor". Includes a

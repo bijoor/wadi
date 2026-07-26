@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getNode } from "../registry/registry";
 
 // Visibility layers roughly match the ones used in docs/index.html's GLB
 // viewer. Each object we render gets tagged with a layer id; the layer
@@ -26,6 +27,7 @@ export const DEFAULT_LAYERS: LayerDef[] = [
   { id: "pillars", label: "Pillars", color: "#ffffff", group: "Structure" },
   { id: "plinth", label: "Plinth", color: "#a0826d", group: "Site" },
   { id: "ground", label: "Ground", color: "#5c7346", group: "Site" },
+  { id: "furniture", label: "Furniture", color: "#c7a17a", group: "Furniture" },
 ];
 
 interface LayerState {
@@ -59,6 +61,13 @@ export const useLayerStore = create<LayerState>((set) => ({
 // NOTE: the plinth is floor 0; the ground floor is floor 1. The historical
 // "floor 0 → plinth/f0" branches therefore key on floorNum === 1 now.
 export function heuristicLayerId(objType: string, floorNum: number): string {
+  // Registry-driven types (item, + future ports) declare their default layer.
+  const def = getNode(objType);
+  if (def?.defaultLayerId) {
+    return typeof def.defaultLayerId === "function"
+      ? def.defaultLayerId({}, floorNum)
+      : def.defaultLayerId;
+  }
   switch (objType) {
     case "plinth":
       return "plinth";
@@ -193,6 +202,7 @@ export function layerForObject(
   if (objType === "plinth") return "plinth";
   if (objType === "ground") return "ground";
   if (objType === "pillar") return "pillars";
+  if (objType === "item") return "furniture";
   if (objType === "hip_roof" || objType === "gable_roof") return "loft";
   if (objType === "door" || objType === "window") return "openings";
   // Plinth is floor 0; ground floor is 1 (historical floor-0 branches → 1).

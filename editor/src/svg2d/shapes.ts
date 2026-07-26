@@ -173,6 +173,23 @@ export function svgDrawPillar(
   return `<rect x="${fFloat(px)}" y="${fFloat(py)}" width="${f(w)}" height="${f(l)}" fill="#000" stroke="#000" stroke-width="0.5"/>\n`;
 }
 
+// GLB furniture footprint on the floor plan. cx,cy is the plan CENTRE; w,l are the
+// footprint size ALREADY in project units (caller converts the metric asset dims).
+// Rotated by `yawDeg` about the centre. Drawn UNLABELLED and lightly translucent so
+// walls, dimensions and other objects stay visible through it.
+export function svgDrawItem(
+  cx: number,
+  cy: number,
+  w: number,
+  l: number,
+  yawDeg = 0,
+): string {
+  const x = cx - w / 2;
+  const y = cy - l / 2;
+  const rot = yawDeg ? ` transform="rotate(${fFloat(yawDeg)} ${fFloat(cx)} ${fFloat(cy)})"` : "";
+  return `<rect${rot} x="${fFloat(x)}" y="${fFloat(y)}" width="${f(w)}" height="${f(l)}" rx="${f(Math.min(w, l) * 0.06)}" fill="#e8d8c0" fill-opacity="0.2" stroke="#a0826d" stroke-width="0.8"/>\n`;
+}
+
 export function svgDrawBeam(
   x: number,
   y: number,

@@ -190,6 +190,65 @@ const wallHeightsEntry = z.union([
     .strict(),
 ]);
 
+// ---- Furniture (GLB `item`) — shared schema pieces --------------------------
+// Defined BEFORE `room` so a room can nest its own `items[]`. Asset distances are
+// METRES (the GLB's native unit); the 3D/2D layers scale them into project units.
+// See registry/nodes/item + three/units.
+
+// The asset backing a furniture item — stored INLINE so a .wadi is self-contained
+// (share links / web load the GLB from `src`). A catalog is just a picker convenience.
+const itemAsset = z
+  .object({
+    id: z.string(),
+    name: z.string().optional(),
+    src: z.string(), // GLB URL (R2/CDN absolute, or bundled relative like /furniture/bed.glb)
+    dimensions: z.tuple([positive(), positive(), positive()]), // [w, h, d] in METRES
+    thumbnail: z.string().optional(),
+    floorPlanUrl: z.string().optional(),
+    category: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    offset: z.tuple([z.number(), z.number(), z.number()]).optional(),       // corrective, metres
+    corrRotation: z.tuple([z.number(), z.number(), z.number()]).optional(), // corrective, degrees
+    corrScale: z.tuple([positive(), positive(), positive()]).optional(),    // corrective, unitless
+  })
+  .strict();
+export type ItemAsset = z.infer<typeof itemAsset>;
+
+// 9-point anchor on a room's INNER footprint. First token = vertical (top = north …
+// bottom = south), second = horizontal (left = west … right = east); "center" alone =
+// both. The item aligns its matching edge/corner to this spot, held `gap` off it, into
+// the room — so it reflows when the room is resized.
+const itemAnchor = z.enum([
+  "top-left", "top-center", "top-right",
+  "center-left", "center", "center-right",
+  "bottom-left", "bottom-center", "bottom-right",
+]);
+export type ItemAnchor = z.infer<typeof itemAnchor>;
+
+// A furniture piece nested INSIDE a room (room.items[]). It has NO x/y — its plan
+// position is DERIVED at expand time from the parent room's footprint + `anchor` +
+// per-axis gap (+ its own `rotation`). Flattened into a top-level `item` for every
+// renderer. `gap_x`/`gap_y` are the inset (project units) kept from the anchor into
+// the room (edge/corner anchor → clears the wall; centre anchor → signed offset,
+// +x east / +y south). `gap_x`/`gap_y`/`rotation`/`scale`/`z_offset` are all plain
+// numeric fields so each can be driven by a `= formula` (via the `formulas` map).
+const roomItem = z
+  .object({
+    name: z.string().optional(),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    asset: itemAsset,
+    anchor: itemAnchor.optional(), // default "center"
+    gap_x: z.number().optional(),
+    gap_y: z.number().optional(),
+    rotation: z.number().optional(), // yaw, degrees
+    scale: positive().optional(),
+    z_offset: z.number().optional(),
+  })
+  .strict();
+export type RoomItem = z.infer<typeof roomItem>;
+
 const room = z
   .object({
     type: z.literal("room"),
@@ -232,6 +291,10 @@ const room = z
       ])
       .optional(),
     wall_heights: z.record(z.string(), wallHeightsEntry).optional(),
+    // Furniture nested in this room. Each piece is anchored to the room's inner
+    // footprint (see roomItem), so it reflows when the room resizes. Expanded into
+    // top-level `item` objects at render time.
+    items: z.array(roomItem).optional(),
   })
   .strict();
 export type Room = z.infer<typeof room>;
@@ -441,10 +504,39 @@ const componentObject = z
   })
   .strict();
 
+// A free-standing GLB furniture / decor instance placed directly on a floor (for
+// pieces that aren't inside an enclosed room — outdoor/site/verandah decor, a loft
+// item, etc.). `x`/`y` are the item's plan CENTRE. It MAY instead anchor to a named
+// room via `anchor_to` + `anchor` + `gap`, in which case `x`/`y` are DERIVED at expand
+// time (same anchor model as room-nested items). `rotation` is yaw°; `scale` is a
+// uniform resize; `z_offset` lifts it above the floor base (default = slab thickness).
+// (`itemAsset`, `itemAnchor`, `gapField` are defined above `room`.)
+const itemObject = z
+  .object({
+    type: z.literal("item"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    name: z.string().optional(),
+    asset: itemAsset,
+    x: z.number(),
+    y: z.number(),
+    rotation: z.number().optional(), // yaw, degrees
+    scale: positive().optional(),    // uniform user resize (default 1)
+    z_offset: z.number().optional(),
+    // Optional room-relative anchoring (for a free item that should follow a room).
+    anchor_to: z.string().optional(), // room name on this floor
+    anchor: itemAnchor.optional(),
+    gap_x: z.number().optional(),
+    gap_y: z.number().optional(),
+  })
+  .strict();
+
 export const object = z.discriminatedUnion("type", [
   plinthObject,
   groundObject,
   componentObject,
+  itemObject,
   floorSlab,
   pillar,
   beam,

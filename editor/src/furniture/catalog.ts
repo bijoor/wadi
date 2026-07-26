@@ -1,0 +1,102 @@
+// Furniture catalog — the picker's built-in CC0 set (Kenney "Furniture Kit", CC0,
+// kenney.nl). GLB files live in editor/public/furniture/<id>.glb (bundled, ~350 KB
+// total) and can also be mirrored to R2 (see scripts/publish-furniture.sh) for a CDN
+// / larger catalog. Each spec carries the piece's REAL-WORLD dimensions in metres;
+// FurnitureItem normalises the GLB to that size, so the arbitrary native model scale
+// doesn't matter. When a piece is placed, `furnitureAsset(id)` builds the inline
+// `ItemAsset` (with a resolved `src`) that gets copied onto the object — keeping the
+// .wadi self-contained.
+
+import type { ItemAsset } from "../schema/houseConfig";
+
+// Baked-in remote furniture host (Cloudflare R2 on our custom domain, CORS `*`). The
+// GLBs live under the `furniture/` prefix of the wadi-templates bucket (published via
+// scripts/publish-furniture.sh). Empty → bundled fallback. A localStorage override
+// ("wadi.furnitureUrl") still wins; if the host is unreachable, FurnitureItem shows
+// its placeholder box rather than failing.
+export const REMOTE_FURNITURE_URL = "https://templates.wadi.house/furniture";
+
+const OVERRIDE_KEY = "wadi.furnitureUrl";
+const stripTrailingSlash = (u: string) => u.replace(/\/+$/, "");
+
+/** Base URL for furniture GLBs (no trailing slash). Override → remote → bundled. */
+export function furnitureBaseUrl(): string {
+  try {
+    const override = localStorage.getItem(OVERRIDE_KEY);
+    if (override && override.trim()) return stripTrailingSlash(override.trim());
+  } catch {
+    /* localStorage blocked — ignore */
+  }
+  if (REMOTE_FURNITURE_URL) return stripTrailingSlash(REMOTE_FURNITURE_URL);
+  // Bundled copy, base-aware so it resolves under /editor/ on the deployed site too.
+  return stripTrailingSlash(`${import.meta.env.BASE_URL}furniture`);
+}
+
+export function setFurnitureBaseUrl(url: string | null): void {
+  try {
+    if (url && url.trim()) localStorage.setItem(OVERRIDE_KEY, stripTrailingSlash(url.trim()));
+    else localStorage.removeItem(OVERRIDE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Full GLB URL for a catalog id. */
+export function furnitureUrl(id: string): string {
+  return `${furnitureBaseUrl()}/${id}.glb`;
+}
+
+// A catalog entry: the piece's identity + real-world footprint. `src` is resolved on
+// demand (furnitureAsset) so the stored asset can point at whatever host is active.
+export interface FurnitureSpec {
+  id: string;
+  name: string;
+  category: string;
+  dimensions: [number, number, number]; // [w, h, d] in METRES (w across, d front-to-back)
+}
+
+export const FURNITURE_CATALOG: FurnitureSpec[] = [
+  // Bedroom
+  { id: "bed_double", name: "Double bed", category: "Bedroom", dimensions: [1.5, 0.5, 2.0] },
+  { id: "bed_single", name: "Single bed", category: "Bedroom", dimensions: [0.9, 0.5, 1.9] },
+  { id: "wardrobe", name: "Wardrobe", category: "Bedroom", dimensions: [1.0, 1.8, 0.55] },
+  // Living
+  { id: "sofa", name: "Sofa", category: "Living", dimensions: [1.9, 0.8, 0.9] },
+  { id: "armchair", name: "Armchair", category: "Living", dimensions: [0.85, 0.8, 0.85] },
+  { id: "coffee_table", name: "Coffee table", category: "Living", dimensions: [1.1, 0.4, 0.6] },
+  { id: "tv_unit", name: "TV unit", category: "Living", dimensions: [1.5, 0.5, 0.4] },
+  // Dining
+  { id: "dining_table", name: "Dining table", category: "Dining", dimensions: [1.5, 0.75, 0.9] },
+  { id: "chair", name: "Chair", category: "Dining", dimensions: [0.5, 0.9, 0.5] },
+  // Study
+  { id: "desk", name: "Desk", category: "Study", dimensions: [1.2, 0.75, 0.6] },
+  { id: "bookcase", name: "Bookcase", category: "Study", dimensions: [0.9, 1.8, 0.3] },
+  // Kitchen
+  { id: "fridge", name: "Fridge", category: "Kitchen", dimensions: [0.7, 1.8, 0.7] },
+  { id: "stove", name: "Stove", category: "Kitchen", dimensions: [0.6, 0.9, 0.65] },
+  // Bathroom
+  { id: "toilet", name: "Toilet", category: "Bathroom", dimensions: [0.5, 0.8, 0.7] },
+  { id: "bathtub", name: "Bathtub", category: "Bathroom", dimensions: [0.75, 0.6, 1.6] },
+  { id: "bathroom_sink", name: "Washbasin", category: "Bathroom", dimensions: [0.6, 0.85, 0.5] },
+  // Decor
+  { id: "plant", name: "Potted plant", category: "Decor", dimensions: [0.5, 1.0, 0.5] },
+  { id: "rug", name: "Rug", category: "Decor", dimensions: [1.6, 0.02, 2.3] },
+];
+
+export function furnitureSpec(id: string): FurnitureSpec | undefined {
+  return FURNITURE_CATALOG.find((a) => a.id === id);
+}
+
+/** Build the inline ItemAsset for a catalog id (with a resolved `src`). */
+export function furnitureAsset(id: string): ItemAsset {
+  const spec = furnitureSpec(id) ?? FURNITURE_CATALOG[0];
+  return {
+    id: spec.id,
+    name: spec.name,
+    category: spec.category,
+    src: furnitureUrl(spec.id),
+    dimensions: spec.dimensions,
+  };
+}
+
+export const DEFAULT_FURNITURE_ID = FURNITURE_CATALOG[0].id;

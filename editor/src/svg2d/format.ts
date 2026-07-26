@@ -40,6 +40,26 @@ export function setDimensionUnits(u?: {
   };
 }
 
+// How many feet one display unit spans, per system (mirrors three/units.ts +
+// procTextures.ts — keep in step). feet_inches/feet = 1 ft; metric systems convert.
+const FEET_PER_DISPLAY_UNIT: Record<UnitSystem, number> = {
+  feet_inches: 1,
+  feet: 1,
+  meters: 3.280839895,
+  centimeters: 0.032808399,
+  millimeters: 0.003280839,
+};
+const FEET_PER_METER = 3.280839895;
+
+// Convert a real-world length in METRES into project units, using the active
+// display units (set via setDimensionUnits before a render batch). Used to size
+// GLB-furniture footprints (`item.asset.dimensions` are metric) on 2D plans.
+export function metersToUnits(meters: number): number {
+  const { system, perUnit } = activeUnits;
+  const unitsPerFoot = perUnit / (FEET_PER_DISPLAY_UNIT[system] ?? 1);
+  return meters * unitsPerFoot * FEET_PER_METER;
+}
+
 const SUFFIX: Record<Exclude<UnitSystem, "feet_inches">, string> = {
   feet: "'",
   meters: " m",

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { useConfigStore, selectSelectedObject, type Selection } from "../state/configStore";
 import type { HouseObject, HouseConfig } from "../schema/houseConfig";
 import { resolveLayers } from "../three/layers";
@@ -21,6 +22,7 @@ import { ShedRoofForm } from "../forms/ShedRoofForm";
 import { RoofV2Form } from "../forms/RoofV2Form";
 import { KitchenPlatformForm } from "../forms/KitchenPlatformForm";
 import { ComponentForm } from "../forms/ComponentForm";
+import { getNode } from "../registry/registry";
 import { HouseSettingsForm } from "../forms/HouseSettingsForm";
 import { FloorPropertiesForm } from "../forms/FloorPropertiesForm";
 import { useEffect, useRef, useState } from "react";
@@ -364,6 +366,17 @@ function LayerAssignField({
 }
 
 function FormFor({ object, selection }: { object: HouseObject; selection: Selection }) {
+  // Registry-driven types (item, + future ports) bring their own editor. The form
+  // is loaded lazily (keeps the node module importable by the headless 2D engine).
+  const def = getNode(object.type);
+  if (def?.Form) {
+    const NodeForm = def.Form;
+    return (
+      <Suspense fallback={<div className="text-xs text-slate-500">Loading…</div>}>
+        <NodeForm obj={object} selection={selection} />
+      </Suspense>
+    );
+  }
   switch (object.type) {
     case "component":
       return <ComponentForm obj={object} selection={selection} />;

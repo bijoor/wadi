@@ -40,6 +40,7 @@ import { deriveAllHipRoofs } from "../svg2d/roofGeometry";
 import { RoofFrameMesh, computeShellLift, type RoofFraming, type RoofFrameGeom, type RoofTrusses } from "./roofFrame";
 import { V2RoofFrame, V2RoofSolid, V2RoofSurface } from "./V2RoofSolid";
 import { StaircaseMesh } from "./staircase";
+import { getNode } from "../registry/registry";
 import { WallWithOpenings, type WallOpening } from "./wallCSG";
 import { OpeningPane } from "./openings";
 import { effectiveLayers, useLayerStore } from "./layers";
@@ -433,6 +434,20 @@ export function House3D({ config }: { config: HouseConfig }) {
       for (let oi = 0; oi < objects.length; oi++) {
         const obj = objects[oi];
         const key = `f${fi}-${oi}`;
+
+        // Registry-driven types (item, + future ports) render themselves.
+        const nodeDef = getNode(obj.type);
+        if (nodeDef?.render3D) {
+          const out = nodeDef.render3D(obj as Record<string, unknown>, {
+            band,
+            plot,
+            unitsRef: globals.units,
+            floorNum,
+            key,
+          });
+          if (out) push(out.layerId, out.node);
+          continue;
+        }
 
         if (obj.type === "plinth") {
           // Plinth object (on the Plinth floor). Rises from ground (its
