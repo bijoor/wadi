@@ -4,7 +4,8 @@ import type { Selection } from "../state/configStore";
 import { useConfigStore } from "../state/configStore";
 import { NumberField, TextField, Section, SelectField, ObjectMeasureField } from "./fields";
 import { AnchorPicker } from "./AnchorPicker";
-import { FURNITURE_CATALOG, furnitureAsset, DEFAULT_FURNITURE_ID } from "../furniture/catalog";
+import { FurniturePicker } from "./FurniturePicker";
+import { furnitureAsset, DEFAULT_FURNITURE_ID } from "../furniture/catalog";
 
 const SIDES: Side[] = ["north", "south", "east", "west"];
 const KINDS = [
@@ -286,15 +287,7 @@ function RoomItemRow({
           Delete
         </button>
       </div>
-      <SelectField
-        label="Piece"
-        value={asset.id}
-        onChange={(id) => onChange({ asset: furnitureAsset(id) })}
-        options={FURNITURE_CATALOG.map((a) => ({
-          value: a.id,
-          label: `${a.name} · ${a.category}`,
-        }))}
-      />
+      <FurniturePicker value={asset.id} onPick={(id) => onChange({ asset: furnitureAsset(id) })} />
       <div className="mt-1 flex gap-3">
         <AnchorPicker label="Anchor" value={item.anchor} onChange={(a) => onChange({ anchor: a as RoomItem["anchor"] })} />
         <div className="grid flex-1 grid-cols-2 gap-x-2">

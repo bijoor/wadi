@@ -11,6 +11,7 @@
 import { lazy, Suspense } from "react";
 import { toThreePos } from "../../three/coords";
 import { metersToUnits as metersToUnits3D } from "../../three/units";
+import { defaultLayerFor } from "../../three/layers";
 import { metersToUnits as metersToUnitsPlan } from "../../svg2d/format";
 import { furnitureAsset, DEFAULT_FURNITURE_ID } from "../../furniture/catalog";
 import { uniqueName } from "../../state/naming";
@@ -60,7 +61,7 @@ export const itemNode: NodeDefinition = {
     const c = toThreePos(x, y, 0, ctx.plot.width, ctx.plot.length);
     const unitsScale = metersToUnits3D(1, ctx.unitsRef);
     return {
-      layerId: (obj.layer as string | undefined) ?? "furniture",
+      layerId: (obj.layer as string | undefined) ?? defaultLayerFor("item", ctx.floorNum),
       node: (
         <Suspense key={ctx.key} fallback={null}>
           <FurnitureItem

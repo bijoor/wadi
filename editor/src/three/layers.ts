@@ -1,44 +1,60 @@
 import { create } from "zustand";
-import { getNode } from "../registry/registry";
+import { layerRoleOverrides, roleForType, type LayerRole } from "../state/layerDefaults";
 
-// Visibility layers roughly match the ones used in docs/index.html's GLB
-// viewer. Each object we render gets tagged with a layer id; the layer
-// panel toggles whole groups on/off. Colors here are hints for future
-// use (e.g. material override or legend swatches).
+// A 3D visibility layer. Objects are tagged with a layer id; the 📚 menu toggles
+// whole GROUPS (and individual layers) on/off.
+//
+// Layer scheme (floor-primary): every habitable floor is its own GROUP (by the floor's
+// name), split into role sub-layers — Walls / Structure / Furniture / Doors & windows —
+// with ids `f{floorNumber}_{role}`. Cross-floor groups: "Site" (plinth, ground) and
+// "Roof" (shell/purlins/trusses — code-managed, NOT exposed to the layer editor).
 export interface LayerDef {
   id: string;
   label: string;
   color: string;
-  // Friendly group this layer rolls up into for the "Show/hide layers" menu
-  // (owners toggle whole groups; the granular layers sit under them). Editable
-  // per-house via the config's `layers` array; these are the defaults.
   group?: string;
 }
 
+// Per-floor role sub-layers, in menu order within a floor group.
+export const ROLES: LayerRole[] = ["walls", "structure", "furniture", "openings"];
+const ROLE_LABEL: Record<string, string> = {
+  walls: "Walls",
+  structure: "Structure",
+  furniture: "Furniture",
+  openings: "Doors & windows",
+};
+const ROLE_COLOR: Record<string, string> = {
+  walls: "#f5c9a0",
+  structure: "#b8b8b8",
+  furniture: "#c7a17a",
+  openings: "#7ab6ff",
+};
+
+// Fixed, non-floor layers. Roof ids are code-managed (the roof engine pushes to them);
+// they appear in the menu but are NOT editable in House settings.
+const STATIC_META: Record<string, LayerDef> = {
+  plinth: { id: "plinth", label: "Plinth", color: "#a0826d", group: "Site" },
+  ground: { id: "ground", label: "Ground", color: "#5c7346", group: "Site" },
+  loft: { id: "loft", label: "Roof shell", color: "#e88968", group: "Roof" },
+  frame_surface: { id: "frame_surface", label: "Purlins & rafters", color: "#8a8a8a", group: "Roof" },
+  frame_spine: { id: "frame_spine", label: "Ridges & trusses", color: "#5a5a5a", group: "Roof" },
+};
+export const ROOF_LAYER_IDS = ["loft", "frame_surface", "frame_spine"] as const;
+
+// Static fallback set (Site + Roof), kept for any consumer that wants a baseline.
 export const DEFAULT_LAYERS: LayerDef[] = [
-  { id: "loft", label: "Roof shell", color: "#e88968", group: "Roof" },
-  { id: "frame_surface", label: "Purlins & rafters", color: "#8a8a8a", group: "Roof" },
-  { id: "frame_spine", label: "Ridges & trusses", color: "#5a5a5a", group: "Roof" },
-  { id: "f1_beam", label: "First floor top beams", color: "#b8b8b8", group: "Structure" },
-  { id: "f1", label: "First floor walls", color: "#f5c9a0", group: "Walls" },
-  { id: "f1_slab", label: "First floor slab", color: "#b8b8b8", group: "Structure" },
-  { id: "f0", label: "Ground floor walls", color: "#f5c9a0", group: "Walls" },
-  { id: "openings", label: "Doors & windows", color: "#7ab6ff", group: "Doors & windows" },
-  { id: "pillars", label: "Pillars", color: "#ffffff", group: "Structure" },
-  { id: "plinth", label: "Plinth", color: "#a0826d", group: "Site" },
-  { id: "ground", label: "Ground", color: "#5c7346", group: "Site" },
-  { id: "furniture", label: "Furniture", color: "#c7a17a", group: "Furniture" },
+  STATIC_META.plinth,
+  STATIC_META.ground,
+  STATIC_META.loft,
+  STATIC_META.frame_surface,
+  STATIC_META.frame_spine,
 ];
 
 interface LayerState {
-  // Per-layer visibility. Missing id ⇒ treated as visible (call sites use
-  // `visible[id] !== false`), so a new layer starts shown without seeding.
-  // The layer LIST itself lives in the config (see effectiveLayers) — the
-  // store only tracks which are toggled on/off.
+  // Per-layer visibility. Missing id ⇒ visible (call sites use `visible[id] !== false`).
   visible: Record<string, boolean>;
   toggle: (id: string) => void;
   setAll: (ids: string[], visible: boolean) => void;
-  // Set a subset of layers on/off without disturbing the rest (group toggles).
   setMany: (ids: string[], visible: boolean) => void;
 }
 
@@ -54,102 +70,85 @@ export const useLayerStore = create<LayerState>((set) => ({
     })),
 }));
 
-// The built-in fallback: which layer id an object lands in when it has no
-// explicit `layer`. MUST match the ids House3D pushes to (all present in
-// DEFAULT_LAYERS). Shared by House3D (grouping) and effectiveLayers (menu)
-// so the two never drift.
-// NOTE: the plinth is floor 0; the ground floor is floor 1. The historical
-// "floor 0 → plinth/f0" branches therefore key on floorNum === 1 now.
-export function heuristicLayerId(objType: string, floorNum: number): string {
-  // Registry-driven types (item, + future ports) declare their default layer.
-  const def = getNode(objType);
-  if (def?.defaultLayerId) {
-    return typeof def.defaultLayerId === "function"
-      ? def.defaultLayerId({}, floorNum)
-      : def.defaultLayerId;
-  }
-  switch (objType) {
-    case "plinth":
-      return "plinth";
-    case "ground":
-      return "ground";
-    case "floor_slab":
-      return floorNum === 1 ? "plinth" : "f1_slab";
-    case "beam":
-      return "f1_beam";
-    case "pillar":
-      return "pillars";
-    case "room":
-    case "wall":
-      return floorNum === 1 ? "f0" : "f1";
-    case "staircase":
-    case "kitchen_platform":
-      return floorNum === 1 ? "plinth" : "f1_slab";
-    default:
-      return "ground";
-  }
+const ROOF_TYPES = new Set(["hip_roof", "gable_roof", "flat_roof", "shed_roof", "roof"]);
+
+// The DEFAULT layer id for an object with no explicit `layer`: its floor + its role.
+// role = per-device override (localStorage) → built-in role for the type. "site" role →
+// the shared plinth/ground layers; every other role → `f{floor}_{role}`.
+export function defaultLayerFor(
+  objType: string,
+  floorNum: number,
+  overrides?: Record<string, LayerRole>,
+): string {
+  const role = roleForType(objType, overrides ?? layerRoleOverrides());
+  if (role === "site") return objType === "ground" ? "ground" : "plinth";
+  return `f${floorNum}_${role}`;
 }
 
-const ROOF_TYPES = new Set([
-  "hip_roof",
-  "gable_roof",
-  "flat_roof",
-  "shed_roof",
-  "roof",
-]);
+// Back-compat alias (older call sites).
+export const heuristicLayerId = defaultLayerFor;
 
-// The full set of layers to show in the menu for a config — derived purely
-// from the config so the scene and menu stay in lockstep without any
-// cross-component publishing. Starts from the configured list (or the
-// defaults), then guarantees an entry for every layer the scene actually
-// renders into: the plinth + ground, each object's resolved layer (explicit
-// `layer` or the heuristic), and the roof-internal layers when a roof
-// exists. Labels/colors come from the configured list, else DEFAULT_LAYERS,
-// else the raw id.
-export function effectiveLayers(config: unknown): LayerDef[] {
-  const defs = resolveLayers(config);
-  const byId = new Map(defs.map((d) => [d.id, d]));
-  const order: LayerDef[] = [...defs];
-  const ensure = (id: string) => {
-    if (byId.has(id)) return;
-    const fb =
-      DEFAULT_LAYERS.find((d) => d.id === id) ??
-      ({ id, label: id, color: "#888888" } as LayerDef);
-    byId.set(id, fb);
-    order.push(fb);
+// Look up a layer's label/color/group from its id (+ the config, for floor names).
+export function layerMetaForId(id: string, config: unknown): LayerDef {
+  const st = STATIC_META[id];
+  if (st) return st;
+  const m = /^f(\d+)_([a-z_]+)$/.exec(id);
+  if (m) {
+    const n = Number(m[1]);
+    const role = m[2];
+    const floors =
+      (config as { floors?: Array<{ floor_number?: number; name?: string }> } | null)?.floors ?? [];
+    const floor = floors.find((f) => (typeof f.floor_number === "number" ? f.floor_number : -999) === n);
+    const group = floor?.name && floor.name.trim() ? floor.name : `Floor ${n}`;
+    return { id, label: ROLE_LABEL[role] ?? role, color: ROLE_COLOR[role] ?? "#888888", group };
+  }
+  return { id, label: id, color: "#888888" };
+}
+
+// The full ordered layer set for a config: config.layers (the per-house source of
+// truth, if present) plus any layer the scene actually needs — per habitable floor's
+// role sub-layers, each object's resolved layer, the Site layers, and the roof layers
+// when a roof exists. So the scene and the menu never drift.
+export function effectiveLayers(config: unknown, overrides?: Record<string, LayerRole>): LayerDef[] {
+  const ov = overrides ?? layerRoleOverrides();
+  const configLayers = resolveLayers(config);
+  const byId = new Map(configLayers.map((d) => [d.id, d]));
+  const order: LayerDef[] = [...configLayers];
+  const ensure = (id: string | null | undefined) => {
+    if (!id || byId.has(id)) return;
+    const def = layerMetaForId(id, config);
+    byId.set(id, def);
+    order.push(def);
   };
-
-  ensure("plinth");
-  ensure("ground");
 
   const floors =
     (config as { floors?: Array<{ floor_number?: number; objects?: Array<Record<string, unknown>> }> } | null)
       ?.floors ?? [];
   let hasRoof = false;
   floors.forEach((f, fi) => {
-    const floorNum = typeof f.floor_number === "number" ? f.floor_number : fi;
+    const n = typeof f.floor_number === "number" ? f.floor_number : fi;
+    // Predictable per-floor role sub-layers (so each floor group is complete).
+    if (n >= 1) for (const r of ROLES) ensure(`f${n}_${r}`);
     for (const o of f.objects ?? []) {
       const t = o.type as string;
       if (ROOF_TYPES.has(t)) {
         hasRoof = true;
         continue;
       }
-      if (t === "door" || t === "window") continue; // rendered with their wall
-      const explicit = typeof o.layer === "string" && o.layer ? o.layer : null;
-      ensure(explicit ?? heuristicLayerId(t, floorNum));
+      const id = (typeof o.layer === "string" && o.layer ? o.layer : null) ?? defaultLayerFor(t, n, ov);
+      // Defer the shared Site layers so floor groups come first in the menu.
+      if (id !== "plinth" && id !== "ground") ensure(id);
     }
   });
-  if (hasRoof) {
-    ensure("loft");
-    ensure("frame_spine");
-    ensure("frame_surface");
-  }
+  ensure("plinth");
+  ensure("ground");
+  if (hasRoof) for (const id of ROOF_LAYER_IDS) ensure(id);
 
   return order;
 }
 
-// Resolve the layer list for a house config: its own `layers` (normalized)
-// or the built-in defaults. Colors default to grey when omitted.
+// Resolve the house's OWN layer list (config.layers), normalized. Empty when absent —
+// callers that want the complete set use effectiveLayers.
 export function resolveLayers(config: unknown): LayerDef[] {
   const raw = (config as { layers?: unknown } | null)?.layers;
   if (Array.isArray(raw) && raw.length > 0) {
@@ -164,21 +163,19 @@ export function resolveLayers(config: unknown): LayerDef[] {
       };
     });
   }
-  return DEFAULT_LAYERS;
+  return [];
 }
 
-// Roll the effective layers up into friendly groups for the "Show/hide layers"
-// menu, in first-appearance order. A layer with no `group` becomes its own
-// single-member group (labelled by the layer), so nothing is ever hidden from
-// the menu. The membership is fully config-driven (see LayerDef.group).
+// Roll the effective layers into groups (floor names, Site, Roof) in first-appearance
+// order for the "Show/hide layers" menu. A layer with no group is its own group.
 export interface LayerGroup {
   label: string;
   layerIds: string[];
 }
-export function layerGroups(config: unknown): LayerGroup[] {
+export function layerGroups(config: unknown, overrides?: Record<string, LayerRole>): LayerGroup[] {
   const order: string[] = [];
   const byLabel = new Map<string, string[]>();
-  for (const l of effectiveLayers(config)) {
+  for (const l of effectiveLayers(config, overrides)) {
     const g = l.group && l.group.trim() ? l.group : l.label;
     let ids = byLabel.get(g);
     if (!ids) {
@@ -191,27 +188,7 @@ export function layerGroups(config: unknown): LayerGroup[] {
   return order.map((label) => ({ label, layerIds: byLabel.get(label) ?? [] }));
 }
 
-// Which layer a per-floor object belongs to. Ground floor rooms/walls
-// land in "f0"; first-floor in "f1"; slabs above ground in "f1_slab";
-// beams above first floor walls in "f1_beam". Pillars are their own
-// bucket (they span multiple floors visually).
-export function layerForObject(
-  objType: string,
-  floorNumber: number,
-): string {
-  if (objType === "plinth") return "plinth";
-  if (objType === "ground") return "ground";
-  if (objType === "pillar") return "pillars";
-  if (objType === "item") return "furniture";
-  if (objType === "hip_roof" || objType === "gable_roof") return "loft";
-  if (objType === "door" || objType === "window") return "openings";
-  // Plinth is floor 0; ground floor is 1 (historical floor-0 branches → 1).
-  if (objType === "floor_slab") {
-    return floorNumber === 1 ? "plinth" : "f1_slab";
-  }
-  if (objType === "beam") return "f1_beam";
-  if (objType === "room" || objType === "wall") {
-    return floorNumber === 1 ? "f0" : "f1";
-  }
-  return "ground";
+// True for the code-managed roof layers (not editable in House settings).
+export function isRoofLayer(id: string): boolean {
+  return (ROOF_LAYER_IDS as readonly string[]).includes(id);
 }

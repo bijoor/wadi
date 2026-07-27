@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { useConfigStore, selectSelectedObject, type Selection } from "../state/configStore";
 import type { HouseObject, HouseConfig } from "../schema/houseConfig";
-import { resolveLayers } from "../three/layers";
+import { effectiveLayers } from "../three/layers";
 import { validate } from "../schema/houseConfig";
 import { RoomForm } from "../forms/RoomForm";
 import { WallForm } from "../forms/WallForm";
@@ -334,7 +334,7 @@ function LayerAssignField({
 }) {
   const config = useConfigStore((s) => s.config);
   const updateObject = useConfigStore((s) => s.updateObject);
-  const layers = resolveLayers(config);
+  const layers = effectiveLayers(config);
   const current = (object as { layer?: string }).layer ?? "";
   return (
     <div className="mb-3">
@@ -353,7 +353,7 @@ function LayerAssignField({
         <option value="">— Auto (by type / floor) —</option>
         {layers.map((l) => (
           <option key={l.id} value={l.id}>
-            {l.label}
+            {l.group ? `${l.group} · ${l.label}` : l.label}
           </option>
         ))}
       </select>

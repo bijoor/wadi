@@ -43,7 +43,8 @@ import { StaircaseMesh } from "./staircase";
 import { getNode } from "../registry/registry";
 import { WallWithOpenings, type WallOpening } from "./wallCSG";
 import { OpeningPane } from "./openings";
-import { effectiveLayers, useLayerStore } from "./layers";
+import { defaultLayerFor, effectiveLayers, useLayerStore } from "./layers";
+import { useLayerDefaultsStore } from "../state/layerDefaults";
 import {
   buildRoomRects,
   splitWallByCoverage,
@@ -83,6 +84,9 @@ function reportGeometryWarnings(warnings: string[]): void {
 
 export function House3D({ config }: { config: HouseConfig }) {
   const visible = useLayerStore((s) => s.visible);
+  // Global default-layer-role prefs (localStorage). Subscribed so a change re-groups
+  // the scene live; also fed into the grouping + menu below.
+  const layerDefaults = useLayerDefaultsStore((s) => s.overrides);
 
   const byLayer = useMemo(() => {
     // Lenient expansion: a wall/room whose openings are invalid (out-of-range,
@@ -414,12 +418,10 @@ export function House3D({ config }: { config: HouseConfig }) {
       const band = bands[fi];
       const objects = (floor.objects as Obj[] | undefined) ?? [];
       const floorNum = (floor.floor_number as number) ?? fi;
-      // Floor 0 is the Plinth floor; habitable floors are 1..N. effFloor maps
-      // the ground floor (1) → 0 so the historical floor-0 layer semantics
-      // (ground rooms → "f0", ground slab → "plinth") carry over unchanged.
-      const effFloor = floorNum - 1;
-      const roomLayer = effFloor === 0 ? "f0" : "f1";
-      const slabLayer = effFloor === 0 ? "plinth" : "f1_slab";
+      // Floor-wise default layers (role sub-layer per floor). Per-object `layer`
+      // still overrides; global role prefs feed in via layerDefaults.
+      const roomLayer = defaultLayerFor("room", floorNum, layerDefaults);
+      const slabLayer = defaultLayerFor("floor_slab", floorNum, layerDefaults);
       const openings = objects.filter((o) => o.type === "door" || o.type === "window");
       // Pillar footprints that pass through this floor — walls trim to their
       // faces (no overlap). Include full-height columns declared on lower floors
@@ -457,7 +459,7 @@ export function House3D({ config }: { config: HouseConfig }) {
           const h = (obj.height as number | undefined) ?? band.floorHeight;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
           push(
-            (obj.layer as string | undefined) ?? "plinth",
+            (obj.layer as string | undefined) ?? defaultLayerFor("plinth", floorNum, layerDefaults),
             <PlinthBox key={key} cx={c.x} cz={c.z} width={w} length={l} height={h} />,
           );
         } else if (obj.type === "ground") {
@@ -465,7 +467,7 @@ export function House3D({ config }: { config: HouseConfig }) {
           // origin and sizes to the object's own extent (× 1.5 internally).
           const w = obj.width as number, l = obj.length as number;
           push(
-            (obj.layer as string | undefined) ?? "ground",
+            (obj.layer as string | undefined) ?? defaultLayerFor("ground", floorNum, layerDefaults),
             <GroundPlane key={key} width={w} length={l} />,
           );
         } else if (obj.type === "floor_slab") {
@@ -518,7 +520,7 @@ export function House3D({ config }: { config: HouseConfig }) {
           // top-of-wall beams that sit at slab + wall height.
           const zOffsetU = (obj.z_offset as number | undefined) ?? 0;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
-          const beamObjLayer = (obj.layer as string | undefined) ?? "f1_beam";
+          const beamObjLayer = (obj.layer as string | undefined) ?? defaultLayerFor("beam", floorNum, layerDefaults);
           // Pillars overlapping this beam in plan → cut their footprints out so
           // the column passes through instead of overlapping (and z-fighting
           // with) the beam. Same treatment as slabs; local-frame offsets (origin
@@ -566,7 +568,7 @@ export function House3D({ config }: { config: HouseConfig }) {
           // PillarBox centers on the passed position, so convert corner→center.
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
           push(
-            (obj.layer as string | undefined) ?? "pillars",
+            (obj.layer as string | undefined) ?? defaultLayerFor("pillar", floorNum, layerDefaults),
             <PillarBox
               key={key}
               cx={c.x}
@@ -676,13 +678,13 @@ export function House3D({ config }: { config: HouseConfig }) {
     }
 
     return groups;
-  }, [config]);
+  }, [config, layerDefaults]);
 
   // Layers to render, derived purely from the config (same helper the menu
   // uses) so scene + menu stay in lockstep. Any group id present in byLayer
   // is guaranteed to be in here by effectiveLayers (it replicates the push
   // fallbacks), so nothing is dropped.
-  const displayLayers = useMemo(() => effectiveLayers(config), [config]);
+  const displayLayers = useMemo(() => effectiveLayers(config, layerDefaults), [config, layerDefaults]);
 
   return (
     <>

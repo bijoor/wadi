@@ -3,7 +3,8 @@ import type { Selection } from "../state/configStore";
 import { useConfigStore } from "../state/configStore";
 import { Section, TextField, SelectField, ObjectMeasureField } from "./fields";
 import { AnchorPicker } from "./AnchorPicker";
-import { FURNITURE_CATALOG, furnitureAsset } from "../furniture/catalog";
+import { FurniturePicker } from "./FurniturePicker";
+import { furnitureAsset } from "../furniture/catalog";
 
 // Editor for a GLB furniture / decor `item`. Pick the piece from the catalog, then
 // place it: X/Y are the plan CENTRE, rotation is yaw in degrees, scale is a uniform
@@ -42,15 +43,7 @@ export function ItemForm({
         <TextField label="Name" value={obj.name ?? ""} onCommit={(v) => patch({ name: v || undefined })} />
       </Section>
       <Section title="Furniture">
-        <SelectField
-          label="Piece"
-          value={asset.id}
-          onChange={pickAsset}
-          options={FURNITURE_CATALOG.map((a) => ({
-            value: a.id,
-            label: a.category ? `${a.name} · ${a.category}` : (a.name ?? a.id),
-          }))}
-        />
+        <FurniturePicker value={asset.id} onPick={pickAsset} />
         <div className="mt-1 text-[11px] text-slate-400">
           {asset.name ?? asset.id} — real size {w}×{d} m footprint, {h} m tall.
         </div>

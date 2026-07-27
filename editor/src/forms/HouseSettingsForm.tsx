@@ -11,7 +11,12 @@ import { pickAndLoadConfig } from "../io/fileIO";
 import { symbolError } from "../param/resolve";
 import { NumberField, SelectField, TextField, Section, ObjectMeasureField } from "./fields";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
-import { resolveLayers } from "../three/layers";
+import { effectiveLayers, isRoofLayer, type LayerDef } from "../three/layers";
+import {
+  useLayerDefaultsStore,
+  roleForType,
+  type LayerRole,
+} from "../state/layerDefaults";
 
 type UnitSystem =
   | "feet_inches"
@@ -129,6 +134,7 @@ export function HouseSettingsForm() {
       <ComponentsSection />
 
       <LayersSection />
+      <LayerDefaultsSection />
     </div>
   );
 }
@@ -595,20 +601,14 @@ function ComponentsSection() {
 function LayersSection() {
   const config = useConfigStore((s) => s.config);
   const updateLayers = useConfigStore((s) => s.updateLayers);
-  const layers = resolveLayers(config);
+  // Editable set = the full effective layers MINUS the code-managed roof layers.
+  // Editing materializes the whole set into config.layers (single source of truth).
+  const layers: LayerDef[] = effectiveLayers(config).filter((l) => !isRoofLayer(l.id));
 
-  const commit = (next: { id: string; label: string; color?: string }[]) =>
-    updateLayers(next);
-
-  const patchAt = (
-    i: number,
-    patch: Partial<{ id: string; label: string; color: string }>,
-  ) => commit(layers.map((l, j) => (j === i ? { ...l, ...patch } : l)));
-
+  const commit = (next: LayerDef[]) => updateLayers(next.length ? next : undefined);
+  const patchAt = (i: number, patch: Partial<LayerDef>) =>
+    commit(layers.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const removeAt = (i: number) => commit(layers.filter((_, j) => j !== i));
-
-  // Swap a layer with its neighbour. Array order = display order in the
-  // 3D view's 📚 layers menu, so this reorders the menu.
   const move = (i: number, dir: -1 | 1) => {
     const j = i + dir;
     if (j < 0 || j >= layers.length) return;
@@ -616,72 +616,86 @@ function LayersSection() {
     [next[i], next[j]] = [next[j], next[i]];
     commit(next);
   };
-
   const add = () => {
-    // Unique id: layerN not already taken.
     const taken = new Set(layers.map((l) => l.id));
     let n = layers.length + 1;
     while (taken.has(`layer${n}`)) n++;
-    commit([...layers, { id: `layer${n}`, label: `Layer ${n}`, color: "#888888" }]);
+    const group = layers[layers.length - 1]?.group ?? "Custom";
+    commit([...layers, { id: `layer${n}`, label: `Layer ${n}`, color: "#888888", group }]);
   };
+
+  // Ordered unique group names for the grouped display.
+  const groupOf = (l: LayerDef) => (l.group && l.group.trim() ? l.group : "Ungrouped");
+  const groups = [...new Set(layers.map(groupOf))];
 
   return (
     <Section title="Layers (3D visibility)">
       <div className="mb-2 text-[11px] text-slate-400">
-        Toggle-able groups in the 3D view's 📚 layers menu. Assign an object
-        to a layer with the <b>Layer</b> dropdown at the top of its editor;
-        unassigned objects fall back to an automatic mapping. Use <b>▲▼</b> to
-        reorder — the list order is the menu order. Editing here overrides the
-        built-in defaults for this house.
+        The single source of truth for this house's 3D layers, grouped by floor (plus
+        <b> Site</b>). Edit a layer's label, colour and <b>group</b>; assign an object to
+        a layer via its <b>Layer</b> dropdown. Roof layers are managed automatically and
+        aren't listed here.
       </div>
-      <div className="space-y-1">
-        {layers.map((l, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className="flex shrink-0 flex-col">
-              <button
-                type="button"
-                onClick={() => move(i, -1)}
-                disabled={i === 0}
-                className="rounded-t bg-slate-800 px-1 text-[9px] leading-tight text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
-                title="Move up"
-              >
-                ▲
-              </button>
-              <button
-                type="button"
-                onClick={() => move(i, 1)}
-                disabled={i === layers.length - 1}
-                className="rounded-b bg-slate-800 px-1 text-[9px] leading-tight text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
-                title="Move down"
-              >
-                ▼
-              </button>
-            </div>
-            <input
-              type="color"
-              value={l.color ?? "#888888"}
-              onChange={(e) => patchAt(i, { color: e.target.value })}
-              className="h-6 w-6 shrink-0 cursor-pointer rounded border border-slate-700 bg-transparent"
-              title="Layer colour"
-            />
-            <div className="flex-1">
-              <TextField
-                label=""
-                value={l.label}
-                onCommit={(v) => patchAt(i, { label: v || l.id })}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => removeAt(i)}
-              className="shrink-0 rounded bg-slate-800 px-2 py-1 text-[10px] text-red-300 hover:bg-red-900"
-              title="Remove layer"
-            >
-              ✕
-            </button>
+      {groups.map((g) => (
+        <div key={g} className="mb-2">
+          <div className="mb-1 border-b border-slate-800 pb-0.5 text-[11px] font-semibold text-slate-300">
+            {g}
           </div>
-        ))}
-      </div>
+          <div className="space-y-1">
+            {layers.map((l, i) =>
+              groupOf(l) !== g ? null : (
+                <div key={l.id} className="flex items-center gap-1.5">
+                  <div className="flex shrink-0 flex-col">
+                    <button
+                      type="button"
+                      onClick={() => move(i, -1)}
+                      disabled={i === 0}
+                      className="rounded-t bg-slate-800 px-1 text-[9px] leading-tight text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
+                      title="Move up"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(i, 1)}
+                      disabled={i === layers.length - 1}
+                      className="rounded-b bg-slate-800 px-1 text-[9px] leading-tight text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
+                      title="Move down"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                  <input
+                    type="color"
+                    value={l.color ?? "#888888"}
+                    onChange={(e) => patchAt(i, { color: e.target.value })}
+                    className="h-6 w-6 shrink-0 cursor-pointer rounded border border-slate-700 bg-transparent"
+                    title="Layer colour"
+                  />
+                  <div className="flex-1">
+                    <TextField label="" value={l.label} onCommit={(v) => patchAt(i, { label: v || l.id })} />
+                  </div>
+                  <div className="w-28">
+                    <TextField
+                      label=""
+                      value={l.group ?? ""}
+                      onCommit={(v) => patchAt(i, { group: v.trim() || undefined })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeAt(i)}
+                    className="shrink-0 rounded bg-slate-800 px-2 py-1 text-[10px] text-red-300 hover:bg-red-900"
+                    title="Remove layer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      ))}
       <div className="mt-2 flex items-center gap-2">
         <button
           type="button"
@@ -694,16 +708,95 @@ function LayersSection() {
           type="button"
           onClick={() => updateLayers(undefined)}
           className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
-          title="Clear the custom list and use the built-in default layers"
+          title="Clear the custom list and regenerate the built-in floor-wise defaults"
         >
           Reset to defaults
         </button>
       </div>
       <div className="mt-1 text-[10px] text-slate-500">
-        Removing a layer that objects are assigned to leaves those objects
-        pointing at a missing id — they'll appear under that id in the menu
-        until reassigned.
+        The rightmost field is the layer's <b>group</b> (its floor, or Site) — type a new
+        name to regroup it. Menu order follows this list.
       </div>
+    </Section>
+  );
+}
+
+// Object type → layer ROLE default (a personal preference, stored in localStorage —
+// NOT in the .wadi). The object's floor picks the group; this picks the sub-layer. A
+// per-object Layer override still wins.
+const ROLE_OPTIONS: { value: LayerRole; label: string }[] = [
+  { value: "walls", label: "Walls" },
+  { value: "structure", label: "Structure" },
+  { value: "furniture", label: "Furniture" },
+  { value: "openings", label: "Doors & windows" },
+  { value: "site", label: "Site" },
+];
+const DEFAULT_ASSIGN_TYPES: { type: string; label: string }[] = [
+  { type: "room", label: "Rooms" },
+  { type: "wall", label: "Walls" },
+  { type: "pillar", label: "Pillars" },
+  { type: "beam", label: "Beams" },
+  { type: "floor_slab", label: "Floor slabs" },
+  { type: "staircase", label: "Staircases" },
+  { type: "kitchen_platform", label: "Kitchen platforms" },
+  { type: "item", label: "Furniture" },
+  { type: "door", label: "Doors" },
+  { type: "window", label: "Windows" },
+  { type: "plinth", label: "Plinth" },
+  { type: "ground", label: "Ground" },
+];
+
+function LayerDefaultsSection() {
+  const overrides = useLayerDefaultsStore((s) => s.overrides);
+  const setRole = useLayerDefaultsStore((s) => s.setRole);
+  const clearRole = useLayerDefaultsStore((s) => s.clearRole);
+  const resetAll = useLayerDefaultsStore((s) => s.resetAll);
+
+  return (
+    <Section title="Default layer by object type (this device)">
+      <div className="mb-2 text-[11px] text-slate-400">
+        Which <b>role</b> each object type falls into when it has no explicit layer. The
+        object's <b>floor</b> picks the group; this picks the sub-layer within it. Saved
+        on this device (a preference, not part of the file).
+      </div>
+      <div className="space-y-1">
+        {DEFAULT_ASSIGN_TYPES.map(({ type, label }) => {
+          const eff = roleForType(type, overrides);
+          const isOverride = overrides[type] !== undefined;
+          return (
+            <div key={type} className="flex items-center gap-2 text-xs">
+              <span className="w-32 shrink-0 text-slate-300">{label}</span>
+              <select
+                value={eff}
+                onChange={(e) => setRole(type, e.target.value as LayerRole)}
+                className="flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none focus:border-emerald-500"
+              >
+                {ROLE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => clearRole(type)}
+                disabled={!isOverride}
+                className="shrink-0 rounded bg-slate-800 px-1.5 py-1 text-[10px] text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+                title="Reset to built-in default"
+              >
+                ↺
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={resetAll}
+        className="mt-2 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
+      >
+        Reset all to built-in
+      </button>
     </Section>
   );
 }

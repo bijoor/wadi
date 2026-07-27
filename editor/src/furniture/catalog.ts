@@ -55,32 +55,72 @@ export interface FurnitureSpec {
   dimensions: [number, number, number]; // [w, h, d] in METRES (w across, d front-to-back)
 }
 
+// Curated from the Kenney Furniture Kit (CC0). Native/structural pieces (stairs, walls,
+// doorways, floors) are intentionally excluded — Wadi models those parametrically.
 export const FURNITURE_CATALOG: FurnitureSpec[] = [
   // Bedroom
   { id: "bed_double", name: "Double bed", category: "Bedroom", dimensions: [1.5, 0.5, 2.0] },
   { id: "bed_single", name: "Single bed", category: "Bedroom", dimensions: [0.9, 0.5, 1.9] },
+  { id: "bed_bunk", name: "Bunk bed", category: "Bedroom", dimensions: [1.0, 1.7, 2.0] },
   { id: "wardrobe", name: "Wardrobe", category: "Bedroom", dimensions: [1.0, 1.8, 0.55] },
+  { id: "bedside_table", name: "Bedside table", category: "Bedroom", dimensions: [0.5, 0.55, 0.4] },
   // Living
   { id: "sofa", name: "Sofa", category: "Living", dimensions: [1.9, 0.8, 0.9] },
+  { id: "sofa_long", name: "Large sofa", category: "Living", dimensions: [2.5, 0.8, 0.9] },
+  { id: "sofa_corner", name: "Corner sofa", category: "Living", dimensions: [2.4, 0.8, 2.4] },
   { id: "armchair", name: "Armchair", category: "Living", dimensions: [0.85, 0.8, 0.85] },
+  { id: "recliner", name: "Recliner", category: "Living", dimensions: [0.9, 1.0, 0.95] },
+  { id: "ottoman", name: "Ottoman", category: "Living", dimensions: [0.8, 0.45, 0.8] },
   { id: "coffee_table", name: "Coffee table", category: "Living", dimensions: [1.1, 0.4, 0.6] },
+  { id: "side_table", name: "Side table", category: "Living", dimensions: [0.5, 0.5, 0.5] },
   { id: "tv_unit", name: "TV unit", category: "Living", dimensions: [1.5, 0.5, 0.4] },
+  { id: "tv", name: "Television", category: "Living", dimensions: [1.2, 0.7, 0.1] },
+  { id: "cabinet_wide", name: "Cabinet", category: "Living", dimensions: [1.6, 1.0, 0.4] },
+  { id: "ceiling_fan", name: "Ceiling fan", category: "Living", dimensions: [1.2, 0.35, 1.2] },
   // Dining
   { id: "dining_table", name: "Dining table", category: "Dining", dimensions: [1.5, 0.75, 0.9] },
+  { id: "round_table", name: "Round table", category: "Dining", dimensions: [1.1, 0.75, 1.1] },
   { id: "chair", name: "Chair", category: "Dining", dimensions: [0.5, 0.9, 0.5] },
-  // Study
-  { id: "desk", name: "Desk", category: "Study", dimensions: [1.2, 0.75, 0.6] },
-  { id: "bookcase", name: "Bookcase", category: "Study", dimensions: [0.9, 1.8, 0.3] },
+  { id: "bench", name: "Bench", category: "Dining", dimensions: [1.4, 0.45, 0.4] },
+  { id: "bar_stool", name: "Bar stool", category: "Dining", dimensions: [0.4, 1.05, 0.4] },
   // Kitchen
-  { id: "fridge", name: "Fridge", category: "Kitchen", dimensions: [0.7, 1.8, 0.7] },
+  { id: "kitchen_cabinet", name: "Base cabinet", category: "Kitchen", dimensions: [0.6, 0.9, 0.6] },
+  { id: "kitchen_cabinet_upper", name: "Wall cabinet", category: "Kitchen", dimensions: [0.6, 0.7, 0.35] },
+  { id: "kitchen_sink", name: "Kitchen sink", category: "Kitchen", dimensions: [0.6, 0.9, 0.6] },
   { id: "stove", name: "Stove", category: "Kitchen", dimensions: [0.6, 0.9, 0.65] },
+  { id: "range_hood", name: "Range hood", category: "Kitchen", dimensions: [0.6, 0.45, 0.5] },
+  { id: "fridge", name: "Fridge", category: "Kitchen", dimensions: [0.7, 1.8, 0.7] },
+  { id: "microwave", name: "Microwave", category: "Kitchen", dimensions: [0.5, 0.3, 0.4] },
+  { id: "coffee_machine", name: "Coffee machine", category: "Kitchen", dimensions: [0.25, 0.35, 0.3] },
   // Bathroom
   { id: "toilet", name: "Toilet", category: "Bathroom", dimensions: [0.5, 0.8, 0.7] },
   { id: "bathtub", name: "Bathtub", category: "Bathroom", dimensions: [0.75, 0.6, 1.6] },
+  { id: "shower", name: "Shower", category: "Bathroom", dimensions: [0.9, 2.1, 0.9] },
   { id: "bathroom_sink", name: "Washbasin", category: "Bathroom", dimensions: [0.6, 0.85, 0.5] },
+  { id: "bathroom_mirror", name: "Mirror", category: "Bathroom", dimensions: [0.6, 0.8, 0.05] },
+  { id: "bathroom_cabinet", name: "Bathroom cabinet", category: "Bathroom", dimensions: [0.6, 0.7, 0.3] },
+  { id: "washing_machine", name: "Washing machine", category: "Bathroom", dimensions: [0.6, 0.85, 0.6] },
+  // Study / office
+  { id: "desk", name: "Desk", category: "Study", dimensions: [1.2, 0.75, 0.6] },
+  { id: "desk_corner", name: "Corner desk", category: "Study", dimensions: [1.4, 0.75, 1.4] },
+  { id: "desk_chair", name: "Desk chair", category: "Study", dimensions: [0.6, 1.0, 0.6] },
+  { id: "bookcase", name: "Bookcase", category: "Study", dimensions: [0.9, 1.8, 0.3] },
+  { id: "monitor", name: "Monitor", category: "Study", dimensions: [0.55, 0.4, 0.2] },
+  { id: "laptop", name: "Laptop", category: "Study", dimensions: [0.35, 0.03, 0.25] },
+  // Lighting
+  { id: "floor_lamp", name: "Floor lamp", category: "Lighting", dimensions: [0.4, 1.6, 0.4] },
+  { id: "table_lamp", name: "Table lamp", category: "Lighting", dimensions: [0.3, 0.5, 0.3] },
+  { id: "wall_light", name: "Wall light", category: "Lighting", dimensions: [0.2, 0.3, 0.15] },
   // Decor
   { id: "plant", name: "Potted plant", category: "Decor", dimensions: [0.5, 1.0, 0.5] },
+  { id: "small_plant", name: "Small plant", category: "Decor", dimensions: [0.3, 0.45, 0.3] },
+  { id: "coat_rack", name: "Coat rack", category: "Decor", dimensions: [0.5, 1.8, 0.5] },
   { id: "rug", name: "Rug", category: "Decor", dimensions: [1.6, 0.02, 2.3] },
+];
+
+// Categories in catalog order (for the picker's category filter).
+export const FURNITURE_CATEGORIES: string[] = [
+  ...new Set(FURNITURE_CATALOG.map((a) => a.category)),
 ];
 
 export function furnitureSpec(id: string): FurnitureSpec | undefined {

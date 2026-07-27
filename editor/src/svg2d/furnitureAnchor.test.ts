@@ -2,29 +2,29 @@ import { describe, expect, it } from "vitest";
 import { anchorItem } from "./furnitureAnchor";
 import { expandRoomWalls } from "./expand";
 
-// Room 200×300 at origin, wallT 8 → inner face inset 4 → [4,4]..[196,296].
+// Room 200×300 at origin, wallT 8 → inner FACE inset = full wallT = 8 → [8,8]..[192,292].
 // Bed 1.5×2.0 m footprint; default units (feet_inches/per_unit=10) → 32.808 units/m,
 // so fw = 49.21 (X), fd = 65.62 (Y); half-extents 24.606 × 32.808 at rotation 0.
 const rect = { x: 0, y: 0, w: 200, l: 300 };
 const bed = { dimensions: [1.5, 0.5, 2.0] as [number, number, number] };
 
 describe("anchorItem (room-relative furniture anchoring)", () => {
-  it("top-center hugs the north wall, centred horizontally", () => {
+  it("top-center hugs the inner face of the north wall, centred horizontally", () => {
     const p = anchorItem(rect, { ...bed, anchor: "top-center" }, 8);
     expect(p.x).toBeCloseTo(100, 2);
-    expect(p.y).toBeCloseTo(36.808, 2); // iy0(4) + halfY(32.808)
+    expect(p.y).toBeCloseTo(40.808, 2); // iy0(8) + halfY(32.808)
   });
 
   it("top-left corner with a per-axis gap clears each wall", () => {
     const p = anchorItem(rect, { ...bed, anchor: "top-left", gapX: 5, gapY: 5 }, 8);
-    expect(p.x).toBeCloseTo(33.606, 2); // 4 + 24.606 + 5
-    expect(p.y).toBeCloseTo(41.808, 2); // 4 + 32.808 + 5
+    expect(p.x).toBeCloseTo(37.606, 2); // 8 + 24.606 + 5
+    expect(p.y).toBeCloseTo(45.808, 2); // 8 + 32.808 + 5
   });
 
   it("bottom-right corner", () => {
     const p = anchorItem(rect, { ...bed, anchor: "bottom-right" }, 8);
-    expect(p.x).toBeCloseTo(171.394, 2); // 196 - 24.606
-    expect(p.y).toBeCloseTo(263.192, 2); // 296 - 32.808
+    expect(p.x).toBeCloseTo(167.394, 2); // 192 - 24.606
+    expect(p.y).toBeCloseTo(259.192, 2); // 292 - 32.808
   });
 
   it("center sits at the room centre", () => {
@@ -36,7 +36,7 @@ describe("anchorItem (room-relative furniture anchoring)", () => {
   it("uses the rotated footprint so a turned piece still clears the wall", () => {
     // rotation 90° swaps the half-extents: halfY becomes fw/2 = 24.606.
     const p = anchorItem(rect, { ...bed, anchor: "top-center", rotation: 90 }, 8);
-    expect(p.y).toBeCloseTo(28.606, 2); // 4 + 24.606
+    expect(p.y).toBeCloseTo(32.606, 2); // 8 + 24.606
   });
 
   it("follows a room resize (anchor recomputes)", () => {
@@ -76,7 +76,7 @@ describe("furniture anchoring through expandRoomWalls", () => {
     const bedItem = objs.find((o) => o.type === "item" && o.name === "Bed")!;
     expect(bedItem).toBeTruthy();
     expect(bedItem.x).toBeCloseTo(100, 2);
-    expect(bedItem.y).toBeCloseTo(36.808, 2);
+    expect(bedItem.y).toBeCloseTo(40.808, 2);
     // The room no longer carries nested items.
     const roomObj = objs.find((o) => o.type === "room")!;
     expect(roomObj.items).toBeUndefined();
@@ -111,10 +111,10 @@ describe("furniture anchoring through expandRoomWalls", () => {
     )!;
     expect(bedItem.rotation).toBe(90); // = rot
     expect(bedItem.scale).toBe(2); // = 2
-    // top-left, scale 2, rotation 90 (half-extents swap), gap_x = 5:
-    // x = 4 + fd/2(65.62) + 5 = 74.62 ; y = 4 + fw/2(49.21) = 53.21
-    expect(bedItem.x).toBeCloseTo(74.62, 1);
-    expect(bedItem.y).toBeCloseTo(53.21, 1);
+    // top-left, scale 2, rotation 90 (half-extents swap), gap_x = 5, inner inset 8:
+    // x = 8 + fd/2(65.62) + 5 = 78.62 ; y = 8 + fw/2(49.21) = 57.21
+    expect(bedItem.x).toBeCloseTo(78.62, 1);
+    expect(bedItem.y).toBeCloseTo(57.21, 1);
   });
 
   it("resolves a free item's anchor_to and follows the room's size", () => {

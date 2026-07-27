@@ -42,8 +42,9 @@ function parseAnchor(a?: string): { h: H; v: V } {
 }
 
 // Compute the item's plan CENTRE (x, y) from the room rect + anchor spec.
-// `wallT` = wall thickness (project units); the anchor rect is the room inset by half
-// the wall thickness (the inner wall face for walls centred on the room boundary).
+// `wallT` = wall thickness (project units). The room rect edge is the wall's OUTER
+// face, so the anchor rect is inset by the FULL wall thickness to reach the INNER
+// wall face — furniture then hugs the visible inside surface, not the wall centerline.
 // `units` = house units, to scale the asset's metric footprint into project units.
 export function anchorItem(
   rect: RoomRect,
@@ -51,7 +52,7 @@ export function anchorItem(
   wallT: number,
   units?: { system?: string; per_unit?: number },
 ): { x: number; y: number } {
-  const inset = wallT / 2;
+  const inset = wallT;
   const ix0 = rect.x + inset;
   const iy0 = rect.y + inset;
   const ix1 = rect.x + rect.w - inset;
