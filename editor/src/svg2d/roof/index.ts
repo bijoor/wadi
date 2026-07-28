@@ -14,11 +14,7 @@
 //     browser bundle stays side-effect-free until you call the disk-writing
 //     function.
 
-import { expandRoomWalls, type HouseConfig } from "../expand";
-import { computeAll } from "./geometry";
-import { computeLayout } from "./layout";
-import { compose } from "./compose";
-import { splitPanels } from "./manifest";
+import type { HouseConfig } from "../expand";
 import { computeV2RoofSections } from "./v2/compose";
 
 export interface RoofPanelFile {
@@ -46,66 +42,30 @@ export interface ComputeRoofOptions {
 
 // Pure, in-memory version. Safe for browsers.
 //
-// Dispatches on the config's roof types:
-//   - Any `type: "roof"` (v2) objects → v2 pipeline (computeV2RoofSections).
-//   - Otherwise → legacy pipeline (computeAll → compose).
-// If both v2 and legacy exist on the same house, v2 wins (legacy roofs
-// are ignored in the master sheet).
+// v2-only: computes the unified roof (type: "roof") pipeline. Returns
+// null when the config has no roof objects.
 export function computeRoofSections(
   cfg: HouseConfig,
-  options: ComputeRoofOptions = {},
+  _options: ComputeRoofOptions = {},
 ): RoofSectionsResult | null {
-  // Try v2 first — if any roof is v2, use v2 pipeline.
   const v2 = computeV2RoofSections(cfg);
-  if (v2) {
-    // Manifest is a FLAT ARRAY (same shape as legacy splitPanels
-    // produces) — callers use it directly in Array spread and
-    // Object-form would blow up with "s is not iterable".
-    const manifestArray = v2.panels.map((p) => ({
-      id: p.id,
-      title: p.title,
-      file: p.filename,
-      width: p.width,
-      height: p.height,
-    }));
-    return {
-      master: v2.master,
-      panels: v2.panels,
-      manifest: {
-        filename: "roof_panels.json",
-        content: JSON.stringify(manifestArray, null, 2),
-      },
-    };
-  }
-
-  // Legacy path.
-  const hc = expandRoomWalls(cfg);
-  const computed = computeAll(hc);
-  if (!computed) return null;
-  const layout = computeLayout(computed);
-  const { masterSvg, panels: rawPanels } = compose(computed, layout, {
-    eaveCrossSectionSvg: options.eaveCrossSectionSvg,
-  });
-  const { files, manifestJson } = splitPanels(rawPanels);
-
-  // Weld the file content and the per-panel metadata together into a
-  // single list the caller can iterate without cross-referencing arrays.
-  const panels: RoofPanelFile[] = files.map((f, i) => {
-    const meta = rawPanels[i];
-    return {
-      filename: f.filename,
-      content: f.content,
-      id: meta.id,
-      title: meta.title,
-      width: meta.width,
-      height: meta.height,
-    };
-  });
-
+  if (!v2) return null;
+  // Manifest is a FLAT ARRAY — callers use it directly in Array spread
+  // and Object-form would blow up with "s is not iterable".
+  const manifestArray = v2.panels.map((p) => ({
+    id: p.id,
+    title: p.title,
+    file: p.filename,
+    width: p.width,
+    height: p.height,
+  }));
   return {
-    master: { filename: "roof_plan.svg", content: masterSvg },
-    panels,
-    manifest: { filename: "roof_panels.json", content: manifestJson },
+    master: v2.master,
+    panels: v2.panels,
+    manifest: {
+      filename: "roof_panels.json",
+      content: JSON.stringify(manifestArray, null, 2),
+    },
   };
 }
 

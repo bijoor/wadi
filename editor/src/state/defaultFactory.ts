@@ -16,9 +16,7 @@ import { uniqueName } from "./naming";
 
 export { uniqueName };
 
-// Types the sidebar exposes via "+" buttons. Roofs are intentionally
-// omitted — one hip_roof per house is the norm, and its structure is
-// too rich for a one-click default.
+// Types the sidebar exposes via "+" buttons.
 export type AddableObjectType =
   | "component"
   | "item"
@@ -32,10 +30,6 @@ export type AddableObjectType =
   | "door"
   | "window"
   | "kitchen_platform"
-  | "hip_roof"
-  | "gable_roof"
-  | "flat_roof"
-  | "shed_roof"
   | "roof";
 
 export const ADDABLE_TYPES: AddableObjectType[] = [
@@ -51,11 +45,7 @@ export const ADDABLE_TYPES: AddableObjectType[] = [
   "door",
   "window",
   "kitchen_platform",
-  "roof",         // v2 unified — the ONLY roof type in the "+" menu
-  // Legacy hip_roof / gable_roof / flat_roof / shed_roof are still
-  // parseable by the schema so old configs load, but they're no longer
-  // offered as add options — v2 has full coverage and legacy code
-  // paths will be removed soon.
+  "roof",         // v2 unified — the ONLY roof type
 ];
 
 export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
@@ -72,10 +62,6 @@ export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
   window: "Window",
   kitchen_platform: "Kitchen platform",
   roof: "Roof",   // v2 unified — the ONLY roof type for new configs
-  hip_roof: "Hip roof (legacy)",
-  gable_roof: "Gable roof (legacy)",
-  flat_roof: "Flat roof (legacy)",
-  shed_roof: "Shed roof (legacy)",
 };
 
 // Build a default object of the given type. `existing` is the current
@@ -200,58 +186,6 @@ export function makeDefault(
         sill_height: 30,
         direction: "north",
       };
-    case "hip_roof":
-      // All geometry in project units (10 units = 1 ft). Position + size
-      // cover the full plot by default; trusses at 20 / 50 / 80 % of Y.
-      return {
-        type: "hip_roof",
-        x: 0,
-        y: 0,
-        width: plotW,
-        length: plotL,
-        ridge_axis: "y",
-        ridge_h: 70,           // 7 ft
-        min_overhang: 25,      // 2.5 ft
-        trusses: {
-          type: "fink",
-          positions: [plotL * 0.2, plotL * 0.5, plotL * 0.8],
-        },
-      } as unknown as HouseObject;
-    case "gable_roof":
-      return {
-        type: "gable_roof",
-        x: 0,
-        y: 0,
-        width: plotW,
-        length: plotL,
-        ridge_axis: "y",
-        ridge_h: 70,           // 7 ft
-        min_overhang: 25,      // 2.5 ft
-        gable_overhang: 10,    // 1 ft
-      } as unknown as HouseObject;
-    case "flat_roof":
-      return {
-        type: "flat_roof",
-        x: 0,
-        y: 0,
-        width: plotW,
-        length: plotL,
-        slab_thickness: 6,      // 0.6 ft ≈ RCC deck
-        overhang: 5,
-        parapet_height: 30,     // 3 ft
-        parapet_thickness: 8,   // 0.8 ft
-      } as unknown as HouseObject;
-    case "shed_roof":
-      return {
-        type: "shed_roof",
-        x: 0,
-        y: 0,
-        width: plotW,
-        length: plotL,
-        slope_dir: "south",
-        rise: 30,                // 3 ft rise across the longitudinal span
-        min_overhang: 20,        // 2 ft
-      } as unknown as HouseObject;
     case "roof":
       // v2 unified roof. Default is a single-segment pitched (hip) roof
       // spanning the plot along the Y-axis. Users can add more segments

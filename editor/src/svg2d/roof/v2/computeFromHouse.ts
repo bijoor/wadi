@@ -1,9 +1,6 @@
 // Compute v2 RoofSpecs from a HouseConfig.
 //
-// Handles BOTH:
-//   - Legacy roof objects (hip_roof / gable_roof / flat_roof / shed_roof)
-//     via `oldRectRoofToSegments` adapter.
-//   - New v2 unified roof objects (type: "roof") — used directly.
+// Handles the unified v2 roof object (type: "roof") — used directly.
 //
 // Per-roof errors are logged and skipped so one bad config doesn't
 // take out the whole pipeline.
@@ -11,7 +8,6 @@
 import { expandRoomWalls, type HouseConfig } from "../../expand";
 import { DEFAULT_GLOBAL_CONFIG } from "../../config";
 import { computeTopFloorWallTopZ } from "../../roofGeometry";
-import { oldRectRoofToSegments } from "./adapters";
 import { derivePitchedRoof } from "./derivePitched";
 import { deriveFlatRoof } from "./deriveFlat";
 import { deriveShedRoof } from "./deriveShed";
@@ -22,16 +18,10 @@ import { populateEaveMembers } from "./eaveMembers";
 import { trimAtJoints } from "./trimAtJoints";
 import type { RoofConfig, RoofSpec } from "./model";
 
-// Legacy roof types the adapter can convert.
-const LEGACY_ROOF_TYPES = new Set([
-  "hip_roof", "gable_roof", "flat_roof", "shed_roof",
-]);
-
 export interface ComputeFromHouseOptions {
-  // Which roof objects to include:
-  //   "all"        — v2 + legacy (default; matches full-scene rendering)
-  //   "v2Only"     — only type:"roof" objects
-  //   "legacyOnly" — only legacy types (hip/gable/flat/shed)
+  // Retained for call-site compatibility. With legacy roof types
+  // removed, every value now selects the same set (v2 `type: "roof"`
+  // objects only).
   filter?: "all" | "v2Only" | "legacyOnly";
 }
 
@@ -42,7 +32,7 @@ export function computeMergedV2Spec(
   config: HouseConfig,
   opts: ComputeFromHouseOptions = {},
 ): RoofSpec {
-  const filter = opts.filter ?? "all";
+  void opts;
   const merged: RoofSpec = { members: [], planes: [], trusses: [] };
   const hc = expandRoomWalls(config);
   const houseDefaults = (hc as {
@@ -55,12 +45,7 @@ export function computeMergedV2Spec(
     const floor = hc.floors![fi];
     const objects = (floor.objects as Array<Record<string, unknown>>) ?? [];
     for (const obj of objects) {
-      const t = obj.type as string | undefined;
-      const isV2 = t === "roof";
-      const isLegacy = LEGACY_ROOF_TYPES.has(t ?? "");
-      if (!isV2 && !isLegacy) continue;
-      if (filter === "v2Only" && !isV2) continue;
-      if (filter === "legacyOnly" && !isLegacy) continue;
+      if (obj.type !== "roof") continue;
       try {
         const framingRaw = (obj.framing as Partial<FramingConfig> | undefined) ?? {};
         const framing: FramingConfig = { ...DEFAULT_V2_FRAMING, ...framingRaw };
@@ -77,9 +62,7 @@ export function computeMergedV2Spec(
             hc.floors as Array<{ height?: number; slab_thickness?: number }>,
             houseDefaults,
           ) + roofZOffset;
-        const v2Cfg: RoofConfig = isV2
-          ? (obj as unknown as RoofConfig)
-          : oldRectRoofToSegments(obj);
+        const v2Cfg: RoofConfig = obj as unknown as RoofConfig;
         const spec = deriveOne(v2Cfg, wallTopZ, framing, wallThickness);
         merged.members.push(...spec.members);
         merged.planes.push(...spec.planes);
@@ -138,7 +121,7 @@ export function collectV2FramingSpecs(
   config: HouseConfig,
   opts: ComputeFromHouseOptions = {},
 ): Array<{ spec: RoofSpec; framing?: Partial<FramingConfig> }> {
-  const filter = opts.filter ?? "all";
+  void opts;
   const out: Array<{ spec: RoofSpec; framing?: Partial<FramingConfig> }> = [];
   const hc = expandRoomWalls(config);
   const houseDefaults = (hc as { defaults?: { floor_height?: number; slab_thickness?: number } })
@@ -148,12 +131,7 @@ export function collectV2FramingSpecs(
     const floor = hc.floors![fi];
     const objects = (floor.objects as Array<Record<string, unknown>>) ?? [];
     for (const obj of objects) {
-      const t = obj.type as string | undefined;
-      const isV2 = t === "roof";
-      const isLegacy = LEGACY_ROOF_TYPES.has(t ?? "");
-      if (!isV2 && !isLegacy) continue;
-      if (filter === "v2Only" && !isV2) continue;
-      if (filter === "legacyOnly" && !isLegacy) continue;
+      if (obj.type !== "roof") continue;
       try {
         const framing = (obj.framing as Record<string, unknown> | undefined) ?? {};
         void framing;   // no longer used for beam offset — kept for reference
@@ -168,9 +146,7 @@ export function collectV2FramingSpecs(
             hc.floors as Array<{ height?: number; slab_thickness?: number }>,
             houseDefaults,
           ) + roofZOffset;
-        const v2Cfg: RoofConfig = isV2
-          ? (obj as unknown as RoofConfig)
-          : oldRectRoofToSegments(obj);
+        const v2Cfg: RoofConfig = obj as unknown as RoofConfig;
         const resolvedFraming: FramingConfig = {
           ...DEFAULT_V2_FRAMING,
           ...(framing as Partial<FramingConfig>),

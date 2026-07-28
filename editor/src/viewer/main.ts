@@ -39,16 +39,10 @@ import { effectiveLayers, heuristicLayerId } from "../three/layers";
 import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
 import { computeRoofSections } from "../svg2d/roof/index";
-import { computeAllRoofs } from "../svg2d/roof/geometry";
-import { generateGablePanels } from "../svg2d/roof/gableCompose";
-import { collectAllGableMembers, gableTileContribution } from "../svg2d/roof/gableBom";
-import { generateFlatPanels, collectAllFlatMembers, flatTileContribution } from "../svg2d/roof/flatCompose";
-import { generateShedPanels, collectAllShedMembers, shedTileContribution } from "../svg2d/roof/shedCompose";
 import { frameBomHtml, metalBomHtml, roofMaterialBomHtml, readTileDensities, readMetalStock } from "../svg2d/roof/htmlBom";
 import { collectV2AsLegacyFrameMembers } from "../svg2d/roof/v2/computeFromHouse";
 import { computeMergedV2Spec } from "../svg2d/roof/v2/computeFromHouse";
 import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
-import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
 import { computeWallAreas } from "../estimate/wallArea";
 import { wallAreaHtml } from "../estimate/wallAreaHtml";
@@ -450,33 +444,16 @@ function rebuildSvgMap(): void {
   safe("combined elevations", () => {
     svgMap.set("2d/elevations/elevations_combined.svg", generateCombinedElevations(cfg));
   });
-  // Roof pipeline throws on incomplete hip_roof configs (e.g. missing
-  // trusses.positions). Swallow the error so a partial config still
-  // renders floor plans + elevations — the roof tab will just show its
-  // empty state until the user fills in the required fields.
-  // Publish result to window.__roofBomDebug so the on-screen debug badge
-  // (🐞) can surface why the roof is missing without needing DevTools.
+  // Roof pipeline (v2 unified roof only). Throws on incomplete roof
+  // configs; swallow so a partial config still renders floor plans +
+  // elevations — the roof tab shows its empty state until the required
+  // fields are filled. Result is published to window.__roofBomDebug so
+  // the on-screen debug badge (🐞) can surface a missing roof.
   let roof: ReturnType<typeof computeRoofSections> = null;
-  // Snapshot the actual hip_roof object post-validate — so the debug
-  // badge can show whether `trusses` survived the schema pass and
-  // whether the fields the compute needs are there.
-  let hipRoofSnapshot: Record<string, unknown> | null = null;
-  for (const f of cfg.floors ?? []) {
-    for (const o of f.objects ?? []) {
-      if ((o as { type?: string }).type === "hip_roof") {
-        hipRoofSnapshot = o as unknown as Record<string, unknown>;
-        break;
-      }
-    }
-    if (hipRoofSnapshot) break;
-  }
   try {
     roof = computeRoofSections(cfg, { eaveCrossSectionSvg: eaveSvg });
     (window as unknown as { __roofBomDebug?: unknown }).__roofBomDebug = {
       status: roof ? "ok" : "no-roof",
-      hipRoofInConfig: !!hipRoofSnapshot,
-      hipRoofKeys: hipRoofSnapshot ? Object.keys(hipRoofSnapshot) : [],
-      hipRoofSnapshot,
       panelCount: roof?.panels.length ?? 0,
     };
   } catch (e) {
@@ -484,88 +461,41 @@ function rebuildSvgMap(): void {
     console.warn("[roof] compute failed, skipping roof panels:", msg, e);
     (window as unknown as { __roofBomDebug?: unknown }).__roofBomDebug = {
       status: "error",
-      hipRoofInConfig: !!hipRoofSnapshot,
-      hipRoofKeys: hipRoofSnapshot ? Object.keys(hipRoofSnapshot) : [],
-      hipRoofSnapshot,
       error: msg,
     };
     window.roofBomManifest = [];
   }
-  // Hip pipeline output (SVG panels + master + manifest). May be null
-  // when there's no hip_roof or the config is incomplete.
+  // v2 roof pipeline output (SVG panels + master + manifest). May be
+  // null when there's no roof object or the config is incomplete.
   if (roof) {
     svgMap.set(`2d/roof/${roof.master.filename}`, roof.master.content);
     for (const p of roof.panels) {
       svgMap.set(`2d/roof/${p.filename}`, p.content);
     }
+    svgMap.set("2d/roof/roof_panels.json", roof.manifest.content);
+  } else {
+    svgMap.set("2d/roof/roof_panels.json", JSON.stringify([], null, 2));
   }
-  // Gable panels — MVP top view + cross-section per gable_roof. Runs
-  // regardless of whether hip_roof exists; the two sets are merged
-  // into the same roof_panels.json manifest below.
-  const gablePanels = generateGablePanels(cfg);
-  for (const gp of gablePanels) {
-    svgMap.set(`2d/roof/${gp.filename}`, gp.content);
-  }
-  const flatPanels = generateFlatPanels(cfg);
-  for (const p of flatPanels) {
-    svgMap.set(`2d/roof/${p.filename}`, p.content);
-  }
-  const shedPanels = generateShedPanels(cfg);
-  for (const p of shedPanels) {
-    svgMap.set(`2d/roof/${p.filename}`, p.content);
-  }
-  // Always publish a roof_panels.json — hip + gable + flat + shed
-  // entries merged into one manifest so the viewer's loadRoofPanels
-  // loop finds them all. Empty = viewer's own empty state.
-  const hipManifestEntries: Array<Record<string, unknown>> = roof
-    ? (JSON.parse(roof.manifest.content) as Array<Record<string, unknown>>)
-    : [];
-  const toManifest = (p: { id: string; title: string; filename: string; width: number; height: number }) => ({
-    id: p.id, title: p.title, file: p.filename, width: p.width, height: p.height,
-  });
-  const mergedManifest = [
-    ...hipManifestEntries,
-    ...gablePanels.map(toManifest),
-    ...flatPanels.map(toManifest),
-    ...shedPanels.map(toManifest),
-  ];
-  svgMap.set(
-    "2d/roof/roof_panels.json",
-    JSON.stringify(mergedManifest, null, 2),
-  );
 
-  // HTML BOM cards — Phase 1b + Phase 2: aggregates across every
-  // hip_roof (via computeAllRoofs → RoofComputed[]) AND every
-  // gable_roof (via collectAllGableMembers). Emitted whenever there's
-  // at least one roof of either type.
-  const expanded = expandRoomWalls(cfg, undefined, { lenient: true });
-  const allRoofs = computeAllRoofs(expanded);
-  const gableMembers = collectAllGableMembers(cfg);
-  const flatMembers = collectAllFlatMembers(cfg);
-  const shedMembers = collectAllShedMembers(cfg);
-  // v2 roof contributions (type: "roof" only — legacy types are
-  // already counted by the paths above). Emits members as legacy
-  // FrameMember shape so the existing BOM tables can consume them.
+  // HTML BOM cards — aggregates across every v2 roof (type: "roof").
+  // The BOM renderers take a RoofComputed[] (empty now that legacy roofs
+  // are gone) plus the v2 members converted to the legacy FrameMember
+  // shape via collectV2AsLegacyFrameMembers.
   const v2Members = collectV2AsLegacyFrameMembers(cfg);
-  const gableTiles = gableTileContribution(cfg);
-  const flatTiles = flatTileContribution(cfg);
-  const shedTiles = shedTileContribution(cfg);
-  const extraMembers = [...gableMembers, ...flatMembers, ...shedMembers, ...v2Members];
+  const extraMembers = v2Members;
   // v2 tile contribution — slope area + ridge run for type:"roof" objects.
   const v2Spec = computeMergedV2Spec(cfg, { filter: "v2Only" });
-  const v2Area = slopeAreaSft(v2Spec);
-  const v2RidgeRun = ridgeRunFt(v2Spec);
-  const extraArea = gableTiles.areaSft + flatTiles.areaSft + shedTiles.areaSft + v2Area;
-  const extraRidgeRun = gableTiles.ridgeRunFt + shedTiles.ridgeRunFt + v2RidgeRun;
-  const hasAnyRoof = allRoofs.length > 0 || extraMembers.length > 0;
+  const extraArea = slopeAreaSft(v2Spec);
+  const extraRidgeRun = ridgeRunFt(v2Spec);
+  const hasAnyRoof = extraMembers.length > 0;
   if (hasAnyRoof) {
     const densities = readTileDensities(cfg);
     const stock = readMetalStock(cfg);
-    svgMap.set("2d/roof/frame_bom.html", frameBomHtml(allRoofs, extraMembers));
-    svgMap.set("2d/roof/metal_bom.html", metalBomHtml(allRoofs, stock, extraMembers));
+    svgMap.set("2d/roof/frame_bom.html", frameBomHtml([], extraMembers));
+    svgMap.set("2d/roof/metal_bom.html", metalBomHtml([], stock, extraMembers));
     svgMap.set(
       "2d/roof/roof_material_bom.html",
-      roofMaterialBomHtml(allRoofs, densities, extraArea, extraRidgeRun),
+      roofMaterialBomHtml([], densities, extraArea, extraRidgeRun),
     );
     window.roofBomManifest = [
       { filename: "2d/roof/frame_bom.html", displayName: "Frame BOM" },
@@ -856,10 +786,7 @@ const TYPE_LABELS: Record<string, string> = {
   pillar: "Pillars",
   staircase: "Staircases",
   kitchen: "Kitchens",
-  gable_roof: "Roofs",
-  hip_roof: "Roofs",
-  flat_roof: "Roofs",
-  shed_roof: "Roofs",
+  roof: "Roofs",
   openings: "Doors & windows",
 };
 
@@ -919,7 +846,7 @@ function wireLayoutApi(): void {
     // Preserve a sensible type order; unknown types go last alphabetically.
     const typeOrder = [
       "floor_slab", "beam", "room", "wall", "staircase", "kitchen",
-      "pillar", "gable_roof", "hip_roof", "flat_roof", "shed_roof", "openings",
+      "pillar", "roof", "openings",
     ];
     const types = [...typeIds]
       .sort((a, b) => {

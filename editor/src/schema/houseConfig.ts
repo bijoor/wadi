@@ -416,34 +416,6 @@ const windowObj = z
   })
   .strict();
 
-// Roof schemas kept permissive — their structure (framing, trusses,
-// ridge_ventilation) is fairly involved and validated inside
-// create_hip_roof. The editor treats them as opaque object payloads for
-// now; Phase 5 can add a dedicated roof editor.
-const hipRoof = z
-  .object({
-    type: z.literal("hip_roof"),
-  })
-  .catchall(z.unknown());
-
-const gableRoof = z
-  .object({
-    type: z.literal("gable_roof"),
-  })
-  .catchall(z.unknown());
-
-const flatRoof = z
-  .object({
-    type: z.literal("flat_roof"),
-  })
-  .catchall(z.unknown());
-
-const shedRoof = z
-  .object({
-    type: z.literal("shed_roof"),
-  })
-  .catchall(z.unknown());
-
 // v2 roof — unified segment-based type that replaces hip/gable/flat/shed.
 // Schema is permissive; the v2 pipeline (svg2d/roof/v2/) validates
 // segments + slope + endpoint style at derivation time.
@@ -546,10 +518,6 @@ export const object = z.discriminatedUnion("type", [
   door,
   windowObj,
   kitchenPlatform,
-  hipRoof,
-  gableRoof,
-  flatRoof,
-  shedRoof,
   roofV2,
 ]);
 export type HouseObject = z.infer<typeof object>;

@@ -18,8 +18,6 @@ import { f, fFloat } from "./format";
 import { svgDrawDimensionLine } from "./dimensions";
 import { resetDimView } from "./dimResolve";
 import { pillarCenter, type PillarLike } from "./pillar/extents";
-import { deriveAllHipRoofs } from "./roofGeometry";
-import { deriveAllGableRoofs } from "./roof/gableGeometry";
 import type { HouseConfig } from "./expand";
 import { computeMergedV2Spec } from "./roof/v2/computeFromHouse";
 import { activeObjects } from "../schema/enabled";
@@ -117,36 +115,6 @@ export function generateElevationView(
   const floors = (houseConfig.floors as FloorConfig[] | undefined) ?? [];
   const GC = DEFAULT_GLOBAL_CONFIG;
 
-  // Per-roof derivation (Python's setdefault semantics per roof, but
-  // each roof gets its OWN derived geometry — Phase 2 lets each roof
-  // have its own x/y/width/length so applying one derivation to all
-  // roofs would draw them at wrong positions.
-  try {
-    const derivedRoofs = deriveAllHipRoofs(houseConfig, GC);
-    for (const dh of derivedRoofs) {
-      const target = dh.config as unknown as Record<string, unknown>;
-      for (const [k, v] of Object.entries(dh.geom)) {
-        if (!(k in target)) target[k] = v;
-      }
-    }
-  } catch {
-    // legacy hip_roof configs continue to work
-  }
-  // Same for gable roofs — populate the derived geometry onto each
-  // gable_roof object so the draw loop below can read absolute
-  // eave/ridge coords.
-  try {
-    const derivedGables = deriveAllGableRoofs(houseConfig, GC);
-    for (const dg of derivedGables) {
-      const target = dg.config as unknown as Record<string, unknown>;
-      for (const [k, v] of Object.entries(dg.geom)) {
-        if (!(k in target)) target[k] = v;
-      }
-    }
-  } catch {
-    // partial gable configs skipped
-  }
-
   // Elevation canvas spans the plot.
   const buildingWidth = (site.plot_width as number | undefined) ?? 0;
   const buildingLength = (site.plot_length as number | undefined) ?? 0;
@@ -191,40 +159,6 @@ export function generateElevationView(
   } catch (e) {
     console.warn("[elevationView] v2 roof compute failed:", e);
     v2Spec = null;
-  }
-
-  // Check for roof
-  for (const floorConfig of floors) {
-    for (const obj of activeObjects(floorConfig.objects as Obj[])) {
-      if (obj.type === "gable_roof") {
-        // Prefer the derived absolute ridge top set by deriveAllGableRoofs:
-        //   ridgeTop = eave_z + wall_top_above_eave + ridge_h + roof_thickness
-        // Fall back to the legacy Python `ridge_z` if present.
-        const eaveZ = obj.eave_z as number | undefined;
-        const wte = obj.wall_top_above_eave as number | undefined;
-        const rh = obj.ridge_h as number | undefined;
-        if (eaveZ !== undefined && rh !== undefined) {
-          const ridgeTop = eaveZ + (wte ?? 0) + rh + GC.roof_thickness;
-          totalHeight = Math.max(totalHeight, ridgeTop);
-        } else {
-          const ridgeZ = (obj.ridge_z as number | undefined) ?? 0;
-          totalHeight = Math.max(totalHeight, ridgeZ);
-        }
-      } else if (obj.type === "hip_roof") {
-        const spanX = (obj.eave_x_east as number) - (obj.eave_x_west as number);
-        const spanY = (obj.eave_y_south as number) - (obj.eave_y_north as number);
-        const uniform = obj.slope_angle as number | undefined;
-        const angEw = (obj.slope_angle_ew as number | undefined) ?? uniform;
-        const angNs = (obj.slope_angle_ns as number | undefined) ?? uniform;
-        let h: number;
-        if (((obj.ridge_axis as string | undefined) ?? "y") === "y") {
-          h = (spanX / 2.0) * Math.tan(((angEw as number) * Math.PI) / 180);
-        } else {
-          h = (spanY / 2.0) * Math.tan(((angNs as number) * Math.PI) / 180);
-        }
-        totalHeight = Math.max(totalHeight, (obj.eave_z as number) + h);
-      }
-    }
   }
 
   const dimCfg = activeDimensions();
@@ -863,194 +797,9 @@ export function generateElevationView(
 
     allObjectsToDraw.push(...objectsToDraw);
 
-    // Roof collection
-    for (const obj of activeObjects(floorConfig.objects as Obj[])) {
-      if (obj.type === "gable_roof") {
-        // Both ridge_axis='y' (ridge runs N-S) and 'x' (ridge runs E-W)
-        // supported. For y: triangle in front/back, rectangle in left/
-        // right. For x: triangle in left/right, rectangle in front/back.
-        const ridgeAxisG = (obj.ridge_axis as string | undefined) ?? "y";
-        const isY = ridgeAxisG === "y";
-        const ex_w = obj.eave_x_west as number | undefined;
-        const ex_e = obj.eave_x_east as number | undefined;
-        const ey_n = obj.eave_y_north as number | undefined;
-        const ey_s = obj.eave_y_south as number | undefined;
-        const ez = obj.eave_z as number | undefined;
-        const rh = obj.ridge_h as number | undefined;
-        const wte = (obj.wall_top_above_eave as number | undefined) ?? 0;
-        // Ridge endpoints — pick the meaningful pair per axis.
-        const rStart = isY
-          ? (obj.ridge_y_start as number | undefined)
-          : (obj.ridge_x_start as number | undefined);
-        const rEnd = isY
-          ? (obj.ridge_y_end as number | undefined)
-          : (obj.ridge_x_end as number | undefined);
-        if (
-          ex_w !== undefined && ex_e !== undefined &&
-          ey_n !== undefined && ey_s !== undefined &&
-          ez !== undefined && rh !== undefined &&
-          rStart !== undefined && rEnd !== undefined
-        ) {
-          const roofThickVal = GC.roof_thickness;
-          const ridgeZ = ez + wte + rh;
-          // In y-axis mode: triangle base spans X (west→east); ridge
-          // apex is at midX. Side (left/right) view sees the rectangle
-          // between ridge_y_start and ridge_y_end.
-          // In x-axis mode: swap — triangle base spans Y (north→south);
-          // apex at midY. Rectangle between ridge_x_start / ridge_x_end
-          // is seen in front/back.
-          const triangleViews: string[] = isY ? ["front", "back"] : ["left", "right"];
-          const apexAlongCoord = isY ? (ex_w + ex_e) / 2 : (ey_n + ey_s) / 2;
-          const triBaseLo = isY ? ex_w : ey_n;
-          const triBaseHi = isY ? ex_e : ey_s;
 
-          if (triangleViews.includes(viewType)) {
-            const apexSvgY = zToY(ridgeZ + roofThickVal);
-            const eaveSvgY = zToY(ez);
-            const apexSvgX = worldToSvgX(apexAlongCoord, 0);
-            const loSvgX = worldToSvgX(triBaseLo, 0);
-            const hiSvgX = worldToSvgX(triBaseHi, 0);
-            roofSvg += `<line x1="${fFloat(loSvgX)}" y1="${fFloat(eaveSvgY)}" x2="${fFloat(apexSvgX)}" y2="${fFloat(apexSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-            roofSvg += `<line x1="${fFloat(apexSvgX)}" y1="${fFloat(apexSvgY)}" x2="${fFloat(hiSvgX)}" y2="${fFloat(eaveSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-          } else {
-            const ridgeTopY = zToY(ridgeZ + roofThickVal);
-            const ridgeBottomY = zToY(ridgeZ);
-            const eaveSvgY = zToY(ez);
-            const startSvgX = worldToSvgX(rStart, 0);
-            const endSvgX = worldToSvgX(rEnd, 0);
-            const rectX = Math.min(startSvgX, endSvgX);
-            const rectW = Math.abs(endSvgX - startSvgX);
-            const rectH = eaveSvgY - ridgeBottomY;
-            roofSvg += `<rect x="${fFloat(rectX)}" y="${fFloat(ridgeBottomY)}" width="${fFloat(rectW)}" height="${fFloat(rectH)}" fill="none" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-            roofSvg += `<line x1="${fFloat(startSvgX)}" y1="${fFloat(ridgeTopY)}" x2="${fFloat(endSvgX)}" y2="${fFloat(ridgeTopY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-          }
-        }
-      }
-      if (obj.type === "hip_roof") {
-        const ridgeAxisH = (obj.ridge_axis as string | undefined) ?? "y";
-        const eaveXw = obj.eave_x_west as number;
-        const eaveXe = obj.eave_x_east as number;
-        const eaveYn = obj.eave_y_north as number;
-        const eaveYs = obj.eave_y_south as number;
-        const slopeUniform = obj.slope_angle as number | undefined;
-        const slopeNs = (obj.slope_angle_ns as number | undefined) ?? slopeUniform;
-        const slopeEw = (obj.slope_angle_ew as number | undefined) ?? slopeUniform;
-        const roofThickVal = GC.roof_thickness;
-
-        const eaveZAbs = obj.eave_z as number;
-        const spanXH = eaveXe - eaveXw;
-        const spanYH = eaveYs - eaveYn;
-        const tanNsH = Math.tan(((slopeNs as number) * Math.PI) / 180);
-        const tanEwH = Math.tan(((slopeEw as number) * Math.PI) / 180);
-
-        const ridgeLenOverride = obj.ridge_length as number | undefined;
-        const ridgeYsOverride = obj.ridge_y_start as number | undefined;
-        const ridgeYeOverride = obj.ridge_y_end as number | undefined;
-        const ridgeXsOverride = obj.ridge_x_start as number | undefined;
-        const ridgeXeOverride = obj.ridge_x_end as number | undefined;
-
-        let hH: number;
-        let ridgeYS = 0, ridgeYE = 0, ridgeXPos = 0;
-        let ridgeXS = 0, ridgeXE = 0, ridgeYPos = 0;
-
-        if (ridgeAxisH === "y") {
-          hH = (spanXH / 2.0) * tanEwH;
-          if (ridgeYsOverride !== undefined && ridgeYeOverride !== undefined) {
-            ridgeYS = ridgeYsOverride;
-            ridgeYE = ridgeYeOverride;
-          } else {
-            let dHipH: number;
-            if (ridgeLenOverride !== undefined) {
-              dHipH = (spanYH - ridgeLenOverride) / 2.0;
-            } else {
-              dHipH = hH / tanNsH;
-            }
-            ridgeYS = eaveYn + dHipH;
-            ridgeYE = eaveYs - dHipH;
-          }
-          ridgeXPos = (eaveXw + eaveXe) / 2.0;
-          if (ridgeYE < ridgeYS) {
-            const midY = (eaveYn + eaveYs) / 2.0;
-            ridgeYS = midY;
-            ridgeYE = midY;
-          }
-        } else {
-          hH = (spanYH / 2.0) * tanNsH;
-          if (ridgeXsOverride !== undefined && ridgeXeOverride !== undefined) {
-            ridgeXS = ridgeXsOverride;
-            ridgeXE = ridgeXeOverride;
-          } else {
-            let dHipH: number;
-            if (ridgeLenOverride !== undefined) {
-              dHipH = (spanXH - ridgeLenOverride) / 2.0;
-            } else {
-              dHipH = hH / tanEwH;
-            }
-            ridgeXS = eaveXw + dHipH;
-            ridgeXE = eaveXe - dHipH;
-          }
-          ridgeYPos = (eaveYn + eaveYs) / 2.0;
-          if (ridgeXE < ridgeXS) {
-            const midX = (eaveXw + eaveXe) / 2.0;
-            ridgeXS = midX;
-            ridgeXE = midX;
-          }
-        }
-
-        const ridgeZAbs = eaveZAbs + hH;
-        const ridgeTopZ = ridgeZAbs + roofThickVal;
-        const eaveTopZ = eaveZAbs + roofThickVal;
-        void eaveTopZ;
-
-        let triangleViewsH: string[];
-        let triEaveLow: number, triEaveHigh: number, triApex: number;
-        let trapEaveLow: number, trapEaveHigh: number;
-        let trapRidgeLow: number, trapRidgeHigh: number;
-        if (ridgeAxisH === "y") {
-          triangleViewsH = ["front", "back"];
-          triEaveLow = eaveXw; triEaveHigh = eaveXe; triApex = ridgeXPos;
-          trapEaveLow = eaveYn; trapEaveHigh = eaveYs;
-          trapRidgeLow = ridgeYS; trapRidgeHigh = ridgeYE;
-        } else {
-          triangleViewsH = ["left", "right"];
-          triEaveLow = eaveYn; triEaveHigh = eaveYs; triApex = ridgeYPos;
-          trapEaveLow = eaveXw; trapEaveHigh = eaveXe;
-          trapRidgeLow = ridgeXS; trapRidgeHigh = ridgeXE;
-        }
-
-        if (triangleViewsH.includes(viewType)) {
-          const eaveLowSvgX = worldToSvgX(triEaveLow, 0);
-          const eaveHighSvgX = worldToSvgX(triEaveHigh, 0);
-          const apexSvgX = worldToSvgX(triApex, 0);
-          const eaveSvgY = zToY(eaveZAbs);
-          const apexSvgY = zToY(ridgeTopZ);
-          roofSvg += `<line x1="${fFloat(eaveLowSvgX)}" y1="${fFloat(eaveSvgY)}" x2="${fFloat(apexSvgX)}" y2="${fFloat(apexSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-          roofSvg += `<line x1="${fFloat(apexSvgX)}" y1="${fFloat(apexSvgY)}" x2="${fFloat(eaveHighSvgX)}" y2="${fFloat(eaveSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-        } else {
-          const eaveLowSvgX = worldToSvgX(trapEaveLow, 0);
-          const eaveHighSvgX = worldToSvgX(trapEaveHigh, 0);
-          const ridgeLowSvgX = worldToSvgX(trapRidgeLow, 0);
-          const ridgeHighSvgX = worldToSvgX(trapRidgeHigh, 0);
-          const eaveSvgY = zToY(eaveZAbs);
-          const ridgeSvgY = zToY(ridgeTopZ);
-          roofSvg += `<line x1="${fFloat(eaveLowSvgX)}" y1="${fFloat(eaveSvgY)}" x2="${fFloat(ridgeLowSvgX)}" y2="${fFloat(ridgeSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-          roofSvg += `<line x1="${fFloat(ridgeHighSvgX)}" y1="${fFloat(ridgeSvgY)}" x2="${fFloat(eaveHighSvgX)}" y2="${fFloat(eaveSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-          const ventExtU = Number(obj.ridge_ext_u ?? 0.0);
-          if (ventExtU > 0) {
-            const extLowWorld = trapRidgeLow - ventExtU;
-            const extHighWorld = trapRidgeHigh + ventExtU;
-            const extLowSvgX = worldToSvgX(extLowWorld, 0);
-            const extHighSvgX = worldToSvgX(extHighWorld, 0);
-            roofSvg += `<line x1="${fFloat(extLowSvgX)}" y1="${fFloat(ridgeSvgY)}" x2="${fFloat(extHighSvgX)}" y2="${fFloat(ridgeSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-            const tick = Math.max(4, roofThickVal * 1.5);
-            roofSvg += `<line x1="${fFloat(extLowSvgX)}" y1="${fFloat(ridgeSvgY)}" x2="${fFloat(extLowSvgX)}" y2="${fFloat(ridgeSvgY + tick)}" stroke="#8B4513" stroke-width="${fFloat(roofThickVal * 0.8)}"/>\n`;
-            roofSvg += `<line x1="${fFloat(extHighSvgX)}" y1="${fFloat(ridgeSvgY)}" x2="${fFloat(extHighSvgX)}" y2="${fFloat(ridgeSvgY + tick)}" stroke="#8B4513" stroke-width="${fFloat(roofThickVal * 0.8)}"/>\n`;
-          } else {
-            roofSvg += `<line x1="${fFloat(ridgeLowSvgX)}" y1="${fFloat(ridgeSvgY)}" x2="${fFloat(ridgeHighSvgX)}" y2="${fFloat(ridgeSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-          }
-        }
-      }
-    }
+    // (legacy hip/gable/flat/shed roof collection removed — v2 roofs
+    // are rendered below via renderV2ToElevation)
 
     currentZ = wallTop;
   }

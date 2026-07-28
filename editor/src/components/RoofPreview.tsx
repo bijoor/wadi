@@ -4,10 +4,8 @@
 // eave cross-section SVG is fetched over HTTP from the published
 // docs/2d/roof/ so the embedded eave panel matches the disk pipeline.
 //
-// Also shows a v2 top-view panel for any v2 roofs (type: "roof")
-// via the new segment-based pipeline. When the config has ONLY v2
-// roofs (no legacy hip_roof), the v2 panel is what you get — this
-// used to just show "no hip roof" and hide everything.
+// Also shows a v2 top-view panel for the unified roof (type: "roof")
+// via the segment-based pipeline.
 
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
@@ -56,8 +54,7 @@ export function RoofPreview() {
     [config, eaveSvg],
   );
 
-  // Compute the v2 top-view + BOM ONLY for v2 roof objects. Legacy
-  // types (hip_roof etc.) are handled by the compose modules above.
+  // Compute the v2 top-view + BOM for v2 roof objects (type: "roof").
   const v2: V2Bundle | null = useMemo(() => {
     try {
       const spec = computeMergedV2Spec(config as ExpandHouseConfig, {
@@ -88,8 +85,7 @@ export function RoofPreview() {
         <p>No roof in the current configuration.</p>
         <p className="mt-2 text-xs text-slate-500">
           Add a <code className="rounded bg-slate-800 px-1">roof</code>
-          {" "}(v2) or legacy <code className="rounded bg-slate-800 px-1">hip_roof</code>
-          {" "}to any floor to see the roof drawings here.
+          {" "}object to any floor to see the roof drawings here.
         </p>
       </div>
     );

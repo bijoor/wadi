@@ -35,15 +35,15 @@ export interface MetalStockConfig {
   bySpec: Record<string, number>;              // matSpec → stock length ft (override)
 }
 
-// Reads tile densities from roof.tile_density on the first hip_roof
-// object in the config, falling back to industry defaults.
+// Reads tile densities from roof.tile_density on the first roof object
+// in the config, falling back to industry defaults.
 export function readTileDensities(cfg: HouseConfig): TileDensities {
   const defaults: TileDensities = {
     mangaloreTilesPerSft: 1.33,
     ceilingTilesPerSft: 1.5,
     wastePct: 0.10,
   };
-  const roof = findHipRoof(cfg);
+  const roof = findRoofObject(cfg);
   const td = (roof as { tile_density?: Record<string, number> } | undefined)?.tile_density;
   if (!td) return defaults;
   return {
@@ -63,7 +63,7 @@ export function readMetalStock(cfg: HouseConfig): MetalStockConfig {
     cuttingWastePct: 0,
     bySpec: {},
   };
-  const roof = findHipRoof(cfg);
+  const roof = findRoofObject(cfg);
   const ms = (roof as { metal_stock?: Record<string, unknown> } | undefined)?.metal_stock;
   if (!ms) return defaults;
   return {
@@ -73,10 +73,10 @@ export function readMetalStock(cfg: HouseConfig): MetalStockConfig {
   };
 }
 
-function findHipRoof(cfg: HouseConfig): Record<string, unknown> | undefined {
+function findRoofObject(cfg: HouseConfig): Record<string, unknown> | undefined {
   for (const floor of cfg.floors ?? []) {
     for (const obj of floor.objects ?? []) {
-      if ((obj as { type?: string }).type === "hip_roof") {
+      if ((obj as { type?: string }).type === "roof") {
         return obj as unknown as Record<string, unknown>;
       }
     }

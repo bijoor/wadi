@@ -312,31 +312,6 @@ export function StaircaseForm({
   );
 }
 
-// Roof editors are opaque payloads (framing / trusses / ridge_ventilation
-// dicts). Rather than try to expose every knob in a form, show the raw
-// JSON for now and let the user edit it externally. Phase 5 can add a
-// dedicated roof editor.
-export function OpaqueRoofForm({
-  obj,
-}: {
-  obj: Extract<HouseObject, { type: "hip_roof" | "gable_roof" }>;
-  selection: Selection;
-}) {
-  return (
-    <div>
-      <Section title="Roof (read-only for now)">
-        <div className="mb-2 text-[11px] text-slate-400">
-          Roof geometry is derived — a form editor lands in Phase 5. Edit
-          the raw JSON in the source file for now.
-        </div>
-        <pre className="max-h-[50vh] overflow-auto rounded bg-slate-950 p-2 font-mono text-[10px] text-slate-300">
-          {JSON.stringify(obj, null, 2)}
-        </pre>
-      </Section>
-    </div>
-  );
-}
-
 // Flat-schema doors and windows (legacy) — supported for backward compat.
 export function FlatDoorWindowForm({
   obj, selection,

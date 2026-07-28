@@ -70,7 +70,7 @@ export const useLayerStore = create<LayerState>((set) => ({
     })),
 }));
 
-const ROOF_TYPES = new Set(["hip_roof", "gable_roof", "flat_roof", "shed_roof", "roof"]);
+const ROOF_TYPES = new Set(["roof"]);
 
 // The DEFAULT layer id for an object with no explicit `layer`: its floor + its role.
 // role = per-device override (localStorage) → built-in role for the type. "site" role →

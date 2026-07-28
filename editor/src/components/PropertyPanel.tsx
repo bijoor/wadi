@@ -15,10 +15,6 @@ import {
   PillarForm,
   StaircaseForm,
 } from "../forms/simpleForms";
-import { HipRoofForm } from "../forms/HipRoofForm";
-import { GableRoofForm } from "../forms/GableRoofForm";
-import { FlatRoofForm } from "../forms/FlatRoofForm";
-import { ShedRoofForm } from "../forms/ShedRoofForm";
 import { RoofV2Form } from "../forms/RoofV2Form";
 import { KitchenPlatformForm } from "../forms/KitchenPlatformForm";
 import { ComponentForm } from "../forms/ComponentForm";
@@ -399,14 +395,6 @@ function FormFor({ object, selection }: { object: HouseObject; selection: Select
     case "door":
     case "window":
       return <FlatDoorWindowForm obj={object} selection={selection} />;
-    case "hip_roof":
-      return <HipRoofForm obj={object} selection={selection} />;
-    case "gable_roof":
-      return <GableRoofForm obj={object} selection={selection} />;
-    case "flat_roof":
-      return <FlatRoofForm obj={object} selection={selection} />;
-    case "shed_roof":
-      return <ShedRoofForm obj={object} selection={selection} />;
     case "roof":
       return <RoofV2Form obj={object} selection={selection} />;
     case "kitchen_platform":
