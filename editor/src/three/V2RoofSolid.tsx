@@ -665,7 +665,10 @@ function GableWallPrism({
   if (!geometry) return null;
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
-      {/* group 0 — external face = laterite/brick (matches the wall below) */}
+      {/* group 0 — external face = laterite/brick (matches the wall below).
+          DoubleSide: the extruded cap's winding can face either way depending
+          on the gable's authored vertex order, so render both sides to avoid
+          the outer face being culled (which would expose the plain inner cap). */}
       <meshStandardMaterial
         attach="material-0"
         map={laterite.map}
@@ -673,6 +676,7 @@ function GableWallPrism({
         bumpScale={1.2}
         roughness={0.95}
         metalness={0}
+        side={THREE.DoubleSide}
       />
       {/* group 1 — interior face + edges = plain paint */}
       <meshStandardMaterial

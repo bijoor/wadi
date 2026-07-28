@@ -184,30 +184,53 @@ async function driveFetchText(folderId: string, relPath: string): Promise<string
 
 // --- unified fetch (adapter dispatch + cache + fallback) ----------------------
 
+// A remote catalog can be unreachable in ways that HANG rather than fail fast —
+// a captive portal, a firewall doing TLS interception (e.g. FortiGuard web
+// filter), or plain packet loss. Cap every remote fetch so a stuck request
+// falls through to the bundled copy quickly instead of freezing the gallery.
+const REMOTE_FETCH_TIMEOUT_MS = 6000;
+
+async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Fetch a catalog text resource (index.json / a .wadi), with cache + fallback.
  *  `relPath` is the file name relative to the catalog (e.g. "index.json",
  *  "single_story_cottage.wadi"). */
 export async function fetchCatalogText(relPath: string): Promise<string> {
   const base = templatesBaseUrl();
   const folderId = driveFolderId(base);
+  const remote = base !== BUNDLED_BASE;
   try {
     let text: string;
     if (folderId) {
       text = await driveFetchText(folderId, relPath);
     } else {
       const bust = `${relPath.includes("?") ? "&" : "?"}t=${Date.now()}`;
-      const r = await fetch(`${base}/${relPath}${bust}`);
+      const url = `${base}/${relPath}${bust}`;
+      // Only time-box genuinely remote hosts; the bundled base is same-origin.
+      const r = remote
+        ? await fetchWithTimeout(url, REMOTE_FETCH_TIMEOUT_MS)
+        : await fetch(url);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       text = await r.text();
     }
     void cacheWrite(relPath, text); // refresh the offline copy
     return text;
   } catch (err) {
-    // Remote/offline miss → last-known cache (desktop) …
+    // Remote/offline miss (blocked, timed out, or offline) → last-known cache
+    // (desktop) …
     const cached = await cacheRead(relPath);
     if (cached !== null) return cached;
-    // … then the bundled copy, unless that's already what we tried.
-    if (base !== BUNDLED_BASE) {
+    // … then the bundled copy shipped with the app, unless that's already what
+    // we tried.
+    if (remote) {
       const r = await fetch(`${BUNDLED_BASE}/${relPath}?t=${Date.now()}`);
       if (r.ok) return r.text();
     }
