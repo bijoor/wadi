@@ -49,7 +49,8 @@
   "minKitchenL": 110,
   "pctBathL": 0.13,
   "minBathL": 66,
-  "passageL": 40
+  "passageL": 40,
+  "roof_style": 3
  },
  "points": {
   "House": {
@@ -228,6 +229,10 @@
    {
     "id": "build",
     "label": "Construction"
+   },
+   {
+    "id": "roof",
+    "label": "Roof"
    }
   ],
   "inputs": [
@@ -324,6 +329,30 @@
      }
     ],
     "group": "build"
+   },
+   {
+    "target": "roof_style",
+    "label": "Roof style",
+    "description": "Choose the roof shape — the model rebuilds to match.",
+    "options": [
+     {
+      "value": 0,
+      "label": "Flat"
+     },
+     {
+      "value": 1,
+      "label": "Shed"
+     },
+     {
+      "value": 2,
+      "label": "Gable"
+     },
+     {
+      "value": 3,
+      "label": "Hip"
+     }
+    ],
+    "group": "roof"
    }
   ]
  },
@@ -1038,7 +1067,7 @@
      "type": "roof",
      "roof_type": "pitched",
      "default_endpoint": "closed",
-     "name": "Main Roof",
+     "name": "Hip Roof",
      "material": "roof",
      "segments": [
       {
@@ -1087,7 +1116,148 @@
         "pos2": "=Padvi_TL.Y"
        }
       }
+     ],
+     "formulas": {
+      "enabled": "=1-min(1,abs(roof_style-3))"
+     }
+    },
+    {
+     "type": "roof",
+     "roof_type": "pitched",
+     "default_endpoint": "open",
+     "name": "Gable Roof",
+     "material": "roof",
+     "segments": [
+      {
+       "id": "seg0",
+       "start": [
+        200,
+        0
+       ],
+       "end": [
+        200,
+        520
+       ],
+       "width": 400,
+       "tie_beam_count": 3,
+       "formulas": {
+        "start_x": "=House.W/2",
+        "end_x": "=House.W/2",
+        "end_y": "=House.L",
+        "width": "=House.W"
+       }
+      }
+     ],
+     "slope": {
+      "by": "height",
+      "ridge_h": 80
+     },
+     "min_overhang": 25,
+     "trusses": [
+      {
+       "segment_id": "seg0",
+       "type": "fink",
+       "positions_along": [
+        70,
+        253,
+        436
+       ],
+       "formulas": {
+        "pos0": "=Bed1_TL.Y",
+        "pos1": "=(Bed1_TL.Y+Padvi_TL.Y)/2",
+        "pos2": "=Padvi_TL.Y"
+       }
+      }
+     ],
+     "formulas": {
+      "enabled": "=1-min(1,abs(roof_style-2))"
+     }
+    },
+    {
+     "type": "roof",
+     "roof_type": "shed",
+     "name": "Shed Roof",
+     "material": "roof",
+     "formulas": {
+      "enabled": "=1-min(1,abs(roof_style-1))"
+     },
+     "segments": [
+      {
+       "id": "seg0",
+       "start": [
+        200,
+        0
+       ],
+       "end": [
+        200,
+        520
+       ],
+       "width": 400,
+       "tie_beam_count": 3,
+       "formulas": {
+        "start_x": "=House.W/2",
+        "end_x": "=House.W/2",
+        "end_y": "=House.L",
+        "width": "=House.W"
+       },
+       "shed_high_side": "left"
+      }
+     ],
+     "slope": {
+      "by": "height",
+      "ridge_h": 100.0
+     },
+     "min_overhang": 25,
+     "trusses": [
+      {
+       "segment_id": "seg0",
+       "type": "mono_pitch",
+       "positions_along": [
+        70,
+        253,
+        436
+       ],
+       "formulas": {
+        "pos0": "=Bed1_TL.Y",
+        "pos1": "=(Bed1_TL.Y+Padvi_TL.Y)/2",
+        "pos2": "=Padvi_TL.Y"
+       }
+      }
      ]
+    },
+    {
+     "type": "roof",
+     "roof_type": "flat",
+     "name": "Flat Roof",
+     "material": "roof",
+     "formulas": {
+      "enabled": "=1-min(1,abs(roof_style-0))"
+     },
+     "segments": [
+      {
+       "id": "seg0",
+       "start": [
+        200,
+        0
+       ],
+       "end": [
+        200,
+        520
+       ],
+       "width": 400,
+       "tie_beam_count": 3,
+       "formulas": {
+        "start_x": "=House.W/2",
+        "end_x": "=House.W/2",
+        "end_y": "=House.L",
+        "width": "=House.W"
+       }
+      }
+     ],
+     "slab_thickness": 8,
+     "parapet_height": 30,
+     "parapet_thickness": 8,
+     "min_overhang": 10
     }
    ]
   }
