@@ -60,9 +60,13 @@ export function V2RoofSolid({ config }: { config: HouseConfig }) {
     <group>
       {bundles.map((b, idx) => (
         <group key={idx}>
-          {b.spec.planes.map((p) => (
-            <SolidPlane key={p.id} plane={p} plotWidth={plot.width} plotLength={plot.length} uvK={uvK} />
-          ))}
+          {b.spec.planes
+            // Gable walls are solid masonry — rendered as extruded prisms
+            // by V2RoofGableWalls (on the top-floor Walls layer), not here.
+            .filter((p) => p.role !== "gable_wall")
+            .map((p) => (
+              <SolidPlane key={p.id} plane={p} plotWidth={plot.width} plotLength={plot.length} uvK={uvK} />
+            ))}
         </group>
       ))}
     </group>
@@ -178,9 +182,42 @@ export function V2RoofSurface({ config }: { config: HouseConfig }) {
   );
 }
 
+// Gable walls — solid masonry end walls shaped to the roof profile at
+// OPEN endpoints. Rendered as extruded prisms (profile triangle ×
+// thickness). Separate export so House3D can push them onto the
+// top-floor Walls layer (they hide/show with the house walls).
+export function V2RoofGableWalls({ config }: { config: HouseConfig }) {
+  const bundles = useMemo(() => {
+    try {
+      return collectV2Roofs(config);
+    } catch (e) {
+      console.warn("[v2gable] compute failed:", e);
+      return [];
+    }
+  }, [config]);
+
+  const plot = useMemo(() => readPlotBounds(expandRoomWalls(config)), [config]);
+
+  if (bundles.length === 0) return null;
+
+  return (
+    <group>
+      {bundles.map((b, idx) => (
+        <group key={idx}>
+          {b.spec.planes
+            .filter((p) => p.role === "gable_wall")
+            .map((p) => (
+              <GableWallPrism key={p.id} plane={p} plotWidth={plot.width} plotLength={plot.length} />
+            ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
 // Spine roles → "Ridges & trusses" layer (frame_spine).
 const SPINE_MEMBER_ROLES: Set<StraightMember["role"]> = new Set([
-  "ridge", "hip", "valley", "ring_beam",
+  "ridge", "hip", "valley", "ring_beam", "gable_band",
   "truss_top_chord", "truss_bottom_chord", "truss_web",
   "pani_patti", "eave_L_channel", "corner_double_angle",
   "vent_strut", "tie_beam",
@@ -210,6 +247,9 @@ function sectionForMember(
       return framing.valley_size_in ?? framing.ridge_size_in;
     case "ring_beam":
       return framing.ring_beam_size_in;
+    case "gable_band":
+      // Raking band continuous with the ring beam → same section.
+      return framing.ring_beam_size_in;
     case "tie_beam":
       return framing.tie_beam_size_in ?? framing.ring_beam_size_in;
     case "rafter":
@@ -238,6 +278,7 @@ function colorForRole(role: StraightMember["role"]): string {
     case "hip":                  return "#4b4b4b";
     case "valley":               return "#374151";
     case "ring_beam":            return "#525252";
+    case "gable_band":           return "#6b5b45";   // RC band up the gable rake
     case "tie_beam":             return "#0369a1";   // steel-blue wall-top tie
     case "pani_patti":           return "#9ca3af";   // GI galvanised — lighter
     case "eave_L_channel":       return "#6b7280";
@@ -381,8 +422,10 @@ interface V2RoofBundle {
 function collectV2Roofs(config: HouseConfig): V2RoofBundle[] {
   const out: V2RoofBundle[] = [];
   const hc = expandRoomWalls(config);
-  const houseDefaults = (hc as { defaults?: { floor_height?: number; slab_thickness?: number } })
-    .defaults;
+  const houseDefaults = (hc as {
+    defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number };
+  }).defaults;
+  const wallThickness = houseDefaults?.wall_thickness ?? DEFAULT_GLOBAL_CONFIG.wall_thickness;
 
   for (let fi = 0; fi < (hc.floors ?? []).length; fi++) {
     const floor = hc.floors![fi];
@@ -409,9 +452,9 @@ function collectV2Roofs(config: HouseConfig): V2RoofBundle[] {
         if (cfg.roof_type === "flat") {
           spec = deriveFlatRoof(cfg, { wallTopZ });
         } else if (cfg.roof_type === "shed") {
-          spec = deriveShedRoof(cfg, { wallTopZ });
+          spec = deriveShedRoof(cfg, { wallTopZ, wallThickness });
         } else {
-          spec = derivePitchedRoof(cfg, { wallTopZ });
+          spec = derivePitchedRoof(cfg, { wallTopZ, wallThickness });
           if (cfg.segments.length > 1) {
             const ridgeZ = ridgeZFromConfig(cfg, wallTopZ);
             spec = resolveJoints(cfg, spec, { wallTopZ, ridgeZ });
@@ -530,6 +573,68 @@ function SolidPlane({
         bumpScale={tiled ? 1.5 : 0}
         side={THREE.DoubleSide}
         roughness={tiled ? 0.92 : 0.85}
+        metalness={0.0}
+      />
+    </mesh>
+  );
+}
+
+// A gable wall: the roof-profile polygon (`gable_wall` plane) extruded
+// to `plane.thickness` (project units) about its own plane, forming a
+// solid masonry prism instead of a thin painted triangle.
+function GableWallPrism({
+  plane,
+  plotWidth,
+  plotLength,
+}: {
+  plane: RoofPlane;
+  plotWidth: number;
+  plotLength: number;
+}) {
+  const geometry = useMemo(() => {
+    const t = plane.thickness ?? 0;
+    const verts = plane.vertices;
+    if (verts.length < 3 || !(t > 0)) return null;
+    const n = polygonNormalNewell(verts);
+    if (!n) return null;
+    const half = t / 2;
+    type P3 = { x: number; y: number; z: number };
+    // Front / back rings, offset ± half along the wall normal (in
+    // project units, BEFORE the world-axis mapping in toThreePos).
+    const front: P3[] = verts.map((v) =>
+      toThreePos(v[0] + n[0] * half, v[1] + n[1] * half, v[2] + n[2] * half, plotWidth, plotLength),
+    );
+    const back: P3[] = verts.map((v) =>
+      toThreePos(v[0] - n[0] * half, v[1] - n[1] * half, v[2] - n[2] * half, plotWidth, plotLength),
+    );
+    const pos: number[] = [];
+    const tri = (a: P3, b: P3, c: P3) =>
+      pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+    const m = verts.length;
+    // Cap faces — front fan + back fan (reverse winding).
+    for (let i = 1; i < m - 1; i++) {
+      tri(front[0], front[i], front[i + 1]);
+      tri(back[0], back[i + 1], back[i]);
+    }
+    // Side walls — one quad (two tris) per polygon edge.
+    for (let i = 0; i < m; i++) {
+      const j = (i + 1) % m;
+      tri(front[i], back[i], back[j]);
+      tri(front[i], back[j], front[j]);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    return g;
+  }, [plane, plotWidth, plotLength]);
+
+  if (!geometry) return null;
+  return (
+    <mesh geometry={geometry} castShadow receiveShadow>
+      <meshStandardMaterial
+        color={PLANE_MATERIAL.gable_wall}
+        side={THREE.DoubleSide}
+        roughness={0.9}
         metalness={0.0}
       />
     </mesh>

@@ -42,6 +42,8 @@ export interface DeriveShedOptions {
   wallTopZ: number;
   defaultOverhang?: number;         // default 20
   defaultShedHighSide?: "left" | "right";
+  // House wall thickness (project units) — default gable-wall thickness.
+  wallThickness?: number;
 }
 
 function resolveRise(
@@ -80,6 +82,9 @@ export function deriveShedRoof(
   }
   const defaultHigh = opts.defaultShedHighSide ?? "left";
   const roofSlope = cfg.slope;
+  // Masonry gable-wall thickness (project units): roof override → house
+  // wall thickness. Undefined leaves the plane thin (no extrusion).
+  const gableWallThickness = cfg.gable_wall_thickness ?? opts.wallThickness;
 
   const planes: RoofPlane[] = [];
   const members: StraightMember[] = [];
@@ -186,6 +191,17 @@ export function deriveShedRoof(
         role: "gable_wall",
         source_segment_id: seg.id,
         side_of_segment: which,
+        thickness: gableWallThickness,
+      });
+      // Raking gable band along the sloped top edge of the gable
+      // wall (low@wall_top → high@wall_top+rise), continuous with the
+      // eave ring beam at the low corner.
+      members.push({
+        id: `${seg.id}.gable_band.${which}`,
+        start: to3D(wallCornerLow, opts.wallTopZ),
+        end: to3D(wallCornerHigh, opts.wallTopZ + rise),
+        role: "gable_band",
+        source_segment_id: seg.id,
       });
     }
 

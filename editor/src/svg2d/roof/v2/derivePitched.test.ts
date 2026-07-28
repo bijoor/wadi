@@ -370,3 +370,46 @@ describe("derivePitchedRoof — joint endpoints", () => {
     expect(spec.planes.filter((p) => p.role === "gable_wall").length).toBe(0);
   });
 });
+
+describe("derivePitchedRoof — gable walls (thickness + gable band)", () => {
+  it("open ends carry the wall thickness on their gable_wall planes", () => {
+    const cfg = yAxisCfg({ default_endpoint: "open" });
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100, wallThickness: 8 });
+    const gws = spec.planes.filter((p) => p.role === "gable_wall");
+    expect(gws.length).toBe(2);
+    expect(gws.every((p) => p.thickness === 8)).toBe(true);
+  });
+
+  it("roof-level gable_wall_thickness overrides the house wall thickness", () => {
+    const cfg = yAxisCfg({ default_endpoint: "open", gable_wall_thickness: 12 });
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100, wallThickness: 8 });
+    const gws = spec.planes.filter((p) => p.role === "gable_wall");
+    expect(gws.every((p) => p.thickness === 12)).toBe(true);
+  });
+
+  it("each open end emits 2 gable_band members (rake edges); closed ends emit none", () => {
+    const open = derivePitchedRoof(yAxisCfg({ default_endpoint: "open" }), {
+      wallTopZ: 100,
+      wallThickness: 8,
+    });
+    expect(open.members.filter((m) => m.role === "gable_band").length).toBe(4);
+
+    const closed = derivePitchedRoof(yAxisCfg({ default_endpoint: "closed" }), {
+      wallTopZ: 100,
+      wallThickness: 8,
+    });
+    expect(closed.members.filter((m) => m.role === "gable_band").length).toBe(0);
+  });
+
+  it("gable band runs from wall top up to the ridge apex", () => {
+    const cfg = yAxisCfg({ default_endpoint: "open" }); // ridge_h = 50
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100, wallThickness: 8 });
+    const bands = spec.members.filter((m) => m.role === "gable_band");
+    for (const b of bands) {
+      // one endpoint at wall top (z=100), one at ridge (z=150).
+      const zs = [b.start[2], b.end[2]].sort((a, c) => a - c);
+      expect(zs[0]).toBeCloseTo(100);
+      expect(zs[1]).toBeCloseTo(150);
+    }
+  });
+});

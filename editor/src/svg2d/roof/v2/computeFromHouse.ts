@@ -45,8 +45,11 @@ export function computeMergedV2Spec(
   const filter = opts.filter ?? "all";
   const merged: RoofSpec = { members: [], planes: [], trusses: [] };
   const hc = expandRoomWalls(config);
-  const houseDefaults = (hc as { defaults?: { floor_height?: number; slab_thickness?: number } })
-    .defaults;
+  const houseDefaults = (hc as {
+    defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number };
+  }).defaults;
+  // House wall thickness (project units) — default gable-wall thickness.
+  const wallThickness = houseDefaults?.wall_thickness ?? DEFAULT_GLOBAL_CONFIG.wall_thickness;
 
   for (let fi = 0; fi < (hc.floors ?? []).length; fi++) {
     const floor = hc.floors![fi];
@@ -77,7 +80,7 @@ export function computeMergedV2Spec(
         const v2Cfg: RoofConfig = isV2
           ? (obj as unknown as RoofConfig)
           : oldRectRoofToSegments(obj);
-        const spec = deriveOne(v2Cfg, wallTopZ, framing);
+        const spec = deriveOne(v2Cfg, wallTopZ, framing, wallThickness);
         merged.members.push(...spec.members);
         merged.planes.push(...spec.planes);
         merged.trusses.push(...spec.trusses);
@@ -93,17 +96,18 @@ function deriveOne(
   cfg: RoofConfig,
   wallTopZ: number,
   framing?: FramingConfig,
+  wallThickness?: number,
 ): RoofSpec {
   let spec: RoofSpec;
   if (cfg.roof_type === "flat") {
     spec = deriveFlatRoof(cfg, { wallTopZ });
   } else if (cfg.roof_type === "shed") {
-    spec = deriveShedRoof(cfg, { wallTopZ });
+    spec = deriveShedRoof(cfg, { wallTopZ, wallThickness });
     if (cfg.segments.length > 1) {
       spec = resolveJoints(cfg, spec, { wallTopZ, ridgeZ: wallTopZ });
     }
   } else {
-    spec = derivePitchedRoof(cfg, { wallTopZ });
+    spec = derivePitchedRoof(cfg, { wallTopZ, wallThickness });
     if (cfg.segments.length > 1) {
       const ridgeZ = ridgeZFromConfig(cfg, wallTopZ);
       spec = resolveJoints(cfg, spec, { wallTopZ, ridgeZ });

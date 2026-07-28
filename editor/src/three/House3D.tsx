@@ -38,7 +38,7 @@ import { deriveAllFlatRoofs } from "../svg2d/roof/flatGeometry";
 import { deriveAllShedRoofs } from "../svg2d/roof/shedGeometry";
 import { deriveAllHipRoofs } from "../svg2d/roofGeometry";
 import { RoofFrameMesh, computeShellLift, type RoofFraming, type RoofFrameGeom, type RoofTrusses } from "./roofFrame";
-import { V2RoofFrame, V2RoofSolid, V2RoofSurface } from "./V2RoofSolid";
+import { V2RoofFrame, V2RoofGableWalls, V2RoofSolid, V2RoofSurface } from "./V2RoofSolid";
 import { StaircaseMesh } from "./staircase";
 import { getNode } from "../registry/registry";
 import { WallWithOpenings, type WallOpening } from "./wallCSG";
@@ -401,6 +401,19 @@ export function House3D({ config }: { config: HouseConfig }) {
     push("loft", <V2RoofSolid key="v2-roofs" config={hc} />);
     push("frame_spine", <V2RoofFrame key="v2-frame" config={hc} />);
     push("frame_surface", <V2RoofSurface key="v2-surface" config={hc} />);
+    // Gable walls are solid masonry → they belong with the house walls.
+    // Put them on the TOP floor's Walls layer (highest floor_number), so
+    // toggling that floor's walls hides them too.
+    {
+      const topFloorNum = (hc.floors ?? []).reduce(
+        (mx, f) => Math.max(mx, (f.floor_number as number) ?? 0),
+        0,
+      );
+      push(
+        defaultLayerFor("wall", topFloorNum, layerDefaults),
+        <V2RoofGableWalls key="v2-gable-walls" config={hc} />,
+      );
+    }
 
     (window as unknown as { __roofDebug?: unknown }).__roofDebug = {
       status: roofDebug.length ? "ok" : "no-roof",

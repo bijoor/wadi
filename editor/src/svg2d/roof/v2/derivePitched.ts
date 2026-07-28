@@ -52,6 +52,9 @@ export interface DerivePitchedOptions {
   wallTopZ: number;
   defaultMinOverhang?: number;      // default 20
   defaultEndpoint?: EndpointStyle;  // cfg-level fallback if not on cfg
+  // House wall thickness (project units). Used as the default gable-wall
+  // thickness when the roof config doesn't override it.
+  wallThickness?: number;
 }
 
 function resolveRise(slope: SlopeSpec | undefined, crossHalf: number): number {
@@ -85,6 +88,9 @@ export function derivePitchedRoof(
     seg.min_overhang ?? roofMinOverhang;
   const defaultEndpoint: EndpointStyle =
     cfg.default_endpoint ?? opts.defaultEndpoint ?? "closed";
+  // Masonry gable-wall thickness (project units): roof override → house
+  // wall thickness. Undefined leaves the plane thin (no extrusion).
+  const gableWallThickness = cfg.gable_wall_thickness ?? opts.wallThickness;
 
   const planes: RoofPlane[] = [];
   const members: StraightMember[] = [];
@@ -390,6 +396,23 @@ export function derivePitchedRoof(
           role: "gable_wall",
           source_segment_id: seg.id,
           side_of_segment: "start",
+          thickness: gableWallThickness,
+        });
+        // Raking gable band up each slope edge (wall top → apex),
+        // continuous with the eave ring beam at the wall corners.
+        members.push({
+          id: `${seg.id}.gable_band.start.left`,
+          start: to3D(wallLeft, opts.wallTopZ),
+          end: apexAtWall,
+          role: "gable_band",
+          source_segment_id: seg.id,
+        });
+        members.push({
+          id: `${seg.id}.gable_band.start.right`,
+          start: to3D(wallRight, opts.wallTopZ),
+          end: apexAtWall,
+          role: "gable_band",
+          source_segment_id: seg.id,
         });
       } else {
         // Closed → hip triangle at the START endpoint.
@@ -436,6 +459,21 @@ export function derivePitchedRoof(
           role: "gable_wall",
           source_segment_id: seg.id,
           side_of_segment: "end",
+          thickness: gableWallThickness,
+        });
+        members.push({
+          id: `${seg.id}.gable_band.end.left`,
+          start: to3D(wallLeft, opts.wallTopZ),
+          end: apexAtWall,
+          role: "gable_band",
+          source_segment_id: seg.id,
+        });
+        members.push({
+          id: `${seg.id}.gable_band.end.right`,
+          start: to3D(wallRight, opts.wallTopZ),
+          end: apexAtWall,
+          role: "gable_band",
+          source_segment_id: seg.id,
         });
       } else {
         planes.push({

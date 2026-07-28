@@ -182,3 +182,33 @@ describe("deriveShedRoof", () => {
     expect(spec.members.filter((m) => m.role === "ring_beam").length).toBe(8);
   });
 });
+
+describe("deriveShedRoof — gable walls (thickness + gable band)", () => {
+  it("open leaf ends carry wall thickness; override wins", () => {
+    const spec = deriveShedRoof(baseCfg(), { wallTopZ: 100, wallThickness: 8 });
+    const gws = spec.planes.filter((p) => p.role === "gable_wall");
+    expect(gws.length).toBe(2);
+    expect(gws.every((p) => p.thickness === 8)).toBe(true);
+
+    const over = deriveShedRoof(baseCfg({ gable_wall_thickness: 12 }), {
+      wallTopZ: 100,
+      wallThickness: 8,
+    });
+    expect(over.planes.filter((p) => p.role === "gable_wall").every((p) => p.thickness === 12)).toBe(
+      true,
+    );
+  });
+
+  it("each open leaf end emits 1 gable_band member along its rake", () => {
+    const spec = deriveShedRoof(baseCfg(), { wallTopZ: 100, wallThickness: 8 });
+    // baseCfg has 2 leaf endpoints → 1 band each.
+    const bands = spec.members.filter((m) => m.role === "gable_band");
+    expect(bands.length).toBe(2);
+    // rake runs low@wallTop (z=100) → high@wallTop+rise (z=120).
+    for (const b of bands) {
+      const zs = [b.start[2], b.end[2]].sort((a, c) => a - c);
+      expect(zs[0]).toBeCloseTo(100);
+      expect(zs[1]).toBeCloseTo(120);
+    }
+  });
+});

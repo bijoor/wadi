@@ -87,6 +87,9 @@ export interface RoofFramingConfig {
   hip_size_ft?: [number, number];
   ring_beam_size_ft?: [number, number];
   wall_thickness_ft?: number;
+  // Section of the raking gable band at the top of a gable wall (continuous with
+  // the eave ring beam). Defaults to ring_beam_size_ft.
+  gable_band_size_ft?: [number, number];
 }
 
 export interface TileConfig {
@@ -142,6 +145,11 @@ export interface RoofConfig {
   slab_thickness?: number;
   parapet_height?: number;
   parapet_thickness?: number;
+
+  // Thickness of the masonry gable wall at OPEN endpoints (project units). The end
+  // wall is built up as a solid wall following the roof profile, continuous with the
+  // wall below. Defaults to the house wall thickness. Formula-drivable.
+  gable_wall_thickness?: number;
 }
 
 // -----------------------------------------------------------------
@@ -171,6 +179,9 @@ export interface RoofPlane {
   // plane's shape is a fiction (its footprint includes an overlap
   // with a neighbour's plane that should be discounted).
   joint_edges?: string[];
+  // For `gable_wall` planes: masonry wall thickness (project units), so the 3D
+  // layer extrudes the triangle into a solid wall instead of a thin plane.
+  thickness?: number;
 }
 
 export type MemberRole =
@@ -180,6 +191,7 @@ export type MemberRole =
   | "hip"
   | "valley"
   | "ring_beam"
+  | "gable_band"         // raking band along the top of a gable wall
   | "hip_beam"
   | "vent_strut"
   | "parapet_cap"
