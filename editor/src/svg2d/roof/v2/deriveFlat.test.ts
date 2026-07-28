@@ -56,10 +56,10 @@ describe("deriveFlatRoof", () => {
     expect(fp.y_max).toBeCloseTo(425, 6);
   });
 
-  it("slab Z = wallTopZ + slab_thickness", () => {
+  it("slab Z = wallTopZ (sits at the eave like every other roof; no slab-thickness offset)", () => {
     const spec = deriveFlatRoof(baseCfg(), { wallTopZ: 100 });
     const fp = flatSlabFootprint(spec)!;
-    expect(fp.z).toBeCloseTo(106, 6);
+    expect(fp.z).toBeCloseTo(100, 6);
   });
 
   it("parapet_height > 0 emits 4 parapet planes + 4 caps", () => {
@@ -71,11 +71,12 @@ describe("deriveFlatRoof", () => {
     expect(parapets.length).toBe(4);
     const caps = spec.members.filter((m) => m.role === "parapet_cap");
     expect(caps.length).toBe(4);
-    // Parapet planes must span [eaveZ, eaveZ + parapet_height] in Z.
+    // Parapet planes must span [eaveZ, eaveZ + parapet_height] in Z,
+    // with eaveZ = wallTopZ (100).
     for (const p of parapets) {
       const zs = p.vertices.map((v) => v[2]);
-      expect(Math.min(...zs)).toBeCloseTo(106, 6);
-      expect(Math.max(...zs)).toBeCloseTo(136, 6);
+      expect(Math.min(...zs)).toBeCloseTo(100, 6);
+      expect(Math.max(...zs)).toBeCloseTo(130, 6);
     }
   });
 
@@ -94,11 +95,10 @@ describe("deriveFlatRoof", () => {
     const spec = deriveFlatRoof(cfg, {
       wallTopZ: 200,
       defaultOverhang: 10,
-      defaultSlabThickness: 7,
       defaultParapetHeight: 0,
     });
     const fp = flatSlabFootprint(spec)!;
-    expect(fp.z).toBeCloseTo(207, 6);
+    expect(fp.z).toBeCloseTo(200, 6);
     // overhang 10 → x_min = 10-10 = 0
     expect(fp.x_min).toBeCloseTo(0, 6);
   });

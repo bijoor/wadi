@@ -31,7 +31,6 @@ export interface DeriveFlatOptions {
   wallTopZ: number;
   // Fallbacks match the legacy flat_roof defaults.
   defaultOverhang?: number;      // default 5
-  defaultSlabThickness?: number; // default 6
   defaultParapetHeight?: number; // default 30
   defaultParapetThickness?: number; // default 8
 }
@@ -64,14 +63,16 @@ export function deriveFlatRoof(
     throw new Error(`deriveFlatRoof: expected roof_type="flat", got "${cfg.roof_type}"`);
   }
   const overhang = cfg.min_overhang ?? opts.defaultOverhang ?? 5;
-  const slabThickness =
-    cfg.slab_thickness ?? opts.defaultSlabThickness ?? 6;
   const parapetHeight =
     cfg.parapet_height ?? opts.defaultParapetHeight ?? 30;
   const parapetThickness =
     cfg.parapet_thickness ?? opts.defaultParapetThickness ?? 8;
 
-  const eaveZ = opts.wallTopZ + slabThickness;
+  // The slab surface sits AT wall-top, exactly like every other roof's eave.
+  // (The legacy flat roof added the slab's own thickness here, which floated
+  // the flat roof a slab-thickness above the pitched/shed/hip variants — a
+  // leftover we drop so all roof types share the same reference plane.)
+  const eaveZ = opts.wallTopZ;
 
   const planes: RoofPlane[] = [];
   const members: StraightMember[] = [];

@@ -114,8 +114,10 @@ describe("parity: legacy flat_roof vs deriveFlatRoof", () => {
       expect(fp!.x_max).toBeCloseTo(legacyGeom.eave_x_east, 6);
       expect(fp!.y_min).toBeCloseTo(legacyGeom.eave_y_north, 6);
       expect(fp!.y_max).toBeCloseTo(legacyGeom.eave_y_south, 6);
-      // Slab top-Z must match.
-      expect(fp!.z).toBeCloseTo(legacyGeom.eave_z, 6);
+      // Slab Z: v2 intentionally DROPS the legacy slab-thickness offset (the
+      // flat slab now sits at wall-top like every other roof's eave), so the
+      // v2 z is `legacyGeom.eave_z - slab_thickness` = WALL_TOP_Z here.
+      expect(fp!.z).toBeCloseTo(WALL_TOP_Z, 6);
     });
 
     it(`${c.templateName} floor ${c.floorIdx} obj ${c.objIdx} — parapet preserved`, () => {
