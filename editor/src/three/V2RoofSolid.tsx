@@ -632,9 +632,23 @@ function GableWallPrism({
     );
     const pos: number[] = [];
     const uvs: number[] = [];
-    // Vertical-wall planar UV: length across the wall (X/Z) + height (Y).
+    // Planar brick UV like a house wall: U runs ALONG the wall (horizontal),
+    // V is height. The horizontal tangent = worldUp × faceNormal; projecting
+    // onto it gives true along-wall distance. (Using hypot(x,z) instead makes
+    // U nearly constant across a wall offset from the origin, so the brick only
+    // tiles vertically and reads as horizontal bands.)
+    const nrm = polygonNormalNewell(
+      front.map((p) => [p.x, p.y, p.z] as [number, number, number]),
+    );
+    let tx = 1, tz = 0;
+    if (nrm) {
+      // up(0,1,0) × n = (n.z, 0, -n.x) — horizontal, in the wall plane.
+      const hx = nrm[2], hz = -nrm[0];
+      const len = Math.hypot(hx, hz);
+      if (len > 1e-6) { tx = hx / len; tz = hz / len; }
+    }
     const uvOf = (p: P3) => {
-      uvs.push(Math.hypot(p.x, p.z) * uvK, p.y * uvK);
+      uvs.push((p.x * tx + p.z * tz) * uvK, p.y * uvK);
     };
     const tri = (a: P3, b: P3, c: P3) => {
       pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
