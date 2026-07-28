@@ -1438,6 +1438,17 @@ function updateHistoryButtons(): void {
 function applyPersona(): void {
   const persona = getPersona();
   document.body.dataset.persona = persona;
+  // Minimal-chrome / embed: `?panels=off` (or `?embed=1`) hides every side
+  // panel so the model gets the full width. The home-architect skill loads
+  // the viewer this way and drives the config from chat, not the UI.
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get("panels") === "off" || q.get("embed") === "1") {
+      document.body.dataset.embed = "1";
+    } else {
+      delete document.body.dataset.embed;
+    }
+  } catch { /* no location — leave chrome as-is */ }
   if (persona === "architect") {
     let stored: string | null = null;
     try { stored = localStorage.getItem(EDIT_MODE_KEY); } catch { /* ignore */ }

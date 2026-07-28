@@ -537,6 +537,15 @@
         #cfg-dock-title { margin: 0 0 0.5rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
         /* Collapse the editor (Nakasha) sidebar with the same header toggle. */
         body[data-edit-mode="on"][data-left="closed"] #viewer-sidebar { display: none; }
+        /* Minimal-chrome / embed mode (?panels=off | ?embed=1). Hides every
+           side panel across BOTH personas — owner config dock, architect edit
+           sidebar + property panel, and the collapse tab — so the model fills
+           the width. Used by the home-architect skill, which drives the config
+           from chat rather than these panels. main.ts sets data-embed. */
+        body[data-embed="1"] #viewer-config-dock,
+        body[data-embed="1"] #viewer-sidebar,
+        body[data-embed="1"] #viewer-property-panel,
+        body[data-embed="1"] #left-toggle { display: none !important; }
         /* Left-edge collapse tab — a chevron (distinct from the toolbar ☰),
            on the panel's right edge when open, at the screen edge when closed.
            Shown only when a left panel exists (owner config OR architect edit). */
@@ -2002,9 +2011,9 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-D01UDbpe.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-DS0Dwl38.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
-  <link rel="stylesheet" crossorigin href="./assets/viewer-D6abMzaV.css">
+  <link rel="stylesheet" crossorigin href="./assets/viewer-47YwG6Mm.css">
 </head>
 <body>
     <header>
