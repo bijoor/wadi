@@ -113,3 +113,22 @@ each verified live. Tests updated for the new plane/member counts + `inward`.
   Separate step — it also needs the shipped **templates** updated to the new endpoints, so
   do it after this geometry lands. The V2 model already supports it via `roof_type` +
   per‑endpoint `open`/`closed`.
+- **Roof‑aware pillar heights** (tie the roof‑carrying columns to the roof, review 2026‑07‑28).
+  Today pillars stop at the beam/eave level (Z=226 in atale), exactly at the gable base, so
+  there is **no** gable↔pillar overlap. Once pillars are made to rise to the roof underside,
+  they will. Decisions:
+  - **Where the roof‑type → pillar‑height relation lives: the configurator re‑derive**
+    (`wadi-config` / configurator), NOT the formula engine. Reason: the evaluator has no
+    conditionals/string compare and no access to the derived roof, so it can't switch the
+    height law when `roof_type` flips (pitched triangle `beam_top + rise·(1−|x−ridge_x|/(W/2))`
+    vs shed ramp vs flat constant). The re‑derive step rewrites the pillar‑height formula +
+    the roof together so they never disagree. Within‑a‑type parametrics ride shared House
+    variables (`roof_rise`, `eave_z`, `ridge_x = House.W/2`) that both the roof and the pillar
+    formulas reference. (A `roof_top(x,y)` formula function was considered and set aside — it
+    would need the derived roof wired into the pure evaluator.)
+  - **Gable‑wall ↔ pillar auto‑trim: deferred, built WITH the above.** When pillars extend
+    into the gable, make gable walls CSG‑subtract any pillar that rises into them (mirror the
+    regular wall→pillar trim; `allPillars` `{rect,z0,z1}` already exists in `House3D`; pass it
+    into `V2RoofGableWalls`/`GableWallPrism`, subtract, then re‑split brick/plaster groups by
+    triangle normal like `splitOuterFaceGroups`). Build it then so it can be verified against a
+    real overlap. No‑op until pillars extend.
