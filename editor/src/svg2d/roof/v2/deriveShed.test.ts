@@ -158,6 +158,18 @@ describe("deriveShedRoof", () => {
     expect(zs[3]).toBeCloseTo(120, 6); // top at wall_top + rise
   });
 
+  it("high-eave infill is inset by wall thickness at each raking (leaf) end", () => {
+    // seg x∈[0,200], high side +Y. Both ends leaf → both raking walls own
+    // their corner columns, so the high wall spans x∈[8,192], not [0,200].
+    const spec = deriveShedRoof(baseCfg(), { wallTopZ: 100, wallThickness: 8 });
+    const high = spec.planes.find(
+      (p) => p.role === "gable_wall" && p.id.endsWith(".high"),
+    )!;
+    const xs = high.vertices.map((v) => v[0]);
+    expect(Math.min(...xs)).toBeCloseTo(8, 6);
+    expect(Math.max(...xs)).toBeCloseTo(192, 6);
+  });
+
   it("joint endpoint (not leaf) does not emit a raking gable_wall", () => {
     // Two segments sharing an endpoint at (200, 50). Only 2 leaves →
     // 2 raking walls (not 4), plus 1 high infill per segment.

@@ -232,18 +232,35 @@ export function deriveShedRoof(
     // HIGH-eave infill wall. On the high side the roof is `rise` above
     // wall_top, leaving an open strip between the wall below and the
     // slope. Fill it with a vertical rectangle along the high wall line
-    // (wall_top → wall_top + rise), running the full segment length.
+    // (wall_top → wall_top + rise).
+    //
+    // The raking end walls span the FULL width (including the high corner)
+    // and extrude one wall-thickness inward along the axis, so they already
+    // occupy the corner columns. Inset this wall's ends by that thickness at
+    // each LEAF end so the two don't overlap (the raking walls own the
+    // corners) — the same convention room walls use (E/W inset so N/S own
+    // the corners). Joint ends (no raking wall) are not inset.
     {
       const highLine = offsetLine(seg, highSign * (seg.width / 2));
+      const insStart = startIsLeaf ? (gableWallThickness ?? 0) : 0;
+      const insEnd = endIsLeaf ? (gableWallThickness ?? 0) : 0;
+      const hStart: Point2D = [
+        highLine.start[0] + unit[0] * insStart,
+        highLine.start[1] + unit[1] * insStart,
+      ];
+      const hEnd: Point2D = [
+        highLine.end[0] - unit[0] * insEnd,
+        highLine.end[1] - unit[1] * insEnd,
+      ];
       // Toward the interior = opposite the high (outward) side.
       const inwardHigh: Point3D = [-highSign * leftN[0], -highSign * leftN[1], 0];
       planes.push({
         id: `${seg.id}.gable_wall.high`,
         vertices: [
-          to3D(highLine.start, opts.wallTopZ),
-          to3D(highLine.end, opts.wallTopZ),
-          to3D(highLine.end, opts.wallTopZ + rise),
-          to3D(highLine.start, opts.wallTopZ + rise),
+          to3D(hStart, opts.wallTopZ),
+          to3D(hEnd, opts.wallTopZ),
+          to3D(hEnd, opts.wallTopZ + rise),
+          to3D(hStart, opts.wallTopZ + rise),
         ],
         role: "gable_wall",
         source_segment_id: seg.id,
