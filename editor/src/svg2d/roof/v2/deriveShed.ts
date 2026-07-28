@@ -155,25 +155,47 @@ export function deriveShedRoof(
       source_segment_id: seg.id,
     });
 
-    // Ring beam — 4 members around the segment rectangle at wall_top_z.
-    // Same treatment as pitched roofs (see derivePitched).
+    const startIsLeaf = isLeafEndpoint(endpoints, seg.id, "start");
+    const endIsLeaf = isLeafEndpoint(endpoints, seg.id, "end");
+    const unit = segmentUnitVector(seg);
+    const leftN: Point2D = [-unit[1], unit[0]];       // +90° CCW (see segmentLeftNormal)
+    const highIsLeft = highSide === "left";
+
+    // Ring beam. The two SIDE eaves get a flat member — EXCEPT the HIGH
+    // eave, which rides the TOP of the high infill wall (wall_top + rise),
+    // not wall_top. The raking end cross-members (`.back` = start,
+    // `.front` = end) are suppressed at open (leaf) ends — the raking
+    // `gable_band` carries the band up the slope there.
     const rect = segmentRect(seg);
     for (const rb of ringBeamMembersForRect(rect, opts.wallTopZ, seg.id)) {
-      members.push(rb);
+      if (startIsLeaf && rb.id.endsWith(".back")) continue;
+      if (endIsLeaf && rb.id.endsWith(".front")) continue;
+      const isHighEave =
+        (highIsLeft && rb.id.endsWith(".left")) ||
+        (!highIsLeft && rb.id.endsWith(".right"));
+      if (isHighEave) {
+        members.push({
+          ...rb,
+          start: [rb.start[0], rb.start[1], opts.wallTopZ + rise],
+          end: [rb.end[0], rb.end[1], opts.wallTopZ + rise],
+        });
+      } else {
+        members.push(rb);
+      }
     }
 
-    // Gable-end infill for open LEAF endpoints. Triangle at the
-    // wall (segment endpoint BEFORE along-extension) spanning
-    // wall_top_z along the bottom and following the slope on top.
+    // Gable-end infill for open LEAF endpoints — the two RAKING
+    // triangular ends. Triangle at the wall (segment endpoint BEFORE
+    // along-extension) spanning wall_top_z along the bottom and
+    // following the slope on top.
     for (const which of ["start", "end"] as const) {
       if (!isLeafEndpoint(endpoints, seg.id, which)) continue;
 
       // Bottom corners at wall_top_z, at the WALL positions (NOT
       // extended by along-overhang; the wall itself doesn't reach
       // into the eave overhang).
-      const wallSeg = seg;               // clarity alias
-      const wallHigh = offsetLine(wallSeg, highSign * seg.width / 2);
-      const wallLow = offsetLine(wallSeg, -highSign * seg.width / 2);
+      const wallHigh = offsetLine(seg, highSign * seg.width / 2);
+      const wallLow = offsetLine(seg, -highSign * seg.width / 2);
 
       const wallCornerHigh = which === "start" ? wallHigh.start : wallHigh.end;
       const wallCornerLow = which === "start" ? wallLow.start : wallLow.end;
@@ -192,6 +214,8 @@ export function deriveShedRoof(
         source_segment_id: seg.id,
         side_of_segment: which,
         thickness: gableWallThickness,
+        // Extrude toward the interior along the segment axis.
+        inward: which === "start" ? [unit[0], unit[1], 0] : [-unit[0], -unit[1], 0],
       });
       // Raking gable band along the sloped top edge of the gable
       // wall (low@wall_top → high@wall_top+rise), continuous with the
@@ -202,6 +226,30 @@ export function deriveShedRoof(
         end: to3D(wallCornerHigh, opts.wallTopZ + rise),
         role: "gable_band",
         source_segment_id: seg.id,
+      });
+    }
+
+    // HIGH-eave infill wall. On the high side the roof is `rise` above
+    // wall_top, leaving an open strip between the wall below and the
+    // slope. Fill it with a vertical rectangle along the high wall line
+    // (wall_top → wall_top + rise), running the full segment length.
+    {
+      const highLine = offsetLine(seg, highSign * (seg.width / 2));
+      // Toward the interior = opposite the high (outward) side.
+      const inwardHigh: Point3D = [-highSign * leftN[0], -highSign * leftN[1], 0];
+      planes.push({
+        id: `${seg.id}.gable_wall.high`,
+        vertices: [
+          to3D(highLine.start, opts.wallTopZ),
+          to3D(highLine.end, opts.wallTopZ),
+          to3D(highLine.end, opts.wallTopZ + rise),
+          to3D(highLine.start, opts.wallTopZ + rise),
+        ],
+        role: "gable_wall",
+        source_segment_id: seg.id,
+        side_of_segment: highSide,
+        thickness: gableWallThickness,
+        inward: inwardHigh,
       });
     }
 

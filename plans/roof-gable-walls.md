@@ -70,6 +70,44 @@ painted like a wall. It reads as a plane, not a wall. Real construction puts an 
 6. **Tests**: `gable_wall` planes carry `thickness`; open ends emit the right count of
    `gable_band` members (pitched 2/end, shed 1/end); closed ends emit none; parity holds.
 
+## Refinement round 2 (review feedback — IN PROGRESS)
+
+Live review of the first cut surfaced four defects. Root causes verified against
+`house_config.wadi` (rooms use OUTER-footprint semantics — `roomOpeningToFlat`
+puts the north wall at `y=ry` going inward, so the room-rect edge = outer wall
+face) and a shed screenshot.
+
+1. **Gable wall off-centre vs the wall below.** `GableWallPrism` extrudes the
+   profile triangle SYMMETRICALLY (±½t) about the footprint edge, so it overhangs
+   the wall below (whose outer face is ON that edge) by ½t. **Fix:** extrude
+   INWARD (toward the interior) by the full thickness so the gable's outer face
+   is flush with the wall below. Derive tags each `gable_wall` plane with an
+   `inward: Point3D` unit vector (pitched start→+unit, end→−unit; shed toward the
+   low side / interior). `GableWallPrism` builds front ring = base verts, back
+   ring = base + inward·t.
+2. **Shed: no wall on the OPEN (high-eave) end, only the raking sides.** The two
+   raking triangular ends get walls; the high eave (where the roof rises `rise`
+   above wall-top) is open. **Fix:** `deriveShed` emits an extra rectangular
+   `gable_wall` along the high wall line: `[highStart@wallTop, highEnd@wallTop,
+   highEnd@wallTop+rise, highStart@wallTop+rise]`, inward = toward low side.
+3. **Ring beam must ride the top of the raised/raking wall, not sit flat at
+   wall-top.** Where a gable wall exists the flat eave-level ring member is buried
+   mid-wall. **Fix:** selective ring emission per side —
+   - pitched OPEN end → drop the flat end member; the raking `gable_band`
+     (wallLeft→apex, wallRight→apex) is the band. CLOSED (hip) end keeps its flat
+     member (the hip sits on it) — preserve existing hip behaviour.
+   - shed raking ends → drop the flat end member; `gable_band` (low→high@rise)
+     carries it. Shed HIGH side → move its ring member UP to `wallTop+rise` (top
+     of the high infill wall). Low side + pitched side eaves keep flat members.
+4. **External vs internal wall faces on the gable.** Reuse the wall face system
+   (`wallCSG` `external`/`outerSign`/`splitOuterFaceGroups` → brick outer, plain
+   inner). The gable prism's OUTER cap (base-vert side) = brick (external); inner
+   cap + sides = plaster. Compute the external side from `inward` (external =
+   opposite of inward).
+
+Build order: 1 (align) → 2 (shed high side) → 3 (ring relocation) → 4 (faces),
+each verified live. Tests updated for the new plane/member counts + `inward`.
+
 ## Explicitly deferred
 - **Roof‑type chooser** (Hip/Gable/Shed/Flat + per‑end open↔closed for architect + owner).
   Separate step — it also needs the shipped **templates** updated to the new endpoints, so

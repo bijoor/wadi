@@ -182,6 +182,11 @@ export interface RoofPlane {
   // For `gable_wall` planes: masonry wall thickness (project units), so the 3D
   // layer extrudes the triangle into a solid wall instead of a thin plane.
   thickness?: number;
+  // For `gable_wall` planes: unit vector (project-unit space) pointing from the
+  // wall's OUTER face toward the house interior. The 3D layer extrudes the
+  // profile polygon along this by `thickness` (so the outer face stays flush
+  // with the wall below), and treats the outer cap as external (brick).
+  inward?: Point3D;
 }
 
 export type MemberRole =

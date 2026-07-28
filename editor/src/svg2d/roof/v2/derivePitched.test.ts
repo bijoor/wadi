@@ -401,6 +401,27 @@ describe("derivePitchedRoof — gable walls (thickness + gable band)", () => {
     expect(closed.members.filter((m) => m.role === "gable_band").length).toBe(0);
   });
 
+  it("open ends carry an inward extrusion vector; the flat end ring member is dropped", () => {
+    const open = derivePitchedRoof(yAxisCfg({ default_endpoint: "open" }), {
+      wallTopZ: 100,
+      wallThickness: 8,
+    });
+    const gws = open.planes.filter((p) => p.role === "gable_wall");
+    expect(gws.every((p) => Array.isArray(p.inward) && p.inward.length === 3)).toBe(true);
+    // Open ends: the two END cross ring members (.back/.front) are gone;
+    // only the two side eaves (.left/.right) remain.
+    const rings = open.members.filter((m) => m.role === "ring_beam");
+    expect(rings.length).toBe(2);
+    expect(rings.some((m) => m.id.endsWith(".back") || m.id.endsWith(".front"))).toBe(false);
+
+    // Closed (hip) ends keep all 4 ring members (the hip sits on them).
+    const closed = derivePitchedRoof(yAxisCfg({ default_endpoint: "closed" }), {
+      wallTopZ: 100,
+      wallThickness: 8,
+    });
+    expect(closed.members.filter((m) => m.role === "ring_beam").length).toBe(4);
+  });
+
   it("gable band runs from wall top up to the ridge apex", () => {
     const cfg = yAxisCfg({ default_endpoint: "open" }); // ridge_h = 50
     const spec = derivePitchedRoof(cfg, { wallTopZ: 100, wallThickness: 8 });

@@ -369,11 +369,19 @@ export function derivePitchedRoof(
       );
     }
 
-    // Ring beam — 4 members around the segment rectangle at wall_top_z.
-    // Multi-segment configs get one ring per segment; Step 6 will
-    // trim members that lie on shared edges between adjacent segments.
+    // Ring beam — members around the segment rectangle at wall_top_z.
+    // The two SIDE eaves (`.left` / `.right`) always get a flat member.
+    // The END cross members (`.back` = start, `.front` = end) are the
+    // eave-level band across an endpoint — but at an OPEN (gable) end the
+    // wall RISES into a triangle, so a flat band there would sit buried
+    // mid-wall. Suppress it; the raking `gable_band` (emitted below) rides
+    // the top of the gable instead. Closed (hip) + joint ends keep the
+    // flat member (the hip face sits on it). Multi-segment: Step 6 trims
+    // shared edges.
     const rect = segmentRect(seg);
     for (const rb of ringBeamMembersForRect(rect, opts.wallTopZ, seg.id)) {
+      if (startRes === "open" && rb.id.endsWith(".back")) continue;
+      if (endRes === "open" && rb.id.endsWith(".front")) continue;
       members.push(rb);
     }
 
@@ -397,6 +405,8 @@ export function derivePitchedRoof(
           source_segment_id: seg.id,
           side_of_segment: "start",
           thickness: gableWallThickness,
+          // Extrude toward the house interior (start face → +unit).
+          inward: [unit[0], unit[1], 0],
         });
         // Raking gable band up each slope edge (wall top → apex),
         // continuous with the eave ring beam at the wall corners.
@@ -460,6 +470,8 @@ export function derivePitchedRoof(
           source_segment_id: seg.id,
           side_of_segment: "end",
           thickness: gableWallThickness,
+          // Extrude toward the house interior (end face → −unit).
+          inward: [-unit[0], -unit[1], 0],
         });
         members.push({
           id: `${seg.id}.gable_band.end.left`,

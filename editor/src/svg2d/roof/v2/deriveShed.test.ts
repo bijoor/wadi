@@ -49,10 +49,14 @@ describe("deriveShedRoof", () => {
     ).toThrow(/min_overhang/);
   });
 
-  it("one segment → 1 slope plane + 1 ridge member + 2 gable_wall planes", () => {
+  it("one segment → 1 slope + 1 ridge + 3 gable_walls (2 raking ends + 1 high infill)", () => {
     const spec = deriveShedRoof(baseCfg(), { wallTopZ: 100 });
     expect(spec.planes.filter((p) => p.role === "slope").length).toBe(1);
-    expect(spec.planes.filter((p) => p.role === "gable_wall").length).toBe(2);
+    const gws = spec.planes.filter((p) => p.role === "gable_wall");
+    // 2 raking triangles (start/end) + 1 high-eave rectangular infill.
+    expect(gws.length).toBe(3);
+    expect(gws.filter((p) => p.vertices.length === 3).length).toBe(2);
+    expect(gws.filter((p) => p.id.endsWith(".high")).length).toBe(1);
     expect(spec.members.filter((m) => m.role === "ridge").length).toBe(1);
   });
 
@@ -125,9 +129,13 @@ describe("deriveShedRoof", () => {
     expect(ridge.start[2]).toBeCloseTo(123, 6);
   });
 
-  it("gable_wall triangle at open endpoints has correct 3 vertices", () => {
+  it("raking gable_wall at open endpoints has correct 3 vertices", () => {
     const spec = deriveShedRoof(baseCfg(), { wallTopZ: 100 });
-    const walls = spec.planes.filter((p) => p.role === "gable_wall");
+    // Only the two RAKING end walls are triangles; the high-eave infill
+    // (`.high`) is a rectangle — exclude it.
+    const walls = spec.planes.filter(
+      (p) => p.role === "gable_wall" && !p.id.endsWith(".high"),
+    );
     expect(walls.length).toBe(2);
     for (const w of walls) {
       expect(w.vertices.length).toBe(3);
@@ -139,9 +147,20 @@ describe("deriveShedRoof", () => {
     }
   });
 
-  it("joint endpoint (not leaf) does not emit gable_wall infill", () => {
-    // Two segments sharing an endpoint at (200, 50). Only 2 leaves
-    // → 2 gable walls, not 4.
+  it("high-eave infill is a rectangle from wall_top to wall_top+rise", () => {
+    const spec = deriveShedRoof(baseCfg(), { wallTopZ: 100 });
+    const high = spec.planes.find(
+      (p) => p.role === "gable_wall" && p.id.endsWith(".high"),
+    )!;
+    expect(high.vertices.length).toBe(4);
+    const zs = high.vertices.map((v) => v[2]).sort((a, b) => a - b);
+    expect(zs[0]).toBeCloseTo(100, 6); // base at wall_top
+    expect(zs[3]).toBeCloseTo(120, 6); // top at wall_top + rise
+  });
+
+  it("joint endpoint (not leaf) does not emit a raking gable_wall", () => {
+    // Two segments sharing an endpoint at (200, 50). Only 2 leaves →
+    // 2 raking walls (not 4), plus 1 high infill per segment.
     const cfg: RoofConfig = {
       type: "roof",
       roof_type: "shed",
@@ -153,21 +172,26 @@ describe("deriveShedRoof", () => {
       min_overhang: 15,
     };
     const spec = deriveShedRoof(cfg, { wallTopZ: 100 });
-    expect(spec.planes.filter((p) => p.role === "gable_wall").length).toBe(2);
+    const gws = spec.planes.filter((p) => p.role === "gable_wall");
+    // 2 raking (leaf ends only) + 2 high infills (one per segment).
+    expect(gws.filter((p) => !p.id.endsWith(".high")).length).toBe(2);
+    expect(gws.filter((p) => p.id.endsWith(".high")).length).toBe(2);
     expect(spec.planes.filter((p) => p.role === "slope").length).toBe(2);
   });
 
-  it("emits 4 ring-beam members per segment at wall_top_z", () => {
+  it("ring beam: raking-end members dropped; high eave rides wall_top+rise", () => {
     const spec = deriveShedRoof(baseCfg(), { wallTopZ: 100 });
     const rings = spec.members.filter((m) => m.role === "ring_beam");
-    expect(rings.length).toBe(4);
-    for (const m of rings) {
-      expect(m.start[2]).toBeCloseTo(100, 6);
-      expect(m.end[2]).toBeCloseTo(100, 6);
-    }
+    // Both raking-end cross members suppressed → only the 2 side eaves.
+    expect(rings.length).toBe(2);
+    const zs = rings.map((m) => m.start[2]).sort((a, b) => a - b);
+    expect(zs[0]).toBeCloseTo(100, 6); // low eave at wall_top
+    expect(zs[1]).toBeCloseTo(120, 6); // high eave raised to wall_top + rise
   });
 
-  it("multi-segment L-shape shed emits 4 ring beams per segment (8 total)", () => {
+  it("multi-segment L-shape shed: 3 ring beams per segment (6 total)", () => {
+    // Each segment has ONE leaf end (its raking cross member dropped) and
+    // one joint end (kept) → 3 members each.
     const cfg: RoofConfig = {
       type: "roof",
       roof_type: "shed",
@@ -179,16 +203,18 @@ describe("deriveShedRoof", () => {
       min_overhang: 15,
     };
     const spec = deriveShedRoof(cfg, { wallTopZ: 100 });
-    expect(spec.members.filter((m) => m.role === "ring_beam").length).toBe(8);
+    expect(spec.members.filter((m) => m.role === "ring_beam").length).toBe(6);
   });
 });
 
 describe("deriveShedRoof — gable walls (thickness + gable band)", () => {
-  it("open leaf ends carry wall thickness; override wins", () => {
+  it("all gable walls (2 raking + 1 high) carry wall thickness; override wins", () => {
     const spec = deriveShedRoof(baseCfg(), { wallTopZ: 100, wallThickness: 8 });
     const gws = spec.planes.filter((p) => p.role === "gable_wall");
-    expect(gws.length).toBe(2);
+    expect(gws.length).toBe(3);
     expect(gws.every((p) => p.thickness === 8)).toBe(true);
+    // Every gable wall carries an inward extrusion vector.
+    expect(gws.every((p) => Array.isArray(p.inward) && p.inward.length === 3)).toBe(true);
 
     const over = deriveShedRoof(baseCfg({ gable_wall_thickness: 12 }), {
       wallTopZ: 100,

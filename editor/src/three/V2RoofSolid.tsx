@@ -13,7 +13,7 @@
 
 import { useMemo } from "react";
 import * as THREE from "three";
-import { roofTileMaps, roofUvK } from "./procTextures";
+import { lateriteMaps, roofTileMaps, roofUvK, wallUvK } from "./procTextures";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 import { computeTopFloorWallTopZ } from "../svg2d/roofGeometry";
@@ -197,6 +197,7 @@ export function V2RoofGableWalls({ config }: { config: HouseConfig }) {
   }, [config]);
 
   const plot = useMemo(() => readPlotBounds(expandRoomWalls(config)), [config]);
+  const uvK = wallUvK((config as { units?: { system?: string; per_unit?: number } }).units);
 
   if (bundles.length === 0) return null;
 
@@ -207,7 +208,13 @@ export function V2RoofGableWalls({ config }: { config: HouseConfig }) {
           {b.spec.planes
             .filter((p) => p.role === "gable_wall")
             .map((p) => (
-              <GableWallPrism key={p.id} plane={p} plotWidth={plot.width} plotLength={plot.length} />
+              <GableWallPrism
+                key={p.id}
+                plane={p}
+                plotWidth={plot.width}
+                plotLength={plot.length}
+                uvK={uvK}
+              />
             ))}
         </group>
       ))}
@@ -580,43 +587,65 @@ function SolidPlane({
 }
 
 // A gable wall: the roof-profile polygon (`gable_wall` plane) extruded
-// to `plane.thickness` (project units) about its own plane, forming a
-// solid masonry prism instead of a thin painted triangle.
+// to `plane.thickness` (project units) TOWARD the interior (along
+// `plane.inward`), so its OUTER face stays flush with the masonry wall
+// below. Rendered like a house wall — laterite/brick on the external
+// (outer) face, plain paint on the interior face + edges.
 function GableWallPrism({
   plane,
   plotWidth,
   plotLength,
+  uvK,
 }: {
   plane: RoofPlane;
   plotWidth: number;
   plotLength: number;
+  uvK: number;
 }) {
   const geometry = useMemo(() => {
     const t = plane.thickness ?? 0;
     const verts = plane.vertices;
     if (verts.length < 3 || !(t > 0)) return null;
-    const n = polygonNormalNewell(verts);
-    if (!n) return null;
-    const half = t / 2;
+    // Extrude toward the interior. Prefer the derived `inward` (keeps the
+    // outer face on the wall line); fall back to the plane normal for
+    // specs authored before `inward` existed.
+    let inward = plane.inward;
+    if (!inward) {
+      const nn = polygonNormalNewell(verts);
+      if (!nn) return null;
+      inward = [-nn[0], -nn[1], -nn[2]];
+    }
     type P3 = { x: number; y: number; z: number };
-    // Front / back rings, offset ± half along the wall normal (in
-    // project units, BEFORE the world-axis mapping in toThreePos).
+    // Front ring = base verts (OUTER face, on the wall line); back ring =
+    // base + inward·t (INTERIOR face).
     const front: P3[] = verts.map((v) =>
-      toThreePos(v[0] + n[0] * half, v[1] + n[1] * half, v[2] + n[2] * half, plotWidth, plotLength),
+      toThreePos(v[0], v[1], v[2], plotWidth, plotLength),
     );
     const back: P3[] = verts.map((v) =>
-      toThreePos(v[0] - n[0] * half, v[1] - n[1] * half, v[2] - n[2] * half, plotWidth, plotLength),
+      toThreePos(
+        v[0] + inward![0] * t,
+        v[1] + inward![1] * t,
+        v[2] + inward![2] * t,
+        plotWidth,
+        plotLength,
+      ),
     );
     const pos: number[] = [];
-    const tri = (a: P3, b: P3, c: P3) =>
+    const uvs: number[] = [];
+    // Vertical-wall planar UV: length across the wall (X/Z) + height (Y).
+    const uvOf = (p: P3) => {
+      uvs.push(Math.hypot(p.x, p.z) * uvK, p.y * uvK);
+    };
+    const tri = (a: P3, b: P3, c: P3) => {
       pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+      uvOf(a); uvOf(b); uvOf(c);
+    };
     const m = verts.length;
-    // Cap faces — front fan + back fan (reverse winding).
-    for (let i = 1; i < m - 1; i++) {
-      tri(front[0], front[i], front[i + 1]);
-      tri(back[0], back[i + 1], back[i]);
-    }
-    // Side walls — one quad (two tris) per polygon edge.
+    // GROUP 0 (external / laterite): the OUTER cap only.
+    for (let i = 1; i < m - 1; i++) tri(front[0], front[i], front[i + 1]);
+    const extVerts = pos.length / 3;
+    // GROUP 1 (internal / plain paint): inner cap (reverse winding) + sides.
+    for (let i = 1; i < m - 1; i++) tri(back[0], back[i + 1], back[i]);
     for (let i = 0; i < m; i++) {
       const j = (i + 1) % m;
       tri(front[i], back[i], back[j]);
@@ -624,18 +653,34 @@ function GableWallPrism({
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
     g.computeVertexNormals();
+    g.clearGroups();
+    g.addGroup(0, extVerts, 0);
+    g.addGroup(extVerts, pos.length / 3 - extVerts, 1);
     return g;
-  }, [plane, plotWidth, plotLength]);
+  }, [plane, plotWidth, plotLength, uvK]);
 
+  const laterite = lateriteMaps();
   if (!geometry) return null;
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
+      {/* group 0 — external face = laterite/brick (matches the wall below) */}
       <meshStandardMaterial
+        attach="material-0"
+        map={laterite.map}
+        bumpMap={laterite.bump}
+        bumpScale={1.2}
+        roughness={0.95}
+        metalness={0}
+      />
+      {/* group 1 — interior face + edges = plain paint */}
+      <meshStandardMaterial
+        attach="material-1"
         color={PLANE_MATERIAL.gable_wall}
         side={THREE.DoubleSide}
         roughness={0.9}
-        metalness={0.0}
+        metalness={0}
       />
     </mesh>
   );
