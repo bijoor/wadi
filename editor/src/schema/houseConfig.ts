@@ -741,12 +741,59 @@ export const HouseConfig = z
 
 export type HouseConfig = z.infer<typeof HouseConfig>;
 
-export function validate(data: unknown): {
+// Forward-compat: a config authored by a NEWER build can carry keys this build's
+// strict schema doesn't recognize. Iteratively drop exactly those keys (at any
+// depth, using Zod's `unrecognized_keys` issues) so the design still loads —
+// minus the options this build can't render — instead of being hard-rejected.
+// Only unrecognized-key issues are stripped; any other error is left intact for
+// the caller. Returns the cleaned clone + the dot-paths of every dropped key.
+function stripUnknownKeys(data: unknown): { data: unknown; stripped: string[] } {
+  if (!data || typeof data !== "object") return { data, stripped: [] };
+  const cur = JSON.parse(JSON.stringify(data)); // config is JSON — safe deep clone
+  const stripped: string[] = [];
+  for (let pass = 0; pass < 12; pass++) {
+    const res = HouseConfig.safeParse(cur);
+    if (res.success) break;
+    const unknown = res.error.issues.filter((i) => i.code === "unrecognized_keys");
+    if (unknown.length === 0) break; // remaining errors aren't unknown keys — stop
+    for (const issue of unknown) {
+      const parent = issue.path.reduce<unknown>(
+        (o, k) => (o != null && typeof o === "object" ? (o as Record<string, unknown>)[k as string] : undefined),
+        cur,
+      );
+      if (parent && typeof parent === "object") {
+        for (const k of (issue as unknown as { keys: string[] }).keys) {
+          if (k in (parent as Record<string, unknown>)) {
+            delete (parent as Record<string, unknown>)[k];
+            stripped.push([...issue.path, k].join("/"));
+          }
+        }
+      }
+    }
+  }
+  return { data: cur, stripped };
+}
+
+export function validate(
+  data: unknown,
+  // `tolerant` (used for loading external/shared designs): if the strict parse
+  // fails ONLY on unrecognized keys, strip them and retry, reporting `stripped`.
+  opts?: { tolerant?: boolean },
+): {
   ok: boolean;
   data?: HouseConfig;
   errors?: { path: string; message: string }[];
+  stripped?: string[];
 } {
-  const result = HouseConfig.safeParse(data);
+  let result = HouseConfig.safeParse(data);
+  if (!result.success && opts?.tolerant) {
+    const s = stripUnknownKeys(data);
+    if (s.stripped.length > 0) {
+      const retry = HouseConfig.safeParse(s.data);
+      if (retry.success) return { ok: true, data: retry.data, stripped: s.stripped };
+      result = retry; // post-strip errors are the real incompatibility — report those
+    }
+  }
   if (result.success) return { ok: true, data: result.data };
   return {
     ok: false,

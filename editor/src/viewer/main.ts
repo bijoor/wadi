@@ -145,10 +145,18 @@ async function bootViewer(): Promise<void> {
     const looksLikeShareLink = /^#w1=/.test(location.hash);
     const raw = await decodeConfigFromHash(location.hash);
     if (raw) {
-      const parsed = validate(raw);
+      // Tolerant load: a link made by a NEWER build may carry keys this build
+      // doesn't know. Drop those and open the rest rather than hard-failing.
+      const parsed = validate(raw, { tolerant: true });
       if (parsed.ok && parsed.data) {
         useConfigStore.getState().loadConfig(parsed.data, "shared link");
         loadedFromHash = true;
+        if (parsed.stripped && parsed.stripped.length > 0) {
+          console.warn("viewer: shared link had newer options, ignored:", parsed.stripped);
+          const n = parsed.stripped.length;
+          shareLinkError =
+            `Opened this shared design, but ${n} newer option${n > 1 ? "s were" : " was"} ignored — update Wadi to see everything.`;
+        }
       } else {
         console.warn("viewer: shared-link config failed validation", parsed.errors);
         shareLinkError =
