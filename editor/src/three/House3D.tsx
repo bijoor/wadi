@@ -185,6 +185,10 @@ export function House3D({ config }: { config: HouseConfig }) {
       // Floor-wise default layers (role sub-layer per floor). Per-object `layer`
       // still overrides; global role prefs feed in via layerDefaults.
       const roomLayer = defaultLayerFor("room", floorNum, layerDefaults);
+      // Door/window fills go on this floor's "Doors & windows" role layer so
+      // they render under the same group the menu shows (f{N}_openings) — a
+      // bare "openings" id is NOT in effectiveLayers, so it would be dropped.
+      const openingsLayer = defaultLayerFor("door", floorNum, layerDefaults);
       const slabLayer = defaultLayerFor("floor_slab", floorNum, layerDefaults);
       const openings = objects.filter((o) => o.type === "door" || o.type === "window");
       // Pillar footprints that pass through this floor — walls trim to their
@@ -349,9 +353,9 @@ export function House3D({ config }: { config: HouseConfig }) {
             />,
           );
         } else if (obj.type === "room") {
-          emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, pillars, fi);
+          emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, openingsLayer, pillars, fi);
         } else if (obj.type === "wall") {
-          emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, pillars, fi);
+          emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, openingsLayer, pillars, fi);
         } else if (obj.type === "staircase") {
           // Supports the "new" schema (start_x/start_y + step_* +
           // compass direction). Legacy format (x/y/width/length) can be
@@ -606,6 +610,7 @@ function emitRoomWalls(
   openings: Obj[],
   push: PushFn,
   layer: string,
+  openingsLayer: string,
   pillars: PillarRect[],
   floorIdx: number,
 ) {
@@ -708,7 +713,7 @@ function emitRoomWalls(
         const dx = Math.cos(rotY) * localAlong;
         const dz = -Math.sin(rotY) * localAlong;
         push(
-          "openings",
+          openingsLayer,
           <OpeningPane
             key={`${key}-${side}-op-${m.along.toFixed(2)}`}
             cx={c.x + dx}
@@ -735,6 +740,7 @@ function emitStandaloneWall(
   openings: Obj[],
   push: PushFn,
   layer: string,
+  openingsLayer: string,
   pillars: PillarRect[],
   floorIdx: number,
 ) {
@@ -793,7 +799,7 @@ function emitStandaloneWall(
         const localAlong = m.along + m.width / 2 - subLen / 2;
         const localFrom = m.from + m.height / 2 - h / 2;
         push(
-          "openings",
+          openingsLayer,
           <OpeningPane key={`${key}-op-${m.along.toFixed(2)}`} cx={cc.x + Math.cos(rotY) * localAlong} cy={baseZ + h / 2 + localFrom} cz={cc.z - Math.sin(rotY) * localAlong} width={m.width} height={m.height} rotY={rotY} kind={m.kind} wallDepth={t} />,
         );
       }
