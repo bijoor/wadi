@@ -56,7 +56,7 @@ export function LayersEditor() {
         className="flex max-h-[86vh] w-[580px] max-w-full flex-col overflow-hidden rounded-lg border border-slate-700 bg-slate-900 text-slate-200 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
           <h2 className="text-sm font-semibold">Layers — grouping &amp; order</h2>
           <button
             type="button"
@@ -68,7 +68,7 @@ export function LayersEditor() {
           </button>
         </div>
 
-        <div className="overflow-y-auto px-4 py-3">
+        <div className="overflow-y-auto px-5 py-4">
           <p className="mb-3 text-[11px] leading-relaxed text-slate-400">
             Reorder whole <b>groups</b> (▲▼ on the group header) and the layers inside them,
             rename a group, or move a layer to another group. This is the house's 3D layer
@@ -83,8 +83,8 @@ export function LayersEditor() {
           {groups.map((g, gi) => {
             const isCol = !!collapsed[g.name];
             return (
-              <div key={g.name} className="mb-2 rounded border border-slate-800">
-                <div className="flex items-center gap-1 bg-slate-800/60 px-2 py-1">
+              <div key={g.name} className="mb-3 rounded border border-slate-800">
+                <div className="flex items-center gap-1.5 bg-slate-800/60 px-3 py-1.5">
                   <button
                     type="button"
                     onClick={() => setCollapsed((c) => ({ ...c, [g.name]: !isCol }))}
@@ -125,9 +125,9 @@ export function LayersEditor() {
                 </div>
 
                 {!isCol && (
-                  <div className="space-y-1 px-2 py-1.5">
+                  <div className="space-y-1.5 px-3 py-2.5">
                     {g.layers.map((l, li) => (
-                      <div key={l.id} className="flex items-center gap-1.5">
+                      <div key={l.id} className="flex items-center gap-2">
                         <div className="flex shrink-0 flex-col">
                           <button
                             type="button"
@@ -198,7 +198,7 @@ export function LayersEditor() {
           })}
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2">
+        <div className="flex items-center justify-between border-t border-slate-800 px-5 py-3">
           <button
             type="button"
             onClick={() => updateLayers(undefined)}
