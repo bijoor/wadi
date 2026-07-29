@@ -185,9 +185,14 @@ function MoveJoystick() {
     interiorMove.y = 0;
   };
 
-  // Portal to <body> so `position: fixed` resolves against the viewport —
-  // the picker's parent has a CSS transform, which would otherwise capture
-  // fixed positioning and pin the pad to the top of the screen.
+  // Portal into the 3-D scene container (position: relative) so the pad sits
+  // at the bottom-left of the MODEL viewport — clear of the left panel — via
+  // `position: absolute`. It also inherits the container's tab visibility:
+  // every other tab's `.view-container` is `display:none`, so the pad shows
+  // ONLY on the 3D Model tab. (The picker's own parent has a CSS transform,
+  // which is why we don't anchor here with `position: fixed`.)
+  const host = document.getElementById("viewer-3d-scene") ?? document.body;
+
   return createPortal(
     <div
       ref={baseRef}
@@ -197,7 +202,7 @@ function MoveJoystick() {
       onPointerCancel={end}
       title="Drag to walk"
       style={{
-        position: "fixed",
+        position: "absolute",
         left: 24,
         bottom: 28,
         width: 108,
@@ -229,6 +234,6 @@ function MoveJoystick() {
         }}
       />
     </div>,
-    document.body,
+    host,
   );
 }
