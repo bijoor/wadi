@@ -26,7 +26,10 @@ const ROLE_LABEL: Record<string, string> = {
 const ROLE_COLOR: Record<string, string> = {
   walls: "#f5c9a0",
   structure: "#b8b8b8",
-  furniture: "#c7a17a",
+  // Distinct muted teal so furniture reads apart from the warm tan walls (and
+  // the terracotta roof / green plot) — both in the layer menu and the 3D
+  // placeholder (see FurnitureItem GhostBox).
+  furniture: "#4f8f86",
   openings: "#7ab6ff",
 };
 

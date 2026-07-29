@@ -99,9 +99,9 @@ function GhostBox({ dimensions, cx, cz, baseY, yawDeg, userScale, unitsScale, lo
       <mesh position={[0, h / 2, 0]}>
         <boxGeometry args={[w, h, d]} />
         <meshStandardMaterial
-          color={loading ? "#9ca3af" : "#c7a17a"}
+          color={loading ? "#9ca3af" : "#4f8f86"}
           transparent
-          opacity={loading ? 0.25 : 0.45}
+          opacity={loading ? 0.25 : 0.5}
           roughness={0.9}
         />
       </mesh>
