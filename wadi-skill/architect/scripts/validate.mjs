@@ -8,17 +8,17 @@
 // failures the app would. Run it with the editor's tsx (which resolves the .ts
 // imports and their deps, e.g. zod, from editor/node_modules):
 //
-//   cd editor && npx tsx ../.claude/skills/wadi-config/scripts/validate.mjs /abs/path/to/house_config.json
+//   cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs /abs/path/to/house_config.json
 //   # or pipe JSON on stdin:
-//   cat house_config.json | (cd editor && npx tsx ../.claude/skills/wadi-config/scripts/validate.mjs)
+//   cat house_config.json | (cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs)
 //
 // Exit 0 = valid; exit 1 = invalid (errors printed). Pass an ABSOLUTE config
 // path (the working directory is editor/ when run as above).
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { validate } from "../../../../editor/src/schema/houseConfig";
-import { computeMergedV2Spec } from "../../../../editor/src/svg2d/roof/v2/computeFromHouse";
+import { validate } from "../../../editor/src/schema/houseConfig";
+import { computeMergedV2Spec } from "../../../editor/src/svg2d/roof/v2/computeFromHouse";
 
 function readInput() {
   const arg = process.argv[2];

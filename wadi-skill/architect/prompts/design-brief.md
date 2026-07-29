@@ -64,7 +64,7 @@ These are defaults to confirm, not rules.
 ## 4. Derive the base config
 
 Translate the brief into objects, in this order, respecting the schema
-(`reference/schema.md`) and the **Y-down / ×10** frame
+(`reference/data-model.md`) and the **Y-down / ×10** frame
 (`reference/coordinate-system.md`):
 
 1. `site` + `plinth` from the plot.

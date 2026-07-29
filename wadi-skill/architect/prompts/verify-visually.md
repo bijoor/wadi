@@ -7,7 +7,7 @@ yourself instead of shipping them.
 ## How
 
 ```bash
-.claude/skills/wadi-config/scripts/preview.sh <ABS_PATH_TO_config.json> [out_dir]
+wadi-skill/architect/scripts/preview.sh <ABS_PATH_TO_config.json> [out_dir]
 ```
 
 Produces (and prints paths to):

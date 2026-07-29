@@ -12,7 +12,7 @@
 # app's Plans/Elevations/Roof tabs.
 #
 # Usage:
-#   .claude/skills/wadi-config/scripts/preview.sh <config.json> [out_dir]
+#   wadi-skill/architect/scripts/preview.sh <config.json> [out_dir]
 # Then Read the printed PNG paths. Default out_dir: /tmp/wadi-preview.
 # Exits non-zero (and prints errors) if the config fails validation.
 
@@ -20,7 +20,11 @@ set -euo pipefail
 
 CONFIG="${1:?usage: preview.sh <config.json> [out_dir]}"
 OUT="${2:-/tmp/wadi-preview}"
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+# Find the wadi repo by walking up from this script until we see editor/ (so the
+# skill folder can live/move anywhere inside the repo without breaking this).
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+while [ "$REPO" != "/" ] && [ ! -f "$REPO/editor/package.json" ]; do REPO="$(dirname "$REPO")"; done
+[ -f "$REPO/editor/package.json" ] || { echo "cannot find the wadi repo (editor/) above this script" >&2; exit 1; }
 CONFIG_ABS="$(cd "$(dirname "$CONFIG")" && pwd)/$(basename "$CONFIG")"
 mkdir -p "$OUT"
 

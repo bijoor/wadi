@@ -131,4 +131,4 @@ so a `0` literal fails "expected > 0". Therefore:
   plan looks right (via `scripts/preview.sh` or the live app).
 
 See also: `reference/coordinate-system.md` (Y is DOWN, 10 units = 1 ft),
-`reference/schema.md` (object fields), and `examples/` for non-parametric shapes.
+`reference/data-model.md` (object fields), and `examples/` for non-parametric shapes.
