@@ -74,6 +74,7 @@ import {
   resetCatalogSource,
 } from "../io/templateSource";
 import { mountConfiguratorPanel } from "./configuratorPanel";
+import { writeValue } from "../configurator/spec";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-manager";
@@ -244,6 +245,10 @@ async function bootViewer(): Promise<void> {
   wireExports();
   // Expose the on-demand Layout render + panel metadata.
   wireLayoutApi();
+  // Expose window.wadi — the programmatic control API (templates, load,
+  // knobs, view) so automation / the home-architect skill can drive the
+  // model without the UI.
+  wireWadiApi();
   // Expose the 2D capture bridges (architect "take a shot" + auto floor plan).
   wireCaptureBridges();
   // Surface geometry warnings (invalid openings dropped during expansion)
@@ -663,7 +668,37 @@ declare global {
     // Rasterize one 2D view's SVG element and add it to the previews. Returns
     // true on success. Used by the per-card 📸 buttons on the 2D grids.
     wadiAddSvgShot?: (svg: SVGSVGElement) => Promise<boolean>;
+    // Global from the inline <script> — switches the top tab / content view
+    // ("3d" | "plans" | "elevations" | "roof" | "layout" | "quantities").
+    switchView?: (view: string) => void;
+    // Programmatic control API. Drives the SAME store the owner sliders /
+    // gallery / tabs drive, so an automation client (e.g. the home-architect
+    // skill) — OR the user and Claude together — can operate the app WITHOUT
+    // touching the UI, panels visible or hidden. See wireWadiApi().
+    wadi?: WadiApi;
   }
+}
+
+// Public shape of window.wadi — the automation control surface.
+export interface WadiApi {
+  /** Stock templates from the catalog (id/title/description/meta) for matching. */
+  listTemplates: () => Promise<
+    Array<{ id: string; title: string; description: string; meta?: unknown }>
+  >;
+  /** Load a stock template by id — same path as clicking a gallery card. */
+  chooseTemplate: (id: string) => Promise<{ ok: true; id: string }>;
+  /** Load a whole HouseConfig (object or JSON string). Validates first. */
+  load: (config: unknown) => { ok: true };
+  /** The current in-store config (for reading / round-tripping / saving). */
+  getConfig: () => unknown;
+  /** Set one configurator knob — "House.W"/"House.L" hit points, bare names
+   *  hit variables — exactly like moving that slider. Values are raw units
+   *  (plot: 10 units = 1 ft; roof_style 0=Flat,1=Shed,2=Gable,3=Hip). */
+  setKnob: (target: string, value: number) => { ok: true; target: string; value: number };
+  /** Set several knobs at once (one re-render). */
+  setKnobs: (record: Record<string, number>) => { ok: true; applied: Record<string, number> };
+  /** Switch the visible view/tab (3d | plans | elevations | roof | layout | quantities). */
+  showView: (view: string) => { ok: true; view: string };
 }
 
 // Rasterize an SVG string to a JPEG data URL on a white ground. Ensures the
@@ -1488,6 +1523,110 @@ function wireLeftToggle(): void {
     setIcon();
     try { localStorage.setItem(LEFT_PANEL_KEY, next); } catch { /* ignore */ }
   });
+}
+
+// Populate galleryTemplates (the catalog manifest) if it hasn't been fetched
+// yet — the gallery normally loads it lazily on open, but the wadi API can be
+// called before the modal is ever shown.
+async function ensureCatalog(): Promise<void> {
+  if (galleryTemplates.length) return;
+  const parsed = JSON.parse(await fetchCatalogText("index.json")) as {
+    templates: TemplateEntry[];
+  };
+  galleryTemplates = parsed.templates;
+}
+
+// window.wadi — the programmatic control surface. Every method funnels through
+// the SAME store mutations the owner UI uses (loadConfig / updateVariables /
+// updatePoints) and the SAME template + view paths, so a client driving this
+// API is indistinguishable from a user driving the controls — and the two can
+// operate the one live model together.
+function wireWadiApi(): void {
+  const store = () => useConfigStore.getState();
+  const applyPatch = (patch: ReturnType<typeof writeValue>): void => {
+    if ("points" in patch && patch.points) store().updatePoints(patch.points);
+    else if ("variables" in patch && patch.variables) store().updateVariables(patch.variables);
+  };
+
+  window.wadi = {
+    async listTemplates() {
+      await ensureCatalog();
+      return galleryTemplates.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        meta: t.meta,
+      }));
+    },
+
+    async chooseTemplate(id: string) {
+      await ensureCatalog();
+      const t = galleryTemplates.find((x) => x.id === id);
+      if (!t) {
+        throw new Error(
+          `wadi.chooseTemplate: unknown id '${id}'. Call wadi.listTemplates() for valid ids.`,
+        );
+      }
+      await selectTemplate(t);
+      return { ok: true as const, id };
+    },
+
+    load(config: unknown) {
+      const raw = typeof config === "string" ? JSON.parse(config) : config;
+      const parsed = validate(raw);
+      if (!parsed.ok || !parsed.data) {
+        throw new Error(
+          "wadi.load: config failed validation — " + JSON.stringify(parsed.errors),
+        );
+      }
+      store().loadConfig(parsed.data, "wadi.load");
+      // Count this as a chosen home so the owner welcome overlay doesn't cover it.
+      document.body.dataset.homeChosen = "yes";
+      return { ok: true as const };
+    },
+
+    getConfig() {
+      return store().config;
+    },
+
+    setKnob(target: string, value: number) {
+      const cfg = store().config;
+      if (!cfg) throw new Error("wadi.setKnob: no config loaded yet");
+      const v = Number(value);
+      applyPatch(writeValue(cfg, target, v));
+      return { ok: true as const, target, value: v };
+    },
+
+    setKnobs(record: Record<string, number>) {
+      // Fold every write onto a working copy (kept typed from the store so its
+      // variables/points match the update actions), then commit once so the
+      // model re-renders a single time regardless of how many knobs changed.
+      const cfg = store().config;
+      if (!cfg) throw new Error("wadi.setKnobs: no config loaded yet");
+      let working = cfg;
+      let touchedVars = false;
+      let touchedPts = false;
+      for (const [target, value] of Object.entries(record)) {
+        const patch = writeValue(working, target, Number(value));
+        if ("points" in patch && patch.points) {
+          working = { ...working, points: patch.points };
+          touchedPts = true;
+        } else if ("variables" in patch && patch.variables) {
+          working = { ...working, variables: patch.variables };
+          touchedVars = true;
+        }
+      }
+      if (touchedVars) store().updateVariables(working.variables);
+      if (touchedPts) store().updatePoints(working.points);
+      return { ok: true as const, applied: record };
+    },
+
+    showView(view: string) {
+      if (typeof window.switchView === "function") window.switchView(view);
+      else throw new Error("wadi.showView: switchView is not available yet");
+      return { ok: true as const, view };
+    },
+  };
 }
 
 // Switch persona IN PLACE (no page reload) so the currently-loaded model is
