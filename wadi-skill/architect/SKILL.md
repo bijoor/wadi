@@ -83,10 +83,12 @@ it). Edit that exact file.
   minimums, opening/door placement, pillar–opening alignment, the two-step
   build-and-resolve flow, and the scale-sweep verification. Read before authoring or
   editing a parametric template.
-- **`examples/`** — six real, valid houses (`two_story_konkan.json`,
-  `courtyard_home.json`, `l_shape_villa.json`, `modern_flat.json`,
-  `verandah_cottage.json`, `blank.json`). Few-shot references; copy shapes rather than
-  inventing.
+- **`examples/`** — correct, validated houses to copy shapes from. Every example here
+  is built on the current conventions (esp. the wall-**overlap** rule above), so **copy
+  from these, not from memory or older files.** Currently `coastal_konkan.wadi` (a
+  single-storey coastal modern-Konkan home); more are added as templates are authored.
+  (The prior set of examples was removed — it predated the wall-overlap convention and
+  taught it wrong.)
 
 ## Validate before (and after) you save
 
@@ -126,10 +128,15 @@ reuses the app's own generators, so it matches the app's 2D tabs byte-for-byte. 
 - **Dimensions are project units, not feet.** `width: 120` is 12 ft. Multiply feet by
   10 (the default; `units.per_unit` can change it).
 - **A room's `x,y,width,length` are the OUTSIDE face of the walls** (outer footprint),
-  not the interior or centerline. Walls inset inward by `wall_thickness` (default 8
-  units ≈ 0.8 ft), so interior = `dims − 2·wall_thickness`; adjacent rooms should
-  **abut** at their shared outer edge. (A standalone `wall`'s `start`/`end` are the
-  **centerline** instead.)
+  not the interior or centerline. Each wall is inset **inward** by `wall_thickness`
+  (default 8 units ≈ 0.8 ft), so interior = `dims − 2·wall_thickness`. (A standalone
+  `wall`'s `start`/`end` are the **centerline** instead.)
+- **Two rooms that share a wall must OVERLAP by `wall_thickness` — do NOT abut them.**
+  Because each wall is inset inward, abutting rooms exactly get *two* walls back-to-back
+  (a double wall). Overlapping by one `wall_thickness` makes their walls coincide into a
+  single shared wall. Rule: the neighbour's near face = this room's far face −
+  `wall_thickness` (e.g. room A spans X `[0,150]`; room B to its east starts at `142`,
+  not `150`). See `coordinate-system.md` → "Sharing a wall between two rooms".
 - **The roof footprint must cover the plinth footprint.** Roof segment widths and
   positions come from the walls they sit on, not arbitrary numbers.
 - **The roof lives on its OWN top floor** (`floor_number` ABOVE the floors it covers,

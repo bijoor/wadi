@@ -78,6 +78,49 @@ set — don't try to add one. A house at the reference span (450 units ≈ 45 ft
 renders at the baseline sizes; larger/smaller houses scale proportionally (clamped
 0.6×–6×).
 
+## Rooms, walls, and sharing a wall between two rooms
+
+A room's `x, y, width, length` is the **outer footprint** — the OUTSIDE face of its
+walls. Each wall is drawn **inset inward** by `wall_thickness` (default 8), occupying
+the band from the outer edge inward:
+
+- north wall → `[y, y + t]`  · south wall → `[y + length − t, y + length]`
+- west wall  → `[x, x + t]`  · east wall  → `[x + width − t,  x + width]`
+
+(so the clear interior is `width − 2t` × `length − 2t`).
+
+**Because walls are inset inward, two rooms that share a wall must OVERLAP by exactly
+`wall_thickness` — never abut them.**
+
+- **Abut (WRONG):** room A east face at 150, room B west face at 150 → A's east wall is
+  `[142,150]` and B's west wall is `[150,158]`: **two walls back-to-back**, a 16-unit
+  double wall. That is not how houses are built and it looks wrong in 3D.
+- **Overlap (RIGHT):** room B west face at `150 − t = 142` → B's west wall is `[142,150]`,
+  which **coincides** with A's east wall `[142,150]`: **one shared wall.**
+
+Rule of thumb: *the neighbour's near face = this room's far face − `wall_thickness`.*
+The two footprints overlap by `t` on the shared edge; the overlap band **is** the wall.
+
+### Clean way to place a whole plan — a wall-centreline grid
+
+Rather than juggle overlaps by hand, lay down **grid lines = wall centrelines** (both
+X and Y), then give every room the outer rectangle bounded by its grid lines, **grown
+by `t/2` on each side**:
+
+```
+room spanning grid lines [Gx0..Gx1] × [Gy0..Gy1]
+  →  x = Gx0 − t/2,  width  = (Gx1 − Gx0) + t
+     y = Gy0 − t/2,  length = (Gy1 − Gy0) + t
+```
+
+Every interior wall then sits centred on a shared grid line, so **adjacent rooms
+automatically overlap by exactly `t`** (each grows `t/2` toward the shared line), and
+exterior walls stick out `t/2` beyond the perimeter grid lines. The building outline
+(and the `plinth`/`floor_slab`) = the perimeter grid lines ± `t/2`. This centreline
+grid is also the basis for the parametric **grid-point** convention (see
+`parametric-conventions.md`): name the grid lines as `points`, and rooms follow when the
+grid flexes.
+
 ## Vertical (Z) fields recap
 
 - `plinth.height` — how high the base sits above ground.
@@ -97,5 +140,6 @@ and `height_end` (at the end). Full gable/hip geometry, though, comes from the
 
 - Did I treat "north/up" as **smaller** Y?
 - Are all my numbers in **project units** (feet × 10)?
+- Do adjacent rooms **overlap by `wall_thickness`** on shared walls (not abut)?
 - Does the plinth rectangle (`length`×`width`) contain all my rooms?
 - Does the roof footprint cover the plinth?
