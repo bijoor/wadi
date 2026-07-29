@@ -16,64 +16,64 @@
    "x": [
     {
      "name": "1",
-     "at": 4,
+     "at": "= wallT / 2",
      "role": "structural"
     },
     {
      "name": "2",
-     "at": 90
+     "at": "= round(wallT / 2 + 0.208738 * (House.W - wallT))"
     },
     {
      "name": "3",
-     "at": 150
+     "at": "= round(wallT / 2 + 0.354369 * (House.W - wallT))"
     },
     {
      "name": "4",
-     "at": 170
+     "at": "= round(wallT / 2 + 0.402913 * (House.W - wallT))"
     },
     {
      "name": "5",
-     "at": 240
+     "at": "= round(wallT / 2 + 0.572816 * (House.W - wallT))"
     },
     {
      "name": "6",
-     "at": 270
+     "at": "= round(wallT / 2 + 0.645631 * (House.W - wallT))"
     },
     {
      "name": "7",
-     "at": 340
+     "at": "= round(wallT / 2 + 0.815534 * (House.W - wallT))"
     },
     {
      "name": "8",
-     "at": 416,
+     "at": "= House.W - wallT / 2",
      "role": "structural"
     }
    ],
    "y": [
     {
      "name": "A",
-     "at": 4,
+     "at": "= wallT / 2",
      "role": "structural"
     },
     {
      "name": "B",
-     "at": 80
+     "at": "= round(wallT / 2 + 0.164502 * (House.L - wallT))"
     },
     {
      "name": "C",
-     "at": 160
+     "at": "= round(wallT / 2 + 0.337662 * (House.L - wallT))"
     },
     {
      "name": "D",
-     "at": 300
+     "at": "= round(wallT / 2 + 0.640693 * (House.L - wallT))"
     },
     {
      "name": "E",
-     "at": 400
+     "at": "= round(wallT / 2 + 0.857143 * (House.L - wallT))"
     },
     {
      "name": "F",
-     "at": 466,
+     "at": "= House.L - wallT / 2",
      "role": "structural"
     }
    ]
@@ -98,22 +98,17 @@
      "type": "plinth",
      "name": "Plinth",
      "layer": "plinth",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "1",
-       "8"
-      ],
-      "y": [
-       "A",
-       "F"
-      ]
-     },
-     "x": 0,
-     "y": 0,
-     "width": 420,
-     "length": 470,
-     "height": 40
+     "x": 4,
+     "y": 4,
+     "width": 412,
+     "length": 462,
+     "height": 40,
+     "formulas": {
+      "x": "= main.x1",
+      "y": "= main.yA",
+      "width": "= main.x8 - main.x1",
+      "length": "= main.yF - main.yA"
+     }
     }
    ]
   },
@@ -123,40 +118,24 @@
    "objects": [
     {
      "type": "floor_slab",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "1",
-       "8"
-      ],
-      "y": [
-       "A",
-       "F"
-      ]
-     },
-     "x": 0,
-     "y": 0,
-     "width": 420,
-     "length": 470
+     "x": 4,
+     "y": 4,
+     "width": 412,
+     "length": 462,
+     "formulas": {
+      "x": "= main.x1",
+      "y": "= main.yA",
+      "width": "= main.x8 - main.x1",
+      "length": "= main.yF - main.yA"
+     }
     },
     {
      "type": "room",
      "name": "Master_Bedroom",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "1",
-       "4"
-      ],
-      "y": [
-       "A",
-       "C"
-      ]
-     },
-     "x": 0,
-     "y": 0,
-     "width": 174,
-     "length": 164,
+     "x": 4,
+     "y": 4,
+     "width": 166,
+     "length": 156,
      "walls": {
       "north": {
        "openings": [
@@ -194,26 +173,21 @@
         }
        ]
       }
+     },
+     "formulas": {
+      "x": "= main.x1",
+      "y": "= main.yA",
+      "width": "= main.x4 - main.x1",
+      "length": "= main.yC - main.yA"
      }
     },
     {
      "type": "room",
      "name": "Master_Toilet",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "4",
-       "5"
-      ],
-      "y": [
-       "A",
-       "B"
-      ]
-     },
-     "x": 166,
-     "y": 0,
-     "width": 78,
-     "length": 84,
+     "x": 170,
+     "y": 4,
+     "width": 70,
+     "length": 76,
      "walls": {
       "north": {
        "openings": [
@@ -240,26 +214,21 @@
       },
       "east": {},
       "south": {}
+     },
+     "formulas": {
+      "x": "= main.x4",
+      "y": "= main.yA",
+      "width": "= main.x5 - main.x4",
+      "length": "= main.yB - main.yA"
      }
     },
     {
      "type": "room",
      "name": "Common_Toilet",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "4",
-       "5"
-      ],
-      "y": [
-       "B",
-       "C"
-      ]
-     },
-     "x": 166,
-     "y": 76,
-     "width": 78,
-     "length": 88,
+     "x": 170,
+     "y": 80,
+     "width": 70,
+     "length": 80,
      "walls": {
       "east": {
        "openings": [
@@ -275,26 +244,21 @@
       "west": {},
       "north": {},
       "south": {}
+     },
+     "formulas": {
+      "x": "= main.x4",
+      "y": "= main.yB",
+      "width": "= main.x5 - main.x4",
+      "length": "= main.yC - main.yB"
      }
     },
     {
      "type": "room",
      "name": "Bedroom_2",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "5",
-       "8"
-      ],
-      "y": [
-       "A",
-       "C"
-      ]
-     },
-     "x": 236,
-     "y": 0,
-     "width": 184,
-     "length": 164,
+     "x": 240,
+     "y": 4,
+     "width": 176,
+     "length": 156,
      "walls": {
       "north": {
        "openings": [
@@ -332,26 +296,21 @@
         }
        ]
       }
+     },
+     "formulas": {
+      "x": "= main.x5",
+      "y": "= main.yA",
+      "width": "= main.x8 - main.x5",
+      "length": "= main.yC - main.yA"
      }
     },
     {
      "type": "room",
      "name": "Kitchen",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "1",
-       "3"
-      ],
-      "y": [
-       "C",
-       "D"
-      ]
-     },
-     "x": 0,
-     "y": 156,
-     "width": 154,
-     "length": 148,
+     "x": 4,
+     "y": 160,
+     "width": 146,
+     "length": 140,
      "walls": {
       "west": {
        "openings": [
@@ -378,26 +337,21 @@
         }
        ]
       }
+     },
+     "formulas": {
+      "x": "= main.x1",
+      "y": "= main.yC",
+      "width": "= main.x3 - main.x1",
+      "length": "= main.yD - main.yC"
      }
     },
     {
      "type": "room",
      "name": "Living",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "3",
-       "8"
-      ],
-      "y": [
-       "C",
-       "D"
-      ]
-     },
-     "x": 146,
-     "y": 156,
-     "width": 274,
-     "length": 148,
+     "x": 150,
+     "y": 160,
+     "width": 266,
+     "length": 140,
      "material": "hall",
      "walls": {
       "east": {
@@ -423,26 +377,21 @@
       "north": {},
       "west": {},
       "south": {}
+     },
+     "formulas": {
+      "x": "= main.x3",
+      "y": "= main.yC",
+      "width": "= main.x8 - main.x3",
+      "length": "= main.yD - main.yC"
      }
     },
     {
      "type": "room",
      "name": "Utility",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "1",
-       "2"
-      ],
-      "y": [
-       "D",
-       "E"
-      ]
-     },
-     "x": 0,
-     "y": 296,
-     "width": 94,
-     "length": 108,
+     "x": 4,
+     "y": 300,
+     "width": 86,
+     "length": 100,
      "walls": {
       "west": {
        "openings": [
@@ -469,26 +418,21 @@
         }
        ]
       }
+     },
+     "formulas": {
+      "x": "= main.x1",
+      "y": "= main.yD",
+      "width": "= main.x2 - main.x1",
+      "length": "= main.yE - main.yD"
      }
     },
     {
      "type": "room",
      "name": "Dining",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "2",
-       "6"
-      ],
-      "y": [
-       "D",
-       "E"
-      ]
-     },
-     "x": 86,
-     "y": 296,
-     "width": 188,
-     "length": 108,
+     "x": 90,
+     "y": 300,
+     "width": 180,
+     "length": 100,
      "walls": {
       "north": {
        "openings": [
@@ -505,26 +449,21 @@
       "east": {},
       "west": {},
       "south": {}
+     },
+     "formulas": {
+      "x": "= main.x2",
+      "y": "= main.yD",
+      "width": "= main.x6 - main.x2",
+      "length": "= main.yE - main.yD"
      }
     },
     {
      "type": "room",
      "name": "Shrine",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "6",
-       "7"
-      ],
-      "y": [
-       "D",
-       "E"
-      ]
-     },
-     "x": 266,
-     "y": 296,
-     "width": 78,
-     "length": 108,
+     "x": 270,
+     "y": 300,
+     "width": 70,
+     "length": 100,
      "walls": {
       "north": {
        "openings": [
@@ -541,26 +480,21 @@
       "east": {},
       "west": {},
       "south": {}
+     },
+     "formulas": {
+      "x": "= main.x6",
+      "y": "= main.yD",
+      "width": "= main.x7 - main.x6",
+      "length": "= main.yE - main.yD"
      }
     },
     {
      "type": "room",
      "name": "Entrance_Lobby",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "7",
-       "8"
-      ],
-      "y": [
-       "D",
-       "E"
-      ]
-     },
-     "x": 336,
-     "y": 296,
-     "width": 84,
-     "length": 108,
+     "x": 340,
+     "y": 300,
+     "width": 76,
+     "length": 100,
      "walls": {
       "north": {
        "openings": [
@@ -598,67 +532,72 @@
         }
        ]
       }
+     },
+     "formulas": {
+      "x": "= main.x7",
+      "y": "= main.yD",
+      "width": "= main.x8 - main.x7",
+      "length": "= main.yE - main.yD"
      }
     },
     {
      "type": "room",
      "name": "Verandah",
-     "grid": "main",
-     "cell": {
-      "x": [
-       "1",
-       "8"
-      ],
-      "y": [
-       "E",
-       "F"
-      ]
-     },
-     "x": 0,
-     "y": 396,
-     "width": 420,
-     "length": 74,
+     "x": 4,
+     "y": 400,
+     "width": 412,
+     "length": 66,
      "material": "verandah",
      "walls": {
       "east": {},
       "west": {}
+     },
+     "formulas": {
+      "x": "= main.x1",
+      "y": "= main.yE",
+      "width": "= main.x8 - main.x1",
+      "length": "= main.yF - main.yE"
      }
     },
     {
      "type": "pillar",
      "name": "V_Pillar_1",
-     "x": 5,
-     "y": 460,
+     "x": 4,
+     "y": 466,
      "width": 10,
      "length": 10,
-     "height": 116
+     "height": 116,
+     "formulas": { "x": "= main.x1", "y": "= main.yF" }
     },
     {
      "type": "pillar",
      "name": "V_Pillar_2",
-     "x": 135,
-     "y": 460,
+     "x": 150,
+     "y": 466,
      "width": 10,
      "length": 10,
-     "height": 116
+     "height": 116,
+     "formulas": { "x": "= main.x3", "y": "= main.yF" }
     },
     {
      "type": "pillar",
      "name": "V_Pillar_3",
      "x": 270,
-     "y": 460,
+     "y": 466,
      "width": 10,
      "length": 10,
-     "height": 116
+     "height": 116,
+     "formulas": { "x": "= main.x6", "y": "= main.yF" }
     },
     {
      "type": "pillar",
      "name": "V_Pillar_4",
-     "x": 405,
-     "y": 460,
+     "x": 416,
+     "y": 466,
      "width": 10,
      "length": 10,
-     "height": 116
+     "height": 116,
+     "formulas": { "x": "= main.x8", "y": "= main.yF" }
     }
    ]
   },
@@ -705,5 +644,15 @@
     }
    ]
   }
- ]
+ ],
+ "points": {
+  "House": {
+   "x": 420,
+   "y": 470
+  }
+ },
+ "variables": {
+  "wallT": 8
+ },
+ "coord_convention": "center"
 }

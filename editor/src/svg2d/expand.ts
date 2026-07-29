@@ -109,6 +109,37 @@ export function expandRoomWalls(
   // and the 3D z-band stacking is computed from this same list, so a disabled
   // upper floor simply doesn't exist and the house becomes single-storey.
   if (hc.floors) hc.floors = activeObjects(hc.floors);
+
+  // Centreline convention (plans/grid-convention.md): in "center" mode a rect
+  // object's x/y/width/length are wall CENTRELINES, and a point object (pillar)
+  // sits CENTRED on its coordinate — both reference the grid directly.
+  //   • room / floor_slab / plinth — grow each to the OUTER face (−t/2 origin,
+  //     +t extent) so the wall-drawing below (which insets inward by t) lands the
+  //     wall centred on the boundary; two rooms sharing a centreline produce the
+  //     same wall (one shared wall). Rooms ABUT on grid lines, no overlap, no math.
+  //   • pillar — its (x,y) is the column CENTRE (so `x:"= main.x1", y:"= main.yF"`
+  //     drops a column exactly on grid node 1F); convert to the top-left corner the
+  //     renderers expect by subtracting half the column's own footprint. Size is
+  //     the physical column, so it is left unchanged (never grown by t).
+  if ((hc as { coord_convention?: string }).coord_convention === "center" && hc.floors) {
+    const RECT_TYPES = new Set(["room", "floor_slab", "plinth"]);
+    for (const fl of hc.floors) {
+      for (const o of (fl.objects ?? []) as Obj[]) {
+        const r = o as Record<string, unknown>;
+        if (RECT_TYPES.has(o.type as string)) {
+          const ot = (typeof r.wall_thickness === "number" ? (r.wall_thickness as number) : t);
+          if (typeof r.x === "number") r.x = (r.x as number) - ot / 2;
+          if (typeof r.y === "number") r.y = (r.y as number) - ot / 2;
+          if (typeof r.width === "number") r.width = (r.width as number) + ot;
+          if (typeof r.length === "number") r.length = (r.length as number) + ot;
+        } else if (o.type === "pillar") {
+          if (typeof r.x === "number" && typeof r.width === "number") r.x = (r.x as number) - (r.width as number) / 2;
+          if (typeof r.y === "number" && typeof r.length === "number") r.y = (r.y as number) - (r.length as number) / 2;
+        }
+      }
+    }
+  }
+
   const floorList = (hc.floors ?? []) as Floor[];
   // Scope (variables + points) for resolving furniture-item `= formula` fields.
   // Nested room items aren't reached by resolveParametric, so we evaluate their

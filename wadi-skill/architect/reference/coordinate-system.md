@@ -78,48 +78,47 @@ set — don't try to add one. A house at the reference span (450 units ≈ 45 ft
 renders at the baseline sizes; larger/smaller houses scale proportionally (clamped
 0.6×–6×).
 
-## Rooms, walls, and sharing a wall between two rooms
+## Rooms, walls, and the centreline convention
 
-A room's `x, y, width, length` is the **outer footprint** — the OUTSIDE face of its
-walls. Each wall is drawn **inset inward** by `wall_thickness` (default 8), occupying
-the band from the outer edge inward:
+Set **`"coord_convention": "center"`** at the top of the house (the canonical mode).
+Then a rect object's `x, y, width, length` are **wall CENTRELINES** — the line each
+wall is centred on, *not* the outer face.
 
-- north wall → `[y, y + t]`  · south wall → `[y + length − t, y + length]`
-- west wall  → `[x, x + t]`  · east wall  → `[x + width − t,  x + width]`
+**Two rooms that share a wall simply ABUT on the shared centreline** — no overlap, no
+wall math:
 
-(so the clear interior is `width − 2t` × `length − 2t`).
+- Room A spans X `[0, 150]`, room B spans X `[150, 300]`. They meet at `150`; the wall
+  is centred on `150` and belongs to both → **one shared wall.** Done.
+- The clear interior of a room is `width − t` × `length − t` (half a wall on each side);
+  its outer extent is `width + t` × `length + t`. The system grows each footprint to the
+  outer face automatically at render time (`expandRoomWalls`), so you never write `t`.
 
-**Because walls are inset inward, two rooms that share a wall must OVERLAP by exactly
-`wall_thickness` — never abut them.**
+That's the whole rule. No "overlap by `wall_thickness`," no directional offsets.
 
-- **Abut (WRONG):** room A east face at 150, room B west face at 150 → A's east wall is
-  `[142,150]` and B's west wall is `[150,158]`: **two walls back-to-back**, a 16-unit
-  double wall. That is not how houses are built and it looks wrong in 3D.
-- **Overlap (RIGHT):** room B west face at `150 − t = 142` → B's west wall is `[142,150]`,
-  which **coincides** with A's east wall `[142,150]`: **one shared wall.**
+### Placing a plan on a grid — rooms reference the grid directly
 
-Rule of thumb: *the neighbour's near face = this room's far face − `wall_thickness`.*
-The two footprints overlap by `t` on the shared edge; the overlap band **is** the wall.
+Because room coords *are* wall centrelines and a **grid** (`grids` block) is a set of
+named wall centrelines, a room is just the rectangle between four grid lines — with
+**no arithmetic**:
 
-### Clean way to place a whole plan — a wall-centreline grid
-
-Rather than juggle overlaps by hand, lay down **grid lines = wall centrelines** (both
-X and Y), then give every room the outer rectangle bounded by its grid lines, **grown
-by `t/2` on each side**:
-
+```jsonc
+"grids": { "main": { "x": [ {"name":"1","at":"= wallT/2"}, {"name":"2","at":"= House.W - wallT/2"} ],
+                     "y": [ {"name":"A","at":0}, {"name":"B","at":"= House.L - wallT/2"} ] } }
 ```
-room spanning grid lines [Gx0..Gx1] × [Gy0..Gy1]
-  →  x = Gx0 − t/2,  width  = (Gx1 − Gx0) + t
-     y = Gy0 − t/2,  length = (Gy1 − Gy0) + t
+```jsonc
+{ "type":"room", "name":"Hall",
+  "formulas": { "x":"= main.x1", "y":"= main.yA",
+                "width":"= main.x2 - main.x1", "length":"= main.yB - main.yA" } }
 ```
 
-Every interior wall then sits centred on a shared grid line, so **adjacent rooms
-automatically overlap by exactly `t`** (each grows `t/2` toward the shared line), and
-exterior walls stick out `t/2` beyond the perimeter grid lines. The building outline
-(and the `plinth`/`floor_slab`) = the perimeter grid lines ± `t/2`. This centreline
-grid is also the basis for the parametric **grid-point** convention (see
-`parametric-conventions.md`): name the grid lines as `points`, and rooms follow when the
-grid flexes.
+Each grid line is published as a formula **symbol** `<gridId>.x<name>` / `<gridId>.y<name>`
+(e.g. `main.x1`, `main.yA`), so rooms, slabs and the plinth all place themselves off the
+same lines. Move a grid line (or the `House` knobs its `at` depends on) and every room on
+it follows. The **grid is the single parametric layer** — `House` + knobs → grid lines →
+rooms; nothing flows the other way. See `parametric-conventions.md`.
+
+(Legacy files without `coord_convention` are read as `"outer"`: coords are the OUTER
+face and adjacent rooms must **overlap** by `wall_thickness`. New work uses `"center"`.)
 
 ## Vertical (Z) fields recap
 
@@ -140,6 +139,7 @@ and `height_end` (at the end). Full gable/hip geometry, though, comes from the
 
 - Did I treat "north/up" as **smaller** Y?
 - Are all my numbers in **project units** (feet × 10)?
-- Do adjacent rooms **overlap by `wall_thickness`** on shared walls (not abut)?
+- Is `"coord_convention": "center"` set, so room coords are wall centrelines and adjacent
+  rooms **abut** on the shared line (no overlap, no `t` math)?
 - Does the plinth rectangle (`length`×`width`) contain all my rooms?
 - Does the roof footprint cover the plinth?

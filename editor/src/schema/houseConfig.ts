@@ -52,15 +52,11 @@ const gridDef = z
   })
   .strict();
 export type GridDef = z.infer<typeof gridDef>;
-// A rectangular object's grid binding: [west,east] × [north,south] line names.
-const gridCell = z
-  .object({
-    x: z.tuple([z.string(), z.string()]),
-    y: z.tuple([z.string(), z.string()]),
-  })
-  .strict();
-// A point object's grid binding: the intersection of one x-line and one y-line.
-const gridNode = z.object({ x: z.string(), y: z.string() }).strict();
+// Objects don't bind to the grid with a special field — a grid line's position is
+// published as a formula symbol (`<gridId>.x<name>` / `.y<name>`, see
+// param/resolve.ts), so a room places itself with ordinary `formulas`, e.g.
+// { x: "= main.x1", width: "= main.x5 - main.x1" }. With coord_convention:"center"
+// those are wall centrelines and expandRoomWalls handles the wall extent.
 
 const site = z
   .object({
@@ -83,8 +79,6 @@ const plinthObject = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
-    grid: z.string().optional(),
-    cell: gridCell.optional(),
     name: z.string().optional(),
     material: z.string().optional(),
     x: z.number(),
@@ -105,8 +99,6 @@ const groundObject = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
-    grid: z.string().optional(),
-    cell: gridCell.optional(),
     name: z.string().optional(),
     material: z.string().optional(),
     x: z.number(),
@@ -153,8 +145,6 @@ const floorSlab = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
-    grid: z.string().optional(),
-    cell: gridCell.optional(),
     name: z.string().optional(),
     x: z.number(),
     y: z.number(),
@@ -179,10 +169,6 @@ const pillar = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
-    // Optional grid binding: place the pillar centred on a grid node (line
-    // intersection). The resolver derives x/y from the node + the pillar's size.
-    grid: z.string().optional(),
-    node: gridNode.optional(),
     name: z.string(),
     // TOP-LEFT CORNER (Inkscape frame), consistent with room / floor_slab /
     // beam. (Historically this was the pillar CENTER; changed for consistency.)
@@ -298,12 +284,6 @@ const room = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
-    // Optional grid binding: name a grid + the cell (bounding line names) and the
-    // resolver derives x/y/width/length from the grid centrelines (see
-    // plans/grid-convention.md). x/y/width/length below stay required literals —
-    // the scaffolder writes placeholders the grid pass overwrites.
-    grid: z.string().optional(),
-    cell: gridCell.optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -709,6 +689,13 @@ export type ConfiguratorSection = z.infer<typeof configuratorSection>;
 
 export const HouseConfig = z
   .object({
+    // How a rectangular object's x/y/width/length relate to its walls
+    // (plans/grid-convention.md). "center" (new/canonical): coordinates are wall
+    // CENTRELINES — adjacent rooms ABUT on a shared line (no overlap), walls are
+    // centred on the boundary, and expandRoomWalls grows each footprint by
+    // wall_thickness/2 to the outer face. "outer" / absent (legacy): coordinates
+    // are the OUTER wall face and adjacent rooms must overlap by wall_thickness.
+    coord_convention: z.enum(["outer", "center"]).optional(),
     site,
     // Legacy top-level plinth (pre-"Plinth floor"). Tolerated but IGNORED so an
     // un-migrated file still loads (it just renders without a plinth/ground)

@@ -37,6 +37,7 @@ These appear on most object types; documented once here, marked *(cross-cutting)
 
 | field | type | req | notes |
 |---|---|---|---|
+| `coord_convention` | enum: `outer` `center` |  | How a rectangular object's x/y/width/length relate to its walls (plans/grid-convention.md). "center" (new/canonical): coordinates are wall CENTRELINES — adjacent rooms ABUT on a shared line (no overlap), walls are centred on the boundary, and expandRoomWalls grows each footprint by wall_thickness/2 to the outer face. "outer" / absent (legacy): coordinates are the OUTER wall face and adjacent rooms must overlap by wall_thickness. |
 | `plinth` | any (freeform) |  | Legacy top-level plinth (pre-"Plinth floor"). Tolerated but IGNORED so an un-migrated file still loads (it just renders without a plinth/ground) instead of failing .strict() validation. New configs put the plinth on the Plinth floor as a `plinth` object. |
 | `defaults` | [houseDefaults](#housedefaults) |  |  |
 | `units` | [units](#units) |  |  |
@@ -80,8 +81,6 @@ The plinth is now a normal object placed on the "Plinth" floor (the first floor,
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `grid` | string |  |  |
-| `cell` | `gridCell` |  |  |
 | `name` | string |  |  |
 | `material` | string |  |  |
 | `x` | number | **yes** |  |
@@ -102,8 +101,6 @@ The ground plane, also on the Plinth floor. Extent defaults to the site plot whe
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `grid` | string |  |  |
-| `cell` | `gridCell` |  |  |
 | `name` | string |  |  |
 | `material` | string |  |  |
 | `x` | number | **yes** |  |
@@ -162,8 +159,6 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `grid` | string |  |  |
-| `cell` | `gridCell` |  |  |
 | `name` | string |  |  |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
@@ -180,8 +175,6 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `grid` | string |  | Optional grid binding: place the pillar centred on a grid node (line intersection). The resolver derives x/y from the node + the pillar's size. |
-| `node` | `gridNode` |  |  |
 | `name` | string | **yes** |  |
 | `x` | number | **yes** | TOP-LEFT CORNER (Inkscape frame), consistent with room / floor_slab / beam. (Historically this was the pillar CENTER; changed for consistency.) |
 | `y` | number | **yes** |  |
@@ -214,8 +207,6 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `grid` | string |  | Optional grid binding: name a grid + the cell (bounding line names) and the resolver derives x/y/width/length from the grid centrelines (see plans/grid-convention.md). x/y/width/length below stay required literals — the scaffolder writes placeholders the grid pass overwrites. |
-| `cell` | `gridCell` |  |  |
 | `name` | string | **yes** |  |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
@@ -350,6 +341,9 @@ v2 roof — unified segment-based type that replaces hip/gable/flat/shed. Schema
 ## Shared & nested schemas
 
 ### site
+
+Objects don't bind to the grid with a special field — a grid line's position is published as a formula symbol (`<gridId>.x<name>` / `.y<name>`, see param/resolve.ts), so a room places itself with ordinary `formulas`, e.g. { x: "= main.x1", width: "= main.x5 - main.x1" }. With coord_convention:"center" those are wall centrelines and expandRoomWalls handles the wall extent.
+
 | field | type | req | notes |
 |---|---|---|---|
 | `reference_x` | number | **yes** |  |
