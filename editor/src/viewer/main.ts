@@ -35,7 +35,7 @@ import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
 import { generateCompositeSheet } from "../svg2d/compositeSheet";
 import type { DrawFilter } from "../svg2d/drawFilter";
 import { objectKey } from "../svg2d/drawFilter";
-import { effectiveLayers, heuristicLayerId } from "../three/layers";
+import { effectiveLayers, heuristicLayerId, useLayerStore } from "../three/layers";
 import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
 import { computeRoofSections } from "../svg2d/roof/index";
@@ -75,6 +75,7 @@ import {
 } from "../io/templateSource";
 import { mountConfiguratorPanel } from "./configuratorPanel";
 import { writeValue } from "../configurator/spec";
+import { listRooms, useInteriorStore } from "../three/interiorView";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-manager";
@@ -249,6 +250,9 @@ async function bootViewer(): Promise<void> {
   // knobs, view) so automation / the home-architect skill can drive the
   // model without the UI.
   wireWadiApi();
+  // Read-only "layers hidden" badge — keeps the homeowner oriented when the
+  // skill hides layers and the layer panel isn't visible.
+  wireLayerStatus();
   // Expose the 2D capture bridges (architect "take a shot" + auto floor plan).
   wireCaptureBridges();
   // Surface geometry warnings (invalid openings dropped during expansion)
@@ -697,8 +701,25 @@ export interface WadiApi {
   setKnob: (target: string, value: number) => { ok: true; target: string; value: number };
   /** Set several knobs at once (one re-render). */
   setKnobs: (record: Record<string, number>) => { ok: true; applied: Record<string, number> };
-  /** Switch the visible view/tab (3d | plans | elevations | roof | layout | quantities). */
+  /** Switch the visible view/tab (3d | plans | elevations | roof | layout | quantities).
+   *  NOTE for the home-architect skill: the TAB is the homeowner's to change —
+   *  the skill should not call this. Kept for general automation. */
   showView: (view: string) => { ok: true; view: string };
+  // --- 3D visual controls (technical; the skill drives these FOR the homeowner) ---
+  /** 3D layers for this house: id, label, group, current visibility. */
+  listLayers: () => Array<{ id: string; label: string; group?: string; visible: boolean }>;
+  /** Show/hide 3D layers by id, e.g. { f2_structure: false }. */
+  setLayers: (record: Record<string, boolean>) => { ok: true };
+  /** Isolate: show ONLY these layer ids, hide all others. */
+  showOnlyLayers: (ids: string[]) => { ok: true };
+  /** Reveal every layer again. */
+  showAllLayers: () => { ok: true };
+  /** Rooms the camera can walk into (key + "Floor: Room" label). */
+  listRooms: () => Array<{ key: string; label: string }>;
+  /** Drop the 3D camera inside a room (first-person walk-through). */
+  enterRoom: (key: string) => { ok: true; key: string };
+  /** Return the 3D camera to the outside orbit view. */
+  exitRoom: () => { ok: true };
 }
 
 // Rasterize an SVG string to a JPEG data URL on a white ground. Ensures the
@@ -1543,6 +1564,9 @@ async function ensureCatalog(): Promise<void> {
 // operate the one live model together.
 function wireWadiApi(): void {
   const store = () => useConfigStore.getState();
+  const layers = () => useLayerStore.getState();
+  const interior = () => useInteriorStore.getState();
+  const allLayerIds = (): string[] => effectiveLayers(store().config).map((l) => l.id);
   const applyPatch = (patch: ReturnType<typeof writeValue>): void => {
     if ("points" in patch && patch.points) store().updatePoints(patch.points);
     else if ("variables" in patch && patch.variables) store().updateVariables(patch.variables);
@@ -1626,7 +1650,89 @@ function wireWadiApi(): void {
       else throw new Error("wadi.showView: switchView is not available yet");
       return { ok: true as const, view };
     },
+
+    listLayers() {
+      const vis = layers().visible;
+      return effectiveLayers(store().config).map((l) => ({
+        id: l.id,
+        label: l.label,
+        group: l.group,
+        visible: vis[l.id] !== false,
+      }));
+    },
+
+    setLayers(record: Record<string, boolean>) {
+      const on: string[] = [];
+      const off: string[] = [];
+      for (const [id, v] of Object.entries(record)) (v ? on : off).push(id);
+      if (on.length) layers().setMany(on, true);
+      if (off.length) layers().setMany(off, false);
+      return { ok: true as const };
+    },
+
+    showOnlyLayers(ids: string[]) {
+      layers().setAll(allLayerIds(), false);
+      layers().setMany(ids, true);
+      return { ok: true as const };
+    },
+
+    showAllLayers() {
+      layers().setAll(allLayerIds(), true);
+      return { ok: true as const };
+    },
+
+    listRooms() {
+      return listRooms(store().config).map((r) => ({
+        key: r.key,
+        label: `${r.floorName}: ${r.name}`,
+      }));
+    },
+
+    enterRoom(key: string) {
+      const r = listRooms(store().config).find((x) => x.key === key);
+      if (!r) {
+        throw new Error(
+          `wadi.enterRoom: unknown room '${key}'. Call wadi.listRooms() for valid keys.`,
+        );
+      }
+      interior().enter({ key: r.key, label: `${r.floorName}: ${r.name}`, eye: r.eye });
+      return { ok: true as const, key };
+    },
+
+    exitRoom() {
+      interior().exit();
+      return { ok: true as const };
+    },
   };
+}
+
+// A small read-only badge overlaid on the 3D view that tells the homeowner
+// which layers are currently hidden. Because the skill drives layer visibility
+// (and the layer panel is hidden in ?panels=off mode), this is the only cue the
+// model isn't showing everything. Auto-hides when all layers are visible.
+function wireLayerStatus(): void {
+  const el = document.getElementById("layer-status");
+  if (!el) return;
+  const render = (): void => {
+    const vis = useLayerStore.getState().visible;
+    const hidden = effectiveLayers(useConfigStore.getState().config).filter(
+      (l) => vis[l.id] === false,
+    );
+    if (hidden.length === 0) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    const labels = hidden.map((l) => l.label);
+    const shown = labels.slice(0, 3).join(", ");
+    const more = labels.length > 3 ? ` +${labels.length - 3} more` : "";
+    el.textContent = `👁 Hidden: ${shown}${more}`;
+    el.hidden = false;
+  };
+  render();
+  useLayerStore.subscribe(render);
+  // Layer set can change when a different house loads — re-evaluate then too.
+  useConfigStore.subscribe(render);
 }
 
 // Switch persona IN PLACE (no page reload) so the currently-loaded model is

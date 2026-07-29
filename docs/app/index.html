@@ -1568,6 +1568,24 @@
             border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
         #viewer-3d-toolbar:empty { display: none; }
+        /* Read-only badge naming which layers are hidden. Overlaid on the 3D
+           view, non-interactive; main.ts shows it only when something is off. */
+        .layer-status {
+            position: absolute;
+            top: 12px; left: 50%; transform: translateX(-50%);
+            z-index: 30;
+            padding: 4px 12px;
+            border-radius: 999px;
+            background: rgba(17, 24, 39, 0.72);
+            color: #fde68a;
+            font-size: 0.78rem; font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            pointer-events: none;
+            -webkit-backdrop-filter: blur(3px);
+            backdrop-filter: blur(3px);
+            white-space: nowrap;
+        }
+        .layer-status[hidden] { display: none; }
         /* Left: the two dropdown menus. Right: capture actions (architect). */
         .v3d-menus {
             flex: 1 1 auto;
@@ -2011,7 +2029,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-Cm0I4P_c.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-CY0Hw7rg.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-47YwG6Mm.css">
 </head>
@@ -2215,6 +2233,11 @@
                  capture tools. Mounted by React (Viewer3DToolbar). Hidden for
                  owners via body[data-persona="owner"] #viewer-3d-toolbar. -->
             <div id="viewer-3d-toolbar"></div>
+            <!-- Read-only "layers hidden" indicator, driven by wireLayerStatus()
+                 in main.ts. Appears only when layers are hidden (the skill drives
+                 layer visibility and the layer panel is hidden in ?panels=off
+                 mode), so the homeowner knows the model isn't showing everything. -->
+            <div id="layer-status" class="layer-status" hidden></div>
         </div>
         <!-- End 3D Model View -->
 
