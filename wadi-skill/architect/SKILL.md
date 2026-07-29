@@ -78,11 +78,11 @@ it). Edit that exact file.
   derivation), so this guide is the field reference for roofs. Read before touching a
   roof.
 - **`reference/parametric-conventions.md`** — how to build a **fully-parametric** model
-  (a reusable template that stays valid under any knob change): the variables →
-  size-points → grid-corners recipe, wall compensation, proportional rooms with
-  minimums, opening/door placement, pillar–opening alignment, the two-step
-  build-and-resolve flow, and the scale-sweep verification. Read before authoring or
-  editing a parametric template.
+  (a reusable template that stays valid under any knob change): the **grid-first**
+  recipe — variables (knobs) → named grid lines (formulas of the house size) → rooms &
+  columns that reference those lines — plus `coord_convention:center`, proportional grid
+  lines with minimums, the `pilInset` flush-column rule, opening placement, and the
+  scale-sweep verification. Read before authoring or editing a parametric template.
 - **`examples/`** — correct, validated houses to copy shapes from. Every example here
   is built on the current conventions (esp. the centreline convention), so **copy
   from these, not from memory or older files.** Currently `coastal_konkan.wadi` (a

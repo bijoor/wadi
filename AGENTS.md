@@ -28,7 +28,8 @@ from a brief vs. recreating one from a drawing, and the pitfalls. Supporting fil
   generated from the Zod source so it never drifts. Regenerate after a schema change:
   `node wadi-skill/architect/scripts/gen-schema-doc.mjs editor/src/schema/houseConfig.ts wadi-skill/architect/reference/data-model.md`
 - `wadi-skill/architect/reference/{coordinate-system,roof-v2-guide,parametric-conventions}.md`
-- `wadi-skill/architect/examples/*.json` — six valid houses to copy from.
+- `wadi-skill/architect/examples/*.wadi` — validated houses to copy from (currently the
+  `coastal_konkan` grid + centreline template).
 
 ## Running the skill's tooling
 

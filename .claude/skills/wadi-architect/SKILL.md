@@ -24,5 +24,6 @@ Key files (read lazily, as SKILL.md directs):
 - `wadi-skill/architect/reference/data-model.md` — complete `.wadi` schema (generated
   from `editor/src/schema/houseConfig.ts`).
 - `wadi-skill/architect/reference/{coordinate-system,roof-v2-guide,parametric-conventions}.md`
-- `wadi-skill/architect/examples/*.json` — six valid houses.
+- `wadi-skill/architect/examples/*.wadi` — validated houses to copy from (currently the
+  `coastal_konkan` grid + centreline template).
 - `wadi-skill/architect/scripts/validate.mjs` and `preview.sh` — validate + render.
