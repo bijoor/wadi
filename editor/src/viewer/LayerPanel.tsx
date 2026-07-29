@@ -42,6 +42,7 @@ export function ViewerLayerPanel() {
       ))}
       <button
         type="button"
+        className="layer-edit-btn"
         onClick={() => useLayersUiStore.getState().setOpen(true)}
         style={{
           marginTop: "0.4rem",

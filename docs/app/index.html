@@ -523,6 +523,9 @@
             cursor: pointer;
             user-select: none;
         }
+        /* Layer editing is an architect (Nakasha) concern — hide the "Edit
+           layers…" launcher from the owner (Gharkul) layer menu. */
+        body[data-persona="owner"] .layer-edit-btn { display: none; }
         .layers-panel input[type="checkbox"] {
             accent-color: #667eea;
         }
@@ -2038,7 +2041,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-DykWtpSa.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-Bhr6j7Dg.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-ClidYReF.css">
 </head>
