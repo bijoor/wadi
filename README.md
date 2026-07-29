@@ -148,6 +148,62 @@ Rooms are the main authoring primitive — a room definition holds its own per-s
 
 ---
 
+## Designing houses by chatting — the AI architect skill
+
+Instead of filling in forms, you can describe a house in plain English (or from a sketch) and have an AI coding agent author the `.wadi` file for you, while the desktop app live-previews the 3D model as it saves. The instructions live in the repo as an **agent-neutral skill** — the same content works in any coding agent:
+
+```
+wadi-skill/architect/        ← the skill itself (instructions, references, examples, scripts)
+.claude/skills/wadi-architect/  ← Claude Code adapter  →  points at the skill
+AGENTS.md                    ← vendor-neutral entrypoint (Antigravity, Cursor, …)  →  points at the skill
+```
+
+### Prerequisites (once)
+
+```bash
+git clone https://github.com/bijoor/wadi.git
+cd wadi
+npm --prefix editor install      # the skill's validate/preview scripts reuse the app's TypeScript
+```
+
+Optional but recommended for the **live loop**: keep your `.wadi` open in the **Wadi desktop app** (the Tauri build — see _Development_ below to build it) — the agent edits the file on disk and the app re-renders the 3D model within ~1 s of each save. Without it you can still author, validate, and render preview images from the scripts.
+
+### Claude Code
+
+The skill is checked into `.claude/skills/`, so Claude Code **auto-discovers it** when you run Claude Code from inside the repo — no install step.
+
+1. `cd wadi && claude` (or open the repo in the Claude Code IDE extension / desktop app).
+2. Invoke it by asking naturally ("design a 3-bed L-shaped bungalow, hip roof, ~1500 sq ft") or explicitly with `/wadi-architect`.
+3. To make it available in **every** project, copy the adapter into your user skills dir — it still points back at this repo's skill files, so keep the repo checked out:
+   ```bash
+   cp -R .claude/skills/wadi-architect ~/.claude/skills/
+   ```
+
+### Google Antigravity (and other AGENTS.md-aware agents: Cursor, …)
+
+These agents read **`AGENTS.md`** at the repo root automatically.
+
+1. Open the `wadi` repo as your workspace/project in Antigravity.
+2. Ask it to create or edit a house ("make a coastal Konkan cottage with a verandah"). It follows `AGENTS.md` → `wadi-skill/architect/SKILL.md` and authors the `.wadi`.
+3. If your agent doesn't pick up `AGENTS.md` on its own, give it the one-liner:
+   > Follow the instructions in `wadi-skill/architect/SKILL.md` to author this `.wadi`.
+
+### Verify the skill's tooling works
+
+Both scripts run from the repo and reuse the app's own generators (so they match the app byte-for-byte):
+
+```bash
+# Validate a config (schema + wall/roof pipeline)
+cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs "$(pwd)/../wadi-skill/architect/examples/coastal_konkan.wadi"
+
+# Render floor plans / elevations / roof to PNGs the agent can read
+wadi-skill/architect/scripts/preview.sh <ABS_PATH_TO.wadi>
+```
+
+The complete data model (`reference/data-model.md`) is **generated from the Zod schema**, so it never drifts; the reference docs cover the coordinate system, the parametric grid-first convention, and roofs.
+
+---
+
 ## Regenerating outputs
 
 All commands below run from the repo root.
