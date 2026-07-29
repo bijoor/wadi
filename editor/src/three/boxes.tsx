@@ -126,7 +126,7 @@ export function PillarBox({
 // assume axis-aligned; diagonal walls arrive in Phase 5's roof-frame
 // pass if ever needed).
 export function WallBox({
-  cx, cz, width, depth, z, height, color = "#f5c9a0",
+  cx, cz, width, depth, z, height, color = "#e8e5df",
 }: {
   cx: number; cz: number; width: number; depth: number;
   z: number; height: number; color?: string;

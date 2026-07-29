@@ -697,7 +697,7 @@ function emitRoomWalls(
           depth={t}
           height={wh}
           rotY={rotY}
-          color="#f5c9a0"
+          color="#e8e5df"
           openings={sub}
           units={globals.units}
           external={external}
@@ -792,7 +792,7 @@ function emitStandaloneWall(
       const cc = toThreePos(horiz ? ws + subLen / 2 : sx, horiz ? sy : ws + subLen / 2, 0, plot.width, plot.length);
       push(
         layer,
-        <WallWithOpenings key={`${key}-${ws.toFixed(1)}`} cx={cc.x} cy={baseZ + h / 2} cz={cc.z} length={subLen} depth={t} height={h} rotY={rotY} color="#f5c9a0" openings={sub} units={globals.units} external={isExternal} outerSign={outerSign} />,
+        <WallWithOpenings key={`${key}-${ws.toFixed(1)}`} cx={cc.x} cy={baseZ + h / 2} cz={cc.z} length={subLen} depth={t} height={h} rotY={rotY} color="#e8e5df" openings={sub} units={globals.units} external={isExternal} outerSign={outerSign} />,
       );
       for (const m of sub) {
         if (m.open) continue;
@@ -821,7 +821,7 @@ function emitStandaloneWall(
       height={h}
       heightEnd={hEnd}
       rotY={rotY}
-      color="#f5c9a0"
+      color="#e8e5df"
       openings={matched}
       units={globals.units}
       external={isExternal}
