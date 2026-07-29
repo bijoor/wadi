@@ -562,42 +562,62 @@
     {
      "type": "pillar",
      "name": "V_Pillar_1",
-     "x": 4,
-     "y": 466,
+     "x": 5,
+     "y": 465,
      "width": 10,
      "length": 10,
      "height": 116,
-     "formulas": { "x": "= main.x1", "y": "= main.yF" }
+     "formulas": {
+      "x": "= (main.x1) + pilInset",
+      "y": "= (main.yF) - pilInset",
+      "width": "= pillarW",
+      "length": "= pillarW"
+     }
     },
     {
      "type": "pillar",
      "name": "V_Pillar_2",
      "x": 150,
-     "y": 466,
+     "y": 465,
      "width": 10,
      "length": 10,
      "height": 116,
-     "formulas": { "x": "= main.x3", "y": "= main.yF" }
+     "formulas": {
+      "x": "= main.x3",
+      "y": "= (main.yF) - pilInset",
+      "width": "= pillarW",
+      "length": "= pillarW"
+     }
     },
     {
      "type": "pillar",
      "name": "V_Pillar_3",
      "x": 270,
-     "y": 466,
+     "y": 465,
      "width": 10,
      "length": 10,
      "height": 116,
-     "formulas": { "x": "= main.x6", "y": "= main.yF" }
+     "formulas": {
+      "x": "= main.x6",
+      "y": "= (main.yF) - pilInset",
+      "width": "= pillarW",
+      "length": "= pillarW"
+     }
     },
     {
      "type": "pillar",
      "name": "V_Pillar_4",
-     "x": 416,
-     "y": 466,
+     "x": 415,
+     "y": 465,
      "width": 10,
      "length": 10,
      "height": 116,
-     "formulas": { "x": "= main.x8", "y": "= main.yF" }
+     "formulas": {
+      "x": "= (main.x8) - pilInset",
+      "y": "= (main.yF) - pilInset",
+      "width": "= pillarW",
+      "length": "= pillarW"
+     }
     }
    ]
   },
@@ -652,7 +672,9 @@
   }
  },
  "variables": {
-  "wallT": 8
+  "wallT": 8,
+  "pillarW": 10,
+  "pilInset": "= (pillarW - wallT) / 2"
  },
  "coord_convention": "center"
 }

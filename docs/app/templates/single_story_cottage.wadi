@@ -49,7 +49,8 @@
   "minBathroomW": 70,
   "pctBathroomL": 0.13,
   "minBathroomL": 70,
-  "roof_style": 3
+  "roof_style": 3,
+  "pilInset": "= (pillarT - wallT) / 2"
  },
  "points": {
   "House": {
@@ -411,15 +412,15 @@
     {
      "type": "pillar",
      "formulas": {
-      "x": "= main.x1",
-      "y": "= main.yA",
+      "x": "= (main.x1) + pilInset",
+      "y": "= (main.yA) + pilInset",
       "width": "=pillarT",
       "length": "=pillarT",
       "height": "=floorH"
      },
      "name": "Verandah_Pillar_1",
-     "x": 4,
-     "y": 4,
+     "x": 5,
+     "y": 5,
      "width": 10,
      "length": 10,
      "height": 100
@@ -428,14 +429,14 @@
      "type": "pillar",
      "formulas": {
       "x": "= (Front_2.X) + pillarT / 2",
-      "y": "= main.yA",
+      "y": "= (main.yA) + pilInset",
       "width": "=pillarT",
       "length": "=pillarT",
       "height": "=floorH"
      },
      "name": "Verandah_Pillar_2",
      "x": 117,
-     "y": 4,
+     "y": 5,
      "width": 10,
      "length": 10,
      "height": 100
@@ -444,14 +445,14 @@
      "type": "pillar",
      "formulas": {
       "x": "= (Front_3.X) + pillarT / 2",
-      "y": "= main.yA",
+      "y": "= (main.yA) + pilInset",
       "width": "=pillarT",
       "length": "=pillarT",
       "height": "=floorH"
      },
      "name": "Verandah_Pillar_3",
      "x": 183,
-     "y": 4,
+     "y": 5,
      "width": 10,
      "length": 10,
      "height": 100
@@ -459,15 +460,15 @@
     {
      "type": "pillar",
      "formulas": {
-      "x": "= main.x4",
-      "y": "= main.yA",
+      "x": "= (main.x4) - pilInset",
+      "y": "= (main.yA) + pilInset",
       "width": "=pillarT",
       "length": "=pillarT",
       "height": "=floorH"
      },
      "name": "Verandah_Pillar_4",
-     "x": 296,
-     "y": 4,
+     "x": 295,
+     "y": 5,
      "width": 10,
      "length": 10,
      "height": 100
@@ -475,15 +476,15 @@
     {
      "type": "pillar",
      "formulas": {
-      "x": "= main.x1",
-      "y": "= main.yF",
+      "x": "= (main.x1) + pilInset",
+      "y": "= (main.yF) - pilInset",
       "width": "=pillarT",
       "length": "=pillarT",
       "height": "=floorH"
      },
      "name": "Padvi_Pillar_1",
-     "x": 4,
-     "y": 456,
+     "x": 5,
+     "y": 455,
      "width": 10,
      "length": 10,
      "height": 100
@@ -492,14 +493,14 @@
      "type": "pillar",
      "formulas": {
       "x": "= (Rear_2.X) + pillarT / 2",
-      "y": "= main.yF",
+      "y": "= (main.yF) - pilInset",
       "width": "=pillarT",
       "length": "=pillarT",
       "height": "=floorH"
      },
      "name": "Padvi_Pillar_2",
      "x": 70,
-     "y": 456,
+     "y": 455,
      "width": 10,
      "length": 10,
      "height": 100
@@ -508,14 +509,14 @@
      "type": "pillar",
      "formulas": {
       "x": "= (Rear_3.X) + pillarT / 2",
-      "y": "= main.yF",
+      "y": "= (main.yF) - pilInset",
       "width": "=pillarT",
       "length": "=pillarT",
       "height": "=floorH"
      },
      "name": "Padvi_Pillar_3",
      "x": 152,
-     "y": 456,
+     "y": 455,
      "width": 10,
      "length": 10,
      "height": 100
@@ -523,15 +524,15 @@
     {
      "type": "pillar",
      "formulas": {
-      "x": "= main.x4",
-      "y": "= main.yF",
+      "x": "= (main.x4) - pilInset",
+      "y": "= (main.yF) - pilInset",
       "width": "=pillarT",
       "length": "=pillarT",
       "height": "=floorH"
      },
      "name": "Padvi_Pillar_4",
-     "x": 296,
-     "y": 456,
+     "x": 295,
+     "y": 455,
      "width": 10,
      "length": 10,
      "height": 100
