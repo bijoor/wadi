@@ -29,6 +29,39 @@ const formulaMap = z.record(z.string(), z.string());
 // allowed because the resolver writes the formula's numeric result here.
 const enabledField = z.union([z.boolean(), z.number()]);
 
+// ---- Grid (first-class parametric grid) — plans/grid-convention.md ----------
+// A grid is a set of ordered wall-CENTRELINE positions per axis (X numbered
+// `1,2,3…`, Y lettered `A,B,C…` by convention). A room/slab binds to a `cell`
+// (its bounding line names) and a pillar to a `node`; the resolver derives
+// x/y/width/length from the centrelines + wall thickness, so grids are
+// thickness-independent and reusable across templates. `role` (structural |
+// planning) is forward-compat for a future 2nd grid; `thickness` is the tartan
+// minor-band width for that line (default = house wall_thickness).
+const gridLine = z
+  .object({
+    name: z.string().min(1),
+    at: numOrFormula,
+    role: z.enum(["structural", "planning"]).optional(),
+    thickness: numOrFormula.optional(),
+  })
+  .strict();
+const gridDef = z
+  .object({
+    x: z.array(gridLine).min(2), // vertical centrelines (west → east)
+    y: z.array(gridLine).min(2), // horizontal centrelines (north → south)
+  })
+  .strict();
+export type GridDef = z.infer<typeof gridDef>;
+// A rectangular object's grid binding: [west,east] × [north,south] line names.
+const gridCell = z
+  .object({
+    x: z.tuple([z.string(), z.string()]),
+    y: z.tuple([z.string(), z.string()]),
+  })
+  .strict();
+// A point object's grid binding: the intersection of one x-line and one y-line.
+const gridNode = z.object({ x: z.string(), y: z.string() }).strict();
+
 const site = z
   .object({
     reference_x: z.number(),
@@ -50,6 +83,8 @@ const plinthObject = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    grid: z.string().optional(),
+    cell: gridCell.optional(),
     name: z.string().optional(),
     material: z.string().optional(),
     x: z.number(),
@@ -70,6 +105,8 @@ const groundObject = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    grid: z.string().optional(),
+    cell: gridCell.optional(),
     name: z.string().optional(),
     material: z.string().optional(),
     x: z.number(),
@@ -116,6 +153,8 @@ const floorSlab = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    grid: z.string().optional(),
+    cell: gridCell.optional(),
     name: z.string().optional(),
     x: z.number(),
     y: z.number(),
@@ -140,6 +179,10 @@ const pillar = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    // Optional grid binding: place the pillar centred on a grid node (line
+    // intersection). The resolver derives x/y from the node + the pillar's size.
+    grid: z.string().optional(),
+    node: gridNode.optional(),
     name: z.string(),
     // TOP-LEFT CORNER (Inkscape frame), consistent with room / floor_slab /
     // beam. (Historically this was the pillar CENTER; changed for consistency.)
@@ -255,6 +298,12 @@ const room = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    // Optional grid binding: name a grid + the cell (bounding line names) and the
+    // resolver derives x/y/width/length from the grid centrelines (see
+    // plans/grid-convention.md). x/y/width/length below stay required literals —
+    // the scaffolder writes placeholders the grid pass overwrites.
+    grid: z.string().optional(),
+    cell: gridCell.optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -683,6 +732,11 @@ export const HouseConfig = z
     // `component` object instantiates one by `ref`. Stored once; referenced by
     // many instances; edit here to update every instance.
     components: z.record(z.string(), componentDef).optional(),
+    // First-class parametric grids (plans/grid-convention.md). Map of id →
+    // GridDef (named X/Y wall centrelines). Rooms/slabs bind via `grid`+`cell`,
+    // pillars via `grid`+`node`; the resolver derives their geometry from the
+    // centrelines + wall thickness. Optional; reusable across templates.
+    grids: z.record(z.string(), gridDef).optional(),
     // Configurator metadata (Gharkul owner UI). Optional; see plans/configurator-plan.md.
     configurator: configuratorSection.optional(),
     // Preview snapshots (data: URLs) captured by the architect editor and saved

@@ -428,6 +428,134 @@ export function formulaFieldError(
   return r.value === null ? (r.error ?? "invalid formula") : null;
 }
 
+// ---- Grid expansion (plans/grid-convention.md) ------------------------------
+// A grid is named X/Y wall CENTRELINES. Objects bind via `grid`+`cell` (rooms /
+// slabs / plinth / ground) or `grid`+`node` (pillars); we derive their outer
+// footprint from the centrelines + wall thickness so authors never write room
+// coordinate formulas or count walls.
+
+interface ResolvedGrid {
+  x: Map<string, number>; // line name -> centreline position
+  y: Map<string, number>;
+  xt: Map<string, number>; // line name -> wall thickness on that line
+  yt: Map<string, number>;
+}
+
+// Resolve every grid's line positions (and per-line thickness) into numbers.
+function resolveGrids(
+  config: HouseConfig,
+  scope: Scope,
+  warnings: FormulaWarning[],
+  defaultT: number,
+): Map<string, ResolvedGrid> {
+  const out = new Map<string, ResolvedGrid>();
+  const grids = (config as { grids?: Record<string, unknown> }).grids;
+  if (!grids) return out;
+  const num = (v: unknown, where: string): number | null => {
+    if (typeof v === "number") return v;
+    if (isFormula(v)) {
+      const r = evalFormula(v, scope);
+      if (r.value === null) {
+        warnings.push({ where, formula: v, message: r.error ?? "invalid formula" });
+        return null;
+      }
+      return r.value;
+    }
+    return null;
+  };
+  for (const [id, gRaw] of Object.entries(grids as Record<string, unknown>)) {
+    const g = gRaw as { x?: unknown[]; y?: unknown[] };
+    const rg: ResolvedGrid = { x: new Map(), y: new Map(), xt: new Map(), yt: new Map() };
+    for (const axis of ["x", "y"] as const) {
+      const lines = (axis === "x" ? g.x : g.y) as
+        | Array<{ name?: string; at?: unknown; thickness?: unknown }>
+        | undefined;
+      const posMap = axis === "x" ? rg.x : rg.y;
+      const thickMap = axis === "x" ? rg.xt : rg.yt;
+      for (const ln of lines ?? []) {
+        if (!ln || typeof ln.name !== "string") continue;
+        const pos = num(ln.at, `grids/${id}/${axis}/${ln.name}`);
+        if (pos !== null) posMap.set(ln.name, pos);
+        const t =
+          ln.thickness === undefined
+            ? defaultT
+            : (num(ln.thickness, `grids/${id}/${axis}/${ln.name}/thickness`) ?? defaultT);
+        thickMap.set(ln.name, t);
+      }
+    }
+    out.set(id, rg);
+  }
+  return out;
+}
+
+// Derive one object's geometry from its grid binding. Rectangular objects (with
+// `cell`) get x/y/width/length; point objects (with `node`, e.g. pillar) get x/y
+// centred on the intersection. Never throws — a bad ref warns and leaves the
+// object as-is (its placeholder literals).
+function deriveGridObject(
+  obj: unknown,
+  grids: Map<string, ResolvedGrid>,
+  defaultT: number,
+  warnings: FormulaWarning[],
+  where: string,
+): { value: unknown; changed: boolean } {
+  const o = obj as Record<string, unknown> | null | undefined;
+  if (!o || typeof o.grid !== "string") return { value: obj, changed: false };
+  const g = grids.get(o.grid);
+  if (!g) {
+    warnings.push({ where: `${where}/grid`, formula: "", message: `unknown grid '${o.grid}'` });
+    return { value: obj, changed: false };
+  }
+
+  if (o.cell && typeof o.cell === "object") {
+    const cell = o.cell as { x: [string, string]; y: [string, string] };
+    const [xw, xe] = cell.x;
+    const [yn, ys] = cell.y;
+    const Xw = g.x.get(xw), Xe = g.x.get(xe), Yn = g.y.get(yn), Ys = g.y.get(ys);
+    if (Xw === undefined || Xe === undefined || Yn === undefined || Ys === undefined) {
+      warnings.push({ where: `${where}/cell`, formula: "", message: `cell references a line not in grid '${o.grid}'` });
+      return { value: obj, changed: false };
+    }
+    const tw = g.xt.get(xw) ?? defaultT, te = g.xt.get(xe) ?? defaultT;
+    const tn = g.yt.get(yn) ?? defaultT, tsz = g.yt.get(ys) ?? defaultT;
+    const x = Xw - tw / 2;
+    const width = Xe - Xw + tw / 2 + te / 2;
+    const y = Yn - tn / 2;
+    const length = Ys - Yn + tn / 2 + tsz / 2;
+    if (o.x === x && o.y === y && o.width === width && o.length === length) {
+      return { value: obj, changed: false };
+    }
+    return { value: { ...o, x, y, width, length }, changed: true };
+  }
+
+  if (o.node && typeof o.node === "object") {
+    const node = o.node as { x: string; y: string };
+    const X = g.x.get(node.x), Y = g.y.get(node.y);
+    if (X === undefined || Y === undefined) {
+      warnings.push({ where: `${where}/node`, formula: "", message: `node references a line not in grid '${o.grid}'` });
+      return { value: obj, changed: false };
+    }
+    const w = typeof o.width === "number" ? o.width : defaultT;
+    const l = typeof o.length === "number" ? o.length : w;
+    const x = X - w / 2, y = Y - l / 2;
+    if (o.x === x && o.y === y) return { value: obj, changed: false };
+    return { value: { ...o, x, y }, changed: true };
+  }
+
+  return { value: obj, changed: false };
+}
+
+// True when the house has grids AND some object binds to one.
+function hasGridBindings(config: HouseConfig): boolean {
+  if (!(config as { grids?: unknown }).grids) return false;
+  return config.floors.some((f) =>
+    f.objects.some((o) => {
+      const r = o as Record<string, unknown>;
+      return typeof r.grid === "string" && (r.cell !== undefined || r.node !== undefined);
+    }),
+  );
+}
+
 export function resolveParametric(config: HouseConfig): ResolveResult {
   try {
     const vars = (config as { variables?: Record<string, unknown> }).variables;
@@ -444,13 +572,21 @@ export function resolveParametric(config: HouseConfig): ResolveResult {
             (o) => hasFormulas(o) || hasOpeningFormulas(o) || hasRoofNestedFormulas(o),
           ),
       );
+    const hasGrids = hasGridBindings(config);
     // Fast path: non-parametric house → same reference, no work.
-    if (!hasVars && !hasPts && !hasContainerFormulas) {
+    if (!hasVars && !hasPts && !hasContainerFormulas && !hasGrids) {
       return { config, warnings: [] };
     }
 
     // 1-3. Resolve the house-level symbol table.
     const { scope, warnings } = buildScope(config);
+
+    // 3b. Resolve grid line positions, so objects can derive geometry from them.
+    const defaultT =
+      ((config as { defaults?: { wall_thickness?: number } }).defaults?.wall_thickness) ?? 8;
+    const grids = hasGrids
+      ? resolveGrids(config, scope, warnings, defaultT)
+      : new Map<string, ResolvedGrid>();
 
     // 4. Apply formulas into fields — objects, each floor's own fields, and the
     // house-level site / plinth / defaults containers. Same-reference is
@@ -460,12 +596,15 @@ export function resolveParametric(config: HouseConfig): ResolveResult {
     const mappedFloors = config.floors.map((f, fi) => {
       let objectsChanged = false;
       const objects = f.objects.map((o, oi) => {
-        const res = applyContainerFormulas(o, scope, warnings, `floor${fi}/obj${oi}`);
+        // Grid-expansion first: derive x/y/width/length (or pillar x/y) from the
+        // grid, so any object `formulas` below run against the derived values.
+        const gridRes = deriveGridObject(o, grids, defaultT, warnings, `floor${fi}/obj${oi}`);
+        const res = applyContainerFormulas(gridRes.value, scope, warnings, `floor${fi}/obj${oi}`);
         // Nested one level down, with their own formulas: wall/room openings,
         // and roof segments + slope.
         const opRes = resolveOpenings(res.value, scope, warnings, `floor${fi}/obj${oi}`);
         const roofRes = resolveRoofNested(opRes.value, scope, warnings, `floor${fi}/obj${oi}`);
-        if (res.changed || opRes.changed || roofRes.changed) objectsChanged = true;
+        if (gridRes.changed || res.changed || opRes.changed || roofRes.changed) objectsChanged = true;
         return roofRes.value as typeof o;
       });
       // Apply the floor's OWN formulas (height / wall_height / slab_thickness)

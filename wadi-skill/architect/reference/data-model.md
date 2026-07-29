@@ -44,6 +44,7 @@ These appear on most object types; documented once here, marked *(cross-cutting)
 | `variables` | map: string → number, or `"= formula"` string |  | Parametric layer (plans/object-relationships-plan.md). Named scalar variables (number or "= formula", may reference other variables) and named 2D points; object `formulas` maps reference these. Optional — absent = a plain non-parametric house, resolved as a no-op. |
 | `points` | map: string → inline object |  |  |
 | `components` | map: string → [ComponentDef](#componentdef) |  | Reusable-component library (in-file). Map of id → ComponentDef. A `component` object instantiates one by `ref`. Stored once; referenced by many instances; edit here to update every instance. |
+| `grids` | map: string → `gridDef` |  | First-class parametric grids (plans/grid-convention.md). Map of id → GridDef (named X/Y wall centrelines). Rooms/slabs bind via `grid`+`cell`, pillars via `grid`+`node`; the resolver derives their geometry from the centrelines + wall thickness. Optional; reusable across templates. |
 | `configurator` | [configurator](#configurator) |  | Configurator metadata (Gharkul owner UI). Optional; see plans/configurator-plan.md. |
 | `thumbnails` | array of string |  | Preview snapshots (data: URLs) captured by the architect editor and saved WITH the template so the owner gallery can show real previews — multiple angles + the floor plan. `thumbnails[0]` is the gallery cover. Optional; excluded from share links (a preview isn't model data — see io/shareLink.ts). `thumbnail` (singular) is the legacy one-image form, still read as a fallback so old template files keep working. |
 | `thumbnail` | string |  |  |
@@ -79,6 +80,8 @@ The plinth is now a normal object placed on the "Plinth" floor (the first floor,
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `grid` | string |  |  |
+| `cell` | `gridCell` |  |  |
 | `name` | string |  |  |
 | `material` | string |  |  |
 | `x` | number | **yes** |  |
@@ -99,6 +102,8 @@ The ground plane, also on the Plinth floor. Extent defaults to the site plot whe
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `grid` | string |  |  |
+| `cell` | `gridCell` |  |  |
 | `name` | string |  |  |
 | `material` | string |  |  |
 | `x` | number | **yes** |  |
@@ -157,6 +162,8 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `grid` | string |  |  |
+| `cell` | `gridCell` |  |  |
 | `name` | string |  |  |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
@@ -173,6 +180,8 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `grid` | string |  | Optional grid binding: place the pillar centred on a grid node (line intersection). The resolver derives x/y from the node + the pillar's size. |
+| `node` | `gridNode` |  |  |
 | `name` | string | **yes** |  |
 | `x` | number | **yes** | TOP-LEFT CORNER (Inkscape frame), consistent with room / floor_slab / beam. (Historically this was the pillar CENTER; changed for consistency.) |
 | `y` | number | **yes** |  |
@@ -205,6 +214,8 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `grid` | string |  | Optional grid binding: name a grid + the cell (bounding line names) and the resolver derives x/y/width/length from the grid centrelines (see plans/grid-convention.md). x/y/width/length below stay required literals — the scaffolder writes placeholders the grid pass overwrites. |
+| `cell` | `gridCell` |  |  |
 | `name` | string | **yes** |  |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
