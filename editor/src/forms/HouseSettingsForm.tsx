@@ -8,7 +8,7 @@
 import type { HouseConfig } from "../schema/houseConfig";
 import { useConfigStore } from "../state/configStore";
 import { pickAndLoadConfig } from "../io/fileIO";
-import { symbolError } from "../param/resolve";
+import { symbolError, resolvedGridsForConfig } from "../param/resolve";
 import { NumberField, SelectField, TextField, Section, ObjectMeasureField } from "./fields";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 import { effectiveLayers, type LayerDef } from "../three/layers";
@@ -132,6 +132,7 @@ export function HouseSettingsForm() {
 
       <VariablesSection />
       <PointsSection />
+      <GridsSection />
       <ConfiguratorSection />
       <ComponentsSection />
 
@@ -527,6 +528,158 @@ function PointsSection() {
         className="mt-2 rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
       >
         + Add point
+      </button>
+    </Section>
+  );
+}
+
+// -------------------------------------------------------------------
+// Grids (parametric wall-centreline lines · plans/grid-convention.md). A grid is
+// a set of named X (west→east) and Y (north→south) lines; objects place
+// themselves on it with formulas like "= main.x1" / "= main.yA". Each line's
+// `at` is a number or "= formula" (of House/variables). The resolved position
+// (project units) is shown read-only beside each row so the grid is legible.
+// -------------------------------------------------------------------
+type GridsMap = NonNullable<HouseConfig["grids"]>;
+type GridDefT = GridsMap[string];
+type GridLineT = GridDefT["x"][number];
+
+function GridsSection() {
+  const config = useConfigStore((s) => s.config);
+  const updateGrids = useConfigStore((s) => s.updateGrids);
+  const grids = ((config as { grids?: GridsMap })?.grids ?? {}) as GridsMap;
+  const resolved = resolvedGridsForConfig(config);
+  const gridIds = Object.keys(grids);
+
+  const commit = (next: GridsMap) =>
+    updateGrids(Object.keys(next).length > 0 ? next : undefined);
+  const patchGrid = (id: string, def: GridDefT) => commit({ ...grids, [id]: def });
+
+  const setLine = (id: string, axis: "x" | "y", i: number, patch: Partial<GridLineT>) => {
+    const def = grids[id];
+    patchGrid(id, { ...def, [axis]: def[axis].map((ln, j) => (j === i ? { ...ln, ...patch } : ln)) });
+  };
+  const removeLine = (id: string, axis: "x" | "y", i: number) => {
+    const def = grids[id];
+    if (def[axis].length <= 2) return; // schema requires ≥ 2 lines per axis
+    patchGrid(id, { ...def, [axis]: def[axis].filter((_, j) => j !== i) });
+  };
+  const move = (id: string, axis: "x" | "y", i: number, dir: -1 | 1) => {
+    const def = grids[id];
+    const j = i + dir;
+    if (j < 0 || j >= def[axis].length) return;
+    const lines = def[axis].slice();
+    [lines[i], lines[j]] = [lines[j], lines[i]];
+    patchGrid(id, { ...def, [axis]: lines });
+  };
+  const addLine = (id: string, axis: "x" | "y") => {
+    const def = grids[id];
+    const taken = new Set(def[axis].map((l) => l.name));
+    const nameFor = axis === "x" ? (n: number) => String(n) : (n: number) => String.fromCharCode(64 + n);
+    let n = def[axis].length + 1;
+    while (taken.has(nameFor(n))) n++;
+    patchGrid(id, { ...def, [axis]: [...def[axis], { name: nameFor(n), at: 0 }] });
+  };
+  const removeGrid = (id: string) => {
+    const next = { ...grids };
+    delete next[id];
+    commit(next);
+  };
+  const addGrid = () => {
+    const id = grids.main ? `grid${gridIds.length + 1}` : "main";
+    commit({
+      ...grids,
+      [id]: { x: [{ name: "1", at: 0 }, { name: "2", at: 100 }], y: [{ name: "A", at: 0 }, { name: "B", at: 100 }] },
+    });
+  };
+
+  const AxisBlock = ({ id, axis }: { id: string; axis: "x" | "y" }) => {
+    const def = grids[id];
+    const posMap = axis === "x" ? resolved.get(id)?.x : resolved.get(id)?.y;
+    const sym = (name: string) => `${id}.${axis}${name}`;
+    return (
+      <div className="mt-1">
+        <div className="mb-0.5 text-[10px] uppercase tracking-wide text-slate-500">
+          {axis === "x" ? "X — vertical lines (west → east)" : "Y — horizontal lines (north → south)"}
+        </div>
+        {def[axis].map((ln, i) => {
+          const err = symbolError(config, `grids/${id}/${axis}/${ln.name}`);
+          const pos = posMap?.get(ln.name);
+          return (
+            <div key={i} className="flex items-end gap-1">
+              <MoveButtons i={i} count={def[axis].length} onMove={(k, d) => move(id, axis, k, d)} />
+              <div className="w-12" title={`symbol: ${sym(ln.name)}`}>
+                <TextField label="" value={ln.name} onCommit={(v) => setLine(id, axis, i, { name: v.trim() || ln.name })} />
+              </div>
+              <span className="pb-1.5 text-[11px] text-slate-500">@</span>
+              <div className="flex-1">
+                <TextField
+                  label=""
+                  value={varValueStr(ln.at)}
+                  onCommit={(v) => setLine(id, axis, i, { at: parseVarValue(v) })}
+                  placeholder="number or = formula"
+                  error={err ?? undefined}
+                />
+              </div>
+              <span className="w-10 pb-1.5 text-right text-[10px] tabular-nums text-slate-400" title="resolved position (project units)">
+                {pos != null ? Math.round(pos) : "—"}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeLine(id, axis, i)}
+                disabled={def[axis].length <= 2}
+                className="mb-1 shrink-0 rounded bg-slate-800 px-2 py-1 text-[10px] text-red-300 hover:bg-red-900 disabled:cursor-not-allowed disabled:opacity-30"
+                title={def[axis].length <= 2 ? "A grid needs ≥ 2 lines" : "Remove line"}
+              >
+                ✕
+              </button>
+            </div>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => addLine(id, axis)}
+          className="mt-1 rounded bg-slate-800 px-2 py-0.5 text-[10px] text-emerald-300 hover:bg-slate-700"
+        >
+          + {axis.toUpperCase()} line
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <Section title="Grids (parametric)">
+      <div className="mb-2 text-[11px] text-slate-400">
+        Named wall-centreline lines. Objects place themselves on the grid with
+        formulas like <code className="mx-0.5 rounded bg-slate-800 px-1">= main.x1</code> /{" "}
+        <code className="mx-0.5 rounded bg-slate-800 px-1">= main.yA</code>. The number on the
+        right is the resolved position (project units). Needs{" "}
+        <code className="mx-0.5 rounded bg-slate-800 px-1">coord_convention: center</code>.
+      </div>
+      {gridIds.map((id) => (
+        <div key={id} className="mb-2 rounded border border-slate-700 p-2">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-200">{id}</span>
+            <button
+              type="button"
+              onClick={() => removeGrid(id)}
+              className="rounded bg-slate-800 px-2 py-0.5 text-[10px] text-red-300 hover:bg-red-900"
+              title="Remove this grid"
+            >
+              Remove grid
+            </button>
+          </div>
+          <AxisBlock id={id} axis="x" />
+          <AxisBlock id={id} axis="y" />
+        </div>
+      ))}
+      {gridIds.length === 0 && <div className="text-[11px] text-slate-500">No grids yet.</div>}
+      <button
+        type="button"
+        onClick={addGrid}
+        className="mt-1 rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
+      >
+        + Add grid
       </button>
     </Section>
   );

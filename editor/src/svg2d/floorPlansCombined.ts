@@ -1,4 +1,5 @@
 import { generateFloorPlanSvg } from "./floorPlan";
+import { buildGridOverlay } from "./floorPlansAll";
 import { scaledTextSize } from "./config";
 import { f, fFloat } from "./format";
 import { expandRoomWalls, type HouseConfig } from "./expand";
@@ -12,6 +13,7 @@ export function generateCombinedFloorPlans(
 ): string {
   const hc = expandRoomWalls(houseConfig, undefined, { lenient: true });
   const floors = hc.floors ?? [];
+  const gridOverlay = buildGridOverlay(houseConfig);
 
   const scale = 2.0;
   const spacing = 100;
@@ -35,7 +37,7 @@ export function generateCombinedFloorPlans(
   for (const floor of floors) {
     const floorNum = (floor.floor_number as number | undefined) ?? 0;
     const floorName = (floor.name as string | undefined) ?? `Floor ${floorNum}`;
-    const svgContent = generateFloorPlanSvg(floor, scale);
+    const svgContent = generateFloorPlanSvg(floor, scale, undefined, undefined, gridOverlay);
     if (!svgContent) continue;
 
     // Extract the outer content-group transform.

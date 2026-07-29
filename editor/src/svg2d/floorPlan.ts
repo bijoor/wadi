@@ -47,6 +47,14 @@ export interface FloorPlanRoofOverlay {
 // never emit inf into SVG, so this is only for the empty-floor check.
 const INF = Number.POSITIVE_INFINITY;
 
+// Resolved parametric grid, in model coords, drawn under the plan as a dashed
+// guide with node labels. House-wide (same on every floor); the caller resolves
+// it from config.grids via resolvedGridsForConfig.
+export interface FloorPlanGridOverlay {
+  x: { name: string; pos: number }[]; // vertical lines (west → east)
+  y: { name: string; pos: number }[]; // horizontal lines (north → south)
+}
+
 export function generateFloorPlanSvg(
   floorConfig: FloorConfig,
   scale = 2.0,
@@ -55,6 +63,7 @@ export function generateFloorPlanSvg(
   // caller resolves it. Per-object overrides still win below. Defaults to
   // the code constant when the caller doesn't pass one.
   wallThickness: number = DEFAULT_GLOBAL_CONFIG.wall_thickness,
+  gridOverlay?: FloorPlanGridOverlay,
 ): string {
   const floorNum = floorConfig.floor_number ?? 0;
   const floorName = floorConfig.name ?? `Floor ${floorNum}`;
@@ -182,6 +191,32 @@ export function generateFloorPlanSvg(
 <g transform="translate(${fFloat(translateX)}, ${fFloat(translateY)}) scale(${scaleStr}, ${scaleStr})">
 
 `;
+
+  // Parametric grid guide (behind everything). Dashed centrelines spanning the
+  // plan bounds, each with its symbol name (1/A) at the edge. Sizes scale with
+  // the model span so they stay legible at any house size (like the auto-scaled
+  // labels). Coords are model units — the group transform applies scale/translate.
+  if (gridOverlay && (gridOverlay.x.length || gridOverlay.y.length)) {
+    const span = Math.max(maxX - minX, maxY - minY) || 100;
+    const sw = span * 0.0016;               // ~1px stroke at fit
+    const dash = span * 0.01;               // dash length
+    const font = span * 0.02;               // node-label size
+    const ext = span * 0.03;                // overshoot beyond bounds for labels
+    const x0 = minX - ext, x1 = maxX + ext, y0 = minY - ext, y1 = maxY + ext;
+    const col = "#6366f1";                  // indigo, semi-transparent
+    let g = `<g stroke="${col}" stroke-width="${fFloat(sw)}" stroke-dasharray="${fFloat(dash)},${fFloat(dash)}" opacity="0.55">\n`;
+    for (const ln of gridOverlay.x)
+      g += `  <line x1="${fFloat(ln.pos)}" y1="${fFloat(y0)}" x2="${fFloat(ln.pos)}" y2="${fFloat(y1)}"/>\n`;
+    for (const ln of gridOverlay.y)
+      g += `  <line x1="${fFloat(x0)}" y1="${fFloat(ln.pos)}" x2="${fFloat(x1)}" y2="${fFloat(ln.pos)}"/>\n`;
+    g += `</g>\n<g fill="${col}" font-size="${fFloat(font)}" text-anchor="middle" font-weight="bold">\n`;
+    for (const ln of gridOverlay.x)
+      g += `  <text x="${fFloat(ln.pos)}" y="${fFloat(y0 - font * 0.3)}">${ln.name}</text>\n`;
+    for (const ln of gridOverlay.y)
+      g += `  <text x="${fFloat(x0 - font * 0.3)}" y="${fFloat(ln.pos + font * 0.35)}" text-anchor="end">${ln.name}</text>\n`;
+    g += `</g>\n`;
+    svg += g;
+  }
 
   // -----------------------------------------------------------------
   // Draw ordering matches Python EXACTLY: floor_slabs, beams,

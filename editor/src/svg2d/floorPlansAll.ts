@@ -1,5 +1,6 @@
-import { generateFloorPlanSvg, type FloorPlanRoofOverlay } from "./floorPlan";
+import { generateFloorPlanSvg, type FloorPlanRoofOverlay, type FloorPlanGridOverlay } from "./floorPlan";
 import { expandRoomWalls, type HouseConfig } from "./expand";
+import { resolvedGridsForConfig } from "../param/resolve";
 import { derivePitchedRoof } from "./roof/v2/derivePitched";
 import { deriveFlatRoof } from "./roof/v2/deriveFlat";
 import { deriveShedRoof } from "./roof/v2/deriveShed";
@@ -25,6 +26,7 @@ export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[]
   const houseDefaults = (hc as { defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number } })
     .defaults;
   const wallThickness = houseDefaults?.wall_thickness ?? DEFAULT_GLOBAL_CONFIG.wall_thickness;
+  const gridOverlay = buildGridOverlay(houseConfig);
   const out: FloorPlanFile[] = [];
   for (let fi = 0; fi < (hc.floors ?? []).length; fi++) {
     const floor = hc.floors![fi];
@@ -33,7 +35,7 @@ export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[]
     const filename = `floor_plan_${floorNum}_${floorName.replace(/ /g, "_")}.svg`;
     // Compute a merged v2 roof spec for THIS floor's roof objects only.
     const roofOverlay = computeFloorRoofOverlay(hc, fi, houseDefaults);
-    const content = generateFloorPlanSvg(floor, 2.0, roofOverlay ?? undefined, wallThickness);
+    const content = generateFloorPlanSvg(floor, 2.0, roofOverlay ?? undefined, wallThickness, gridOverlay);
     // Match Python: floors with no bounded 2D objects (e.g. loft with
     // only a hip_roof) return '' and Python skips writing them, so we
     // omit them from the output list too — but with a v2 roof overlay,
@@ -42,6 +44,21 @@ export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[]
     out.push({ filename, content });
   }
   return out;
+}
+
+// Flatten every resolved grid's lines into one overlay (model coords) for the
+// plan guide. With multiple grids, line names are prefixed by the grid id.
+export function buildGridOverlay(config: HouseConfig): FloorPlanGridOverlay | undefined {
+  const grids = resolvedGridsForConfig(config as Parameters<typeof resolvedGridsForConfig>[0]);
+  if (grids.size === 0) return undefined;
+  const x: { name: string; pos: number }[] = [];
+  const y: { name: string; pos: number }[] = [];
+  for (const [id, g] of grids) {
+    const prefix = grids.size > 1 ? `${id}.` : "";
+    for (const [name, pos] of g.x) x.push({ name: prefix + name, pos });
+    for (const [name, pos] of g.y) y.push({ name: prefix + name, pos });
+  }
+  return x.length || y.length ? { x, y } : undefined;
 }
 
 function computeFloorRoofOverlay(

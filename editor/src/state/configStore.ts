@@ -71,6 +71,10 @@ interface ConfigState {
   // floors→objects, copy variables/points, seed params from its variable names).
   importComponentFromWadi: (id: string, wadiConfig: HouseConfig) => void;
   updatePoints: (points: NonNullable<HouseConfig["points"]> | undefined) => void;
+  // Replace the house-level parametric `grids` table (named wall-centreline
+  // lines objects derive from via "= main.x1" formulas). Pass an empty object or
+  // undefined to clear. Goes through the resolver seam like variables/points.
+  updateGrids: (grids: NonNullable<HouseConfig["grids"]> | undefined) => void;
   // Owner-facing Configurator metadata (which variables/points a template
   // exposes to the Gharkul app + how to present them). Ignored by the resolver.
   updateConfigurator: (configurator: NonNullable<HouseConfig["configurator"]> | undefined) => void;
@@ -368,6 +372,16 @@ export const useConfigStore = create<ConfigState>()(
             points && Object.keys(points).length > 0 ? points : undefined;
           return {
             config: { ...state.config, points: cleaned } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      updateGrids: (grids) =>
+        set((state) => {
+          if (!state.config) return state;
+          const cleaned = grids && Object.keys(grids).length > 0 ? grids : undefined;
+          return {
+            config: { ...state.config, grids: cleaned } as HouseConfig,
             dirty: true,
           };
         }),

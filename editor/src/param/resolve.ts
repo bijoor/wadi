@@ -421,6 +421,19 @@ export function scopeForConfig(config: HouseConfig | null | undefined): Scope {
   return buildScopeCached(config).scope;
 }
 
+// Resolve every grid's line positions into numbers, for UI (Grids panel live
+// values + drawing the grid on the 2D plan). Same computation buildScope uses to
+// publish `main.x1`-style symbols, exposed as the structured per-grid map.
+export function resolvedGridsForConfig(
+  config: HouseConfig | null | undefined,
+): Map<string, ResolvedGrid> {
+  if (!config || typeof config !== "object" || !(config as { grids?: unknown }).grids) return new Map();
+  const { scope, warnings } = buildScopeCached(config);
+  const defaultT =
+    (config as { defaults?: { wall_thickness?: number } }).defaults?.wall_thickness ?? 8;
+  return resolveGrids(config, scope, warnings.slice(), defaultT);
+}
+
 // Error message for a house-level symbol (a variable or point field) by its
 // `where` tag (e.g. "variables/colB", "points/P1.x"), or null when it resolves
 // cleanly. Lets the Variables/Points panel flag a bad entry.
@@ -450,7 +463,7 @@ export function formulaFieldError(
 // footprint from the centrelines + wall thickness so authors never write room
 // coordinate formulas or count walls.
 
-interface ResolvedGrid {
+export interface ResolvedGrid {
   x: Map<string, number>; // line name -> centreline position
   y: Map<string, number>;
   xt: Map<string, number>; // line name -> wall thickness on that line
