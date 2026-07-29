@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Wadi: 3D Home Designer</title>
+    <!-- WebMCP: the viewer registers its controls as agent-callable tools via
+         document.modelContext (see wireWebMcpTools in src/viewer/main.ts), so a
+         WebMCP browser agent (Gemini in Chrome, Claude, …) can drive the model.
+         To DEMO on localhost, enable chrome://flags/#enable-webmcp-testing (no
+         token). For PRODUCTION on wadi.house, register the origin for the WebMCP
+         origin trial at https://developer.chrome.com/origintrials and paste the
+         token below (uncomment):
+    <meta http-equiv="origin-trial" content="YOUR_WEBMCP_ORIGIN_TRIAL_TOKEN"> -->
+
     <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
     <link rel="apple-touch-icon" href="favicon.svg"/>
     <meta name="theme-color" content="#B85028"/>

@@ -253,6 +253,9 @@ async function bootViewer(): Promise<void> {
   // Read-only "layers hidden" badge — keeps the homeowner oriented when the
   // skill hides layers and the layer panel isn't visible.
   wireLayerStatus();
+  // Register the wadi controls as WebMCP tools so any WebMCP browser agent
+  // (Gemini in Chrome, Claude, …) can drive the model. No-op without WebMCP.
+  wireWebMcpTools();
   // Expose the 2D capture bridges (architect "take a shot" + auto floor plan).
   wireCaptureBridges();
   // Surface geometry warnings (invalid openings dropped during expansion)
@@ -680,6 +683,9 @@ declare global {
     // skill) — OR the user and Claude together — can operate the app WITHOUT
     // touching the UI, panels visible or hidden. See wireWadiApi().
     wadi?: WadiApi;
+    // WebMCP tool descriptors — also registered via document.modelContext when
+    // the browser supports WebMCP. Exposed for inspection/testing/demo.
+    wadiMcpTools?: WebMcpTool[];
   }
 }
 
@@ -720,6 +726,22 @@ export interface WadiApi {
   enterRoom: (key: string) => { ok: true; key: string };
   /** Return the 3D camera to the outside orbit view. */
   exitRoom: () => { ok: true };
+}
+
+// WebMCP tool descriptor — document.modelContext.registerTool (W3C WebMCP,
+// Chrome 149 origin trial). The SAME wadi controls, exposed as agent-callable
+// tools so any WebMCP browser agent (Gemini in Chrome, Claude, …) can drive the
+// model — no UI clicks, and no problem with the 3D canvas being invisible to
+// accessibility-tree agents.
+export interface WebMcpTool {
+  name: string;
+  description: string;
+  inputSchema?: Record<string, unknown>;
+  annotations?: { readOnlyHint?: boolean; untrustedContentHint?: boolean };
+  execute: (input: Record<string, unknown>) => Promise<unknown> | unknown;
+}
+interface ModelContextLike {
+  registerTool: (tool: WebMcpTool, opts?: { signal?: AbortSignal }) => Promise<void>;
 }
 
 // Rasterize an SVG string to a JPEG data URL on a white ground. Ensures the
@@ -1733,6 +1755,187 @@ function wireLayerStatus(): void {
   useLayerStore.subscribe(render);
   // Layer set can change when a different house loads — re-evaluate then too.
   useConfigStore.subscribe(render);
+}
+
+// ---- WebMCP: expose the wadi controls as agent-callable tools --------------
+// document.modelContext.registerTool (W3C WebMCP; Chrome 149 origin trial) lets
+// a site register JS functions any in-browser AI agent can call. We wrap the
+// SAME window.wadi methods so an agent drives the model directly instead of
+// clicking UI — which also sidesteps the 3D <canvas> being invisible to
+// accessibility-tree agents. To try it: enable chrome://flags/#enable-webmcp-testing
+// (localhost/dev) or add a production origin-trial token to viewer.html.
+const WEBMCP_ROOF: Record<string, number> = { flat: 0, shed: 1, gable: 2, hip: 3 };
+
+function buildWadiMcpTools(): WebMcpTool[] {
+  const api = () => {
+    const w = window.wadi;
+    if (!w) throw new Error("wadi API not ready");
+    return w;
+  };
+  const text = (data: unknown) => ({
+    content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data) }],
+  });
+  const noInput: Record<string, unknown> = { type: "object", properties: {} };
+
+  return [
+    {
+      name: "wadi_list_homes",
+      description:
+        "List the ready-made home designs the user can start from (id, title, bedrooms, bathrooms, roof, style, min plot).",
+      annotations: { readOnlyHint: true },
+      inputSchema: noInput,
+      async execute() { return text(await api().listTemplates()); },
+    },
+    {
+      name: "wadi_choose_home",
+      description:
+        "Load one ready-made home by its id (from wadi_list_homes). Rebuilds the live 3D model.",
+      inputSchema: {
+        type: "object",
+        properties: { id: { type: "string", description: "template id, e.g. family_home" } },
+        required: ["id"],
+      },
+      async execute(input) { return text(await api().chooseTemplate(String(input.id))); },
+    },
+    {
+      name: "wadi_set_plot",
+      description:
+        "Set the plot size in feet. Provide width_ft (east-west) and/or length_ft (north-south). The whole house re-flows.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          width_ft: { type: "number", description: "plot width in feet" },
+          length_ft: { type: "number", description: "plot length in feet" },
+        },
+      },
+      execute(input) {
+        const knobs: Record<string, number> = {};
+        if (typeof input.width_ft === "number") knobs["House.W"] = input.width_ft * 10;
+        if (typeof input.length_ft === "number") knobs["House.L"] = input.length_ft * 10;
+        api().setKnobs(knobs);
+        return text(`Plot set to ${input.width_ft ?? "?"} x ${input.length_ft ?? "?"} ft`);
+      },
+    },
+    {
+      name: "wadi_set_roof",
+      description: "Set the roof style: flat, shed, gable, or hip.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          style: { type: "string", enum: ["flat", "shed", "gable", "hip"], description: "roof style" },
+        },
+        required: ["style"],
+      },
+      execute(input) {
+        const s = String(input.style).toLowerCase();
+        const n = WEBMCP_ROOF[s];
+        if (n === undefined) throw new Error(`unknown roof style '${input.style}' (use flat|shed|gable|hip)`);
+        api().setKnob("roof_style", n);
+        return text(`Roof set to ${s}`);
+      },
+    },
+    {
+      name: "wadi_adjust",
+      description:
+        "Advanced: set configurator knobs directly as a map of knob-target to raw value (e.g. {\"pctLivW\":0.38}). Prefer wadi_set_plot / wadi_set_roof for common changes.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          knobs: {
+            type: "object",
+            additionalProperties: { type: "number" },
+            description: "map of knob target -> raw value",
+          },
+        },
+        required: ["knobs"],
+      },
+      execute(input) {
+        const knobs = (input.knobs ?? {}) as Record<string, number>;
+        api().setKnobs(knobs);
+        return text({ applied: knobs });
+      },
+    },
+    {
+      name: "wadi_get_design",
+      description: "Summarize the current design: plot size (ft), roof style, and rooms.",
+      annotations: { readOnlyHint: true },
+      inputSchema: noInput,
+      execute() {
+        const cfg = api().getConfig() as {
+          points?: { House?: { x?: number; y?: number } };
+          variables?: { roof_style?: number };
+        } | null;
+        const H = cfg?.points?.House;
+        const rs = cfg?.variables?.roof_style;
+        return text({
+          plot_ft:
+            H && typeof H.x === "number" && typeof H.y === "number" ? `${H.x / 10} x ${H.y / 10}` : null,
+          roof: ["Flat", "Shed", "Gable", "Hip"][rs ?? -1] ?? String(rs),
+          rooms: api().listRooms().map((r) => r.label),
+        });
+      },
+    },
+    {
+      name: "wadi_show_layout",
+      description: "Hide the roof so the room layout is visible from above.",
+      inputSchema: noInput,
+      execute() {
+        api().setLayers({ loft: false, frame_surface: false, frame_spine: false });
+        return text("Roof hidden — room layout visible.");
+      },
+    },
+    {
+      name: "wadi_show_full",
+      description: "Show every part of the house again (reveal the roof).",
+      inputSchema: noInput,
+      execute() { api().showAllLayers(); return text("All parts of the house are visible."); },
+    },
+    {
+      name: "wadi_list_rooms",
+      description: "List the rooms the 3D camera can walk into (key + label).",
+      annotations: { readOnlyHint: true },
+      inputSchema: noInput,
+      execute() { return text(api().listRooms()); },
+    },
+    {
+      name: "wadi_enter_room",
+      description: "Move the 3D camera inside a room for a first-person look (key from wadi_list_rooms).",
+      inputSchema: {
+        type: "object",
+        properties: { key: { type: "string", description: "room key from wadi_list_rooms" } },
+        required: ["key"],
+      },
+      execute(input) { return text(api().enterRoom(String(input.key))); },
+    },
+    {
+      name: "wadi_exit_room",
+      description: "Return the 3D camera to the outside view.",
+      inputSchema: noInput,
+      execute() { return text(api().exitRoom()); },
+    },
+  ];
+}
+
+function wireWebMcpTools(): void {
+  const tools = buildWadiMcpTools();
+  // Expose for inspection / testing / the demo, even where WebMCP is absent.
+  window.wadiMcpTools = tools;
+  const mc =
+    (document as unknown as { modelContext?: ModelContextLike }).modelContext ??
+    (navigator as unknown as { modelContext?: ModelContextLike }).modelContext;
+  if (!mc || typeof mc.registerTool !== "function") return; // no WebMCP → still on window.wadiMcpTools
+  let n = 0;
+  for (const tool of tools) {
+    try {
+      void Promise.resolve(mc.registerTool(tool)).catch((e) =>
+        console.warn(`[webmcp] registerTool ${tool.name} failed:`, e),
+      );
+      n++;
+    } catch (e) {
+      console.warn(`[webmcp] registerTool ${tool.name} threw:`, e);
+    }
+  }
+  console.info(`[webmcp] registered ${n} wadi tools on document.modelContext`);
 }
 
 // Switch persona IN PLACE (no page reload) so the currently-loaded model is
