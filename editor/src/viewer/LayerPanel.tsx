@@ -10,6 +10,7 @@
 import { useMemo } from "react";
 import { effectiveLayers, useLayerStore } from "../three/layers";
 import { useConfigStore } from "../state/configStore";
+import { useLayersUiStore } from "../state/layersUiStore";
 
 export function ViewerLayerPanel() {
   // Layer list derived from the config (same helper the 3D scene uses), so
@@ -39,6 +40,24 @@ export function ViewerLayerPanel() {
           {l.label}
         </label>
       ))}
+      <button
+        type="button"
+        onClick={() => useLayersUiStore.getState().setOpen(true)}
+        style={{
+          marginTop: "0.4rem",
+          width: "100%",
+          background: "transparent",
+          border: "1px solid #d9cfc2",
+          borderRadius: "6px",
+          padding: "0.25rem 0.4rem",
+          fontSize: "0.78rem",
+          color: "#B85028",
+          cursor: "pointer",
+        }}
+        title="Edit layer grouping and order"
+      >
+        ✏️ Edit layers…
+      </button>
     </>
   );
 }

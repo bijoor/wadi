@@ -12,6 +12,8 @@ import { symbolError } from "../param/resolve";
 import { NumberField, SelectField, TextField, Section, ObjectMeasureField } from "./fields";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 import { effectiveLayers, isRoofLayer, type LayerDef } from "../three/layers";
+import { toGroups } from "../three/layerGrouping";
+import { useLayersUiStore } from "../state/layersUiStore";
 import {
   useLayerDefaultsStore,
   roleForType,
@@ -600,123 +602,38 @@ function ComponentsSection() {
 
 function LayersSection() {
   const config = useConfigStore((s) => s.config);
-  const updateLayers = useConfigStore((s) => s.updateLayers);
-  // Editable set = the full effective layers MINUS the code-managed roof layers.
-  // Editing materializes the whole set into config.layers (single source of truth).
+  const setLayersEditorOpen = useLayersUiStore((s) => s.setOpen);
+  // Materialized set MINUS the code-managed roof layers, grouped for a summary.
   const layers: LayerDef[] = effectiveLayers(config).filter((l) => !isRoofLayer(l.id));
-
-  const commit = (next: LayerDef[]) => updateLayers(next.length ? next : undefined);
-  const patchAt = (i: number, patch: Partial<LayerDef>) =>
-    commit(layers.map((l, j) => (j === i ? { ...l, ...patch } : l)));
-  const removeAt = (i: number) => commit(layers.filter((_, j) => j !== i));
-  const move = (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= layers.length) return;
-    const next = layers.slice();
-    [next[i], next[j]] = [next[j], next[i]];
-    commit(next);
-  };
-  const add = () => {
-    const taken = new Set(layers.map((l) => l.id));
-    let n = layers.length + 1;
-    while (taken.has(`layer${n}`)) n++;
-    const group = layers[layers.length - 1]?.group ?? "Custom";
-    commit([...layers, { id: `layer${n}`, label: `Layer ${n}`, color: "#888888", group }]);
-  };
-
-  // Ordered unique group names for the grouped display.
-  const groupOf = (l: LayerDef) => (l.group && l.group.trim() ? l.group : "Ungrouped");
-  const groups = [...new Set(layers.map(groupOf))];
+  const groups = toGroups(layers);
 
   return (
     <Section title="Layers (3D visibility)">
       <div className="mb-2 text-[11px] text-slate-400">
-        The single source of truth for this house's 3D layers, grouped by floor (plus
-        <b> Site</b>). Edit a layer's label, colour and <b>group</b>; assign an object to
-        a layer via its <b>Layer</b> dropdown. Roof layers are managed automatically and
-        aren't listed here.
+        The house's 3D layers, grouped by floor (plus <b>Site</b>). Open the editor to
+        reorder whole groups &amp; the layers in them, rename or recolour, and move layers
+        between groups. Assign an object to a layer via its <b>Layer</b> dropdown; the
+        Show/hide-layers menu follows this order. Roof layers are managed automatically.
       </div>
-      {groups.map((g) => (
-        <div key={g} className="mb-2">
-          <div className="mb-1 border-b border-slate-800 pb-0.5 text-[11px] font-semibold text-slate-300">
-            {g}
-          </div>
-          <div className="space-y-1">
-            {layers.map((l, i) =>
-              groupOf(l) !== g ? null : (
-                <div key={l.id} className="flex items-center gap-1.5">
-                  <div className="flex shrink-0 flex-col">
-                    <button
-                      type="button"
-                      onClick={() => move(i, -1)}
-                      disabled={i === 0}
-                      className="rounded-t bg-slate-800 px-1 text-[9px] leading-tight text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
-                      title="Move up"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => move(i, 1)}
-                      disabled={i === layers.length - 1}
-                      className="rounded-b bg-slate-800 px-1 text-[9px] leading-tight text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
-                      title="Move down"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                  <input
-                    type="color"
-                    value={l.color ?? "#888888"}
-                    onChange={(e) => patchAt(i, { color: e.target.value })}
-                    className="h-6 w-6 shrink-0 cursor-pointer rounded border border-slate-700 bg-transparent"
-                    title="Layer colour"
-                  />
-                  <div className="flex-1">
-                    <TextField label="" value={l.label} onCommit={(v) => patchAt(i, { label: v || l.id })} />
-                  </div>
-                  <div className="w-28">
-                    <TextField
-                      label=""
-                      value={l.group ?? ""}
-                      onCommit={(v) => patchAt(i, { group: v.trim() || undefined })}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeAt(i)}
-                    className="shrink-0 rounded bg-slate-800 px-2 py-1 text-[10px] text-red-300 hover:bg-red-900"
-                    title="Remove layer"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ),
-            )}
-          </div>
-        </div>
-      ))}
-      <div className="mt-2 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={add}
-          className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
-        >
-          + Add layer
-        </button>
-        <button
-          type="button"
-          onClick={() => updateLayers(undefined)}
-          className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
-          title="Clear the custom list and regenerate the built-in floor-wise defaults"
-        >
-          Reset to defaults
-        </button>
+      <div className="mb-2 space-y-0.5 text-[11px] text-slate-300">
+        {groups.length === 0 ? (
+          <div className="text-slate-500">No layers yet — load a house first.</div>
+        ) : (
+          groups.map((g) => (
+            <div key={g.name} className="flex items-center gap-1">
+              <span className="font-semibold">{g.name}</span>
+              <span className="text-slate-500">· {g.layers.length}</span>
+            </div>
+          ))
+        )}
       </div>
-      <div className="mt-1 text-[10px] text-slate-500">
-        The rightmost field is the layer's <b>group</b> (its floor, or Site) — type a new
-        name to regroup it. Menu order follows this list.
-      </div>
+      <button
+        type="button"
+        onClick={() => setLayersEditorOpen(true)}
+        className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
+      >
+        🎚 Open Layers editor
+      </button>
     </Section>
   );
 }

@@ -3,6 +3,7 @@ import { TopBar } from "./components/TopBar";
 import { Sidebar } from "./components/Sidebar";
 import { PreviewArea } from "./components/PreviewArea";
 import { PropertyPanel } from "./components/PropertyPanel";
+import { LayersEditor } from "./components/LayersEditor";
 import { useConfigStore } from "./state/configStore";
 import { validate } from "./schema/houseConfig";
 
@@ -43,6 +44,7 @@ export default function App() {
         <PreviewArea />
         <PropertyPanel />
       </div>
+      <LayersEditor />
     </div>
   );
 }

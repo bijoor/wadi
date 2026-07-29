@@ -21,6 +21,7 @@ import { House3D } from "../three/House3D";
 import { readPlotBounds } from "../three/coords";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { ViewerLayerPanel } from "./LayerPanel";
+import { LayersEditor } from "../components/LayersEditor";
 import { ViewerLightingPanel } from "./LightingPanel";
 import { ViewerInteriorPanel } from "./InteriorPanel";
 import { useConfigStore } from "../state/configStore";
@@ -636,6 +637,14 @@ export function mountViewer3D(container: HTMLElement): void {
 export function mountViewerLayerPanel(container: HTMLElement): void {
   const root = createRoot(container);
   root.render(<ViewerLayerPanel />);
+}
+
+// Mount the Layers editor modal (renders null until opened via useLayersUiStore).
+// Shares the config store with the rest of the viewer, so edits persist to
+// config.layers and the layer menu + 3D follow immediately.
+export function mountViewerLayersEditor(container: HTMLElement): void {
+  const root = createRoot(container);
+  root.render(<LayersEditor />);
 }
 
 // Mount the lighting sliders into the ⚙️ settings panel. Shares the

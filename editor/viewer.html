@@ -2456,6 +2456,11 @@
         <aside id="viewer-property-panel"></aside>
     </div>
 
+    <!-- Layers editor modal (React, mounted by main.ts). Renders nothing until
+         opened via the layer menu's "Edit layers…" or House settings. Overlay is
+         position:fixed, so it sits anywhere in the DOM. -->
+    <div id="viewer-layers-editor"></div>
+
     <script>
         // Toggle a layer/settings panel's visibility. Reused by the
         // mobile-only .layers-toggle button. On desktop the panel is

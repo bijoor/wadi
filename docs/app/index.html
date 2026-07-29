@@ -2038,9 +2038,9 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-BUjChCUF.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-DykWtpSa.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
-  <link rel="stylesheet" crossorigin href="./assets/viewer-47YwG6Mm.css">
+  <link rel="stylesheet" crossorigin href="./assets/viewer-ClidYReF.css">
 </head>
 <body>
     <header>
@@ -2457,6 +2457,11 @@
         </div><!-- /viewer-content-area -->
         <aside id="viewer-property-panel"></aside>
     </div>
+
+    <!-- Layers editor modal (React, mounted by main.ts). Renders nothing until
+         opened via the layer menu's "Edit layers…" or House settings. Overlay is
+         position:fixed, so it sits anywhere in the DOM. -->
+    <div id="viewer-layers-editor"></div>
 
     <script>
         // Toggle a layer/settings panel's visibility. Reused by the
