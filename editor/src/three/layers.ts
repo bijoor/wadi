@@ -124,25 +124,32 @@ export function effectiveLayers(config: unknown, overrides?: Record<string, Laye
   const floors =
     (config as { floors?: Array<{ floor_number?: number; objects?: Array<Record<string, unknown>> }> } | null)
       ?.floors ?? [];
-  let hasRoof = false;
-  floors.forEach((f, fi) => {
-    const n = typeof f.floor_number === "number" ? f.floor_number : fi;
+  const hasRoof = floors.some((f) =>
+    (f.objects ?? []).some((o) => ROOF_TYPES.has(o.type as string)),
+  );
+
+  // Default (non-materialized) order mirrors the physical stack, TOP → BOTTOM:
+  // Roof on top, then floors highest-first, then the shared Site layers at the
+  // bottom. Anything already in config.layers keeps its stored order (it comes
+  // first, above) — this only positions the auto-added layers.
+  if (hasRoof) for (const id of ROOF_LAYER_IDS) ensure(id);
+
+  const floorsByHeight = floors
+    .map((f, fi) => ({ f, n: typeof f.floor_number === "number" ? f.floor_number : fi }))
+    .sort((a, b) => b.n - a.n);
+  for (const { f, n } of floorsByHeight) {
     // Predictable per-floor role sub-layers (so each floor group is complete).
     if (n >= 1) for (const r of ROLES) ensure(`f${n}_${r}`);
     for (const o of f.objects ?? []) {
       const t = o.type as string;
-      if (ROOF_TYPES.has(t)) {
-        hasRoof = true;
-        continue;
-      }
+      if (ROOF_TYPES.has(t)) continue;
       const id = (typeof o.layer === "string" && o.layer ? o.layer : null) ?? defaultLayerFor(t, n, ov);
-      // Defer the shared Site layers so floor groups come first in the menu.
+      // Defer the shared Site layers so they land at the bottom.
       if (id !== "plinth" && id !== "ground") ensure(id);
     }
-  });
+  }
   ensure("plinth");
   ensure("ground");
-  if (hasRoof) for (const id of ROOF_LAYER_IDS) ensure(id);
 
   return order;
 }

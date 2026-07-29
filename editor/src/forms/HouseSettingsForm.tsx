@@ -11,7 +11,7 @@ import { pickAndLoadConfig } from "../io/fileIO";
 import { symbolError } from "../param/resolve";
 import { NumberField, SelectField, TextField, Section, ObjectMeasureField } from "./fields";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
-import { effectiveLayers, isRoofLayer, type LayerDef } from "../three/layers";
+import { effectiveLayers, type LayerDef } from "../three/layers";
 import { toGroups } from "../three/layerGrouping";
 import { useLayersUiStore } from "../state/layersUiStore";
 import {
@@ -603,8 +603,8 @@ function ComponentsSection() {
 function LayersSection() {
   const config = useConfigStore((s) => s.config);
   const setLayersEditorOpen = useLayersUiStore((s) => s.setOpen);
-  // Materialized set MINUS the code-managed roof layers, grouped for a summary.
-  const layers: LayerDef[] = effectiveLayers(config).filter((l) => !isRoofLayer(l.id));
+  // Full materialized set (incl. the code-managed Roof group), grouped for a summary.
+  const layers: LayerDef[] = effectiveLayers(config);
   const groups = toGroups(layers);
 
   return (
