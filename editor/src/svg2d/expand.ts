@@ -124,6 +124,10 @@ export function expandRoomWalls(
   if ((hc as { coord_convention?: string }).coord_convention === "center" && hc.floors) {
     const RECT_TYPES = new Set(["room", "floor_slab", "plinth"]);
     for (const fl of hc.floors) {
+      // Per-floor building envelope (outer faces of the rects on THIS floor) so
+      // perimeter columns can be pulled flush with the edge (see clamp below).
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      const pillars: Record<string, unknown>[] = [];
       for (const o of (fl.objects ?? []) as Obj[]) {
         const r = o as Record<string, unknown>;
         if (RECT_TYPES.has(o.type as string)) {
@@ -132,9 +136,36 @@ export function expandRoomWalls(
           if (typeof r.y === "number") r.y = (r.y as number) - ot / 2;
           if (typeof r.width === "number") r.width = (r.width as number) + ot;
           if (typeof r.length === "number") r.length = (r.length as number) + ot;
+          if (typeof r.x === "number" && typeof r.width === "number") {
+            minX = Math.min(minX, r.x as number);
+            maxX = Math.max(maxX, (r.x as number) + (r.width as number));
+          }
+          if (typeof r.y === "number" && typeof r.length === "number") {
+            minY = Math.min(minY, r.y as number);
+            maxY = Math.max(maxY, (r.y as number) + (r.length as number));
+          }
         } else if (o.type === "pillar") {
           if (typeof r.x === "number" && typeof r.width === "number") r.x = (r.x as number) - (r.width as number) / 2;
           if (typeof r.y === "number" && typeof r.length === "number") r.y = (r.y as number) - (r.length as number) / 2;
+          pillars.push(r);
+        }
+      }
+      // Clamp columns into the envelope so a column wider than the wall it sits on
+      // doesn't jut past the plinth edge at the perimeter. Shift only (keep the
+      // column's size); interior columns are already inside, so this is a no-op
+      // for them. A column wider than the whole floor stays flush to the min edge.
+      if (Number.isFinite(minX) && Number.isFinite(maxX)) {
+        for (const r of pillars) {
+          if (typeof r.x === "number" && typeof r.width === "number") {
+            const w = r.width as number;
+            if ((r.x as number) < minX) r.x = minX;
+            else if ((r.x as number) + w > maxX) r.x = maxX - w;
+          }
+          if (typeof r.y === "number" && typeof r.length === "number") {
+            const l = r.length as number;
+            if ((r.y as number) < minY) r.y = minY;
+            else if ((r.y as number) + l > maxY) r.y = maxY - l;
+          }
         }
       }
     }

@@ -69,6 +69,19 @@ describe("centreline convention + grid symbols", () => {
     expect([outer.x, outer.y]).toEqual([100, 200]);
   });
 
+  it("clamps a perimeter column flush to the building edge (no jut past the plinth)", () => {
+    // Room outer footprint [0,200]×[0,200] (centreline x=4,y=4,w=192,l=192, t=8).
+    // A 20-wide column centred on the corner node (4,4) would poke to (−6,−6);
+    // it must be pulled flush to (0,0). An interior column is untouched.
+    const corner: Any = { type: "pillar", name: "C", x: 4, y: 4, width: 20, length: 20, height: 100 };
+    const inner: Any = { type: "pillar", name: "I", x: 100, y: 100, width: 20, length: 20, height: 100 };
+    const cfg = house([room("A", 4, 4, 192, 192), corner, inner], { coord_convention: "center" });
+    const e = expandRoomWalls(cfg);
+    const c = find(e, "C"), i = find(e, "I");
+    expect([c.x, c.y, c.width, c.length]).toEqual([0, 0, 20, 20]); // flush, size kept
+    expect([i.x, i.y]).toEqual([90, 90]); // interior: just centred, not clamped
+  });
+
   it("default (outer) convention leaves footprints unchanged on expand", () => {
     const a = find(expandRoomWalls(house([room("A", 0, 0, 150, 160)])), "A");
     expect([a.x, a.y, a.width, a.length]).toEqual([0, 0, 150, 160]);
