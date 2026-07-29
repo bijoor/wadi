@@ -22,12 +22,20 @@ export function FurniturePicker({
     setCat(pieceCat);
   }
   const pieces = FURNITURE_CATALOG.filter((a) => a.category === cat);
+  // Changing the Category must also change the PIECE — otherwise the dropdown
+  // shows a new category while the model keeps the old item. Snap to the first
+  // piece of the newly-chosen category (the sync above then keeps `cat` aligned).
+  const changeCategory = (c: string) => {
+    setCat(c);
+    const first = FURNITURE_CATALOG.find((a) => a.category === c);
+    if (first && first.id !== value) onPick(first.id);
+  };
   return (
     <>
       <SelectField
         label="Category"
         value={cat}
-        onChange={setCat}
+        onChange={changeCategory}
         options={FURNITURE_CATEGORIES.map((c) => ({ value: c, label: c }))}
       />
       <SelectField
