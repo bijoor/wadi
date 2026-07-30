@@ -357,6 +357,15 @@
             body[data-edit-mode="on"][data-selection="on"] #viewer-sidebar {
                 display: none;
             }
+            /* The mounted panels carry fixed desktop widths (Sidebar w-72,
+               PropertyPanel w-96). On a phone the overlay is full-width, so
+               stretch the panel to fill it — otherwise it stops short and the
+               collapse tab (pinned to the screen's right edge) floats over a
+               strip of 3-D. */
+            body[data-edit-mode="on"] #viewer-sidebar > aside,
+            body[data-edit-mode="on"] #viewer-property-panel > aside {
+                width: 100%;
+            }
         }
         /* Floating "back to tree" button — only visible on narrow screens
            when a selection is active. Sits above the property panel's
