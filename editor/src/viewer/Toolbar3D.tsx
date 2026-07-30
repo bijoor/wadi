@@ -16,6 +16,7 @@ import { createRoot } from "react-dom/client";
 import { effectiveLayers, layerGroups, useLayerStore } from "../three/layers";
 import { useConfigStore } from "../state/configStore";
 import { listRooms, useInteriorStore } from "../three/interiorView";
+import { useSpinStore } from "../three/spinStore";
 
 function readThumbs(config: unknown): string[] {
   const c = config as { thumbnails?: string[]; thumbnail?: string } | null;
@@ -207,6 +208,13 @@ function ViewMenu() {
   const enter = useInteriorStore((s) => s.enter);
   const exit = useInteriorStore((s) => s.exit);
 
+  // Auto-spin (turntable) — shared with the 3D scene via useSpinStore. It only
+  // animates in "Fly around" (orbit) mode, so its enabler sits on that row.
+  const spinEnabled = useSpinStore((s) => s.enabled);
+  const spinSpeed = useSpinStore((s) => s.speed);
+  const setSpinEnabled = useSpinStore((s) => s.setEnabled);
+  const setSpinSpeed = useSpinStore((s) => s.setSpeed);
+
   const [open, setOpen] = useState(false);
   const ref = useOutsideClose(open, () => setOpen(false));
 
@@ -234,15 +242,69 @@ function ViewMenu() {
       {open && (
         <div className="v3d-pop" role="menu">
           <div className="v3d-pop-head"><span>Change view</span></div>
-          <button
-            className={`v3d-pop-item${!target ? " active" : ""}`}
-            onClick={() => {
-              exit();
-              setOpen(false);
-            }}
-          >
-            🕊️ Fly around
-          </button>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <button
+              className={`v3d-pop-item${!target ? " active" : ""}`}
+              style={{ flex: 1 }}
+              onClick={() => {
+                exit();
+                setOpen(false);
+              }}
+            >
+              🕊️ Fly around
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = !spinEnabled;
+                setSpinEnabled(next);
+                if (next && target) exit(); // pop to Fly around so the spin is visible
+              }}
+              title={spinEnabled ? "Stop auto-spin" : "Auto-spin (turntable)"}
+              aria-label="Auto-spin"
+              aria-pressed={spinEnabled}
+              style={{
+                flexShrink: 0,
+                width: "2rem",
+                height: "2rem",
+                marginRight: "0.5rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "6px",
+                border: spinEnabled ? "1px solid #4348c9" : "1px solid #d0d0d8",
+                background: spinEnabled ? "#eef0ff" : "transparent",
+                color: spinEnabled ? "#4348c9" : "#888",
+                cursor: "pointer",
+                fontSize: "1.05rem",
+                lineHeight: 1,
+              }}
+            >
+              ⟳
+            </button>
+          </div>
+          {spinEnabled && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.1rem 0.85rem 0.45rem",
+              }}
+            >
+              <span style={{ fontSize: "0.68rem", color: "#999" }}>Spin speed</span>
+              <input
+                type="range"
+                min={1}
+                max={16}
+                step={1}
+                value={spinSpeed}
+                onChange={(e) => setSpinSpeed(parseFloat(e.target.value))}
+                style={{ flex: 1 }}
+                aria-label="Auto-spin speed"
+              />
+            </div>
+          )}
           {floors.map((f) => (
             <div key={f.name}>
               <div className="v3d-pop-floor">{f.name}</div>

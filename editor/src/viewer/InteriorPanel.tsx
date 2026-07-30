@@ -1,169 +1,20 @@
-// Room list for the interior walk-through. Mounted into the 🎥 camera
-// panel (#viewer-interior-panel, inside #viewer-camera-panel) by
-// mount3D.tsx. Pick a room → the 3D camera drops to eye level inside it
-// (drag to look, joystick/WASD to walk); "Overview" returns to orbit.
-// Shares useInteriorStore with the scene's first-person rig.
+// Interior walk-through helpers. The room picker itself now lives in the
+// toolbar "Change view" dropdown (Toolbar3D ViewMenu) — the old 🎥 side-panel
+// list has been retired. This component stays mounted (into the hidden
+// #viewer-interior-panel) only so the on-screen movement joystick + hint keep
+// rendering when a room is entered. Both portal into the 3D scene container,
+// not this panel. Shares useInteriorStore with the scene's first-person rig.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useConfigStore } from "../state/configStore";
-import { interiorMove, listRooms, useInteriorStore } from "../three/interiorView";
-import { useSpinStore } from "../three/spinStore";
-
-// Close the 🎥 popup after a selection (mirrors the vanilla toggleCamera
-// in viewer.html — the panel's open/closed state is a CSS `.active` class).
-function closeCameraPanel() {
-  document.getElementById("viewer-camera-panel")?.classList.remove("active");
-}
+import { interiorMove, useInteriorStore } from "../three/interiorView";
 
 export function ViewerInteriorPanel() {
-  const config = useConfigStore((s) => s.config);
   const target = useInteriorStore((s) => s.target);
-  const enter = useInteriorStore((s) => s.enter);
-  const exit = useInteriorStore((s) => s.exit);
-  const rooms = useMemo(() => listRooms(config), [config]);
-
-  // Auto-spin (turntable) — shared with the 3D scene via useSpinStore. It only
-  // takes effect in Overview (orbit) mode, so its toggle lives right on that row.
-  const spinEnabled = useSpinStore((s) => s.enabled);
-  const spinSpeed = useSpinStore((s) => s.speed);
-  const setSpinEnabled = useSpinStore((s) => s.setEnabled);
-  const setSpinSpeed = useSpinStore((s) => s.setSpeed);
-
-  // Group rooms by floor, preserving the order listRooms returns.
-  const floors: { name: string; rooms: typeof rooms }[] = [];
-  for (const r of rooms) {
-    let g = floors.find((f) => f.name === r.floorName);
-    if (!g) {
-      g = { name: r.floorName, rooms: [] };
-      floors.push(g);
-    }
-    g.rooms.push(r);
-  }
-
-  const rowBase: React.CSSProperties = {
-    display: "block",
-    width: "100%",
-    textAlign: "left",
-    background: "none",
-    border: "none",
-    borderRadius: "6px",
-    padding: "0.35rem 0.5rem",
-    margin: "0.1rem 0",
-    color: "#333",
-    fontSize: "0.85rem",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  };
-  const rowActive: React.CSSProperties = {
-    ...rowBase,
-    background: "#eef0ff",
-    color: "#4348c9",
-    fontWeight: 600,
-  };
-
   return (
     <>
-      {/* Overview (orbit) + inline auto-spin toggle. Spin only animates in this
-          "fly around" mode, so its enabler sits right against the row. */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-        <button
-          style={{ ...(!target ? rowActive : rowBase), flex: 1 }}
-          onClick={() => {
-            exit();
-            closeCameraPanel();
-          }}
-        >
-          Overview (orbit)
-        </button>
-        <button
-          onClick={() => {
-            const next = !spinEnabled;
-            setSpinEnabled(next);
-            if (next && target) exit(); // pop to orbit so the spin is visible
-          }}
-          title={spinEnabled ? "Stop auto-spin" : "Auto-spin (turntable)"}
-          aria-label="Auto-spin"
-          aria-pressed={spinEnabled}
-          style={{
-            flexShrink: 0,
-            width: "1.9rem",
-            height: "1.9rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "6px",
-            border: spinEnabled ? "1px solid #4348c9" : "1px solid #ddd",
-            background: spinEnabled ? "#eef0ff" : "#fff",
-            color: spinEnabled ? "#4348c9" : "#888",
-            cursor: "pointer",
-            fontSize: "1.05rem",
-            lineHeight: 1,
-          }}
-        >
-          ⟳
-        </button>
-      </div>
-      {spinEnabled && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            margin: "0.15rem 0 0.35rem",
-            padding: "0 0.15rem",
-          }}
-        >
-          <span style={{ fontSize: "0.68rem", color: "#999", width: "3.4rem" }}>Spin speed</span>
-          <input
-            type="range"
-            min={1}
-            max={16}
-            step={1}
-            value={spinSpeed}
-            onChange={(e) => setSpinSpeed(parseFloat(e.target.value))}
-            style={{ flex: 1 }}
-            aria-label="Auto-spin speed"
-          />
-        </div>
-      )}
-      {rooms.length === 0 ? (
-        <div style={{ fontSize: "0.85rem", color: "#666", marginTop: "0.4rem" }}>
-          No rooms to walk into.
-        </div>
-      ) : (
-        <>
-      {floors.map((f) => (
-        <div key={f.name} style={{ marginTop: "0.4rem" }}>
-          <div
-            style={{
-              fontSize: "0.68rem",
-              color: "#999",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              margin: "0.25rem 0.5rem 0.1rem",
-            }}
-          >
-            {f.name}
-          </div>
-          {f.rooms.map((r) => (
-            <button
-              key={r.key}
-              style={target?.key === r.key ? rowActive : rowBase}
-              onClick={() => {
-                enter({ key: r.key, label: `${f.name}: ${r.name}`, eye: r.eye });
-                closeCameraPanel();
-              }}
-            >
-              {r.name}
-            </button>
-          ))}
-        </div>
-      ))}
       {target && <HintBanner targetKey={target.key} />}
       {target && <MoveJoystick />}
-        </>
-      )}
     </>
   );
 }
