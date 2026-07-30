@@ -1,0 +1,20 @@
+{
+  "name": "Wadi — Home Designer",
+  "short_name": "Wadi",
+  "description": "Design an architecturally sound, Konkan-style home in 3D. Choose a ready-made design, make it yours, and see the floor plans — works offline once installed.",
+  "id": "/app/",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#faf7f2",
+  "theme_color": "#B85028",
+  "categories": ["productivity", "lifestyle", "utilities"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

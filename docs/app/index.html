@@ -14,8 +14,17 @@
     <meta http-equiv="origin-trial" content="YOUR_WEBMCP_ORIGIN_TRIAL_TOKEN"> -->
 
     <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
-    <link rel="apple-touch-icon" href="favicon.svg"/>
+    <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
     <meta name="theme-color" content="#B85028"/>
+
+    <!-- PWA: installable + offline (mobile / tablet, where there's no Tauri
+         build). The manifest + service worker (registered in src/viewer/main.ts)
+         let the app be added to the home screen and launched offline. -->
+    <link rel="manifest" href="manifest.webmanifest"/>
+    <meta name="mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+    <meta name="apple-mobile-web-app-title" content="Wadi"/>
     <style>
         /* Universal box-sizing everywhere (safe), but keep the margin/
            padding reset OFF the mounted editor panels — the React
@@ -2042,7 +2051,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CeLVDOAz.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-CdDMQ1m3.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-BzsY0J9D.css">
 </head>
