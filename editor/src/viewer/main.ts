@@ -1546,7 +1546,13 @@ function applyPersona(): void {
   if (persona === "architect") {
     let stored: string | null = null;
     try { stored = localStorage.getItem(EDIT_MODE_KEY); } catch { /* ignore */ }
-    document.body.dataset.editMode = stored === "off" ? "off" : "on";
+    // On phones the edit panels open as a full-screen overlay, so starting with
+    // them ON would cover the 3D model on load. Default OFF on narrow screens
+    // (model + bottom tab bar first; the ✏️ toggle opens the panels on demand);
+    // honor an explicit stored choice on any screen.
+    const narrow = window.matchMedia("(max-width: 640px)").matches;
+    document.body.dataset.editMode =
+      stored === "off" ? "off" : stored === "on" ? "on" : narrow ? "off" : "on";
   } else {
     document.body.dataset.editMode = "off";
   }
