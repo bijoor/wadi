@@ -24,19 +24,15 @@ function renameViewerToIndex(): Plugin {
   }
 }
 
-// The tabbed viewer at docs/index.html. It shares source code with the
-// editor (svg2d/ generators + three/ scene), but uses a completely
-// different HTML shell — the mobile-friendly, model-viewer-style
-// tabbed layout that was originally hand-authored.
+// Build config for the app (the "3D home designer" at wadi.house/app). This is
+// the ONLY shippable bundle — the former standalone editor SPA (docs/editor) has
+// been retired; the app's studio mode is the editor now.
 //
-// The viewer entry lives at editor/viewer.html; the TS bootstrap that
-// wires generators + Three.js into the vanilla-JS UI lives at
-// editor/src/viewer/main.ts. Build output goes straight into docs/,
-// producing docs/index.html + docs/assets/… alongside the editor's
-// docs/editor/ tree.
-//
-// This is a SEPARATE Vite build from the editor. Both are invoked
-// from `npm run build` (see package.json).
+// The entry lives at editor/viewer.html; the TS bootstrap that wires the
+// svg2d/ generators + Three.js scene + the mounted Sidebar/PropertyPanel forms
+// lives at editor/src/viewer/main.ts. Output → docs/app/ (viewer.html is renamed
+// to index.html below so /app serves it at the root). Invoked from
+// `npm run build`. Local dev + Vitest use the base vite.config.ts instead.
 
 export default defineConfig({
   base: './',
@@ -56,8 +52,8 @@ export default defineConfig({
         index: path.resolve(__dirname, 'viewer.html'),
       },
       output: {
-        // Give the viewer its own asset filename prefix so its hashed
-        // JS/CSS don't collide with the editor's under docs/editor/assets/.
+        // Prefix the app's hashed JS/CSS with `viewer-` (kept for stable,
+        // recognisable asset names in docs/app/assets/).
         entryFileNames: 'assets/viewer-[hash].js',
         chunkFileNames: 'assets/viewer-[hash].js',
         assetFileNames: 'assets/viewer-[hash][extname]',

@@ -763,8 +763,8 @@ function LayersSection() {
   return (
     <Section title="Layers (3D visibility)">
       <div className="mb-2 text-[11px] text-slate-400">
-        The house's 3D layers, grouped by floor (plus <b>Site</b>). Open the editor to
-        reorder whole groups &amp; the layers in them, rename or recolour, and move layers
+        The house's 3D layers, grouped by floor (plus <b>Site</b>). Open the Layers editor
+        to reorder whole groups &amp; the layers in them, rename or recolour, and move layers
         between groups. Assign an object to a layer via its <b>Layer</b> dropdown; the
         Show/hide-layers menu follows this order. Roof layers are managed automatically.
       </div>

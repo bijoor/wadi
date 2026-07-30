@@ -29,7 +29,7 @@ export function furnitureBaseUrl(): string {
     /* localStorage blocked — ignore */
   }
   if (REMOTE_FURNITURE_URL) return stripTrailingSlash(REMOTE_FURNITURE_URL);
-  // Bundled copy, base-aware so it resolves under /editor/ on the deployed site too.
+  // Bundled copy, base-aware so it resolves under the app's base path (/app/) too.
   return stripTrailingSlash(`${import.meta.env.BASE_URL}furniture`);
 }
 

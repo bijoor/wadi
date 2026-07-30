@@ -48,8 +48,7 @@ Everything runs in your browser — nothing to install, and it works on a phone.
 
 The same app has a full studio for authoring and detailing a design.
 
-1. **Open the studio** → **<https://wadi.house/app?mode=studio>** (or the editor at
-   <https://wadi.house/editor>).
+1. **Open the studio** → **<https://wadi.house/app?mode=studio>**.
 2. **Build the model.** Add and edit every element through the object tree and property
    panels — rooms (with per-side walls, doors, and windows), free-standing walls, a roof
    (hip / gable / shed / flat), columns, beams, slabs, staircases, kitchen platforms, and
@@ -194,8 +193,9 @@ All app code lives under `editor/`:
 | Schema smoke-check the default config | `npm --prefix editor run smoke-validate` |
 | Dump SVGs to disk (print / Inkscape) | `npm --prefix editor run dump-svgs` |
 
-`npm run build` runs `tsc` then two Vite builds — the **editor SPA** → `docs/editor/` and
-the **app / viewer** → `docs/app/`. Both read the same `editor/src`.
+`npm run build` runs `tsc` then a Vite build of the **app** → `docs/app/`
+(`vite.viewer.config.ts`). `npm run dev` / Vitest use `vite.config.ts`. Both read the
+same `editor/src`.
 
 ## Desktop app (Tauri)
 
@@ -219,7 +219,6 @@ editor/                    React + Three.js + Zod app — THE source of truth
 docs/                      GitHub Pages root, served at wadi.house
   index.html               landing page  → /app
   app/                     the 3D home designer (homeowner + architect modes)
-  editor/                  the editor SPA
   templates/               bundled starter templates + index.json
   house_config.json        default design (root house_config.json → symlink)
 src-tauri/                 desktop app (Tauri) wrapping docs/
@@ -238,8 +237,8 @@ python/  archive/          RETIRED Blender/Python pipeline — history only, do 
 ## Deployment & hosting
 
 - **Site + app:** `docs/` is the GitHub Pages root on the custom domain **`wadi.house`**.
-  Run `npm --prefix editor run build` so `docs/app` and `docs/editor` are current, then
-  push `main` — Pages rebuilds in ~1–2 min.
+  Run `npm --prefix editor run build` so `docs/app` is current, then push `main` — Pages
+  rebuilds in ~1–2 min.
 - **Templates & furniture:** hosted on **Cloudflare R2** so new ones ship without
   redeploying the site or app. Publish with `scripts/publish-templates.sh` /
   `scripts/publish-furniture.sh` (needs a gitignored `.env.r2` — see
