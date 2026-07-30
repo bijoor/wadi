@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wadi: Design a house in 3D</title>
-  <meta name="description" content="Design a house in 3D and get floor plans, elevations, dimensioned drawings, and a full bill of materials, all from one model, live in your browser and on the desktop." />
+  <title>Wadi — design your home in 3D</title>
+  <meta name="description" content="Choose a ready-made home and make it yours, or design one in full detail. The 3D model, floor plans, and elevations update together, live in your browser." />
   <link rel="icon" href="/favicon.svg" />
 
   <!-- Legacy share links: older links were wadi.house/#w1=… (before the
@@ -131,6 +131,12 @@
     .card h3 { margin: 0 0 6px; font-size: 1.08rem; letter-spacing: -0.01em; }
     .card p { margin: 0; color: var(--muted); font-size: .95rem; }
     .card code { background: var(--accent-soft); color: var(--accent); padding: 1px 6px; border-radius: 6px; font-size: .85em; }
+    .cards.cols2 { grid-template-columns: repeat(2, 1fr); }
+    .card.persona { padding: 26px; }
+    .card.persona h3 { font-size: 1.25rem; }
+    .card.persona p { font-size: 1rem; margin-bottom: 18px; }
+    .card .btn { margin-top: auto; }
+    .card.persona { display: flex; flex-direction: column; }
 
     /* CTA band */
     .band { margin-top: 48px; }   /* only top; keep .wrap's margin:0 auto for centering */
@@ -161,7 +167,7 @@
     @media (max-width: 820px) {
       .hero-grid { grid-template-columns: 1fr; gap: 28px; }
       .lede { max-width: none; }
-      .cards { grid-template-columns: 1fr; }
+      .cards, .cards.cols2 { grid-template-columns: 1fr; }
       .hero { padding: 44px 0 24px; }
     }
   </style>
@@ -183,12 +189,12 @@
     <section class="hero wrap">
       <div class="hero-grid">
         <div>
-          <span class="eyebrow">Procedural house design</span>
-          <h1>Design a house.<br>Get the <span class="accent">whole set</span>.</h1>
-          <p class="lede">Edit one house model and get a 3D view, floor plans, elevations, dimensioned drawings, and a full bill of materials, all updating together, live in your browser.</p>
+          <span class="eyebrow">Your home, in 3D</span>
+          <h1>Design your home.<br>See the <span class="accent">whole thing</span>.</h1>
+          <p class="lede">Pick a ready-made home and make it yours, or design one in full detail. The 3D model, floor plans and elevations all update together, live.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary btn-lg" href="/app/">Open the designer →</a>
-            <a class="btn btn-ghost btn-lg" href="#desktop">Get the desktop app</a>
+            <a class="btn btn-primary btn-lg" href="/app/?mode=owner">Choose your home →</a>
+            <a class="btn btn-ghost btn-lg" href="/app/?mode=studio">Open the studio</a>
           </div>
           <p class="hint" style="margin-top:14px;">Runs in your browser. Nothing to install to try it.</p>
         </div>
@@ -220,47 +226,47 @@
 
     <section class="features wrap">
       <div class="section-head">
-        <h2>One description, every output</h2>
-        <p>Change a dimension and the model, the drawings, and the material takeoff all update together.</p>
+        <h2>Two ways to design</h2>
+        <p>Whether you're picturing your own home or drawing one for a client, it's the same live 3D model.</p>
       </div>
-      <div class="cards">
-        <div class="card">
-          <div class="ic">🏠</div>
-          <h3>3D model</h3>
-          <p>Walls, floors, roofs, doors, windows, staircases and pillars generated procedurally, viewable in the browser.</p>
+      <div class="cards cols2">
+        <div class="card persona">
+          <div class="ic">🏡</div>
+          <h3>For homeowners</h3>
+          <p>Choose a ready-made home, then make it yours — set the plot size, roof style and room options and watch the 3D model change. See the floor plan, and share your design as a link.</p>
+          <a class="btn btn-primary" href="/app/?mode=owner">Choose your home →</a>
         </div>
-        <div class="card">
+        <div class="card persona">
           <div class="ic">📐</div>
-          <h3>2D drawings</h3>
-          <p>Floor plans, elevations, and fully dimensioned SVGs, including detailed roof framing views.</p>
+          <h3>For architects</h3>
+          <p>A full studio: every room, wall, roof, column, staircase and piece of furniture, with live floor plans, elevations, roof views and quantities. Build parametric templates that re-flow when the plot changes.</p>
+          <a class="btn btn-primary" href="/app/?mode=studio">Open the studio →</a>
         </div>
-        <div class="card">
-          <div class="ic">📋</div>
-          <h3>Bill of materials</h3>
-          <p>Timber framing and metal-roof takeoffs computed automatically from the geometry.</p>
-        </div>
+      </div>
+
+      <div class="cards" style="margin-top:18px;">
         <div class="card">
           <div class="ic">✏️</div>
-          <h3>Live editing</h3>
-          <p>Adjust rooms, walls and roofs and watch the whole model and drawing set rebuild in real time.</p>
+          <h3>Everything's live</h3>
+          <p>Change a room, wall or roof and the 3D model and every drawing rebuild in real time.</p>
         </div>
         <div class="card">
           <div class="ic">🔗</div>
-          <h3>Share a link</h3>
-          <p>Send a house as a link. The whole design travels in the URL, with no account and no upload.</p>
+          <h3>Share by link</h3>
+          <p>Send a house as a link — the whole design travels in the URL, with no account and nothing uploaded.</p>
         </div>
         <div class="card">
           <div class="ic">📦</div>
-          <h3>Desktop app</h3>
-          <p>Open <code>.wadi</code> files natively on the desktop, with live reload as you edit them.</p>
+          <h3>Desktop &amp; AI</h3>
+          <p>Live-edit <code>.wadi</code> files in the desktop app, or describe a house to an AI agent and let it build the model.</p>
         </div>
       </div>
     </section>
 
     <section class="wrap band" id="desktop">
       <div class="band-inner">
-        <h2>Get the desktop app</h2>
-        <p>Open and live-edit <code>.wadi</code> files natively. Choose your platform.</p>
+        <h2>Prefer a desktop app?</h2>
+        <p>Open and live-edit <code>.wadi</code> files natively, with the model reloading as you save. Choose your platform.</p>
         <div class="downloads">
           <a class="btn dl" href="https://github.com/bijoor/wadi/releases">
             <span class="dl-os">macOS</span><span class="dl-sub">.dmg</span>
@@ -279,8 +285,8 @@
 
   <footer>
     <div class="wrap foot">
-      <div>Wadi. Procedural house design.</div>
-      <div><a href="/app/">Open the designer</a> · <a href="https://github.com/bijoor/wadi">GitHub</a></div>
+      <div>Wadi. Design your home in 3D.</div>
+      <div><a href="/app/?mode=owner">Choose your home</a> · <a href="/app/?mode=studio">Open the studio</a> · <a href="https://github.com/bijoor/wadi">GitHub</a></div>
     </div>
   </footer>
 </body>
