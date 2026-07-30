@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wadi — design your home in 3D</title>
-  <meta name="description" content="Choose a ready-made home and make it yours, or design one in full detail. The 3D model, floor plans, and elevations update together, live in your browser." />
+  <title>Wadi — architecturally sound Konkan homes you can design yourself</title>
+  <meta name="description" content="Architect-made, Konkan-style house designs that families can choose, customise and see in 3D — floor plans and elevations included. Built for the people building their own homes." />
   <link rel="icon" href="/favicon.svg" />
 
   <!-- Legacy share links: older links were wadi.house/#w1=… (before the
@@ -116,6 +116,14 @@
     .art svg { width: 100%; height: auto; }
     .hero-media { width: 100%; height: auto; display: block; border-radius: calc(var(--radius) - 6px); }
 
+    /* Hero video (YouTube walkthrough) — responsive 16:9 embed */
+    .video-frame {
+      position: relative; width: 100%; aspect-ratio: 16/9;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow); overflow: hidden; background: #000;
+    }
+    .video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+
     /* Features */
     section.features { padding: 40px 0 24px; }
     .section-head { text-align: center; max-width: 42ch; margin: 0 auto 36px; }
@@ -189,57 +197,43 @@
     <section class="hero wrap">
       <div class="hero-grid">
         <div>
-          <span class="eyebrow">Your home, in 3D</span>
-          <h1>Design your home.<br>See the <span class="accent">whole thing</span>.</h1>
-          <p class="lede">Pick a ready-made home and make it yours, or design one in full detail. The 3D model, floor plans and elevations all update together, live.</p>
+          <span class="eyebrow">Konkan homes · in your hands</span>
+          <h1>Build a home that's <span class="accent">designed right</span>.</h1>
+          <p class="lede">Wadi brings architect-made, Konkan-style house designs to the families building their own homes. Choose one, shape it to your plot and needs, and see the whole house in 3D — floor plans and elevations included.</p>
           <div class="hero-actions">
             <a class="btn btn-primary btn-lg" href="/app/?mode=owner">Choose your home →</a>
-            <a class="btn btn-ghost btn-lg" href="/app/?mode=studio">Open the studio</a>
+            <a class="btn btn-ghost btn-lg" href="/app/?mode=studio">For architects</a>
           </div>
           <p class="hint" style="margin-top:14px;">Runs in your browser. Nothing to install to try it.</p>
         </div>
-        <div class="art">
-          <video class="hero-media" autoplay loop muted playsinline
-                 aria-label="A procedurally generated 3D house model, rotating"
-                 onloadeddata="var f=document.getElementById('hero-fallback'); if (f) f.style.display='none';">
-            <source src="/hero.webm" type="video/webm" />
-            <source src="/hero.mp4" type="video/mp4" />
-          </video>
-          <svg id="hero-fallback" viewBox="0 0 400 300" fill="none" aria-hidden="true">
-            <defs>
-              <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="var(--accent)"/>
-                <stop offset="1" stop-color="color-mix(in srgb, var(--accent) 70%, #000)"/>
-              </linearGradient>
-            </defs>
-            <path d="M40 210 L200 130 L360 210 L200 290 Z" fill="var(--accent-soft)" stroke="var(--border)" stroke-width="2"/>
-            <path d="M110 170 L200 214 L200 290 L110 246 Z" fill="var(--surface)" stroke="var(--muted)" stroke-width="2"/>
-            <path d="M290 170 L200 214 L200 290 L290 246 Z" fill="color-mix(in srgb, var(--surface) 80%, var(--muted))" stroke="var(--muted)" stroke-width="2"/>
-            <path d="M110 170 L200 126 L290 170 L200 214 Z" fill="url(#roof)" stroke="color-mix(in srgb, var(--accent) 60%, #000)" stroke-width="2"/>
-            <path d="M150 148 L200 90 L250 148" stroke="var(--green)" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M150 205 L172 194 L172 214 L150 225 Z" fill="var(--accent-soft)" stroke="var(--muted)" stroke-width="1.6"/>
-            <path d="M238 205 L258 195 L258 232 L238 242 Z" fill="var(--green)" stroke="var(--muted)" stroke-width="1.6"/>
-          </svg>
+        <div class="video-frame">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/iTtukLL_G8g?autoplay=1&mute=1&loop=1&playlist=iTtukLL_G8g&controls=1&rel=0&playsinline=1&modestbranding=1"
+            title="Designing a home with Wadi — a homeowner's walkthrough"
+            allow="autoplay; encrypted-media; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+            loading="lazy"></iframe>
         </div>
       </div>
     </section>
 
     <section class="features wrap">
       <div class="section-head">
-        <h2>Two ways to design</h2>
-        <p>Whether you're picturing your own home or drawing one for a client, it's the same live 3D model.</p>
+        <h2>Designed by architects. Built by owners.</h2>
+        <p>Architects create the parametric designs. Homeowners pick one and make it their own — with no need to engage an architect for every home, unless a project truly calls for specialist work.</p>
       </div>
       <div class="cards cols2">
         <div class="card persona">
           <div class="ic">🏡</div>
-          <h3>For homeowners</h3>
-          <p>Choose a ready-made home, then make it yours — set the plot size, roof style and room options and watch the 3D model change. See the floor plan, and share your design as a link.</p>
+          <h3>For families building a home</h3>
+          <p>In much of rural Konkan, reaching a good architect isn't easy. Start from a sound, ready-made design, set your plot size, rooms and roof, and watch your home take shape in 3D. Share it, or take the floor plans to your builder.</p>
           <a class="btn btn-primary" href="/app/?mode=owner">Choose your home →</a>
         </div>
         <div class="card persona">
           <div class="ic">📐</div>
           <h3>For architects</h3>
-          <p>A full studio: every room, wall, roof, column, staircase and piece of furniture, with live floor plans, elevations, roof views and quantities. Build parametric templates that re-flow when the plot changes.</p>
+          <p>Create parametric Konkan designs that re-flow to any plot and family — every room, wall, roof, column and staircase, with live plans, elevations and quantities. Publish them for homeowners to use and customise on their own, and step in only when a design needs your specialist eye.</p>
           <a class="btn btn-primary" href="/app/?mode=studio">Open the studio →</a>
         </div>
       </div>
@@ -248,17 +242,17 @@
         <div class="card">
           <div class="ic">✏️</div>
           <h3>Everything's live</h3>
-          <p>Change a room, wall or roof and the 3D model and every drawing rebuild in real time.</p>
+          <p>Change a room, roof or the plot size and the 3D model and every drawing rebuild in real time — no waiting, no redraws.</p>
+        </div>
+        <div class="card">
+          <div class="ic">🏠</div>
+          <h3>Built in the Konkan style</h3>
+          <p>Rooflines, verandahs, plinths and proportions follow the local building tradition — suited to the climate and familiar to your builder.</p>
         </div>
         <div class="card">
           <div class="ic">🔗</div>
-          <h3>Share by link</h3>
-          <p>Send a house as a link — the whole design travels in the URL, with no account and nothing uploaded.</p>
-        </div>
-        <div class="card">
-          <div class="ic">📦</div>
-          <h3>Desktop &amp; AI</h3>
-          <p>Live-edit <code>.wadi</code> files in the desktop app, or describe a house to an AI agent and let it build the model.</p>
+          <h3>Yours to keep and share</h3>
+          <p>Send a home as a link — the whole design travels in the URL, with no account and nothing uploaded.</p>
         </div>
       </div>
     </section>
@@ -285,8 +279,8 @@
 
   <footer>
     <div class="wrap foot">
-      <div>Wadi. Design your home in 3D.</div>
-      <div><a href="/app/?mode=owner">Choose your home</a> · <a href="/app/?mode=studio">Open the studio</a> · <a href="https://github.com/bijoor/wadi">GitHub</a></div>
+      <div>Wadi. Architecturally sound Konkan homes, in your hands.</div>
+      <div><a href="/app/?mode=owner">Choose your home</a> · <a href="/app/?mode=studio">For architects</a> · <a href="https://github.com/bijoor/wadi">GitHub</a></div>
     </div>
   </footer>
 </body>
