@@ -1,161 +1,125 @@
 # Wadi
 
-Procedurally generate a full construction package — floor plans, elevations, roof drawings, structural sections, a photoreal 3D render, and an interactive GLB — from a single declarative description of the house.
+Design a house in 3D from a single file. Pick a ready-made home or describe what you
+want, tweak it live, and get an interactive 3D model plus dimensioned floor plans,
+elevations, and roof drawings — all generated from one `.wadi` document.
 
-**Live site:** https://bijoor.github.io/wadi/
-**Live editor:** https://bijoor.github.io/wadi/editor/
-
----
-
-## What's in the box
-
-From one file (`house_config.json`) the pipeline produces:
-
-- **Per-floor plans** with room labels, wall thicknesses, openings, staircase, pillars, beams, dimensions
-- **Elevations** (front / back / left / right) with pillars, walls, openings, roof profile
-- **Roof plan** — one 145 KB master `roof_plan.svg` that lays out **13 panels** on a single canvas (top view, isometric perspective, two cross-sections, three slope roll-outs, framing detail, eave cross-section, truss elevation, materials takeoff, consolidated BOM, tile roofing). Each panel is *also* saved as its own cropped SVG, and a `roof_panels.json` manifest lets the web viewer and PDF stitcher iterate them without hard-coding the list
-- **Pillar / slab structural sections** for each column and row
-- **Interactive 3D model** (GLB) with per-layer visibility, orbit / dolly controls, and a split "exploded" variant
-- **Photoreal perspective renders** from 7 angles (Cycles + PBR materials)
-- **Combined multi-page PDF** stitching all of the above together
-
-Everything is regenerated from the same JSON, so a schema change ripples through every artifact.
+**Web app:** <https://wadi.house/app> · **Home page:** <https://wadi.house> · **Editor:** <https://wadi.house/editor>
 
 ---
 
-## Three environments, one source of truth
+## What Wadi is
 
-`house_config.json` at the repo root is the only file you edit. Three environments read it, each producing a different slice of the output:
+A house is a single JSON document — a **`.wadi` file**. From it, Wadi renders (entirely
+in the browser, live as you edit):
 
-```
-                  ┌───────────────────────────────────────────────┐
-                  │        house_config.json (source of truth)    │
-                  └────────────────────┬──────────────────────────┘
-                                       │
-        ┌──────────────────────────────┼───────────────────────────────┐
-        ▼                              ▼                               ▼
-┌────────────────────┐   ┌────────────────────────┐   ┌───────────────────────────┐
-│  Browser viewer    │   │  Browser editor        │   │  Blender (optional)       │
-│  docs/index.html   │   │  docs/editor/          │   │  scripts/regenerate_*.sh  │
-├────────────────────┤   ├────────────────────────┤   ├───────────────────────────┤
-│ read-only, mobile- │   │ full edit UI with      │   │ produces the 7 photoreal  │
-│  friendly, tabbed  │   │  live previews for     │   │  Cycles renders under     │
-│ shows plans /      │   │  every 2D drawing +    │   │  docs/3d/perspectives/*   │
-│  elevations /      │   │  3D scene              │   │                           │
-│  roof / 3D scene   │   │ save / download JSON   │   │ NOT required to view or   │
-│                    │   │                        │   │  edit the model           │
-└────────────────────┘   └────────────────────────┘   └───────────────────────────┘
+- an **interactive 3D model** — rooms, walls, a real roof, doors/windows cut with CSG,
+  staircases, columns, furniture; per-layer visibility and camera presets;
+- **2D floor plans** per floor plus a filtered composite sheet, with dimensions,
+  openings, and the structural grid;
+- **elevations** (front / back / left / right) and **roof** views;
+- a **quantities** estimate (wall areas, net of openings).
 
-  Both browser apps build every 2D drawing and the 3D scene ENTIRELY
-  IN MEMORY from house_config.json. No static SVGs, no static GLBs.
-  Same TypeScript source under editor/src/ powers both.
-```
+One TypeScript codebase under `editor/src` powers every surface, and the **Zod schema**
+at `editor/src/schema/houseConfig.ts` is the single source of truth for the file format.
 
-**Sharing a model = sharing the JSON.** Anyone who opens `docs/index.html` (or the editor) loads whatever `house_config.json` sits next to it. To share a specific design with someone else, send them the JSON file — they load it in either app and see exactly what you see.
+Houses are **parametric**: a template defines a structural grid and formulas, so
+resizing the plot re-flows every room instead of breaking the design (see
+[Grid & centreline conventions](#coordinates--units)).
 
-The viewer at `docs/index.html` and the editor at `docs/editor/` share every generator function, the same Three.js scene code, and the same schema validator. Two Vite entry points, one code base.
+> The original Blender/Python generator has been **retired** — everything now runs in
+> TypeScript. The `python/` and `archive/` folders are kept for history only; don't use
+> them.
 
 ---
 
-## Repo layout
+## Three ways to use it
 
-```
-blender/                       (repo root)
-├── house_config.json          ← THE ONE FILE YOU EDIT (symlink → docs/house_config.json)
-├── python/                    core library (all *.py the pipeline imports)
-│   ├── config.py              GLOBAL_CONFIG defaults (no bpy)
-│   ├── house_config.py        loads HOUSE_CONFIG from ../house_config.json (→ docs/house_config.json)
-│   ├── svg_2d.py              2D SVG generator (no bpy)
-│   ├── svg_combined.py        combined-view helpers
-│   ├── house_expand.py        room→wall/opening expansion
-│   ├── roof_geometry.py       hip roof geometry derivation
-│   ├── roof_frame.py          structural frame member list
-│   ├── blender_3d.py          Blender geometry builder (requires bpy)
-│   ├── wadi_lib.py    thin facade re-exporting the above
-│   └── wadi_config.py Blender Alt+P entry point
-├── editor/                    React + Three.js browser editor (TypeScript)
-│   ├── src/                   (see editor/README.md for the full tour)
-│   └── scripts/               parity + validation harnesses
-├── scripts/                   thin runners + shell wrappers
-│   ├── regen_svgs.sh                 → npm run dump-svgs (all 33 2D SVGs, TS-only)
-│   ├── generate_3d_models.py         GLB (calls Blender headless)
-│   ├── render_all_final.py           7 photoreal perspective renders
-│   ├── auto_crop_perspectives.py     crops rendered PNGs
-│   ├── generate_pdf.py               stitches PDF from renders
-│   ├── extract_house_config_json.py  one-shot py→json converter
-│   ├── regenerate_blender.sh         wrapper: renders + interactive 3D
-│   ├── serve.sh                      python -m http.server on docs/
-│   └── commit.sh                     stage + commit + push + Pages redeploy
-├── docs/                      published to GitHub Pages
-│   ├── index.html             tabbed viewer (3D, plans, elevations, roof, editor link)
-│   ├── house_config.json      canonical location — auto-loaded by the editor
-│   │                          (root's house_config.json is a symlink to this)
-│   ├── 2d/                    per-type SVG output subfolders
-│   │   ├── floor_plans/       per-floor + combined + PDF
-│   │   ├── elevations/        per-side + combined
-│   │   ├── pillar_elevations/ 4 structural elevations
-│   │   ├── pillar_sections/   per-column and per-row sections
-│   │   └── roof/              roof_plan.svg (master, 13 panels stitched)
-│   │                          + 13 per-panel SVGs cropped from the master
-│   │                          + roof_panels.json (manifest)
-│   │                          + roof-cross-section.svg, roof-trusses.svg
-│   │                            (hand-drawn refs the pipeline embeds as-is)
-│   ├── 3d/                    GLB + perspective PNGs + layers.json
-│   │   ├── wadi.glb
-│   │   ├── wadi_exploded.glb
-│   │   └── perspectives/      aerial + 6 named angles
-│   └── editor/                built browser editor (vite output)
-├── plans/                     planning docs kept for history
-├── archive/                   legacy material/render experiments (do not import)
-├── schema/                    JSON Schema for house_config
-├── assets/, textures/         support data
-├── house-model.blend          Blender scene (gitignored — rebuilt from Python)
-├── README.md                  ← you are here
-└── CLAUDE.md                  agent instructions / architecture cheat sheet
-```
+### 1. The web app — nothing to install (start here)
+
+Open **<https://wadi.house/app>**. It has two personas:
+
+- **Homeowner** (`?mode=owner`) — a "Choose your home" gallery; pick a template, then a
+  friendly configurator (plot size, roof style, …) with the 3D model updating live.
+- **Architect / studio** (`?mode=studio`) — the full object tree and property panels for
+  every object, layer toggles, the 2D tabs, and preview capture.
+- `?panels=off` hides the side panels for a clean, embeddable view.
+
+**Share a design** with the Share button: it packs the whole house into the URL
+(`#w1=…`) — no backend, no account. Whoever opens the link sees your exact design. Links
+made by a newer build still open on an older one (unknown options are skipped with a
+notice) and vice-versa.
+
+### 2. The desktop app — live file editing
+
+A [Tauri](https://tauri.app) build wraps the same app and **watches a `.wadi` file on
+disk**: edit the file in any tool and the 3D model re-renders within ~1 s of each save.
+It also registers the `.wadi` file type, so you can double-click a design to open it.
+Build it yourself — see [Develop locally](#run--develop-locally).
+
+### 3. Design by chatting — the AI architect skill
+
+Describe a house in plain English (or from a sketch) and let an AI coding agent author
+the `.wadi` for you while the desktop app live-previews it. The instructions ship in the
+repo as an **agent-neutral skill** that works in any coding agent — see
+[the skill section below](#designing-houses-by-chatting--the-ai-architect-skill).
 
 ---
 
-## Editing the model in the browser editor
+## The `.wadi` file
 
-The editor is the primary way to iterate on the design. It runs entirely in the browser — no server, no build step, no install.
+- A house is one JSON document — `.wadi` (or `house_config.json`). The repo's default
+  design is `docs/house_config.json` (the root `house_config.json` is a symlink to it)
+  and auto-loads in the app.
+- The format is defined and validated by the **Zod schema**
+  (`editor/src/schema/houseConfig.ts`). The complete, always-current field reference is
+  **`wadi-skill/architect/reference/data-model.md`**, generated from that schema so it
+  can't drift.
 
-### Open it
+### Object types
 
-- **Hosted:** https://bijoor.github.io/wadi/editor/ (auto-loads the JSON from the same Pages site)
-- **Local dev:** `cd editor && npm install && npm run dev` → http://localhost:5173
+Each floor holds an `objects` list; every object has a `type`:
 
-### Typical edit loop
+| Type | Purpose |
+| --- | --- |
+| `room` | A room with per-side walls and nested `door` / `window` openings |
+| `wall` | A free-standing wall (boundary, gable) |
+| `floor_slab` | RCC slab under a floor |
+| `plinth` / `ground` | Raised base + ground plane (on the Plinth floor) |
+| `beam` | Horizontal beam |
+| `pillar` | Column (centre-placed under the centreline convention) |
+| `staircase` | Multi-flight staircase (auto switchback flights) |
+| `kitchen_platform` | Polyline kitchen counter |
+| `roof` | Unified roof — hip / gable / shed / flat, per segment |
+| `item` | A GLB furniture piece |
+| `component` | An instance of an in-file reusable component |
 
-1. **Pick a floor** in the sidebar (Ground / First / Loft / Roof).
-2. **Click an object** in the object tree — rooms, walls, doors, windows, pillars, beams, slabs, staircase, roof.
-3. **Edit fields** in the right-hand property panel. Everything updates live:
-   - **Summary** tab — text summary of the current object
-   - **Plans** tab — 2D floor plans (per floor + combined)
-   - **Elevations** tab — front / back / left / right
-   - **Pillars** tab — 4 outer pillar elevations + N internal row/column sections
-   - **Roof** tab — master plan + 13 individual panels (top view, sections, slopes, framing, BOM, tile)
-   - **3D** tab — Three.js scene with CSG openings, hip roof, staircase, section cutter, per-layer toggles, camera presets
-4. **Undo / redo** with ⌘/Ctrl+Z / ⇧⌘/Ctrl+Z.
-5. **Save** with ⌘/Ctrl+S or the Download button — writes to your Downloads folder.
-6. **Drop the downloaded file** into `docs/house_config.json` (or overwrite via the root's `house_config.json` symlink — it's the same file). Every pipeline reads from this single physical location; no copy step, no drift.
+### Coordinates & units
 
-The editor never touches your filesystem directly — it uses the browser's file picker for load and the download API for save. That's what lets it be a static single-page app on GitHub Pages.
+- **Inkscape frame:** origin top-left, X → east, Y → **down** (south). Z is up.
+- **10 project units = 1 ft** by default (an optional `units` block relabels the display
+  without touching geometry).
+- **Centreline convention** (`"coord_convention": "center"`): a rect object's
+  `x/y/width/length` are wall **centrelines**, so adjacent rooms simply **abut** on the
+  shared line (no overlap, no wall math), and a pillar's `x/y` is its **centre**.
+- **Grids:** a parametric template defines named grid lines whose positions are formulas
+  of the plot size; rooms and columns reference them (`"= main.x1"`), so the whole plan
+  re-flows when you resize.
 
-### Room forms vs. object types
-
-Rooms are the main authoring primitive — a room definition holds its own per-side walls plus any doors and windows on each side. Walls, pillars, beams, slabs, staircases, and the roof are top-level objects. See `editor/README.md` for the full form breakdown.
+Full details: `wadi-skill/architect/reference/coordinate-system.md` and
+`parametric-conventions.md`.
 
 ---
 
 ## Designing houses by chatting — the AI architect skill
 
-Instead of filling in forms, you can describe a house in plain English (or from a sketch) and have an AI coding agent author the `.wadi` file for you, while the desktop app live-previews the 3D model as it saves. The instructions live in the repo as an **agent-neutral skill** — the same content works in any coding agent:
+The skill is checked into the repo as an **agent-neutral core** plus thin per-agent
+adapters, so the same content drives any coding agent:
 
 ```
-wadi-skill/architect/        ← the skill itself (instructions, references, examples, scripts)
-.claude/skills/wadi-architect/  ← Claude Code adapter  →  points at the skill
-AGENTS.md                    ← vendor-neutral entrypoint (Antigravity, Cursor, …)  →  points at the skill
+wadi-skill/architect/            the skill — instructions, references, examples, scripts
+.claude/skills/wadi-architect/   Claude Code adapter   → points at the skill
+AGENTS.md                        vendor-neutral entrypoint (Antigravity, Cursor, …) → the skill
 ```
 
 ### Prerequisites (once)
@@ -166,15 +130,20 @@ cd wadi
 npm --prefix editor install      # the skill's validate/preview scripts reuse the app's TypeScript
 ```
 
-Optional but recommended for the **live loop**: keep your `.wadi` open in the **Wadi desktop app** (the Tauri build — see _Development_ below to build it) — the agent edits the file on disk and the app re-renders the 3D model within ~1 s of each save. Without it you can still author, validate, and render preview images from the scripts.
+Optional but recommended for the **live loop**: keep your `.wadi` open in the Wadi
+desktop app (the Tauri build — see below) so the 3D model updates as the agent saves.
+Without it you can still author, validate, and render preview images from the scripts.
 
 ### Claude Code
 
-The skill is checked into `.claude/skills/`, so Claude Code **auto-discovers it** when you run Claude Code from inside the repo — no install step.
+The skill lives in `.claude/skills/`, so Claude Code **auto-discovers it** when run from
+inside the repo — no install step.
 
 1. `cd wadi && claude` (or open the repo in the Claude Code IDE extension / desktop app).
-2. Invoke it by asking naturally ("design a 3-bed L-shaped bungalow, hip roof, ~1500 sq ft") or explicitly with `/wadi-architect`.
-3. To make it available in **every** project, copy the adapter into your user skills dir — it still points back at this repo's skill files, so keep the repo checked out:
+2. Invoke it by asking naturally ("design a 3-bed L-shaped bungalow, hip roof, ~1500 sq
+   ft") or explicitly with `/wadi-architect`.
+3. To use it in **every** project, copy the adapter into your user skills dir (it still
+   points back at this repo's files, so keep the repo checked out):
    ```bash
    cp -R .claude/skills/wadi-architect ~/.claude/skills/
    ```
@@ -183,234 +152,111 @@ The skill is checked into `.claude/skills/`, so Claude Code **auto-discovers it*
 
 These agents read **`AGENTS.md`** at the repo root automatically.
 
-1. Open the `wadi` repo as your workspace/project in Antigravity.
-2. Ask it to create or edit a house ("make a coastal Konkan cottage with a verandah"). It follows `AGENTS.md` → `wadi-skill/architect/SKILL.md` and authors the `.wadi`.
+1. Open the `wadi` repo as your workspace in Antigravity.
+2. Ask it to create or edit a house ("make a coastal Konkan cottage with a verandah"). It
+   follows `AGENTS.md` → `wadi-skill/architect/SKILL.md` and writes the `.wadi`.
 3. If your agent doesn't pick up `AGENTS.md` on its own, give it the one-liner:
    > Follow the instructions in `wadi-skill/architect/SKILL.md` to author this `.wadi`.
 
-### Verify the skill's tooling works
+### Verify the skill's tooling
 
-Both scripts run from the repo and reuse the app's own generators (so they match the app byte-for-byte):
+Both scripts reuse the app's own generators, so they match the app byte-for-byte:
 
 ```bash
 # Validate a config (schema + wall/roof pipeline)
-cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs "$(pwd)/../wadi-skill/architect/examples/coastal_konkan.wadi"
+cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs <ABS_PATH_TO.wadi>
 
 # Render floor plans / elevations / roof to PNGs the agent can read
 wadi-skill/architect/scripts/preview.sh <ABS_PATH_TO.wadi>
 ```
 
-The complete data model (`reference/data-model.md`) is **generated from the Zod schema**, so it never drifts; the reference docs cover the coordinate system, the parametric grid-first convention, and roofs.
-
 ---
 
-## Regenerating outputs
-
-All commands below run from the repo root.
-
-### 2D drawings + 3D scene — nothing to regenerate
-
-Every 2D SVG (floor plans, elevations, pillar elevations + sections, roof panels) and the interactive 3D model are built **in the browser** from `house_config.json` on every visit. There are no cached files under `docs/2d/**` or `docs/3d/*.glb` any more — those artifacts don't exist as files, so there's nothing to regenerate.
-
-Change the JSON, refresh, done. That's it.
-
-### Optional: dump the SVGs to disk
-
-If you need SVGs on disk for external use (import into Inkscape, hand off to a printer), the same generators can be run from Node:
+## Run & develop locally
 
 ```bash
-./scripts/regen_svgs.sh                # → docs/2d/**   (33 files)
-./scripts/regen_svgs.sh --in path/to/other_config.json --out /tmp/out
+git clone https://github.com/bijoor/wadi.git
+cd wadi
+npm --prefix editor install
 ```
 
-Wrapper calls `npm run dump-svgs` inside `editor/` (auto-installs deps on first run). Nothing else in the pipeline consumes those files — the browser apps compute them on the fly.
+All app code lives under `editor/`:
 
-### 3D photoreal renders (only remaining Blender use)
-
-Blender is now **only** needed for the 7 Cycles-rendered perspective PNGs. Everything else is TS. If you don't have Blender installed, the site still works — you just don't get the photoreal images.
-
-```bash
-./scripts/regenerate_blender.sh        # → docs/3d/perspectives/*.png
-```
-
-The script runs Blender headless via `render_all_final.py`, then crops whitespace with `auto_crop_perspectives.py`. Requires `/Applications/Blender.app` on macOS (or edit the `BLENDER=` line).
-
-### Multi-page construction PDF
-
-```bash
-python3 scripts/generate_pdf.py
-```
-
-Stitches everything under `docs/` into a single browsable PDF at `docs/wadi.pdf`.
-
----
-
-## Viewing the results
-
-### Locally
-
-```bash
-./scripts/serve.sh              # python -m http.server on docs/, port 8000
-```
-
-Open http://localhost:8000 for the tabbed viewer (3D + all 2D drawings), or http://localhost:8000/editor/ for the editor.
-
-### Published
-
-The `docs/` folder is the GitHub Pages root. Pushing to `main` triggers a rebuild.
-
----
-
-## Deploying to GitHub Pages
-
-### One-time setup
-
-1. Push the repo to GitHub.
-2. **Settings → Pages** → *Deploy from a branch* → branch `main`, folder `/docs`, Save.
-3. Wait ~1 minute for the first build.
-
-### Every subsequent update
-
-```bash
-./scripts/commit.sh "Short commit message"
-```
-
-The wrapper stages everything, creates a commit, pushes to `main`, and reminds you that Pages will rebuild in ~1–2 minutes.
-
-Note that `wadi.glb`, `house-model.blend`, `house-model.blend1`, and the debug `*_debug_*.json` files are `.gitignore`d — they're all regenerated locally. Only the SVGs, PNGs, editor build, and `docs/index.html` land in the repo.
-
----
-
-## Development
-
-### Editor parity harness
-
-The editor's TypeScript port of `svg_2d.py` is verified byte-identical against the Python output on every commit-worthy change:
-
-```bash
-cd editor
-npm run parity-all              # runs all 5 harnesses
-# or individually:
-npm run parity-primitives       # 34 shape / dimension / expand checks
-npm run parity-floorplans       # 3 whole-SVG byte diffs
-npm run parity-elevations       # 5 whole-SVG byte diffs
-npm run parity-roof             # 15 roof output byte diffs
-npm run parity-pillars          # 10 pillar output byte diffs (4 elevations + 6 sections)
-```
-
-The whole-SVG harnesses compare TS output against the checked-in reference files in `docs/2d/`. If you ever change `svg2d/` and want to regenerate the Python-side reference first, re-run the archived generators:
-
-```bash
-python3 archive/regenerate_combined_svgs.py    # floor plans + elevations + roof
-python3 archive/generate_pillar_elevations.py  # 4 elevations + N sections
-```
-
-The primitives harness spawns `python3` inline and diffs the results character-by-character. If Python and TS ever drift, the harness prints the exact character index of divergence.
-
-### Editor build
-
-```bash
-cd editor
-npm run build                   # → ../docs/editor/
-```
-
-Vite outputs a hashed JS/CSS pair under `docs/editor/assets/`, so cache-busting is automatic on the CDN.
-
-### Sanity-check the schema
-
-```bash
-cd editor
-npm run smoke-validate          # Zod schema check on ../house_config.json
-```
-
----
-
-## House schema at a glance
-
-The full schema lives in `schema/house_config.schema.json`. In broad strokes, a house config looks like:
-
-```jsonc
-{
-  "plot": { "width": 800, "length": 1200 },
-  "plinth": { "x": 100, "y": 100, "width": 600, "length": 1000, "height": 30 },
-  "floors": [
-    {
-      "floor_number": 0,
-      "name": "Ground_Floor",
-      "objects": [
-        { "type": "floor_slab", "x": 0, "y": 0, "width": 600, "length": 1000 },
-        {
-          "type": "room",
-          "name": "Living",
-          "x": 20, "y": 20, "width": 280, "length": 350,
-          "walls": {
-            "north": { "openings": [{ "type": "door", "position": 100, "width": 30, "height": 80 }] },
-            "east":  { "openings": [{ "type": "window", "position": 150, "width": 40, "height": 40, "sill_height": 30 }] }
-          }
-        },
-        { "type": "pillar", "x": 100, "y": 100, "width": 8, "length": 8, "height": 100 },
-        { "type": "beam", "x": 0, "y": 100, "width": 600, "length": 8, "z_offset_ft": 9.8, "height": 8 },
-        { "type": "staircase", "start_x": 400, "start_y": 200, "num_steps": 16, "step_width": 40, "step_tread": 12, "step_rise": 7, "direction": "east" }
-      ]
-    },
-    { "floor_number": 1, "name": "First_Floor", "objects": [ /* ... */ ] },
-    {
-      "floor_number": 2, "name": "Roof",
-      "objects": [
-        {
-          "type": "hip_roof",
-          "ridge_h_ft": 7.0,
-          "min_overhang_ft": 2.5,
-          "trusses": { "positions": [86.225, 200, 296], "chord_size_in": [2, 4], "web_size_in": [2, 2] },
-          "framing": {
-            "house_footprint_ft": [27, 45],
-            "rafter_size_in": [2, 4], "rafter_spacing_in": 36,
-            "purlin_size_in": [2, 1], "purlin_spacing_in": 12,
-            "ridge_size_in": [6, 3],
-            "ring_beam": { "size_in": [4, 2] },
-            "hip_end_beam": { "count_per_end": 3, "size_in": [4, 2], "extend_between_trusses": true },
-            "pani_patti": { "height_in": 6, "thickness_mm": 1.2 }
-          }
-        }
-      ]
-    }
-  ]
-}
-```
-
-Supported object types:
-
-| Type | Purpose |
+| Task | Command |
 | --- | --- |
-| `floor_slab` | Concrete floor slab under a floor |
-| `room` | Room with per-side walls + doors + windows |
-| `wall` | Standalone wall (used for gables, boundary walls, slopes) |
-| `door`, `window` | Openings — usually nested inside a room's wall definition |
-| `pillar` | Square column running one or more floor heights |
-| `beam` | Horizontal beam (`z_offset_ft` controls elevation) |
-| `staircase` | Cube-per-step staircase with configurable direction |
-| `hip_roof` | Full hip roof with truss / rafter / purlin / ring beam / pani patti |
-| `gable_roof` | Simpler gable roof |
+| Dev server (hot reload) | `npm --prefix editor run dev` |
+| Run tests (Vitest) | `npm --prefix editor test` |
+| Typecheck | `cd editor && npx tsc -b` |
+| Build the deployed bundles | `npm --prefix editor run build` |
+| Schema smoke-check the default config | `npm --prefix editor run smoke-validate` |
+| Dump SVGs to disk (print / Inkscape) | `npm --prefix editor run dump-svgs` |
+
+`npm run build` runs `tsc` then two Vite builds — the **editor SPA** → `docs/editor/` and
+the **app / viewer** → `docs/app/`. Both read the same `editor/src`.
+
+### Desktop app (Tauri)
+
+Requires Rust and the Tauri CLI (`cargo install tauri-cli`). From the repo root:
+
+```bash
+npm --prefix editor run build          # refresh docs/ (the app bundles it as its frontend)
+cargo tauri build --bundles app        # → src-tauri/target/release/bundle/macos/Wadi.app
+```
+
+`src-tauri/tauri.conf.json` bundles `docs/` as the frontend and associates the `.wadi`
+file type (so double-clicking a design opens it, and the app live-watches it).
 
 ---
 
-## Coordinate system & units
+## Repo layout
 
-- Plan-view coordinates use **Inkscape convention**: origin top-left, X → east, Y → *south* (down on the page).
-- Vertical Z is up (world Z, three.js Y).
-- **Base unit = 0.1 m = ~1.31 inches.** Configs use `10 units = 1 foot` in most fields — e.g. a 27' × 45' footprint reads as `[270, 450]`.
-- Inch-denominated sections (rafter `[2, 4]` etc.) are converted internally via `IN_PER_UNIT = 12 / 10 = 1.2`.
-- Blender re-centers geometry around the plinth centre before export so the GLB opens with the model at the world origin.
+```
+editor/                    React + Three.js + Zod app — THE source of truth
+  src/schema/houseConfig.ts   the .wadi schema (Zod)
+  src/{svg2d,three,param}/    2D drawings, 3D scene, parametric engine
+  src/registry/               object-type registry (one file per new type)
+docs/                      GitHub Pages root, served at wadi.house
+  index.html               landing page  → /app
+  app/                     the 3D home designer (homeowner + architect modes)
+  editor/                  the editor SPA
+  templates/               bundled starter templates + index.json
+  house_config.json        default design (root house_config.json → symlink)
+src-tauri/                 desktop app (Tauri) wrapping docs/
+wadi-skill/architect/      agent-neutral AI skill (Claude Code, Antigravity, …)
+.claude/skills/            Claude Code skill adapters
+AGENTS.md                  vendor-neutral entrypoint for coding agents
+library/                   reference parametric .wadi models
+scripts/                   publish-templates.sh / publish-furniture.sh (Cloudflare R2)
+schema/                    legacy JSON Schema (superseded by the Zod schema)
+python/  archive/          RETIRED Blender/Python pipeline — history only, do not use
+```
 
 ---
 
-## Two useful references
+## Deployment & hosting
 
-- `CLAUDE.md` — architecture cheat sheet with the module graph and the coordinate-system gotchas. Written for an AI agent but it's the fastest read for a new human contributor too.
-- `editor/README.md` — deep dive on the TypeScript port and the parity strategy.
+- **Site + app:** `docs/` is the GitHub Pages root on the custom domain **`wadi.house`**.
+  Run `npm --prefix editor run build` so `docs/app` and `docs/editor` are current, then
+  push `main` — Pages rebuilds in ~1–2 min.
+- **Templates & furniture:** hosted on **Cloudflare R2** so new ones ship without
+  redeploying the site or app. Publish with `scripts/publish-templates.sh` /
+  `scripts/publish-furniture.sh` (needs a gitignored `.env.r2` — see
+  **`TEMPLATE_HOSTING.md`**).
+
+---
+
+## References
+
+- **`wadi-skill/architect/`** — the AI skill: `SKILL.md` + `reference/{data-model,
+  coordinate-system,parametric-conventions,roof-v2-guide}.md` + validated `examples/`.
+  The reference docs are the authoritative, current description of the model.
+- **`editor/README.md`** — editor internals and architecture.
+- **`TEMPLATE_HOSTING.md`** — R2 bucket + CORS setup for templates/furniture.
 
 ---
 
 ## License / attribution
 
-Personal project for the Aatley Home Construction site. The Blender / Python / TS / React scaffolding is MIT-style — reuse freely, no warranty. The house design itself is not licensed for reuse.
+Personal project for the Aatley Home Construction site. The app scaffolding
+(TypeScript / React / Three.js / Tauri) is MIT-style — reuse freely, no warranty. The
+house designs themselves are not licensed for reuse.
