@@ -1581,6 +1581,15 @@
             border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
         #viewer-3d-toolbar:empty { display: none; }
+        /* On phones the tab strip becomes a fixed bottom footer (~51px), which
+           would sit on top of this toolbar (both pinned to bottom:0). Lift the
+           toolbar just above the footer so the layer/view menus don't collide
+           with the tabs (+ safe-area for notched devices). */
+        @media (max-width: 640px) {
+            #viewer-3d-toolbar {
+                bottom: calc(3.25rem + env(safe-area-inset-bottom, 0px));
+            }
+        }
         /* Read-only badge naming which layers are hidden. Overlaid on the 3D
            view, non-interactive; main.ts shows it only when something is off. */
         .layer-status {
