@@ -1600,7 +1600,15 @@
         @media (max-width: 640px) {
             #viewer-3d-toolbar {
                 bottom: calc(3.25rem + env(safe-area-inset-bottom, 0px));
+                gap: 0.3rem;
+                padding: 0.35rem 0.45rem;
             }
+            /* Icon-only on phones: the text labels don't fit the ~375px row and
+               collide (layers/view menus over the Shot/Auto/Shots actions).
+               The emojis + tooltips carry the meaning. */
+            #viewer-3d-toolbar .v3d-label { display: none; }
+            .v3d-menus, .v3d-actions { gap: 0.3rem; }
+            .v3d-menu-btn, .v3d-btn { padding-left: 0.55rem; padding-right: 0.55rem; }
         }
         /* Read-only badge naming which layers are hidden. Overlaid on the 3D
            view, non-interactive; main.ts shows it only when something is off. */

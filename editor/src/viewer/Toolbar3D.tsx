@@ -92,13 +92,13 @@ export function ViewerToolbar3D() {
       <div className="v3d-actions">
         {flash && <span className="v3d-count">✓ {flash}</span>}
         <button className="v3d-btn" onClick={shot3D} disabled={busy} title="Add the current 3D view to this template's previews">
-          📸 Shot
+          📸 <span className="v3d-label">Shot</span>
         </button>
         <button className="v3d-btn" onClick={() => void autoCapture()} disabled={busy} title="Auto-capture 3 angles + the floor plan (replaces the current set)">
-          {busy ? "…" : "✨ Auto"}
+          {busy ? "…" : <>✨ <span className="v3d-label">Auto</span></>}
         </button>
         <button className="v3d-btn secondary" onClick={() => setManagerOpen(true)} title="Manage preview images">
-          🗂 Shots
+          🗂 <span className="v3d-label">Shots</span>
           <span className="v3d-count" style={{ marginLeft: 6 }}>{thumbs.length}</span>
         </button>
       </div>
@@ -136,7 +136,7 @@ function LayersMenu() {
   return (
     <div className="v3d-menu" ref={ref}>
       <button className="v3d-menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        🗂 Show/hide layers <span className="v3d-caret">▾</span>
+        🗂 <span className="v3d-label">Show/hide layers</span> <span className="v3d-caret">▾</span>
       </button>
       {open && (
         <div className="v3d-pop" role="menu">
@@ -229,7 +229,7 @@ function ViewMenu() {
   return (
     <div className="v3d-menu" ref={ref}>
       <button className="v3d-menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        📷 Change view <span className="v3d-caret">▾</span>
+        📷 <span className="v3d-label">Change view</span> <span className="v3d-caret">▾</span>
       </button>
       {open && (
         <div className="v3d-pop" role="menu">
