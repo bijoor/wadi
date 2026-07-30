@@ -1438,11 +1438,6 @@ function wireHeaderButtons(): void {
   btnUndo?.addEventListener("click", () => useConfigStore.temporal.getState().undo());
   btnRedo?.addEventListener("click", () => useConfigStore.temporal.getState().redo());
 
-  // Mobile back button: clears the selection so the tree returns.
-  document.getElementById("btn-back-to-tree")?.addEventListener("click", () => {
-    useConfigStore.getState().select(null);
-  });
-
   // Auto-close the mobile hamburger dropdown after any action inside it,
   // so users don't have to tap ☰ twice per action. Uses delegation on
   // the buttons wrapper so it covers all current + future controls.
@@ -1582,7 +1577,18 @@ function wireLeftToggle(): void {
   // dismissible overlay); only a stored preference collapses it.
   document.body.dataset.left = stored === "closed" ? "closed" : "open";
   setIcon();
+  const narrowMq = window.matchMedia("(max-width: 900px)");
   btn?.addEventListener("click", () => {
+    // On phones one panel shows at a time: selecting an object swaps the tree
+    // for the property panel. Make the collapse tab step back CONSISTENTLY —
+    // from the property panel back to the tree first, then collapse the tree to
+    // the model — instead of invisibly toggling the already-hidden tree (which
+    // used to strand the user: the tree wouldn't reappear). This is the single
+    // back/collapse control on mobile (the old separate "← Tree" button is gone).
+    if (narrowMq.matches && document.body.dataset.selection === "on") {
+      useConfigStore.getState().select(null); // property panel → tree
+      return;
+    }
     const next = document.body.dataset.left === "open" ? "closed" : "open";
     document.body.dataset.left = next;
     setIcon();

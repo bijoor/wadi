@@ -335,8 +335,8 @@
         /* Below 900 px: only one panel at a time (they don't both fit).
            Tree by default; picking an object swaps in the property panel.
            `body[data-selection]` is toggled by main.ts based on the
-           useConfigStore selection state. The floating back button (see
-           .viewer-back-btn) clears the selection to return to the tree. */
+           useConfigStore selection state. The single collapse tab (#left-toggle)
+           steps back: property panel → tree → collapsed (see wireLeftToggle). */
         @media (max-width: 900px) {
             body[data-edit-mode="on"] #viewer-sidebar,
             body[data-edit-mode="on"] #viewer-property-panel {
@@ -365,35 +365,6 @@
             body[data-edit-mode="on"] #viewer-sidebar > aside,
             body[data-edit-mode="on"] #viewer-property-panel > aside {
                 width: 100%;
-            }
-        }
-        /* Floating "back to tree" button — only visible on narrow screens
-           when a selection is active. Sits above the property panel's
-           header so it's the first tappable target. */
-        .viewer-back-btn {
-            display: none;
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            z-index: 70;
-            background: rgba(15, 23, 42, 0.9);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 8px;
-            padding: 0.35rem 0.65rem;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-        }
-        .viewer-back-btn:hover {
-            background: rgba(30, 41, 59, 1);
-        }
-        @media (max-width: 900px) {
-            body[data-edit-mode="on"][data-selection="on"] .viewer-back-btn {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.35rem;
             }
         }
         #viewer-container {
@@ -2071,7 +2042,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-B_zo_YMu.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-CWxV-QS9.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-BzsY0J9D.css">
 </head>
@@ -2158,11 +2129,6 @@
             <h4 id="cfg-dock-title">Configure your home</h4>
             <div id="viewer-config-list"></div>
         </aside>
-        <!-- Mobile-only "back to tree" — visible when a selection is
-             active on a narrow viewport so the user can dismiss the
-             property panel and return to the object tree. -->
-        <button id="btn-back-to-tree" class="viewer-back-btn"
-                title="Back to object tree" aria-label="Back to object tree">← Tree</button>
         <!-- Edit-mode slots: React roots for the editor's Sidebar (left)
              and PropertyPanel (right). Hidden unless body[data-edit-mode=on]. -->
         <aside id="viewer-sidebar"></aside>
