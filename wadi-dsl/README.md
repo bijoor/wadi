@@ -108,12 +108,28 @@ never-throws compile returning the `HouseConfig` plus Monaco-shaped error marker
 would swap it for the real Langium language server in a Web Worker, so
 highlighting + completion come from the grammar itself).
 
-**Two other render paths** (both existing Wadi mechanisms, no new glue):
+## Desktop live-watch (edit in VS Code → the Tauri app updates)
 
-- **desktop live-watch** — the CLI writes a `.wadi`; the Wadi desktop app,
-  watching that file, live-updates. Renders natively (no iframe quirks). This is
-  the same loop the AI architect skill uses.
-- **`?load=<url>`** — deep-link the web app straight to any hosted `.wadi`.
+For a demo with a *real* editor and native rendering (no iframe/rAF quirks), use
+`watch`: it recompiles the `.wadidsl` to a `.wadi` on every save, and the Wadi
+desktop app — watching that file — live-reloads. The same file-watch loop the AI
+architect skill uses, so the code editor (VS Code, or anything) is fully separate
+from the renderer.
+
+```bash
+npm run watch -- examples/coastal.wadidsl /tmp/house.wadi
+```
+
+Then in the Wadi **desktop app**: `Load → /tmp/house.wadi`. Edit
+`examples/coastal.wadidsl` in VS Code and hit save — the 3D model rebuilds. (The
+output is fully resolved, so the app renders it directly; a compile error keeps
+the last-good `.wadi` on disk so the model never blanks.)
+
+## Other render paths
+
+- **`?load=<url>`** — deep-link the web app straight to any hosted `.wadi`
+  (`/app/?load=https://…/house.wadi`), skipping the picker.
+- **`#w1=…` share link** — the app's zero-backend "open a house from a URL".
 
 ## Retargeting to another domain (the payoff)
 
