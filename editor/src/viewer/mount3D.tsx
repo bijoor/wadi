@@ -27,18 +27,7 @@ import { ViewerInteriorPanel } from "./InteriorPanel";
 import { useConfigStore } from "../state/configStore";
 import { useLightingStore } from "../three/lighting";
 import { useInteriorStore, interiorMove } from "../three/interiorView";
-
-// Optional camera auto-rotate, for recording a smooth turntable GIF of the
-// model (the hero on the landing page). Off by default so it never affects
-// normal use. Enable by adding ?spin to the app URL (e.g. /app/?spin), or
-// ?spin=<speed> to tune it — higher is faster, roughly 60/speed seconds per
-// full revolution (so ?spin=6 ≈ 10s per turn, ?spin=4 ≈ 15s).
-const SPIN_PARAM = new URLSearchParams(window.location.search).get("spin");
-const AUTO_ROTATE = SPIN_PARAM !== null;
-const AUTO_ROTATE_SPEED =
-  SPIN_PARAM && !Number.isNaN(parseFloat(SPIN_PARAM))
-    ? parseFloat(SPIN_PARAM)
-    : 6.0;
+import { useSpinStore } from "../three/spinStore";
 
 function ViewerScene() {
   // Subscribe to useConfigStore so property-panel edits re-render the
@@ -53,6 +42,9 @@ function ViewerScene() {
   // Interior walk-through: when a room is chosen, the camera drops to eye
   // level inside it and OrbitControls hands off to the first-person rig.
   const interior = useInteriorStore((s) => s.target);
+  // Camera turntable (🎥 panel / ?spin flag).
+  const spin = useSpinStore((s) => s.enabled);
+  const spinSpeed = useSpinStore((s) => s.speed);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   // Compute the plot bounds for camera framing. This useMemo must run on
   // EVERY render (before any early return) or the hook order changes when
@@ -163,8 +155,8 @@ function ViewerScene() {
           enableDamping
           dampingFactor={0.1}
           target={[0, targetY, 0]}
-          autoRotate={AUTO_ROTATE}
-          autoRotateSpeed={AUTO_ROTATE_SPEED}
+          autoRotate={spin}
+          autoRotateSpeed={spinSpeed}
         />
       )}
       <InteriorController

@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useConfigStore } from "../state/configStore";
 import { interiorMove, listRooms, useInteriorStore } from "../three/interiorView";
+import { useSpinStore } from "../three/spinStore";
 
 // Close the 🎥 popup after a selection (mirrors the vanilla toggleCamera
 // in viewer.html — the panel's open/closed state is a CSS `.active` class).
@@ -21,10 +22,6 @@ export function ViewerInteriorPanel() {
   const enter = useInteriorStore((s) => s.enter);
   const exit = useInteriorStore((s) => s.exit);
   const rooms = useMemo(() => listRooms(config), [config]);
-
-  if (rooms.length === 0) {
-    return <div style={{ fontSize: "0.85rem", color: "#666" }}>No rooms to walk into.</div>;
-  }
 
   // Group rooms by floor, preserving the order listRooms returns.
   const floors: { name: string; rooms: typeof rooms }[] = [];
@@ -60,6 +57,11 @@ export function ViewerInteriorPanel() {
 
   return (
     <>
+      <SpinControl />
+      {rooms.length === 0 ? (
+        <div style={{ fontSize: "0.85rem", color: "#666" }}>No rooms to walk into.</div>
+      ) : (
+        <>
       <button
         style={!target ? rowActive : rowBase}
         onClick={() => {
@@ -98,7 +100,36 @@ export function ViewerInteriorPanel() {
       ))}
       {target && <HintBanner targetKey={target.key} />}
       {target && <MoveJoystick />}
+        </>
+      )}
     </>
+  );
+}
+
+// Auto-spin (turntable) toggle + speed, shared with the 3D scene via
+// useSpinStore. Takes effect in Overview (orbit) mode — the same rotation used
+// to record the landing-page hero. Always shown at the top of the 🎥 panel.
+function SpinControl() {
+  const enabled = useSpinStore((s) => s.enabled);
+  const speed = useSpinStore((s) => s.speed);
+  const setEnabled = useSpinStore((s) => s.setEnabled);
+  const setSpeed = useSpinStore((s) => s.setSpeed);
+  return (
+    <div style={{ margin: "0 0 0.5rem", paddingBottom: "0.55rem", borderBottom: "1px solid #eee" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.85rem", color: "#333", cursor: "pointer" }}>
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        Auto-spin (turntable)
+      </label>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.4rem", opacity: enabled ? 1 : 0.4 }}>
+        <span style={{ fontSize: "0.7rem", color: "#999", width: "3.2rem" }}>Speed</span>
+        <input
+          type="range" min={1} max={16} step={1} value={speed} disabled={!enabled}
+          onChange={(e) => setSpeed(parseFloat(e.target.value))}
+          style={{ flex: 1 }}
+          aria-label="Auto-spin speed"
+        />
+      </div>
+    </div>
   );
 }
 
