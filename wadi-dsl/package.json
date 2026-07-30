@@ -1,0 +1,24 @@
+{
+  "name": "wadi-dsl",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "A Langium DSL for the Wadi parametric house model — a formalization demo for the parametric-domain-modeling method.",
+  "scripts": {
+    "langium:generate": "langium generate",
+    "compile": "tsc --noEmit",
+    "gen": "tsx src/cli/main.ts",
+    "test": "vitest run",
+    "prepare": "langium generate"
+  },
+  "dependencies": {
+    "langium": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "langium-cli": "^4.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "projectName": "Wadi",
+  "languages": [
+    {
+      "id": "wadi",
+      "grammar": "src/language/wadi.langium",
+      "fileExtensions": [".wadidsl"]
+    }
+  ],
+  "out": "src/language/generated"
+}

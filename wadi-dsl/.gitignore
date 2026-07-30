@@ -1,0 +1,4 @@
+node_modules/
+src/language/generated/
+.coastal.tmp.wadi
+*.tmp.wadi
