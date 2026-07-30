@@ -169,11 +169,41 @@ async function bootViewer(): Promise<void> {
     }
   }
 
+  // `?load` startup option — lets the app be driven as a pure renderer.
+  //   • ?load=<url>  → fetch a house config from <url> and open it (skips the
+  //     picker). Deep-link straight to a design.
+  //   • ?load (bare) → EMBED mode: skip the picker + the default auto-load and
+  //     wait for a programmatic window.wadi.load(). Used by the DSL playground,
+  //     which iframes the app and pushes each compiled model in place.
+  let loadedFromLoadParam = false;
+  if (!loadedFromOpenFile && !loadedFromHash) {
+    const params = new URLSearchParams(location.search);
+    if (params.has("load")) {
+      const url = params.get("load");
+      if (url) {
+        try {
+          const raw = await (await fetch(url)).json();
+          const parsed = validate(raw, { tolerant: true });
+          if (parsed.ok && parsed.data) {
+            useConfigStore.getState().loadConfig(parsed.data, "?load");
+            loadedFromLoadParam = true;
+          } else {
+            console.error("viewer: ?load config failed validation", parsed.errors);
+          }
+        } catch (err) {
+          console.warn("viewer: ?load fetch failed", err);
+        }
+      } else {
+        loadedFromLoadParam = true; // bare ?load → embed; await wadi.load()
+      }
+    }
+  }
+
   // Auto-load the JSON if it's next to the viewer (docs/house_config.json)
   // — unless a shared link already provided one. We validate and stuff
   // into useConfigStore so both the edit UI and the SVG generators pick
   // it up.
-  if (!loadedFromOpenFile && !loadedFromHash) {
+  if (!loadedFromOpenFile && !loadedFromHash && !loadedFromLoadParam) {
     try {
       const raw = await (await fetch(CONFIG_URL)).json();
       const parsed = validate(raw);
@@ -286,14 +316,14 @@ async function bootViewer(): Promise<void> {
   // owner sees the welcome overlay (not the leftover default model) until they
   // pick something. Architects never see it (CSS-gated to owner).
   document.body.dataset.homeChosen =
-    loadedFromOpenFile || loadedFromHash ? "yes" : "no";
+    loadedFromOpenFile || loadedFromHash || loadedFromLoadParam ? "yes" : "no";
   wireOwnerWelcome();
 
   // Owner first-step: on a fresh default load (no shared link, no opened
   // file), greet the owner (Gharkul) with the template gallery so they START
   // by choosing a home to customize. Architects, share-link recipients, and
   // file-opens skip straight to the model.
-  if (isOwner() && !loadedFromOpenFile && !loadedFromHash) {
+  if (isOwner() && !loadedFromOpenFile && !loadedFromHash && !loadedFromLoadParam) {
     void openNewHouseModal();
   }
 }

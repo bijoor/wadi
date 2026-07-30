@@ -79,6 +79,42 @@ npm run gen -- examples/coastal.wadidsl /tmp/coastal.wadi
 - `src/cli/main.ts` — compile + resolve + emit.
 - `test/roundtrip.test.ts` — the proof.
 
+## The playground — a live code editor for the model
+
+`playground/` is a Monaco code editor that compiles `.wadidsl` **in the browser**
+and drives the existing Wadi app (in a same-origin iframe) to render the model —
+edit the code, the house rebuilds. No second renderer, and the app is used purely
+as a viewer.
+
+```bash
+npm run build:playground     # → docs/dsl (deploys at wadi.house/dsl)
+# then serve docs/ and open /dsl, or:
+npm run dev:playground
+```
+
+How it loads the model into the app, using the app's OWN paths:
+
+- **first render** → the iframe boots at `/app/?panels=off&load=<blob url>`. The
+  `?load` startup option (added to the app) loads a house directly and skips the
+  picker — a first-class "open an existing house" entry point
+  (`?load=<url>` deep-links to any config; bare `?load` is embed mode: skip the
+  picker and await a programmatic load).
+- **every edit after that** → `window.wadi.load(config)` updates the model
+  in place (no reload).
+
+`src/generator/toHouseConfig.ts` exposes `compileWithDiagnostics(text)` — a
+never-throws compile returning the `HouseConfig` plus Monaco-shaped error markers.
+`playground/dsl-language.ts` is a Monarch tokenizer for highlighting (Phase 2
+would swap it for the real Langium language server in a Web Worker, so
+highlighting + completion come from the grammar itself).
+
+**Two other render paths** (both existing Wadi mechanisms, no new glue):
+
+- **desktop live-watch** — the CLI writes a `.wadi`; the Wadi desktop app,
+  watching that file, live-updates. Renders natively (no iframe quirks). This is
+  the same loop the AI architect skill uses.
+- **`?load=<url>`** — deep-link the web app straight to any hosted `.wadi`.
+
 ## Retargeting to another domain (the payoff)
 
 To formalize, say, a solar-PV farm with the same method:

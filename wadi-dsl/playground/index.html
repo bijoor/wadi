@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wadi DSL playground — model as formal code</title>
+  <link rel="icon" href="/favicon.svg" />
+  <style>
+    :root { --bg:#1e1e1e; --panel:#252526; --border:#333; --accent:#c05a2f; --text:#e6e0d8; --muted:#9b968e; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+      background: var(--bg); color: var(--text);
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    header {
+      display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+      background: var(--panel); border-bottom: 1px solid var(--border); flex: 0 0 auto;
+    }
+    header .brand { font-weight: 700; letter-spacing: -0.01em; }
+    header .brand b { color: var(--accent); }
+    header .tag { color: var(--muted); font-size: .85rem; }
+    header .spacer { flex: 1; }
+    header a { color: var(--muted); text-decoration: none; font-size: .85rem; }
+    header a:hover { color: var(--text); }
+    #status {
+      font-size: .8rem; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+      background: #2d4a3e; color: #8fe3bf;
+    }
+    #status.err { background: #4a2d2d; color: #f0a3a3; }
+    main { flex: 1; display: grid; grid-template-columns: minmax(340px, 44%) 1fr; min-height: 0; }
+    #editor { min-width: 0; height: 100%; border-right: 1px solid var(--border); }
+    .preview { position: relative; min-width: 0; background: #0d0d0d; }
+    .preview iframe { width: 100%; height: 100%; border: 0; display: block; background: #cfe3d8; }
+    @media (max-width: 760px) {
+      main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+      #editor { border-right: 0; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand">Wadi <b>DSL</b> playground</span>
+    <span class="tag">the parametric house model as formal code — edit the code, the model rebuilds</span>
+    <span class="spacer"></span>
+    <span id="status">starting…</span>
+    <a href="/app/" target="_blank" rel="noopener">Open the app →</a>
+  </header>
+  <main>
+    <div id="editor"></div>
+    <div class="preview">
+      <!-- main.ts boots the app at /app/?panels=off&load=<blob url of the first
+           compiled house> (the ?load path frames the camera), then live-updates
+           via window.wadi.load() on every edit. -->
+      <iframe id="preview" title="Wadi model preview"></iframe>
+    </div>
+  </main>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

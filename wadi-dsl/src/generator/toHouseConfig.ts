@@ -303,3 +303,58 @@ export function compileDsl(text: string): Record<string, unknown> {
   }
   return modelToHouseConfig(result.value);
 }
+
+// A Monaco-shaped diagnostic (1-based line/column, half-open end column).
+export interface DslDiagnostic {
+  message: string;
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+}
+
+/** Browser-friendly compile: never throws — returns the config (when the source
+ *  is valid) and a list of positioned diagnostics for a code editor's markers.
+ *  Used by the DSL playground; keeps the parser services warm across calls. */
+let sharedServices: ReturnType<typeof createWadiServices>["Wadi"] | undefined;
+export function compileWithDiagnostics(text: string): {
+  config?: Record<string, unknown>;
+  diagnostics: DslDiagnostic[];
+} {
+  sharedServices ??= createWadiServices(EmptyFileSystem).Wadi;
+  const result = sharedServices.parser.LangiumParser.parse<ast.Model>(text);
+  const diagnostics: DslDiagnostic[] = [];
+  for (const e of result.lexerErrors) {
+    const line = e.line ?? 1;
+    const col = e.column ?? 1;
+    diagnostics.push({
+      message: e.message,
+      startLineNumber: line,
+      startColumn: col,
+      endLineNumber: line,
+      endColumn: col + (e.length ?? 1),
+    });
+  }
+  for (const e of result.parserErrors) {
+    const t = e.token;
+    const sl = t.startLine ?? 1;
+    const sc = t.startColumn ?? 1;
+    diagnostics.push({
+      message: e.message,
+      startLineNumber: sl,
+      startColumn: sc,
+      endLineNumber: t.endLine ?? sl,
+      endColumn: (t.endColumn ?? sc) + 1,
+    });
+  }
+  if (diagnostics.length) return { diagnostics };
+  try {
+    return { config: modelToHouseConfig(result.value), diagnostics: [] };
+  } catch (e) {
+    return {
+      diagnostics: [
+        { message: (e as Error).message, startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 2 },
+      ],
+    };
+  }
+}
