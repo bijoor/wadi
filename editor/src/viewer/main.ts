@@ -1013,7 +1013,20 @@ function hidePdfBusy(): void {
 // Yield one frame so the overlay actually paints before a heavy sync task
 // (html2canvas / svg2pdf) blocks the main thread.
 const nextPaint = (): Promise<void> =>
-  new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+  // Two rAFs let the "Preparing PDF…" overlay actually paint before the heavy
+  // work. A setTimeout backstop keeps it from HANGING where rAF is paused/
+  // throttled (a background tab, an unfocused webview) — otherwise the whole
+  // PDF export could stall at the first await and never resolve.
+  new Promise((r) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      r();
+    };
+    requestAnimationFrame(() => requestAnimationFrame(finish));
+    setTimeout(finish, 120);
+  });
 
 // Grab the currently-open lightbox SVG (as source text) and save
 // via the native dialog / browser download.
@@ -1095,34 +1108,114 @@ function wireExports(): void {
     showPdfBusy();
     await nextPaint();
     try {
-      const [{ jsPDF }, html2canvasMod] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas"),
-      ]);
-      const html2canvas = (html2canvasMod as { default: typeof import("html2canvas").default }).default;
-      const canvas = await html2canvas(el, {
-        scale: 2, backgroundColor: "#ffffff", useCORS: true,
-        windowWidth: el.scrollWidth, windowHeight: el.scrollHeight,
-      });
+      const { jsPDF } = await import("jspdf");
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4", compress: true });
-      const pw = pdf.internal.pageSize.getWidth();
-      const ph = pdf.internal.pageSize.getHeight();
-      const margin = 24;
-      const imgW = pw - margin * 2;
-      const pxPerPt = canvas.width / imgW;     // source px per PDF point
-      const sliceHpx = (ph - margin * 2) * pxPerPt; // page-worth of source px
-      let y = 0, page = 0;
-      while (y < canvas.height - 1) {
-        const hpx = Math.min(sliceHpx, canvas.height - y);
-        const slice = document.createElement("canvas");
-        slice.width = canvas.width;
-        slice.height = hpx;
-        slice.getContext("2d")!.drawImage(canvas, 0, y, canvas.width, hpx, 0, 0, canvas.width, hpx);
-        if (page > 0) pdf.addPage();
-        pdf.addImage(slice, "PNG", margin, margin, imgW, hpx / pxPerPt);
-        y += hpx;
-        page++;
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 36;
+      const tables = Array.from(el.querySelectorAll("table"));
+
+      if (tables.length > 0) {
+        // VECTOR table export — read the table DOM and draw it directly. The
+        // roof BOM + Quantities cards are HTML tables; rasterising them with
+        // html2canvas HANGS in the desktop WKWebview (it can't parse the app's
+        // Tailwind v4 oklch() colours). Drawing the table ourselves needs no
+        // rasteriser, works in every webview, and yields crisp selectable text.
+        const cellText = (c: Element) => (c.textContent ?? "").replace(/\s+/g, " ").trim();
+        let y = margin;
+        const newPage = (extra: number) => {
+          if (y + extra > pageH - margin) { pdf.addPage(); y = margin; }
+        };
+        for (const table of tables) {
+          // Section title = nearest preceding heading in the card.
+          let title = "";
+          for (let p = table.previousElementSibling; p; p = p.previousElementSibling) {
+            if (/^H[1-6]$/.test(p.tagName)) { title = cellText(p); break; }
+          }
+          const head = Array.from(table.querySelectorAll("thead tr")).map((tr) =>
+            Array.from(tr.children).map(cellText),
+          );
+          const body = Array.from(table.querySelectorAll("tbody tr")).map((tr) =>
+            Array.from(tr.children).map(cellText),
+          );
+          const cols = Math.max(head[0]?.length ?? 0, ...body.map((r) => r.length), 1);
+          const usableW = pageW - margin * 2;
+          const colW = usableW / cols;
+          const rowH = 16;
+          if (title) {
+            newPage(26);
+            pdf.setFont("helvetica", "bold"); pdf.setFontSize(13); pdf.setTextColor(30);
+            pdf.text(title, margin, y + 10); y += 22;
+          }
+          const drawRow = (cells: string[], bold: boolean, fill: boolean) => {
+            newPage(rowH);
+            if (fill) {
+              pdf.setFillColor(192, 90, 47); pdf.rect(margin, y, usableW, rowH, "F");
+              pdf.setTextColor(255);
+            } else {
+              pdf.setTextColor(35);
+            }
+            pdf.setFont("helvetica", bold ? "bold" : "normal"); pdf.setFontSize(9);
+            for (let c = 0; c < cols; c++) {
+              pdf.text(cells[c] ?? "", margin + c * colW + 4, y + 11, { maxWidth: colW - 8 });
+            }
+            pdf.setDrawColor(224); pdf.line(margin, y + rowH, margin + usableW, y + rowH);
+            y += rowH;
+          };
+          for (const hr of head) drawRow(hr, true, true);
+          for (const br of body) drawRow(br, false, false);
+          y += 24; // gap before the next table
+        }
+      } else {
+        // Non-table HTML → rasterise in an ISOLATED iframe (keeps the app's
+        // oklch() out of html2canvas), timeout-guarded so it can't hang forever.
+        const frame = document.createElement("iframe");
+        frame.setAttribute("aria-hidden", "true");
+        frame.style.cssText =
+          "position:fixed;left:-99999px;top:0;width:900px;height:10px;border:0;background:#fff;";
+        document.body.appendChild(frame);
+        try {
+          const html2canvasMod = await import("html2canvas");
+          const html2canvas = (html2canvasMod as { default: typeof import("html2canvas").default }).default;
+          const idoc = frame.contentDocument!;
+          idoc.open();
+          idoc.write(
+            '<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:16px;' +
+              "background:#fff;color:#111;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;}" +
+              "</style></head><body>" + el.innerHTML + "</body></html>",
+          );
+          idoc.close();
+          await nextPaint();
+          const b = idoc.body;
+          frame.style.height = Math.max(b.scrollHeight, 40) + "px";
+          await nextPaint();
+          const canvas = await Promise.race([
+            html2canvas(b, {
+              scale: 2, backgroundColor: "#ffffff", useCORS: true,
+              windowWidth: b.scrollWidth, windowHeight: b.scrollHeight,
+            }),
+            new Promise<never>((_, rej) =>
+              window.setTimeout(() => rej(new Error("rendering timed out")), 20000),
+            ),
+          ]);
+          const imgW = pageW - margin * 2;
+          const pxPerPt = canvas.width / imgW;
+          const sliceHpx = (pageH - margin * 2) * pxPerPt;
+          let yy = 0, page = 0;
+          while (yy < canvas.height - 1) {
+            const hpx = Math.min(sliceHpx, canvas.height - yy);
+            const slice = document.createElement("canvas");
+            slice.width = canvas.width; slice.height = hpx;
+            slice.getContext("2d")!.drawImage(canvas, 0, yy, canvas.width, hpx, 0, 0, canvas.width, hpx);
+            if (page > 0) pdf.addPage();
+            pdf.addImage(slice, "PNG", margin, margin, imgW, hpx / pxPerPt);
+            yy += hpx; page++;
+          }
+        } finally {
+          frame.remove();
+        }
       }
+
       const bytes = pdf.output("arraybuffer");
       hidePdfBusy(); // bytes ready — drop the overlay before the save dialog
       await saveBinary(

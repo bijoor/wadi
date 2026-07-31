@@ -604,12 +604,20 @@ export function mountViewer3D(container: HTMLElement): void {
   const kickResize = (): void => {
     window.dispatchEvent(new Event("resize"));
   };
-  // A few staged one-shot kicks catch R3F's async canvas mount + the layout
-  // settling, without spamming resize every frame (which stutters the render
-  // loop). The first rAF fires after the canvas mounts; the later timeouts
-  // cover slower layout/paint on first load.
+  // Poll until R3F's canvas actually FILLS the container, kicking a resize each
+  // time. A slow-to-lay-out container — the Tauri webview on first paint, a tab
+  // that isn't visible yet, an unsettled flex layout — can leave the canvas stuck
+  // at its 300×150 default well past a fixed timeout, showing a black sliver. Keep
+  // going until the canvas matches the container (or ~6s elapses), instead of a
+  // handful of fixed one-shots.
   requestAnimationFrame(kickResize);
-  for (const ms of [60, 200, 500, 1000]) window.setTimeout(kickResize, ms);
+  let tries = 0;
+  const settle = window.setInterval(() => {
+    kickResize();
+    const cv = container.querySelector("canvas");
+    const filled = !!cv && container.clientWidth > 0 && Math.abs(cv.clientWidth - container.clientWidth) <= 2;
+    if (filled || ++tries >= 24) window.clearInterval(settle); // ≤ ~6s
+  }, 250);
   // Ongoing: keep the canvas synced to later size changes (tab switch,
   // edit-panel toggle, window resize). Debounced to one dispatch per frame.
   let raf = 0;
@@ -621,6 +629,12 @@ export function mountViewer3D(container: HTMLElement): void {
     });
   };
   new ResizeObserver(kick).observe(container);
+  // A config LOAD (Open a .wadi, ?load, wadi.load, desktop file-open) swaps a new
+  // model into an ALREADY-sized canvas — the ResizeObserver won't fire (size
+  // unchanged), so the new model's first frame could stay unpainted (the black
+  // rectangle). Kick on every config change so it always paints. Cheap: a resize
+  // is a no-op when the size hasn't changed.
+  useConfigStore.subscribe(kick);
 }
 
 // Mount the layer-visibility checkboxes into a separate HTML slot.
