@@ -33,13 +33,13 @@ asset is the **method (the core tier)**, not the house vocabulary.
 
 ## What it proves
 
-`examples/coastal.wadidsl` is a coastal Konkan cottage authored purely in the
+`examples/coastal.wdl` is a coastal Konkan cottage authored purely in the
 DSL. `npm test` compiles it → resolves it with the **real** `param/resolve.ts`
 → validates it with the **real** `validate.mjs` (Zod schema + wall/roof geometry
 pipeline). It passes. So the model is *fully representable* in the DSL, verified
 by the actual Wadi engine rather than a parallel implementation.
 
-One `.wadidsl` file exercises every construct:
+One `.wdl` file exercises every construct:
 
 - **parametric core** — `var`, `point`, a first-class `grid` with named
   centrelines + per-line `role`, the `configurator` (`slider` + `select`), and
@@ -50,14 +50,27 @@ One `.wadidsl` file exercises every construct:
   (nested segments/slope/trusses) expressed as literal JSON, so *nothing in the
   model is inexpressible* even before a primitive gets ergonomic sugar.
 
+## Samples (`examples/*.wdl`)
+
+| File | What it shows |
+|------|---------------|
+| `minimal.wdl` | the smallest valid house — one floor, one room + a door/window |
+| `two_room.wdl` | two rooms with **no grid** — explicit centrelines that abut on a shared wall |
+| `two_story.wdl` | **multi-floor** (plinth + 2 storeys + hip roof), grid-driven, with a staircase + roof via `raw` |
+| `coastal.wdl` | the full showcase — grid + configurator + every construct (the round-trip fixture) |
+| `errors.wdl` | intentionally **broken** — for testing the error path (playground squiggles; watch keeps the last-good `.wadi`) |
+
+Every valid sample is asserted through the real schema + geometry pipeline in
+`test/roundtrip.test.ts`.
+
 ## Run it
 
 ```bash
 npm install            # installs Langium + regenerates the parser (prepare hook)
 npm test               # DSL → resolve → real schema+geometry pipeline (round-trip)
 
-# Compile a .wadidsl to a .wadi (resolved, ready for the app / preview):
-npm run gen -- examples/coastal.wadidsl /tmp/coastal.wadi
+# Compile a .wdl to a .wadi (resolved, ready for the app / preview):
+npm run gen -- examples/coastal.wdl /tmp/coastal.wadi
 # Then render it with the skill's preview tool (from the repo root):
 #   wadi-skill/architect/scripts/preview.sh /tmp/coastal.wadi
 ```
@@ -65,7 +78,7 @@ npm run gen -- examples/coastal.wadidsl /tmp/coastal.wadi
 ## How it maps to the pipeline
 
 ```
-.wadidsl  ──parse──▶  Langium AST  ──generator──▶  HouseConfig JSON
+.wdl  ──parse──▶  Langium AST  ──generator──▶  HouseConfig JSON
                                                        │ resolveParametric (real)
                                                        ▼
                                             resolved .wadi  ──▶  validate + render
@@ -81,7 +94,7 @@ npm run gen -- examples/coastal.wadidsl /tmp/coastal.wadi
 
 ## The playground — a live code editor for the model
 
-`playground/` is a Monaco code editor that compiles `.wadidsl` **in the browser**
+`playground/` is a Monaco code editor that compiles `.wdl` **in the browser**
 and drives the existing Wadi app (in a same-origin iframe) to render the model —
 edit the code, the house rebuilds. No second renderer, and the app is used purely
 as a viewer.
@@ -111,17 +124,17 @@ highlighting + completion come from the grammar itself).
 ## Desktop live-watch (edit in VS Code → the Tauri app updates)
 
 For a demo with a *real* editor and native rendering (no iframe/rAF quirks), use
-`watch`: it recompiles the `.wadidsl` to a `.wadi` on every save, and the Wadi
+`watch`: it recompiles the `.wdl` to a `.wadi` on every save, and the Wadi
 desktop app — watching that file — live-reloads. The same file-watch loop the AI
 architect skill uses, so the code editor (VS Code, or anything) is fully separate
 from the renderer.
 
 ```bash
-npm run watch -- examples/coastal.wadidsl /tmp/house.wadi
+npm run watch -- examples/coastal.wdl /tmp/house.wadi
 ```
 
 Then in the Wadi **desktop app**: `Load → /tmp/house.wadi`. Edit
-`examples/coastal.wadidsl` in VS Code and hit save — the 3D model rebuilds. (The
+`examples/coastal.wdl` in VS Code and hit save — the 3D model rebuilds. (The
 output is fully resolved, so the app renders it directly; a compile error keeps
 the last-good `.wadi` on disk so the model never blanks.)
 

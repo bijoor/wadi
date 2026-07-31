@@ -1,9 +1,9 @@
-// Watch a .wadidsl and (re)compile it to a .wadi on every save. Point the Wadi
+// Watch a .wdl and (re)compile it to a .wadi on every save. Point the Wadi
 // desktop app at the output file (Load → out.wadi) and it live-reloads as you
 // edit the DSL in ANY editor (VS Code, etc.) — the same file-watch loop the AI
 // architect skill uses, so the "code editor" is fully separate from the renderer.
 //
-//   tsx src/cli/watch.ts <in.wadidsl> <out.wadi>
+//   tsx src/cli/watch.ts <in.wdl> <out.wadi>
 //
 // The output is fully resolved (formulas → numeric fields), exactly what the app
 // persists, so the desktop app renders it directly.
@@ -15,7 +15,7 @@ import { resolveParametric } from "../../../editor/src/param/resolve";
 
 const [, , inArg, outArg] = process.argv;
 if (!inArg || !outArg) {
-  console.error("usage: watch <in.wadidsl> <out.wadi>");
+  console.error("usage: watch <in.wdl> <out.wadi>");
   process.exit(2);
 }
 const inPath = resolve(process.cwd(), inArg);

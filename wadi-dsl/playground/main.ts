@@ -1,20 +1,20 @@
-// Wadi DSL playground — a Monaco code editor that compiles .wadidsl IN THE
+// Wadi DSL playground — a Monaco code editor that compiles .wdl IN THE
 // BROWSER and drives the existing Wadi app (in a same-origin iframe) to render
 // the model. Edit the code → the house rebuilds. No server, no second renderer,
 // and NO app changes: the app is loaded as a pure renderer.
 //
-// Loading uses the app's OWN existing paths:
-//   • first render → boot the iframe at /app#w1=<share-link payload>, the same
-//     zero-backend "open an existing house from a URL" path the Share button
-//     produces. That loads the house directly and skips the app's picker.
+// Loading uses the app's OWN paths:
+//   • first render → boot the iframe at /app/?panels=off&load=<blob url of the
+//     compiled house>. The app's `?load` startup option loads it directly and
+//     skips the picker (and frames the camera on its normal path).
 //   • every edit after that → window.wadi.load(config) for an instant in-place
-//     update (no reload, no flicker).
+//     update (no reload).
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { registerWadiDsl, LANG_ID } from "./dsl-language";
 import { compileWithDiagnostics } from "../src/generator/toHouseConfig";
-import initialSource from "../examples/coastal.wadidsl?raw";
+import initialSource from "../examples/coastal.wdl?raw";
 
 // Monaco only needs its base editor worker (plain-text language, no TS/JSON).
 self.MonacoEnvironment = { getWorker: () => new editorWorker() };

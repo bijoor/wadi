@@ -1,12 +1,12 @@
 // Monaco language registration for the Wadi DSL — a Monarch tokenizer that
 // mirrors the keywords/operators in src/language/wadi.langium so the code editor
-// highlights .wadidsl source. (Phase 2 would replace this with the real Langium
+// highlights .wdl source. (Phase 2 would replace this with the real Langium
 // language server in a worker, so highlighting + completion come from the grammar
 // itself — see wadi-dsl/README.md.)
 
 import type * as Monaco from "monaco-editor";
 
-export const LANG_ID = "wadidsl";
+export const LANG_ID = "wdl";
 
 // Structural keywords (block openers + section words).
 const KEYWORDS = [
@@ -26,7 +26,7 @@ const KEYWORDS2 = [
 const FUNCTIONS = ["min", "max", "clamp", "round", "floor", "ceil", "abs"];
 
 export function registerWadiDsl(monaco: typeof Monaco): void {
-  monaco.languages.register({ id: LANG_ID, extensions: [".wadidsl"], aliases: ["Wadi DSL", "wadidsl"] });
+  monaco.languages.register({ id: LANG_ID, extensions: [".wdl"], aliases: ["Wadi DSL", "wdl"] });
 
   monaco.languages.setLanguageConfiguration(LANG_ID, {
     comments: { lineComment: "//", blockComment: ["/*", "*/"] },

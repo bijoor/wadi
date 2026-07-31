@@ -1,5 +1,5 @@
 // A coastal Konkan cottage, authored entirely in the Wadi DSL.
-// `tsx src/cli/main.ts examples/coastal.wadidsl` compiles it to a .wadi that the
+// `tsx src/cli/main.ts examples/coastal.wdl` compiles it to a .wadi that the
 // real Wadi pipeline validates + resolves + renders. This one file exercises
 // every construct: the parametric core (var/point/grid/formula/configurator) and
 // the domain vocabulary (floor/room/wall/opening/pillar), plus the `raw` escape

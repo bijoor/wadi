@@ -1,5 +1,5 @@
-// CLI: compile a .wadidsl file to a canonical .wadi (HouseConfig JSON).
-//   tsx src/cli/main.ts <in.wadidsl> [out.wadi]
+// CLI: compile a .wdl file to a canonical .wadi (HouseConfig JSON).
+//   tsx src/cli/main.ts <in.wdl> [out.wadi]
 // With no out path, prints JSON to stdout.
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -11,7 +11,7 @@ import { resolveParametric } from "../../../editor/src/param/resolve";
 
 const [, , inPath, outPath] = process.argv;
 if (!inPath) {
-  console.error("usage: main.ts <in.wadidsl> [out.wadi]");
+  console.error("usage: main.ts <in.wdl> [out.wadi]");
   process.exit(2);
 }
 try {

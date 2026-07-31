@@ -4,7 +4,7 @@
     {
       "id": "wadi",
       "grammar": "src/language/wadi.langium",
-      "fileExtensions": [".wadidsl"]
+      "fileExtensions": [".wdl"]
     }
   ],
   "out": "src/language/generated"
