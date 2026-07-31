@@ -8,10 +8,11 @@
 // multi-segment combination — automatically.
 //
 // The panel is intentionally simple: filled polygons for planes,
-// colored lines for members, tick marks for trusses. It's not
-// dimensioned (that comes with the full panel port).
+// colored lines for members, tick marks for trusses. The ridge run is
+// called out on the ridge line (the number builders look for first).
 
 import type { MemberRole, RoofPlane, RoofSpec, StraightMember, TrussTriangle } from "./model";
+import { formatDimension } from "../../format";
 
 export interface RenderTopViewOptions {
   width: number;         // panel width in SVG units (pixels)
@@ -201,6 +202,29 @@ export function renderTopViewPanel(
       }
     }
     for (const t of spec.trusses) body.push(trussSvg(t, toSvg));
+    // Ridge length callout — the overall ridge run is the number builders
+    // look for first, and it was previously only on the slope face panel.
+    // Label each ridge member on the plan, along the line, with a white
+    // halo so it reads over the red ridge stroke and the sky-blue slope.
+    for (const m of spec.members) {
+      if (m.role !== "ridge") continue;
+      const lenW = Math.hypot(m.end[0] - m.start[0], m.end[1] - m.start[1]);
+      if (lenW < 1) continue;
+      const [x1, y1] = toSvg(m.start[0], m.start[1]);
+      const [x2, y2] = toSvg(m.end[0], m.end[1]);
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      let dx = x2 - x1, dy = y2 - y1;
+      const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+      const lx = mx - dy * 11, ly = my + dx * 11; // nudge perpendicular to the ridge
+      let deg = Math.atan2(dy, dx) * 180 / Math.PI;
+      if (deg > 90) deg -= 180; else if (deg < -90) deg += 180;
+      body.push(
+        `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" ` +
+        `font-size="10" font-weight="700" fill="#b91c1c" paint-order="stroke" stroke="#ffffff" ` +
+        `stroke-width="3" stroke-linejoin="round" ` +
+        `transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})">ridge ${escapeXml(formatDimension(lenW))}</text>`,
+      );
+    }
   } else {
     body.push(`<text x="${(width / 2).toFixed(1)}" y="${(height / 2).toFixed(1)}" text-anchor="middle" font-size="11" fill="#94a3b8">(empty roof spec)</text>`);
   }

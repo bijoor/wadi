@@ -700,7 +700,11 @@ declare global {
     exportSvgElementAsPdf?: (svg: SVGSVGElement, defaultName: string) => Promise<void>;
     // HTML → PDF (BOM / quantities cards) — raster via html2canvas since the
     // content is HTML tables, not SVG. Same native-save path as the SVG export.
-    exportHtmlElementAsPdf?: (el: HTMLElement, defaultName: string) => Promise<void>;
+    exportHtmlElementAsPdf?: (
+      el: HTMLElement,
+      defaultName: string,
+      opts?: { orientation?: "portrait" | "landscape" },
+    ) => Promise<void>;
     // On-demand Layout composite render, driven by the filter panel.
     // Returns the composite SVG string for `floorNum` with `filter`
     // applied (object/type/layer selection + dimension toggles).
@@ -1104,12 +1108,17 @@ function wireExports(): void {
   // the desktop WKWebview, so rasterise the card with html2canvas and place it
   // on A4 pages (paginating when the table is taller than one page), then save
   // via the native dialog — same path as the SVG export above.
-  window.exportHtmlElementAsPdf = async (el: HTMLElement, defaultName: string) => {
+  window.exportHtmlElementAsPdf = async (
+    el: HTMLElement,
+    defaultName: string,
+    opts?: { orientation?: "portrait" | "landscape" },
+  ) => {
     showPdfBusy();
     await nextPaint();
     try {
       const { jsPDF } = await import("jspdf");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4", compress: true });
+      const orientation = opts?.orientation === "landscape" ? "landscape" : "portrait";
+      const pdf = new jsPDF({ orientation, unit: "pt", format: "a4", compress: true });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
       const margin = 36;

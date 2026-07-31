@@ -1244,6 +1244,15 @@
         .html-lightbox-controls button:hover {
             background: #fff;
         }
+        .html-lightbox-controls select {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 0.55rem 0.5rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
         /* ---- Template picker modal ------------------------------------- */
         .new-house-modal {
             position: fixed;
@@ -2051,7 +2060,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-m8q9c4IE.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-B-rKLwjq.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-DiBI4YMN.css">
 </head>
@@ -2441,6 +2450,10 @@
              an Export-to-PDF (print) button. Populated by openHtmlLightbox(). -->
         <div id="html-lightbox" class="html-lightbox" style="display: none;">
             <div class="html-lightbox-controls">
+                <select id="html-lb-orient" title="Paper orientation for the PDF">
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                </select>
                 <button onclick="printHtmlLightbox()" title="Export to PDF">📄 PDF</button>
                 <button onclick="closeHtmlLightbox()" title="Close (Esc)" aria-label="Close">✕</button>
             </div>
@@ -3564,6 +3577,17 @@
             box.style.display = 'block';
             box.dataset.caption = caption || '';
             document.body.classList.add('html-lb-open');
+            // Smart-default the PDF orientation: wide tables (many columns)
+            // don't fit portrait, so preselect landscape for them. The user
+            // can still flip it before exporting.
+            const orient = document.getElementById('html-lb-orient');
+            if (orient) {
+                let maxCols = 0;
+                content.querySelectorAll('table tr').forEach(function (r) {
+                    maxCols = Math.max(maxCols, r.children.length);
+                });
+                orient.value = maxCols >= 6 ? 'landscape' : 'portrait';
+            }
         }
 
         function closeHtmlLightbox() {
@@ -3579,8 +3603,10 @@
             const box = document.getElementById('html-lightbox');
             const caption = (box && box.dataset.caption) || 'quantities';
             const name = caption.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '') + '.pdf';
+            const orientEl = document.getElementById('html-lb-orient');
+            const orientation = orientEl && orientEl.value === 'landscape' ? 'landscape' : 'portrait';
             if (el && typeof window.exportHtmlElementAsPdf === 'function') {
-                window.exportHtmlElementAsPdf(el, name);
+                window.exportHtmlElementAsPdf(el, name, { orientation: orientation });
             } else {
                 window.print();  // last-resort fallback (plain browser)
             }
