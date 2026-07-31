@@ -19,6 +19,7 @@ import minimalSrc from "../examples/minimal.wdl?raw";
 import twoRoomSrc from "../examples/two_room.wdl?raw";
 import twoStorySrc from "../examples/two_story.wdl?raw";
 import coastalSrc from "../examples/coastal.wdl?raw";
+import completeSrc from "../examples/complete.wdl?raw";
 import errorsSrc from "../examples/errors.wdl?raw";
 
 const SAMPLES: Record<string, string> = {
@@ -26,6 +27,7 @@ const SAMPLES: Record<string, string> = {
   two_room: twoRoomSrc,
   two_story: twoStorySrc,
   coastal: coastalSrc,
+  complete: completeSrc,
   errors: errorsSrc,
 };
 let currentName = "coastal"; // base filename for Save / Download

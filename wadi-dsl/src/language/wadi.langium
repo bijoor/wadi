@@ -10,12 +10,18 @@ grammar Wadi
 //     expression sublanguage, the configurator (control knobs), and a `raw`
 //     JSON escape. Nothing here mentions a house. To formalize another domain
 //     (solar farm, data-centre, PCB…), you keep this tier verbatim.
-//   • WADI VOCABULARY — the DOMAIN primitives (floor, room, wall, pillar, …).
+//   • WADI VOCABULARY — the DOMAIN primitives (floor, room, wall, roof, …).
 //     This is the ONLY tier you rewrite to retarget the method.
 //
 // Langium's CLI rejects an entry-less imported library grammar, so the two tiers
 // live in one file behind a divider rather than two files — the boundary is
 // still exact and the core section lifts out unchanged.
+//
+// COVERAGE: every object type in the model's discriminated union now has
+// ergonomic first-class syntax (room, wall, pillar, beam, slab, plinth, ground,
+// staircase, kitchen, item, component, roof). `raw` remains as a deliberate
+// escape hatch to the host JSON (good DSL hygiene), but nothing in the shipped
+// model needs it.
 // ============================================================================
 
 entry Model:
@@ -28,6 +34,8 @@ entry Model:
         | points+=Point
         | grids+=Grid
         | configurators+=Configurator
+        | layers+=LayerDecl
+        | components+=ComponentDef
         | floors+=Floor
         )*
     '}';
@@ -127,6 +135,21 @@ Defaults:
         ('wall_thickness' wall_thickness=NUMBER)?
     '}';
 
+// ---- Per-house layer registry (display grouping) ----
+LayerDecl:
+    'layer' id=STRING label=STRING ('color' color=STRING)? ('group' group=STRING)?;
+
+// ---- In-file component library: a reusable mini-house authored in LOCAL
+//      coordinates (origin 0,0), stamped into a floor with `use … at (…)`. ----
+ComponentDef:
+    'component' name=ID '{'
+        (params+=ComponentParam)*
+        ( vars+=Var | points+=Point )*
+        (objects+=FloorObject)*
+    '}';
+ComponentParam:
+    'param' name=ID ('=' default=NUMBER)? ('label' label=STRING)?;
+
 Floor:
     'floor' number=NUMBER name=STRING
     ('height' height=NUMBER)?
@@ -134,30 +157,172 @@ Floor:
     ('slab_thickness' slab_thickness=NUMBER)?
     '{' objects+=FloorObject* '}';
 
-// Common house primitives get ergonomic, first-class syntax; everything else is
-// expressible via the core `raw` escape (roof, plinth, ground, slab, …).
+// The full discriminated union — every model object type has a first-class rule.
 FloorObject:
-    Room | Pillar | Raw;
+      Room | Wall | Pillar | Beam | FloorSlab | Plinth | Ground
+    | Staircase | KitchenPlatform | Item | Component | Roof | Raw;
 
+// ---- Shared optional attribute tail: z-offset + the enabled/layer switches
+//      that EVERY object carries (fragment → inlined, no wrapper AST node). ----
+fragment Common:
+    ('z_offset' z_offset=Expr)?
+    ('enabled' enabled=Expr)?
+    ('layer' layer=STRING)?;
+
+// ---- Rooms + their walls / openings / anchored furniture ----
 Room:
     'room' name=ID
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
-        ('{' walls+=RoomWall* '}')?;
+        ('height' height=Expr)?
+        Common ('material' material=STRING)?
+        ('{' (walls+=RoomWall | items+=RoomItem)* '}')?;
 RoomWall:
-    'wall' side=Side ('{' openings+=Opening* '}')?;
+    'wall' side=Side
+        ('height' height=Expr)? ('height_end' height_end=Expr)?
+        ('{' openings+=Opening* '}')?;
 Opening:
     kind=('door' | 'window') name=ID
     'at' offset=Expr 'size' '(' width=Expr ',' height=Expr ')'
-    ('sill' sill=Expr)?;
+    ('sill' sill=Expr)? (open?='open')?;
 Side returns string:
     'north' | 'south' | 'east' | 'west';
+
+// A free-standing wall (its own object, not a room side).
+Wall:
+    'wall' name=ID
+        'from' '(' start_x=Expr ',' start_y=Expr ')'
+        'to' '(' end_x=Expr ',' end_y=Expr ')'
+        ('height' height=Expr)? ('height_end' height_end=Expr)?
+        ('facing' facing=Side)?
+        Common ('material' material=STRING)?
+        ('{' openings+=Opening* '}')?;
 
 Pillar:
     'pillar' name=ID
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
-        ('height' height=Expr)?;
+        ('height' height=Expr)?
+        Common;
+
+Beam:
+    'beam' ('name' name=STRING)?
+        'at' '(' x=Expr ',' y=Expr ')'
+        'size' '(' w=Expr ',' l=Expr ')'
+        ('height' height=Expr)?
+        Common;
+
+FloorSlab:
+    'slab' ('name' name=STRING)?
+        'at' '(' x=Expr ',' y=Expr ')'
+        'size' '(' w=Expr ',' l=Expr ')'
+        ('thickness' thickness=Expr)?
+        Common;
+
+Plinth:
+    'plinth' ('name' name=STRING)?
+        'at' '(' x=Expr ',' y=Expr ')'
+        'size' '(' w=Expr ',' l=Expr ')'
+        'height' height=Expr
+        Common ('material' material=STRING)?;
+
+Ground:
+    'ground' ('name' name=STRING)?
+        'at' '(' x=Expr ',' y=Expr ')'
+        'size' '(' w=Expr ',' l=Expr ')'
+        ('height' height=Expr)?
+        Common ('material' material=STRING)?;
+
+Staircase:
+    'staircase' ('name' name=STRING)?
+        'at' '(' start_x=Expr ',' start_y=Expr ')'
+        'step' '(' step_rise=Expr ',' step_tread=Expr ',' step_width=Expr ')'
+        'direction' direction=Side
+        ('total_height' rise_height=Expr)?
+        ('max_run' max_run=Expr)?
+        ('landing_depth' landing_depth=Expr)?
+        ('landing_thickness' landing_thickness=Expr)?
+        ('turn' turn=('clockwise' | 'anticlockwise'))?
+        ('flight_gap' flight_gap=Expr)?
+        Common ('material' material=STRING)?;
+
+KitchenPlatform:
+    'kitchen' ('name' name=STRING)?
+        'path' '(' pts+=Pt (',' pts+=Pt)* ')'
+        'side' side=('left' | 'right')
+        'depth' depth=Expr 'height' height=Expr
+        ('base_z' base_z=Expr)?
+        Common ('material' material=STRING)?;
+Pt:
+    '(' x=NUMBER ',' y=NUMBER ')';
+
+// ---- Free-standing furniture (a GLB asset placed in plan) ----
+Item:
+    'item' ('name' name=STRING)?
+        'asset' asset=Asset
+        'at' '(' x=Expr ',' y=Expr ')'
+        ('rotation' rotation=Expr)?
+        ('scale' scale=Expr)?
+        ('anchor_to' anchor_to=STRING)?
+        ('anchor' anchor=Anchor)?
+        ('gap' '(' gap_x=Expr ',' gap_y=Expr ')')?
+        Common;
+// Furniture anchored inside a room (no x/y — placed relative to the room box).
+RoomItem:
+    'item' ('name' name=STRING)?
+        'asset' asset=Asset
+        ('anchor' anchor=Anchor)?
+        ('gap' '(' gap_x=Expr ',' gap_y=Expr ')')?
+        ('rotation' rotation=Expr)?
+        ('scale' scale=Expr)?
+        Common;
+Asset:
+    '{' 'id' id=STRING 'src' src=STRING 'dims' '(' dx=NUMBER ',' dy=NUMBER ',' dz=NUMBER ')'
+        ('name' name=STRING)? ('category' category=STRING)? '}';
+Anchor returns string:
+      'top-left' | 'top-center' | 'top-right'
+    | 'center-left' | 'center' | 'center-right'
+    | 'bottom-left' | 'bottom-center' | 'bottom-right';
+
+// ---- Component INSTANCE — stamp a library component onto this floor ----
+Component:
+    'use' ref=ID ('as' name=STRING)?
+        'at' '(' x=Expr ',' y=Expr ')'
+        ('with' '{' args+=ComponentArg (',' args+=ComponentArg)* '}')?
+        Common;
+ComponentArg:
+    name=ID '=' value=Expr;
+
+// ---- Roof — one object covering flat / shed / gable / hip via roof_type +
+//      per-segment endpoints. Segments carry their own formula map (start_x,
+//      hip_setback_start, …); truss positions serialize to pos0/pos1/… ----
+Roof:
+    'roof' ('name' name=STRING)? roof_type=('flat' | 'shed' | 'pitched')
+        ('endpoint' default_endpoint=('open' | 'closed'))?
+        (slope=Slope)?
+        ('overhang' min_overhang=Expr)?
+        ('slab_thickness' slab_thickness=Expr)?
+        ('parapet' parapet_height=Expr 'x' parapet_thickness=Expr)?
+        ('gable_wall_thickness' gable_wall_thickness=Expr)?
+        Common ('material' material=STRING)?
+        '{' (segments+=Segment | trusses+=Truss)* '}';
+Slope:
+    'slope' by=('angle' | 'height') value=Expr;
+Segment:
+    'segment' id=STRING
+        'from' '(' sx=Expr ',' sy=Expr ')' 'to' '(' ex=Expr ',' ey=Expr ')'
+        'width' width=Expr
+        ('high_side' shed_high_side=('left' | 'right'))?
+        ('start_endpoint' start_endpoint=('open' | 'closed'))?
+        ('end_endpoint' end_endpoint=('open' | 'closed'))?
+        ('hip_setback' '(' hip_setback_start=Expr ',' hip_setback_end=Expr ')')?
+        ('gable_overhang' '(' gable_overhang_start=Expr ',' gable_overhang_end=Expr ')')?
+        ('hip_ridge_extension' '(' hip_ridge_extension_start=Expr ',' hip_ridge_extension_end=Expr ')')?
+        ('overhang' min_overhang=Expr)?
+        ('tie_beams' tie_beam_count=NUMBER)?;
+Truss:
+    'truss' segment_id=STRING type=('fink' | 'mono_pitch')
+        'at' '(' positions+=Expr (',' positions+=Expr)* ')';
 
 // ---- Shared lexer ----
 hidden terminal WS: /\s+/;

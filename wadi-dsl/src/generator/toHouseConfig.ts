@@ -83,19 +83,57 @@ function unquote(s: string): string {
 
 // ---- Objects -------------------------------------------------------------
 
-function room(r: ast.Room): Record<string, unknown> {
+// A small geometry accumulator: `put(field, expr, ph)` returns the concrete
+// number to store and, when the expr is not a literal, records the "= …"
+// formula under `field` in the shared map.
+function geom() {
   const formulas: Record<string, string> = {};
-  const put = (field: string, e: ast.Expr, ph: number) => {
+  const put = (field: string, e: ast.Expr | undefined, ph = 0): number | undefined => {
+    if (!e) return undefined;
     const { value, formula } = fieldAndFormula(e, ph);
     if (formula) formulas[field] = formula;
     return value;
   };
-  const walls: Record<string, unknown> = {};
-  for (const w of r.walls) {
-    const openings = w.openings.map(opening);
-    walls[w.side] = openings.length ? { openings } : {};
+  return { formulas, put };
+}
+
+// The optional attribute tail shared by every object (z_offset + the
+// enabled/layer/material switches). Present as a structural subset of every
+// AST node (missing fields are simply undefined).
+interface CommonNode {
+  z_offset?: ast.Expr;
+  enabled?: ast.Expr;
+  layer?: string;
+  material?: string;
+}
+function applyCommon(o: Record<string, unknown>, formulas: Record<string, string>, n: CommonNode): void {
+  if (n.z_offset !== undefined) {
+    const { value, formula } = fieldAndFormula(n.z_offset, 0);
+    o.z_offset = value;
+    if (formula) formulas.z_offset = formula;
   }
-  const obj: Record<string, unknown> = {
+  if (n.enabled !== undefined) {
+    // `enabled` is a boolean/number in the schema; a formula lives under
+    // formulas.enabled (the runtime resolves it back onto `enabled`).
+    const { value, formula } = fieldAndFormula(n.enabled, 1);
+    o.enabled = value;
+    if (formula) formulas.enabled = formula;
+  }
+  if (n.layer) o.layer = unquote(n.layer);
+  if (n.material) o.material = unquote(n.material);
+}
+// Finish an object: attach the formula map iff it has entries.
+function done(o: Record<string, unknown>, formulas: Record<string, string>): Record<string, unknown> {
+  if (Object.keys(formulas).length) o.formulas = formulas;
+  return o;
+}
+
+function room(r: ast.Room): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const walls: Record<string, unknown> = {};
+  for (const w of r.walls) walls[w.side] = roomWall(w);
+  const items = r.items.map(roomItem);
+  const o: Record<string, unknown> = {
     type: "room",
     name: r.name,
     x: put("x", r.x, 0),
@@ -103,40 +141,82 @@ function room(r: ast.Room): Record<string, unknown> {
     width: put("width", r.w, 1),
     length: put("length", r.l, 1),
   };
-  if (Object.keys(walls).length) obj.walls = walls;
-  if (Object.keys(formulas).length) obj.formulas = formulas;
-  return obj;
+  const h = put("height", r.height);
+  if (h !== undefined) o.height = h;
+  if (Object.keys(walls).length) o.walls = walls;
+  if (items.length) o.items = items;
+  applyCommon(o, formulas, r);
+  return done(o, formulas);
+}
+
+function roomWall(w: ast.RoomWall): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const side: Record<string, unknown> = {};
+  const openings = w.openings.map(opening);
+  if (openings.length) side.openings = openings;
+  const h = put("height", w.height);
+  if (h !== undefined) side.height = h;
+  const he = put("height_end", w.height_end);
+  if (he !== undefined) side.height_end = he;
+  return done(side, formulas);
 }
 
 function opening(o: ast.Opening): Record<string, unknown> {
-  const formulas: Record<string, string> = {};
-  const num = (field: string, e: ast.Expr | undefined, ph = 0): number | undefined => {
-    if (!e) return undefined;
-    const { value, formula } = fieldAndFormula(e, ph);
-    if (formula) formulas[field] = formula;
-    return value;
-  };
+  const { formulas, put } = geom();
   const obj: Record<string, unknown> = {
     kind: o.kind,
     name: o.name,
-    offset: num("offset", o.offset),
-    width: num("width", o.width, 1),
-    height: num("height", o.height, 1),
+    offset: put("offset", o.offset, 0),
+    width: put("width", o.width, 1),
+    height: put("height", o.height, 1),
   };
-  if (o.sill !== undefined) obj.sill_height = num("sill_height", o.sill);
-  if (Object.keys(formulas).length) obj.formulas = formulas;
-  return obj;
+  const s = put("sill_height", o.sill);
+  if (s !== undefined) obj.sill_height = s;
+  if (o.open) obj.open = true;
+  return done(obj, formulas);
+}
+
+function roomItem(it: ast.RoomItem): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = { asset: asset(it.asset) };
+  if (it.name) o.name = unquote(it.name);
+  if (it.anchor) o.anchor = it.anchor;
+  const gx = put("gap_x", it.gap_x);
+  if (gx !== undefined) o.gap_x = gx;
+  const gy = put("gap_y", it.gap_y);
+  if (gy !== undefined) o.gap_y = gy;
+  const rot = put("rotation", it.rotation);
+  if (rot !== undefined) o.rotation = rot;
+  const sc = put("scale", it.scale, 1);
+  if (sc !== undefined) o.scale = sc;
+  applyCommon(o, formulas, it);
+  return done(o, formulas);
+}
+
+function wall(w: ast.Wall): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "wall",
+    name: w.name,
+    start_x: put("start_x", w.start_x, 0),
+    start_y: put("start_y", w.start_y, 0),
+    end_x: put("end_x", w.end_x, 0),
+    end_y: put("end_y", w.end_y, 0),
+  };
+  const h = put("height", w.height, 1);
+  if (h !== undefined) o.height = h;
+  const he = put("height_end", w.height_end);
+  if (he !== undefined) o.height_end = he;
+  if (w.facing) o.facing = w.facing;
+  const openings = w.openings.map(opening);
+  if (openings.length) o.openings = openings;
+  applyCommon(o, formulas, w);
+  return done(o, formulas);
 }
 
 function pillar(p: ast.Pillar): Record<string, unknown> {
-  const formulas: Record<string, string> = {};
-  const put = (field: string, e: ast.Expr | undefined, ph: number): number | undefined => {
-    if (!e) return undefined;
-    const { value, formula } = fieldAndFormula(e, ph);
-    if (formula) formulas[field] = formula;
-    return value;
-  };
-  const obj: Record<string, unknown> = {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
     type: "pillar",
     name: p.name,
     x: put("x", p.x, 0),
@@ -145,24 +225,296 @@ function pillar(p: ast.Pillar): Record<string, unknown> {
     length: put("length", p.l, 1),
   };
   const h = put("height", p.height, 1);
-  if (h !== undefined) obj.height = h;
-  if (Object.keys(formulas).length) obj.formulas = formulas;
-  return obj;
+  if (h !== undefined) o.height = h;
+  applyCommon(o, formulas, p);
+  return done(o, formulas);
+}
+
+function beam(b: ast.Beam): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "beam",
+    x: put("x", b.x, 0),
+    y: put("y", b.y, 0),
+    width: put("width", b.w, 1),
+    length: put("length", b.l, 1),
+  };
+  if (b.name) o.name = unquote(b.name);
+  const h = put("height", b.height);
+  if (h !== undefined) o.height = h;
+  applyCommon(o, formulas, b);
+  return done(o, formulas);
+}
+
+function floorSlab(s: ast.FloorSlab): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "floor_slab",
+    x: put("x", s.x, 0),
+    y: put("y", s.y, 0),
+    width: put("width", s.w, 1),
+    length: put("length", s.l, 1),
+  };
+  if (s.name) o.name = unquote(s.name);
+  const t = put("thickness", s.thickness);
+  if (t !== undefined) o.thickness = t;
+  applyCommon(o, formulas, s);
+  return done(o, formulas);
+}
+
+function plinth(p: ast.Plinth): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "plinth",
+    x: put("x", p.x, 0),
+    y: put("y", p.y, 0),
+    width: put("width", p.w, 1),
+    length: put("length", p.l, 1),
+    height: put("height", p.height, 1),
+  };
+  if (p.name) o.name = unquote(p.name);
+  applyCommon(o, formulas, p);
+  return done(o, formulas);
+}
+
+function ground(g: ast.Ground): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "ground",
+    x: put("x", g.x, 0),
+    y: put("y", g.y, 0),
+    width: put("width", g.w, 1),
+    length: put("length", g.l, 1),
+  };
+  if (g.name) o.name = unquote(g.name);
+  const h = put("height", g.height);
+  if (h !== undefined) o.height = h;
+  applyCommon(o, formulas, g);
+  return done(o, formulas);
+}
+
+function staircase(s: ast.Staircase): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "staircase",
+    start_x: put("start_x", s.start_x, 0),
+    start_y: put("start_y", s.start_y, 0),
+    step_rise: put("step_rise", s.step_rise, 1),
+    step_tread: put("step_tread", s.step_tread, 1),
+    step_width: put("step_width", s.step_width, 1),
+    direction: s.direction,
+  };
+  if (s.name) o.name = unquote(s.name);
+  const rh = put("rise_height", s.rise_height);
+  if (rh !== undefined) o.rise_height = rh;
+  const mr = put("max_run", s.max_run);
+  if (mr !== undefined) o.max_run = mr;
+  const ld = put("landing_depth", s.landing_depth);
+  if (ld !== undefined) o.landing_depth = ld;
+  const lt = put("landing_thickness", s.landing_thickness);
+  if (lt !== undefined) o.landing_thickness = lt;
+  if (s.turn) o.turn = s.turn;
+  const fg = put("flight_gap", s.flight_gap);
+  if (fg !== undefined) o.flight_gap = fg;
+  applyCommon(o, formulas, s);
+  return done(o, formulas);
+}
+
+function kitchen(k: ast.KitchenPlatform): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "kitchen_platform",
+    path: k.pts.map((p) => [p.x, p.y]),
+    side: k.side,
+    depth: put("depth", k.depth, 1),
+    height: put("height", k.height, 1),
+  };
+  if (k.name) o.name = unquote(k.name);
+  const bz = put("base_z", k.base_z);
+  if (bz !== undefined) o.base_z = bz;
+  applyCommon(o, formulas, k);
+  return done(o, formulas);
+}
+
+function asset(a: ast.Asset): Record<string, unknown> {
+  const o: Record<string, unknown> = {
+    id: unquote(a.id),
+    src: unquote(a.src),
+    dimensions: [a.dx, a.dy, a.dz],
+  };
+  if (a.name) o.name = unquote(a.name);
+  if (a.category) o.category = unquote(a.category);
+  return o;
+}
+
+function item(it: ast.Item): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "item",
+    asset: asset(it.asset),
+    x: put("x", it.x, 0),
+    y: put("y", it.y, 0),
+  };
+  if (it.name) o.name = unquote(it.name);
+  const rot = put("rotation", it.rotation);
+  if (rot !== undefined) o.rotation = rot;
+  const sc = put("scale", it.scale, 1);
+  if (sc !== undefined) o.scale = sc;
+  if (it.anchor_to) o.anchor_to = unquote(it.anchor_to);
+  if (it.anchor) o.anchor = it.anchor;
+  const gx = put("gap_x", it.gap_x);
+  if (gx !== undefined) o.gap_x = gx;
+  const gy = put("gap_y", it.gap_y);
+  if (gy !== undefined) o.gap_y = gy;
+  applyCommon(o, formulas, it);
+  return done(o, formulas);
+}
+
+function componentInstance(c: ast.Component): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "component",
+    ref: c.ref,
+    x: put("x", c.x, 0),
+    y: put("y", c.y, 0),
+  };
+  if (c.name) o.name = unquote(c.name);
+  if (c.args.length) {
+    const params: Record<string, number | string> = {};
+    for (const a of c.args) params[a.name] = exprToValue(a.value);
+    o.params = params;
+  }
+  applyCommon(o, formulas, c);
+  return done(o, formulas);
+}
+
+// ---- Roof (segments carry their own formula map; trusses use pos0/pos1/…) ----
+
+function roof(r: ast.Roof): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = { type: "roof", roof_type: r.roof_type };
+  if (r.name) o.name = unquote(r.name);
+  if (r.default_endpoint) o.default_endpoint = r.default_endpoint;
+  if (r.slope) {
+    const v = exprToValue(r.slope.value);
+    o.slope = r.slope.by === "angle" ? { by: "angle", angle_deg: v } : { by: "height", ridge_h: v };
+  }
+  const mo = put("min_overhang", r.min_overhang);
+  if (mo !== undefined) o.min_overhang = mo;
+  const st = put("slab_thickness", r.slab_thickness);
+  if (st !== undefined) o.slab_thickness = st;
+  if (r.parapet_height !== undefined) {
+    o.parapet_height = put("parapet_height", r.parapet_height);
+    o.parapet_thickness = put("parapet_thickness", r.parapet_thickness);
+  }
+  const gwt = put("gable_wall_thickness", r.gable_wall_thickness);
+  if (gwt !== undefined) o.gable_wall_thickness = gwt;
+  if (r.segments.length) o.segments = r.segments.map(roofSegment);
+  if (r.trusses.length) o.trusses = r.trusses.map(roofTruss);
+  applyCommon(o, formulas, r);
+  return done(o, formulas);
+}
+
+function roofSegment(s: ast.Segment): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const seg: Record<string, unknown> = {
+    id: unquote(s.id),
+    start: [put("start_x", s.sx, 0), put("start_y", s.sy, 0)],
+    end: [put("end_x", s.ex, 0), put("end_y", s.ey, 0)],
+    width: put("width", s.width, 1),
+  };
+  if (s.shed_high_side) seg.shed_high_side = s.shed_high_side;
+  if (s.start_endpoint) seg.start_endpoint = s.start_endpoint;
+  if (s.end_endpoint) seg.end_endpoint = s.end_endpoint;
+  if (s.hip_setback_start !== undefined) {
+    seg.hip_setback_start = put("hip_setback_start", s.hip_setback_start);
+    seg.hip_setback_end = put("hip_setback_end", s.hip_setback_end);
+  }
+  if (s.gable_overhang_start !== undefined) {
+    seg.gable_overhang_start = put("gable_overhang_start", s.gable_overhang_start);
+    seg.gable_overhang_end = put("gable_overhang_end", s.gable_overhang_end);
+  }
+  if (s.hip_ridge_extension_start !== undefined) {
+    seg.hip_ridge_extension_start = put("hip_ridge_extension_start", s.hip_ridge_extension_start);
+    seg.hip_ridge_extension_end = put("hip_ridge_extension_end", s.hip_ridge_extension_end);
+  }
+  const mo = put("min_overhang", s.min_overhang);
+  if (mo !== undefined) seg.min_overhang = mo;
+  if (s.tie_beam_count !== undefined) seg.tie_beam_count = Math.round(s.tie_beam_count);
+  return done(seg, formulas);
+}
+
+function roofTruss(t: ast.Truss): Record<string, unknown> {
+  const formulas: Record<string, string> = {};
+  const positions = t.positions.map((e, i) => {
+    const { value, formula } = fieldAndFormula(e, 0);
+    if (formula) formulas[`pos${i}`] = formula;
+    return value;
+  });
+  const o: Record<string, unknown> = {
+    segment_id: unquote(t.segment_id),
+    type: t.type,
+    positions_along: positions,
+  };
+  return done(o, formulas);
 }
 
 function floorObject(o: ast.FloorObject): Record<string, unknown> {
   switch (o.$type) {
     case "Room":
-      return room(o as ast.Room);
+      return room(o);
+    case "Wall":
+      return wall(o);
     case "Pillar":
-      return pillar(o as ast.Pillar);
-    case "Raw": {
-      const raw = o as ast.Raw;
-      return { type: unquote(raw.type), ...jsonObject(raw.body) };
-    }
+      return pillar(o);
+    case "Beam":
+      return beam(o);
+    case "FloorSlab":
+      return floorSlab(o);
+    case "Plinth":
+      return plinth(o);
+    case "Ground":
+      return ground(o);
+    case "Staircase":
+      return staircase(o);
+    case "KitchenPlatform":
+      return kitchen(o);
+    case "Item":
+      return item(o);
+    case "Component":
+      return componentInstance(o);
+    case "Roof":
+      return roof(o);
+    case "Raw":
+      return { type: unquote(o.type), ...jsonObject(o.body) };
     default:
-      throw new Error(`unhandled object: ${(o as unknown as { $type: string }).$type}`);
+      throw new Error(`unhandled object: ${(o as { $type: string }).$type}`);
   }
+}
+
+// ---- Component library definitions --------------------------------------
+
+function componentDef(d: ast.ComponentDef): Record<string, unknown> {
+  const def: Record<string, unknown> = { objects: d.objects.map(floorObject) };
+  if (d.params.length) {
+    def.params = d.params.map((p) => {
+      const pp: Record<string, unknown> = { name: p.name };
+      if (p.default !== undefined) pp.default = p.default;
+      if (p.label) pp.label = unquote(p.label);
+      return pp;
+    });
+  }
+  if (d.vars.length) {
+    const v: Record<string, number | string> = {};
+    for (const x of d.vars) v[x.name] = exprToValue(x.value);
+    def.variables = v;
+  }
+  if (d.points.length) {
+    const pts: Record<string, unknown> = {};
+    for (const p of d.points) pts[p.name] = { x: exprToValue(p.x), y: exprToValue(p.y) };
+    def.points = pts;
+  }
+  return def;
 }
 
 // ---- Top level -----------------------------------------------------------
@@ -239,6 +591,21 @@ export function modelToHouseConfig(model: ast.Model): Record<string, unknown> {
   if (model.configurators.length) {
     const inputs = model.configurators[0].inputs.map(configInput);
     cfg.configurator = { inputs };
+  }
+
+  if (model.layers.length) {
+    cfg.layers = model.layers.map((l) => {
+      const o: Record<string, unknown> = { id: unquote(l.id), label: unquote(l.label) };
+      if (l.color) o.color = unquote(l.color);
+      if (l.group) o.group = unquote(l.group);
+      return o;
+    });
+  }
+
+  if (model.components.length) {
+    const comps: Record<string, unknown> = {};
+    for (const d of model.components) comps[d.name] = componentDef(d);
+    cfg.components = comps;
   }
 
   cfg.floors = model.floors.map((f) => {

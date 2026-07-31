@@ -44,11 +44,14 @@ One `.wdl` file exercises every construct:
 - **parametric core** — `var`, `point`, a first-class `grid` with named
   centrelines + per-line `role`, the `configurator` (`slider` + `select`), and
   formulas (`main.x2 - main.x1`, `House.W / 2`, `(pillarW - wallT) / 2`);
-- **domain vocabulary** — `floor`, `room` (`at (…) size (…)`), `wall` with
-  `door`/`window` openings, `pillar`;
-- the **`raw` escape** — `floor_slab`, `plinth`, `ground`, and the hip `roof`
-  (nested segments/slope/trusses) expressed as literal JSON, so *nothing in the
-  model is inexpressible* even before a primitive gets ergonomic sugar.
+- **domain vocabulary — every object type is first-class** (no `raw` needed):
+  `ground`, `plinth`, `floor_slab`, `beam`, `room` (with `wall`/`door`/`window`
+  openings + anchored `item`s), free-standing `wall`, `pillar`, `staircase`,
+  `kitchen`, `item` (furniture), `component` (library `def` + `use` instance),
+  and the `roof` (flat / shed / gable / hip via `roof_type` + per-segment
+  endpoints, with nested `segment`/`slope`/`truss`);
+- a shared **attribute tail** on every object — `z_offset`, `layer`, `material`,
+  and `enabled <expr>` (the on/off gate, e.g. `enabled 1 - min(1, abs(roof_style - 3))`).
 
 ## Samples (`examples/*.wdl`)
 
@@ -56,8 +59,9 @@ One `.wdl` file exercises every construct:
 |------|---------------|
 | `minimal.wdl` | the smallest valid house — one floor, one room + a door/window |
 | `two_room.wdl` | two rooms with **no grid** — explicit centrelines that abut on a shared wall |
-| `two_story.wdl` | **multi-floor** (plinth + 2 storeys + hip roof), grid-driven, with a staircase + roof via `raw` |
-| `coastal.wdl` | the full showcase — grid + configurator + every construct (the round-trip fixture) |
+| `two_story.wdl` | **multi-floor** (plinth + 2 storeys + hip roof), grid-driven, with a first-class staircase + roof |
+| `coastal.wdl` | grid + configurator + a full cottage (ground/plinth/slab/rooms/pillars/roof) — the round-trip fixture |
+| `complete.wdl` | **coverage showcase** — every object type first-class (beam, wall, kitchen, item, `component` def+use, gable roof, layers), no `raw` |
 | `errors.wdl` | intentionally **broken** — for testing the error path (playground squiggles; watch keeps the last-good `.wadi`) |
 
 Every valid sample is asserted through the real schema + geometry pipeline in
@@ -163,12 +167,14 @@ formula language, the control knobs — transfers without change.
 
 This is a spike sized to *prove representability*, not a production front-end:
 
-- **Coverage.** The core tier is complete. In the domain tier, `room`, `wall`,
-  `opening`, and `pillar` have ergonomic first-class syntax; every other
-  primitive (roof, staircase, kitchen_platform, beam, item, component instance,
-  …) is expressible today via the `raw` escape, and each is a mechanical ~10-line
-  addition to promote to first-class syntax. `component` definitions/instances
-  are the next core-tier rule to add.
+- **Coverage.** Complete. Both tiers are done: the core tier (var/point/grid/
+  formula/configurator/raw) and the domain tier — **all 14 object types** in the
+  model's discriminated union have ergonomic first-class syntax (ground, plinth,
+  floor_slab, beam, room, wall, pillar, staircase, kitchen_platform, item,
+  component, roof; `door`/`window` are authored as first-class room/wall
+  `opening`s, the model's canonical form). The `components` library and per-house
+  `layers` are first-class too. `raw` remains only as a deliberate escape hatch;
+  no shipped example uses it (`complete.wdl` asserts this).
 - **References are textual, not yet linked.** `main.x1`, `bay`, `House.W` parse
   as dotted refs and serialize correctly, but are not yet Langium cross-
   references. Promoting them to `[GridLine]` / `[Var]` cross-references (with a

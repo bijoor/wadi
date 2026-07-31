@@ -46,33 +46,63 @@ refs: a var · a point (House.W) · a grid line (main.x3 - main.x1)</pre>
 <p class="ref-note"><code>height</code> = floor-to-floor rise ·
 <code>wall_height</code> = standing wall · <code>slab_thickness</code> = deck.
 All three are optional and fall back to <code>defaults</code>. <b>To change the
-plinth floor's height, add <code>height N</code> after its name</b> (and/or set
-the plinth object's own <code>"height"</code> in its <code>raw</code> block).</p>
+plinth floor's height, add <code>height N</code> after its name.</b></p>
 
-<h3>Objects (first-class syntax)</h3>
-<pre>room Name at (x, y) size (w, l) {
-  wall north|south|east|west {
-    door   Name at &lt;offset&gt; size (w, h)
-    window Name at &lt;offset&gt; size (w, h) sill &lt;s&gt;
+<h3>Common tail <span class="ref-dim">— every object accepts these, in this order</span></h3>
+<pre>… z_offset &lt;expr&gt;  enabled &lt;expr&gt;  layer "id"  [material "id"]</pre>
+<p class="ref-note"><code>enabled &lt;expr&gt;</code> is the on/off switch — set it to a
+0/1 formula to gate an object on a configurator variable, e.g.
+<code>enabled 1 - min(1, abs(roof_style - 3))</code> renders the object only when
+<code>roof_style == 3</code>. Any geometry number can be a <b>formula</b> just by
+writing an expression instead of a literal.</p>
+
+<h3>Structure &amp; envelope</h3>
+<pre>slab   [name "N"] at (x,y) size (w,l) [thickness &lt;t&gt;]
+beam   [name "N"] at (x,y) size (w,l) [height &lt;h&gt;]
+plinth [name "N"] at (x,y) size (w,l) height &lt;h&gt;
+ground [name "N"] at (x,y) size (w,l) [height &lt;h&gt;]
+pillar Name       at (x,y) size (w,l) [height &lt;h&gt;]</pre>
+
+<h3>Rooms, walls &amp; openings</h3>
+<pre>room Name at (x,y) size (w,l) [height &lt;h&gt;] {
+  wall north|south|east|west [height &lt;h&gt;] [height_end &lt;h&gt;] {
+    door   Name at &lt;offset&gt; size (w,h) [open]
+    window Name at &lt;offset&gt; size (w,h) [sill &lt;s&gt;] [open]
   }
+  item asset { … } anchor center [gap (gx,gy)]   // furniture anchored in the room
 }
-pillar Name at (x, y) size (w, l) height &lt;h&gt;</pre>
+wall Name from (x1,y1) to (x2,y2) [height &lt;h&gt;] [facing north|…] { …openings… }</pre>
 
-<h3>Anything else → the <code>raw</code> escape</h3>
-<pre>raw "type" { …fields… }     // fields = the .wadi schema for that type</pre>
-<table class="ref-table">
-<tr><th>type</th><th>key fields</th></tr>
-<tr><td>ground</td><td>name, layer, x, y, width, length</td></tr>
-<tr><td>plinth</td><td>name, layer, x, y, width, length, <b>height</b></td></tr>
-<tr><td>floor_slab</td><td>x, y, width, length, thickness</td></tr>
-<tr><td>beam</td><td>x, y, …, height, height_end</td></tr>
-<tr><td>staircase</td><td>start_x, start_y, step_rise, step_tread, step_width, direction, max_run</td></tr>
-<tr><td>roof</td><td>roof_type&nbsp;("pitched"|"shed"|"flat"), default_endpoint&nbsp;("closed"=hip&nbsp;/&nbsp;"open"=gable), slope&nbsp;{by,ridge_h}, segments[], trusses[]</td></tr>
-<tr><td>kitchen_platform</td><td>path[], side, depth, height</td></tr>
-<tr><td>item</td><td>asset&nbsp;{src, dimensions[w,h,d]}, x, y, rotation, scale</td></tr>
-</table>
-<p class="ref-note">Any raw field can carry a formula via a nested
-<code>"formulas": { "field": "= expr" }</code> — that's how grid-driven raw
-objects (plinth / slab) reflow. Full schema:
+<h3>Circulation &amp; fittings</h3>
+<pre>staircase [name "N"] at (start_x, start_y) step (rise, tread, width)
+  direction north|south|east|west
+  [total_height &lt;h&gt;] [max_run &lt;r&gt;] [landing_depth …] [turn clockwise|anticlockwise]
+kitchen [name "N"] path ((x,y), (x,y), …) side left|right depth &lt;d&gt; height &lt;h&gt; [base_z …]
+item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
+  at (x,y) [rotation &lt;deg&gt;] [scale &lt;s&gt;] [anchor_to "Room" anchor center gap (gx,gy)]</pre>
+
+<h3>Roof <span class="ref-dim">— one object; flat / shed / gable / hip</span></h3>
+<pre>roof [name "N"] pitched|shed|flat
+  [endpoint open|closed]        // open = gable end-wall · closed = hip triangle
+  [slope angle &lt;deg&gt; | slope height &lt;ridge_h&gt;]
+  [overhang &lt;o&gt;] [slab_thickness &lt;t&gt;] [parapet &lt;h&gt; x &lt;t&gt;] {
+    segment "id" from (x,y) to (x,y) width &lt;w&gt;
+      [high_side left|right] [start_endpoint …] [end_endpoint …]
+      [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)] [tie_beams N]
+    truss "segId" fink|mono_pitch at (pos, pos, …)
+  }</pre>
+
+<h3>Component library <span class="ref-dim">— reusable mini-house</span></h3>
+<pre>component Bench {              // define once (local coords, origin 0,0)
+  param blen = 60 label "Bench length"
+  beam name "Top" at (0,0) size (blen, 18) height 6
+}
+use Bench as "B1" at (x,y) with { blen = 80 }   // stamp it onto a floor</pre>
+
+<h3>Layers &amp; the raw escape</h3>
+<pre>layer "id" "Label" [color "#rrggbb"] [group "Group"]   // per-house layer registry
+raw "type" { …literal JSON… }   // escape hatch — no shipped model needs it</pre>
+<p class="ref-note">Every model object type now has first-class syntax; <code>raw</code>
+remains only as a hatch to the host JSON. Full schema:
 <code>wadi-skill/architect/reference/data-model.md</code>.</p>
 `;

@@ -1,9 +1,9 @@
 // A coastal Konkan cottage, authored entirely in the Wadi DSL.
 // `tsx src/cli/main.ts examples/coastal.wdl` compiles it to a .wadi that the
 // real Wadi pipeline validates + resolves + renders. This one file exercises
-// every construct: the parametric core (var/point/grid/formula/configurator) and
-// the domain vocabulary (floor/room/wall/opening/pillar), plus the `raw` escape
-// for slab / plinth / ground / roof.
+// the parametric core (var/point/grid/formula/configurator) and the domain
+// vocabulary — every primitive is FIRST-CLASS (ground, plinth, slab, room,
+// wall, opening, pillar, roof), no `raw` needed.
 
 house CoastalCottage {
   convention center
@@ -35,21 +35,17 @@ house CoastalCottage {
     select roof_style "Roof style" { Flat = 0, Shed = 1, Gable = 2, Hip = 3 }
   }
 
-  // --- Plinth floor: base + terrain via the raw escape ---
+  // --- Plinth floor: terrain + raised base ---
   floor 0 "Plinth" {
-    raw "ground" { "name": "Ground", "layer": "ground", "x": 0, "y": 0, "width": 600, "length": 700 }
-    raw "plinth" {
-      "name": "Plinth", "layer": "plinth", "x": 4, "y": 4, "width": 412, "length": 462, "height": 40,
-      "formulas": { "x": "= main.x1", "y": "= main.yA", "width": "= main.x3 - main.x1", "length": "= main.yC - main.yA" }
-    }
+    ground name "Ground" at (0, 0) size (600, 700) layer "ground"
+    plinth name "Plinth"
+      at (main.x1, main.yA) size (main.x3 - main.x1, main.yC - main.yA)
+      height 40 layer "plinth"
   }
 
   // --- Ground floor: slab + grid-placed rooms + corner pillars ---
   floor 1 "Ground Floor" {
-    raw "floor_slab" {
-      "x": 4, "y": 4, "width": 412, "length": 462,
-      "formulas": { "x": "= main.x1", "y": "= main.yA", "width": "= main.x3 - main.x1", "length": "= main.yC - main.yA" }
-    }
+    slab at (main.x1, main.yA) size (main.x3 - main.x1, main.yC - main.yA)
 
     room Living
       at   (main.x1, main.yA)
@@ -75,15 +71,11 @@ house CoastalCottage {
     pillar C2 at (main.x3 - pilInset, main.yA + pilInset) size (pillarW, pillarW) height 116
   }
 
-  // --- Loft floor: the hip roof (raw — nested segments/slope/trusses) ---
+  // --- Loft floor: the hip roof (first-class — nested segments/slope/trusses) ---
   floor 2 "Loft Floor" {
-    raw "roof" {
-      "roof_type": "pitched", "default_endpoint": "closed", "min_overhang": 25,
-      "slope": { "by": "height", "ridge_h": 100 },
-      "segments": [
-        { "id": "seg0", "start": [210, 0], "end": [210, 470], "width": 420, "hip_setback_start": 90, "hip_setback_end": 90 }
-      ],
-      "trusses": [ { "segment_id": "seg0", "type": "fink", "positions_along": [95, 235, 375] } ]
+    roof name "Hip Roof" pitched endpoint closed slope height 100 overhang 25 {
+      segment "seg0" from (210, 0) to (210, 470) width 420 hip_setback (90, 90)
+      truss "seg0" fink at (95, 235, 375)
     }
   }
 }
