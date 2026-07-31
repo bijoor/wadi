@@ -215,7 +215,7 @@ export function v2FacePanel(
   const g = group.geom;
   const uSpan = g.uMax - g.uMin;
   const vSpan = g.vMax - g.vMin;
-  const scale = Math.min(drawW / (uSpan || 1), drawH / (vSpan || 1)) * 0.9;
+  const scale = Math.min(drawW / (uSpan || 1), drawH / (vSpan || 1)) * 0.82;
   const cx = x0 + width / 2;
   const cy = y0 + titleH + innerPad + drawH / 2;
   // Convert (u, v) to SVG (x, y). SVG y grows downward — flip v.
@@ -252,17 +252,56 @@ export function v2FacePanel(
     }
   }
 
-  // Dimension labels — eave (bottom), ridge (top if trapezoidal),
-  // slant height (side). formatDimension converts project units →
-  // feet-inches per the house config (e.g. 519.7 u → "52'").
-  const eaveY = cy + (vSpan / 2) * scale + 14;
-  svg += `<text x="${cx}" y="${eaveY.toFixed(1)}" text-anchor="middle" font-size="11" fill="#334155">eave: ${formatDimension(g.eaveLen)}</text>\n`;
-  if (g.ridgeLen > 0.5) {
-    const ridgeY = cy - (vSpan / 2) * scale - 4;
-    svg += `<text x="${cx}" y="${ridgeY.toFixed(1)}" text-anchor="middle" font-size="11" fill="#334155">ridge: ${formatDimension(g.ridgeLen)}</text>\n`;
+  // ---- True-shape dimensions: every side length + every corner angle ----
+  // The (u, v) projection uses an orthonormal basis, so lengths and angles
+  // measured in (u, v) are the REAL lengths/angles on the sloping roof plane
+  // — exactly the numbers needed to verify the bill of materials (rafter,
+  // hip, ridge, eave, rake cut lengths + their cut angles).
+  // formatDimension converts project units → feet-inches (e.g. 519.7 u → "52'").
+  const svgPts = g.uv.map(toSvg);
+  const nPts = svgPts.length;
+  const gcx = svgPts.reduce((s, p) => s + p[0], 0) / nPts;
+  const gcy = svgPts.reduce((s, p) => s + p[1], 0) / nPts;
+  const LEVEL_TOL = 0.5;
+
+  // Side lengths — one label per polygon edge, rotated to run along the edge
+  // and nudged to the outside, with a short tick tying it to the edge.
+  for (let i = 0; i < nPts; i++) {
+    const a = g.uv[i], b = g.uv[(i + 1) % nPts];
+    const lenU = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (lenU < 1) continue; // skip degenerate edges
+    const [ax, ay] = svgPts[i], [bx, by] = svgPts[(i + 1) % nPts];
+    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+    let dx = bx - ax, dy = by - ay;
+    const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+    // Outward normal (point away from the centroid).
+    let nx = -dy, ny = dx;
+    if ((mx - gcx) * nx + (my - gcy) * ny < 0) { nx = -nx; ny = -ny; }
+    const lx = mx + nx * 15, ly = my + ny * 15;
+    let deg = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (deg > 90) deg -= 180; else if (deg < -90) deg += 180; // keep upright
+    // Name the two horizontal edges (helps map the numbers to the roof).
+    const bothLo = Math.abs(a[1] - g.vMin) < LEVEL_TOL && Math.abs(b[1] - g.vMin) < LEVEL_TOL;
+    const bothHi = Math.abs(a[1] - g.vMax) < LEVEL_TOL && Math.abs(b[1] - g.vMax) < LEVEL_TOL;
+    const prefix = bothLo ? "eave " : bothHi ? "ridge " : "";
+    svg += `<line x1="${mx.toFixed(1)}" y1="${my.toFixed(1)}" x2="${(mx + nx * 6).toFixed(1)}" y2="${(my + ny * 6).toFixed(1)}" stroke="#94733f" stroke-width="0.6"/>\n`;
+    svg += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="#5a2e0b" transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})">${prefix}${formatDimension(lenU)}</text>\n`;
   }
-  const rightX = cx + (uSpan / 2) * scale + 12;
-  svg += `<text x="${rightX.toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="start" font-size="11" fill="#334155">h: ${formatDimension(g.height)}</text>\n`;
+
+  // Corner angles — interior angle at each vertex, nudged toward the centroid.
+  for (let i = 0; i < nPts; i++) {
+    const prev = g.uv[(i - 1 + nPts) % nPts], cur = g.uv[i], next = g.uv[(i + 1) % nPts];
+    const p1x = prev[0] - cur[0], p1y = prev[1] - cur[1];
+    const p2x = next[0] - cur[0], p2y = next[1] - cur[1];
+    const m1 = Math.hypot(p1x, p1y), m2 = Math.hypot(p2x, p2y);
+    if (m1 < 1e-6 || m2 < 1e-6) continue;
+    const ang = Math.acos(Math.max(-1, Math.min(1, (p1x * p2x + p1y * p2y) / (m1 * m2)))) * 180 / Math.PI;
+    if (Math.abs(ang - 180) < 3 || ang < 1) continue; // skip near-collinear (trim artifacts)
+    const [vx, vy] = svgPts[i];
+    let ix = gcx - vx, iy = gcy - vy;
+    const il = Math.hypot(ix, iy) || 1; ix /= il; iy /= il;
+    svg += `<text x="${(vx + ix * 20).toFixed(1)}" y="${(vy + iy * 20).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="#2563eb">${ang.toFixed(0)}°</text>\n`;
+  }
 
   // Pitch + area + member counts — same style as legacy slopePanel.
   const areaSft = faceAreaSft(g);
@@ -282,6 +321,12 @@ export function v2FacePanel(
   const noteY = y0 + titleH + 20;
   svg += `<text x="${noteX}" y="${noteY.toFixed(1)}" text-anchor="end" font-size="11" fill="#333">${nRafter} rafter${nRafter === 1 ? "" : "s"}</text>\n`;
   svg += `<text x="${noteX}" y="${(noteY + 15).toFixed(1)}" text-anchor="end" font-size="11" fill="#333">${nPurlin} purlin${nPurlin === 1 ? "" : "s"}</text>\n`;
+
+  // Footnotes: keep the slant height (common-rafter run) explicit — it is an
+  // internal measure, not a polygon edge — and a legend for the annotations.
+  const footY = y0 + height - 10;
+  svg += `<text x="${(x0 + 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="start" font-size="10" fill="#475569">slant height (rafter run): ${formatDimension(g.height)}</text>\n`;
+  svg += `<text x="${(x0 + width - 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="end" font-size="9" fill="#94a3b8">sides = true lengths · ° = corner angles</text>\n`;
 
   svg += `</g>\n`;
   return svg;
