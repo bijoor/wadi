@@ -1149,31 +1149,87 @@ function wireExports(): void {
           );
           const cols = Math.max(head[0]?.length ?? 0, ...body.map((r) => r.length), 1);
           const usableW = pageW - margin * 2;
-          const colW = usableW / cols;
-          const rowH = 16;
-          if (title) {
-            newPage(26);
-            pdf.setFont("helvetica", "bold"); pdf.setFontSize(13); pdf.setTextColor(30);
-            pdf.text(title, margin, y + 10); y += 22;
+          const FS = 9, lineH = 11, padX = 6, rowPad = 6;
+
+          // Column widths PROPORTIONAL to each column's natural content width
+          // (header + body), so wide text columns get room and numeric columns
+          // stay tight — equal widths were forcing the text columns to wrap and
+          // collide. Cap any one column at 46% so a long column can't crowd out
+          // the rest, then scale to fill the page exactly.
+          const natW = new Array<number>(cols).fill(0);
+          const measure = (rows: string[][], bold: boolean) => {
+            pdf.setFont("helvetica", bold ? "bold" : "normal"); pdf.setFontSize(FS);
+            for (const r of rows) for (let c = 0; c < cols; c++) {
+              const w = pdf.getTextWidth(r[c] ?? "");
+              if (w > natW[c]) natW[c] = w;
+            }
+          };
+          measure(head, true); measure(body, false);
+          for (let c = 0; c < cols; c++) natW[c] = Math.min(natW[c] + padX * 2, usableW * 0.46);
+          const totalNat = natW.reduce((a, b) => a + b, 0) || 1;
+          const colW = natW.map((w) => (w / totalNat) * usableW);
+          const colX: number[] = [];
+          for (let c = 0, x = margin; c < cols; c++) { colX.push(x); x += colW[c]; }
+
+          // Right-align genuinely numeric columns — a value that is a number
+          // (with optional "up to" prefix and a short unit), NOT merely a string
+          // that contains a digit (e.g. a "1×1 in × 3 mm MS" spec stays left).
+          const numericCell = (s: string) => {
+            const t = s.replace(/^(up to|about|approx\.?|~|≈)\s+/i, "").trim();
+            return /^[\d.,]+(\s*(ft|in|mm|cm|m|sft|sq\.?\s?ft|°|%|pcs|nos|kg))?$/i.test(t);
+          };
+          const numericCol = new Array<boolean>(cols).fill(false);
+          for (let c = 0; c < cols; c++) {
+            const cells = body.map((r) => (r[c] ?? "").trim()).filter(Boolean);
+            if (!cells.length) continue;
+            numericCol[c] = cells.filter(numericCell).length >= cells.length * 0.7;
           }
-          const drawRow = (cells: string[], bold: boolean, fill: boolean) => {
-            newPage(rowH);
-            if (fill) {
+
+          if (title) {
+            newPage(30);
+            pdf.setFont("helvetica", "bold"); pdf.setFontSize(13); pdf.setTextColor(30);
+            pdf.text(title, margin, y + 10); y += 24;
+          }
+
+          const drawRow = (cells: string[], o: { bold: boolean; fill: boolean; zebra?: boolean }) => {
+            pdf.setFont("helvetica", o.bold ? "bold" : "normal"); pdf.setFontSize(FS);
+            // Wrap each cell and size the row to the TALLEST cell, so a wrapped
+            // cell never spills into the row below (the old fixed 16pt bug).
+            const cellLines: string[][] = [];
+            let maxLines = 1;
+            for (let c = 0; c < cols; c++) {
+              const ls = pdf.splitTextToSize(cells[c] ?? "", colW[c] - padX * 2) as string[];
+              const lines = ls.length ? ls : [""];
+              cellLines.push(lines);
+              if (lines.length > maxLines) maxLines = lines.length;
+            }
+            const rowH = maxLines * lineH + rowPad;
+            // Page break — repeat the header on the fresh page.
+            if (y + rowH > pageH - margin) { pdf.addPage(); y = margin; if (!o.fill) drawHeader(); }
+            if (o.fill) {
               pdf.setFillColor(192, 90, 47); pdf.rect(margin, y, usableW, rowH, "F");
               pdf.setTextColor(255);
             } else {
+              if (o.zebra) { pdf.setFillColor(246, 245, 242); pdf.rect(margin, y, usableW, rowH, "F"); }
               pdf.setTextColor(35);
             }
-            pdf.setFont("helvetica", bold ? "bold" : "normal"); pdf.setFontSize(9);
+            const baseTop = y + 3 + 8; // 3 top pad + ~8 ascent
             for (let c = 0; c < cols; c++) {
-              pdf.text(cells[c] ?? "", margin + c * colW + 4, y + 11, { maxWidth: colW - 8 });
+              const right = numericCol[c];
+              const tx = right ? colX[c] + colW[c] - padX : colX[c] + padX;
+              const lines = cellLines[c];
+              for (let li = 0; li < lines.length; li++) {
+                pdf.text(lines[li], tx, baseTop + li * lineH, right ? { align: "right" } : undefined);
+              }
             }
             pdf.setDrawColor(224); pdf.line(margin, y + rowH, margin + usableW, y + rowH);
             y += rowH;
           };
-          for (const hr of head) drawRow(hr, true, true);
-          for (const br of body) drawRow(br, false, false);
-          y += 24; // gap before the next table
+          const drawHeader = () => { for (const hr of head) drawRow(hr, { bold: true, fill: true }); };
+
+          drawHeader();
+          body.forEach((br, i) => drawRow(br, { bold: false, fill: false, zebra: i % 2 === 1 }));
+          y += 22; // gap before the next table
         }
       } else {
         // Non-table HTML → rasterise in an ISOLATED iframe (keeps the app's
