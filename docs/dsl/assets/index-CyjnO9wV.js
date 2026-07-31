@@ -7305,7 +7305,7 @@ house CompleteShowcase {
     room Living at (main.x1, main.yA) size (main.x2 - main.x1, main.yB - main.yA) {
       wall south { door Main at 120 size (36, 84) }
       wall north { window N1 at 100 size (60, 50) sill 35 }
-      item asset { id "bed" src "furniture/bed.glb" dims (1.4, 0.6, 2.0) category "bedroom" }
+      item asset { id "bed_double" src "furniture/bed_double.glb" dims (1.5, 0.5, 2.0) category "bedroom" }
         anchor bottom-right gap (12, 12) rotation 0
     }
 
@@ -7317,7 +7317,7 @@ house CompleteShowcase {
     kitchen name "Counter" path ((40, 40), (140, 40), (140, 120)) side right depth 24 height 36 layer "structure"
 
     // Free furniture placed by absolute plan coordinates.
-    item name "Sofa" asset { id "sofa" src "furniture/sofa.glb" dims (2.0, 0.8, 0.9) category "living" }
+    item name "Sofa" asset { id "sofa" src "furniture/sofa.glb" dims (1.9, 0.8, 0.9) category "living" }
       at (150, 300) rotation 90 scale 1 layer "furniture"
 
     // A corner column, and a stamped Bench component (param overridden).

@@ -12,7 +12,7 @@
 // metres→units scale. `offset`/`corrRotation`/`corrScale` are corrective transforms in
 // the GLB's own metre space (usually all defaults for a clean CC0 model).
 
-import { Component, Suspense, useMemo, type ReactNode } from "react";
+import { Component, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useGLTF } from "@react-three/drei";
 import { Box3, MathUtils, Vector3, type Object3D } from "three";
 
@@ -127,7 +127,56 @@ class ItemErrorBoundary extends Component<{ fallback: ReactNode; children: React
   }
 }
 
+// Reachability preflight: HEAD-check each src ONCE (module-cached) before we ever
+// hand it to useGLTF. A 404 / network / CORS failure resolves to `false` here, so
+// the bad URL never reaches the loader — that avoids drei's uncaught promise
+// rejection (which could interrupt the scene's first paint) and lets us show the
+// ghost box cleanly. The Suspense + error boundary below stay as a backstop for a
+// URL that IS reachable but turns out to be a corrupt / non-GLB file.
+const reachCache = new Map<string, boolean>();
+const reachPending = new Map<string, Promise<boolean>>();
+function checkReachable(src: string): Promise<boolean> {
+  const cached = reachCache.get(src);
+  if (cached !== undefined) return Promise.resolve(cached);
+  let p = reachPending.get(src);
+  if (!p) {
+    p = fetch(src, { method: "HEAD" })
+      .then((r) => r.ok)
+      .catch(() => false)
+      .then((ok) => {
+        reachCache.set(src, ok);
+        reachPending.delete(src);
+        if (!ok) console.warn(`[item3d] asset unreachable — showing placeholder: ${src}`);
+        return ok;
+      });
+    reachPending.set(src, p);
+  }
+  return p;
+}
+
 export function FurnitureItem(props: FurnitureItemProps) {
+  const [reachable, setReachable] = useState<boolean | null>(() => reachCache.get(props.src) ?? null);
+
+  useEffect(() => {
+    const cached = reachCache.get(props.src);
+    if (cached !== undefined) {
+      setReachable(cached);
+      return;
+    }
+    let alive = true;
+    setReachable(null);
+    void checkReachable(props.src).then((ok) => {
+      if (alive) setReachable(ok);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [props.src]);
+
+  // Unreachable → static ghost (never touch the GLB loader). Still checking → the
+  // translucent "loading" ghost. Reachable → load the real model.
+  if (reachable === false) return <GhostBox {...props} />;
+  if (reachable === null) return <GhostBox {...props} loading />;
   return (
     <ItemErrorBoundary fallback={<GhostBox {...props} />}>
       <Suspense fallback={<GhostBox {...props} loading />}>
