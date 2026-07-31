@@ -1,5 +1,5 @@
 use std::sync::Mutex;
-use tauri::{Emitter, Manager, RunEvent};
+use tauri::{Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 
 // A file path the app was asked to open before the webview was ready
 // (cold start via double-click on macOS, or a CLI arg on Windows/Linux).
@@ -10,6 +10,26 @@ struct PendingOpen(Mutex<Option<String>>);
 #[tauri::command]
 fn take_pending_open(state: tauri::State<'_, PendingOpen>) -> Option<String> {
   state.0.lock().unwrap().take()
+}
+
+// Open (or focus) the DSL editor+renderer window — the bundled Monaco playground
+// at /dsl, which compiles .wdl in-webview and drives the app renderer in a
+// same-origin iframe. Fully offline; no dev server, no VS Code, no watch loop.
+fn open_dsl_editor(app: &tauri::AppHandle) {
+  if let Some(win) = app.get_webview_window("dsl") {
+    let _ = win.set_focus();
+    return;
+  }
+  match WebviewWindowBuilder::new(app, "dsl", WebviewUrl::App("/dsl/index.html".into()))
+    .title("Wadi DSL — editor + live renderer")
+    .inner_size(1500.0, 950.0)
+    .min_inner_size(1000.0, 640.0)
+    .resizable(true)
+    .build()
+  {
+    Ok(_) => {}
+    Err(e) => eprintln!("[wadi] failed to open DSL editor window: {e}"),
+  }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -38,7 +58,7 @@ pub fn run() {
     .menu(|handle| {
       #[cfg(target_os = "macos")]
       {
-        use tauri::menu::{MenuBuilder, SubmenuBuilder};
+        use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
         let app_menu = SubmenuBuilder::new(handle, "Wadi")
           .about(None)
           .separator()
@@ -56,8 +76,14 @@ pub fn run() {
           .paste()
           .select_all()
           .build()?;
+        let dsl_item = MenuItemBuilder::new("DSL Editor")
+          .id("open-dsl")
+          .accelerator("Cmd+Shift+D")
+          .build(handle)?;
         let window_menu = SubmenuBuilder::new(handle, "Window")
           .minimize()
+          .separator()
+          .item(&dsl_item)
           .separator()
           .close_window()
           .build()?;
@@ -68,6 +94,11 @@ pub fn run() {
       #[cfg(not(target_os = "macos"))]
       {
         tauri::menu::Menu::default(handle)
+      }
+    })
+    .on_menu_event(|app, event| {
+      if event.id().as_ref() == "open-dsl" {
+        open_dsl_editor(app);
       }
     })
     .setup(|app| {

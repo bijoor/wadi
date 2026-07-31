@@ -127,13 +127,26 @@ never-throws compile returning the `HouseConfig` plus Monaco-shaped error marker
 would swap it for the real Langium language server in a Web Worker, so
 highlighting + completion come from the grammar itself).
 
+## Desktop DSL editor (native, offline — the playground in the Wadi app)
+
+The Wadi **desktop app** ships the playground as a native window: **Window → DSL
+Editor** (`⌘⇧D`). It's the same Monaco editor + live renderer side by side, but
+running fully offline inside the app — no dev server, no VS Code, no `watch`
+loop. Edit the `.wdl` on the left and the 3D model rebuilds on the right in
+place. Everything it needs (the compiler, templates, furniture GLBs) is bundled,
+so it works with no network.
+
+Under the hood it's the exact same `docs/dsl` build the browser serves; the
+desktop app just opens it in its own `WebviewWindow` (see `src-tauri/src/lib.rs`
+`open_dsl_editor`), and it drives the app renderer through the same same-origin
+iframe + `window.wadi.load()` path.
+
 ## Desktop live-watch (edit in VS Code → the Tauri app updates)
 
-For a demo with a *real* editor and native rendering (no iframe/rAF quirks), use
-`watch`: it recompiles the `.wdl` to a `.wadi` on every save, and the Wadi
-desktop app — watching that file — live-reloads. The same file-watch loop the AI
-architect skill uses, so the code editor (VS Code, or anything) is fully separate
-from the renderer.
+If you'd rather keep your own editor, `watch` recompiles the `.wdl` to a `.wadi`
+on every save, and the Wadi desktop app — watching that file — live-reloads. The
+same file-watch loop the AI architect skill uses, so the code editor (VS Code, or
+anything) is fully separate from the renderer.
 
 ```bash
 npm run watch -- examples/coastal.wdl /tmp/house.wadi
