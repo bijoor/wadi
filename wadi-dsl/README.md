@@ -97,7 +97,9 @@ npm run gen -- examples/coastal.wdl /tmp/coastal.wadi
 `playground/` is a Monaco code editor that compiles `.wdl` **in the browser**
 and drives the existing Wadi app (in a same-origin iframe) to render the model —
 edit the code, the house rebuilds. No second renderer, and the app is used purely
-as a viewer.
+as a viewer. The toolbar has a **sample picker**, **Open** / **Save .wdl**,
+**⬇ .wadi** (download the compiled model), and a **📖 Reference** panel — a DSL
+cheat-sheet (keywords, first-class objects, and the `raw`-type field names).
 
 ```bash
 npm run build:playground     # → docs/dsl (deploys at wadi.house/dsl)

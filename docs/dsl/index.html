@@ -15,39 +15,87 @@
       font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
     header {
-      display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+      display: flex; align-items: center; gap: 8px; padding: 7px 12px;
       background: var(--panel); border-bottom: 1px solid var(--border); flex: 0 0 auto;
     }
-    header .brand { font-weight: 700; letter-spacing: -0.01em; }
+    header .brand { font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
     header .brand b { color: var(--accent); }
-    header .tag { color: var(--muted); font-size: .85rem; }
     header .spacer { flex: 1; }
-    header a { color: var(--muted); text-decoration: none; font-size: .85rem; }
-    header a:hover { color: var(--text); }
+    header a.applink { color: var(--muted); text-decoration: none; font-size: .85rem; white-space: nowrap; }
+    header a.applink:hover { color: var(--text); }
+    .tb-btn, .tb-sel {
+      background: #333; color: var(--text); border: 1px solid #444; border-radius: 6px;
+      padding: 5px 10px; font-size: .82rem; cursor: pointer; white-space: nowrap;
+    }
+    .tb-btn:hover, .tb-sel:hover { background: #3c3c3c; border-color: #555; }
+    .tb-sel { padding: 5px 6px; }
     #status {
       font-size: .8rem; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
       background: #2d4a3e; color: #8fe3bf;
     }
     #status.err { background: #4a2d2d; color: #f0a3a3; }
-    main { flex: 1; display: grid; grid-template-columns: minmax(340px, 44%) 1fr; min-height: 0; }
+    main { flex: 1; display: grid; grid-template-columns: minmax(340px, 44%) 1fr; min-height: 0; position: relative; }
     #editor { min-width: 0; height: 100%; border-right: 1px solid var(--border); }
     .preview { position: relative; min-width: 0; background: #0d0d0d; }
     .preview iframe { width: 100%; height: 100%; border: 0; display: block; background: #cfe3d8; }
+
+    /* Reference slide-over (over the preview) */
+    #reference-panel {
+      position: absolute; top: 0; right: 0; bottom: 0; width: min(460px, 92%);
+      background: var(--panel); border-left: 1px solid var(--border);
+      box-shadow: -8px 0 24px rgba(0,0,0,.35); overflow-y: auto; z-index: 20;
+      padding: 0 20px 40px;
+    }
+    #reference-panel[hidden] { display: none; }
+    .ref-head {
+      position: sticky; top: 0; background: var(--panel); padding: 12px 0 8px;
+      display: flex; justify-content: flex-end; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+    }
+    #ref-close { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
+    #ref-close:hover { color: var(--text); }
+    #reference-panel h2 { font-size: 1.05rem; margin: 6px 0 4px; }
+    #reference-panel h3 { font-size: .92rem; margin: 18px 0 6px; color: var(--accent); }
+    #reference-panel .ref-dim { color: var(--muted); font-weight: 400; font-size: .8rem; }
+    #reference-panel p.ref-note { color: var(--muted); font-size: .82rem; margin: 6px 0; }
+    #reference-panel code { background: #333; padding: 1px 5px; border-radius: 4px; font-size: .82em; }
+    #reference-panel pre {
+      background: #1b1b1b; border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px 12px; overflow-x: auto; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace;
+      color: #d7d0c6; white-space: pre;
+    }
+    #reference-panel pre b { color: #e0a97a; font-weight: 700; }
+    .ref-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .ref-table th, .ref-table td { text-align: left; vertical-align: top; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+    .ref-table th { color: var(--muted); font-weight: 600; }
+    .ref-table td:first-child { color: #e0a97a; white-space: nowrap; font-family: ui-monospace, Menlo, monospace; }
+
     @media (max-width: 760px) {
       main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
       #editor { border-right: 0; border-bottom: 1px solid var(--border); }
+      header .brand { display: none; }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-CWChjpJX.js"></script>
+  <script type="module" crossorigin src="./assets/index-Bpxm1vOQ.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-DyX1CsEw.css">
 </head>
 <body>
   <header>
-    <span class="brand">Wadi <b>DSL</b> playground</span>
-    <span class="tag">the parametric house model as formal code — edit the code, the model rebuilds</span>
+    <span class="brand">Wadi <b>DSL</b></span>
+    <select id="sample" class="tb-sel" title="Load a sample">
+      <option value="" disabled selected>Sample…</option>
+      <option value="minimal">minimal</option>
+      <option value="two_room">two_room</option>
+      <option value="two_story">two_story</option>
+      <option value="coastal">coastal</option>
+      <option value="errors">errors (broken)</option>
+    </select>
+    <button id="open" class="tb-btn" title="Open a .wdl file">📂 Open</button>
+    <button id="save" class="tb-btn" title="Download the current .wdl">💾 Save .wdl</button>
+    <button id="download" class="tb-btn" title="Download the compiled .wadi">⬇ .wadi</button>
+    <button id="reference" class="tb-btn" title="DSL reference">📖 Reference</button>
     <span class="spacer"></span>
     <span id="status">starting…</span>
-    <a href="/app/" target="_blank" rel="noopener">Open the app →</a>
+    <a class="applink" href="/app/" target="_blank" rel="noopener">Open the app →</a>
   </header>
   <main>
     <div id="editor"></div>
@@ -57,6 +105,11 @@
            via window.wadi.load() on every edit. -->
       <iframe id="preview" title="Wadi model preview"></iframe>
     </div>
+    <aside id="reference-panel" hidden>
+      <div class="ref-head"><button id="ref-close" title="Close">✕</button></div>
+      <div id="reference-body"></div>
+    </aside>
   </main>
+  <input type="file" id="file" accept=".wdl,.txt" hidden />
 </body>
 </html>

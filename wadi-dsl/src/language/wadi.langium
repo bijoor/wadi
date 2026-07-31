@@ -128,7 +128,11 @@ Defaults:
     '}';
 
 Floor:
-    'floor' number=NUMBER name=STRING '{' objects+=FloorObject* '}';
+    'floor' number=NUMBER name=STRING
+    ('height' height=NUMBER)?
+    ('wall_height' wall_height=NUMBER)?
+    ('slab_thickness' slab_thickness=NUMBER)?
+    '{' objects+=FloorObject* '}';
 
 // Common house primitives get ergonomic, first-class syntax; everything else is
 // expressible via the core `raw` escape (roof, plinth, ground, slab, …).

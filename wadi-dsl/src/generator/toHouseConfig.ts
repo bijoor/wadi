@@ -241,11 +241,18 @@ export function modelToHouseConfig(model: ast.Model): Record<string, unknown> {
     cfg.configurator = { inputs };
   }
 
-  cfg.floors = model.floors.map((f) => ({
-    floor_number: Math.round(f.number),
-    name: unquote(f.name),
-    objects: f.objects.map(floorObject),
-  }));
+  cfg.floors = model.floors.map((f) => {
+    const floor: Record<string, unknown> = {
+      floor_number: Math.round(f.number),
+      name: unquote(f.name),
+      objects: f.objects.map(floorObject),
+    };
+    // Per-floor overrides of the house defaults (all optional).
+    if (f.height !== undefined) floor.height = f.height;
+    if (f.wall_height !== undefined) floor.wall_height = f.wall_height;
+    if (f.slab_thickness !== undefined) floor.slab_thickness = f.slab_thickness;
+    return floor;
+  });
 
   return cfg;
 }

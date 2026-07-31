@@ -14,7 +14,21 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { registerWadiDsl, LANG_ID } from "./dsl-language";
 import { compileWithDiagnostics } from "../src/generator/toHouseConfig";
-import initialSource from "../examples/coastal.wdl?raw";
+import { REFERENCE_HTML } from "./reference";
+import minimalSrc from "../examples/minimal.wdl?raw";
+import twoRoomSrc from "../examples/two_room.wdl?raw";
+import twoStorySrc from "../examples/two_story.wdl?raw";
+import coastalSrc from "../examples/coastal.wdl?raw";
+import errorsSrc from "../examples/errors.wdl?raw";
+
+const SAMPLES: Record<string, string> = {
+  minimal: minimalSrc,
+  two_room: twoRoomSrc,
+  two_story: twoStorySrc,
+  coastal: coastalSrc,
+  errors: errorsSrc,
+};
+let currentName = "coastal"; // base filename for Save / Download
 
 // Monaco only needs its base editor worker (plain-text language, no TS/JSON).
 self.MonacoEnvironment = { getWorker: () => new editorWorker() };
@@ -22,7 +36,7 @@ self.MonacoEnvironment = { getWorker: () => new editorWorker() };
 registerWadiDsl(monaco);
 
 const editor = monaco.editor.create(document.getElementById("editor")!, {
-  value: initialSource,
+  value: coastalSrc,
   language: LANG_ID,
   theme: "vs-dark",
   automaticLayout: true,
@@ -134,6 +148,69 @@ editor.onDidChangeModelContent(() => {
   window.clearTimeout(debounce);
   debounce = window.setTimeout(run, 300);
 });
+
+// ---- Toolbar: sample picker · Open / Save .wdl · Download .wadi · Reference ----
+
+function downloadText(name: string, text: string, type: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function wireToolbar(): void {
+  const $ = (id: string) => document.getElementById(id)!;
+
+  // Load a bundled sample.
+  const sample = $("sample") as HTMLSelectElement;
+  sample.addEventListener("change", () => {
+    const src = SAMPLES[sample.value];
+    if (src) {
+      editor.setValue(src); // fires onDidChangeModelContent → recompile + render
+      currentName = sample.value;
+    }
+    sample.selectedIndex = 0; // reset the label
+  });
+
+  // Open a .wdl from disk.
+  const file = $("file") as HTMLInputElement;
+  $("open").addEventListener("click", () => file.click());
+  file.addEventListener("change", async () => {
+    const f = file.files?.[0];
+    if (!f) return;
+    editor.setValue(await f.text());
+    currentName = f.name.replace(/\.(wdl|txt)$/i, "") || "house";
+    file.value = "";
+  });
+
+  // Save the current .wdl source.
+  $("save").addEventListener("click", () => {
+    downloadText(`${currentName}.wdl`, editor.getValue(), "text/plain;charset=utf-8");
+  });
+
+  // Download the compiled .wadi (feed the desktop app / share).
+  $("download").addEventListener("click", () => {
+    const { config, diagnostics } = compileWithDiagnostics(editor.getValue());
+    if (!config) {
+      setStatus(`can't export — fix ${diagnostics.length} error${diagnostics.length === 1 ? "" : "s"}`, true);
+      return;
+    }
+    downloadText(`${currentName}.wadi`, JSON.stringify(config, null, 2), "application/json");
+  });
+
+  // Reference slide-over.
+  const panel = $("reference-panel");
+  $("reference-body").innerHTML = REFERENCE_HTML;
+  $("reference").addEventListener("click", () => {
+    panel.hidden = !panel.hidden;
+  });
+  $("ref-close").addEventListener("click", () => {
+    panel.hidden = true;
+  });
+}
+wireToolbar();
 
 // Expose the editor + monaco for scripting/automation of the demo.
 (window as unknown as { wadiEditor: typeof editor; monaco: typeof monaco }).wadiEditor = editor;
