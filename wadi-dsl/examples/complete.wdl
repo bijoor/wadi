@@ -51,7 +51,8 @@ house CompleteShowcase {
 
     // Living room with a door, a window, and a bed anchored to a corner.
     room Living at (main.x1, main.yA) size (main.x2 - main.x1, main.yB - main.yA) {
-      wall south { door Main at 120 size (36, 84) }
+      wall east west                                  // plain walls — several in one line
+      wall south { door Main at 120 size (36, 84) }   // walls with openings: one side each
       wall north { window N1 at 100 size (60, 50) sill 35 }
       item asset { id "bed_double" src "furniture/bed_double.glb" dims (1.5, 0.5, 2.0) category "bedroom" }
         anchor bottom-right gap (12, 12) rotation 0

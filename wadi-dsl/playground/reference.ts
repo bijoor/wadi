@@ -65,13 +65,16 @@ pillar Name       at (x,y) size (w,l) [height &lt;h&gt;]</pre>
 
 <h3>Rooms, walls &amp; openings</h3>
 <pre>room Name at (x,y) size (w,l) [height &lt;h&gt;] {
-  wall north|south|east|west [height &lt;h&gt;] [height_end &lt;h&gt;] {
-    door   Name at &lt;offset&gt; size (w,h) [open]
-    window Name at &lt;offset&gt; size (w,h) [sill &lt;s&gt;] [open]
-  }
+  wall east west north             // plain walls — list several in one statement
+  wall south { door Main at &lt;offset&gt; size (w,h) [open] }   // a wall WITH an opening: one side
+  wall west { window W at &lt;offset&gt; size (w,h) [sill &lt;s&gt;] [open] }
   item asset { … } anchor center [gap (gx,gy)]   // furniture anchored in the room
 }
 wall Name from (x1,y1) to (x2,y2) [height &lt;h&gt;] [facing north|…] { …openings… }</pre>
+<p class="ref-note">A room shows exactly the walls you declare (a bare room with
+no <code>wall</code> lines is enclosed on all four sides). Declare plain walls
+compactly — <code>wall east west north</code> — and give a wall its own line only
+when it carries a door/window. Omit a side to leave it open (verandah).</p>
 
 <h3>Circulation &amp; fittings</h3>
 <pre>staircase [name "N"] at (start_x, start_y) step (rise, tread, width)

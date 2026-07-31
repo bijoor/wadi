@@ -84,6 +84,24 @@ describe("Wadi DSL round-trip", () => {
     expect(roofObj.enabled).toBe(1);
   });
 
+  it("compact wall syntax: `wall east west north` declares three plain walls in one statement", () => {
+    const src = `house W {
+      site { plot (200, 200) }
+      floor 0 "G" {
+        room R at (0, 0) size (100, 100) {
+          wall east west north
+          wall south { window S at 40 size (40, 40) sill 30 }
+        }
+      }
+    }`;
+    const cfg = compileDsl(src) as { floors: { objects: any[] }[] };
+    const room = cfg.floors[0].objects.find((o) => o.name === "R");
+    expect(Object.keys(room.walls).sort()).toEqual(["east", "north", "south", "west"]);
+    // plain sides carry no openings; only the south wall does
+    expect(room.walls.east).toEqual({});
+    expect(room.walls.south.openings).toHaveLength(1);
+  });
+
   it("errors.wdl reports parse diagnostics (does not throw uncaught)", () => {
     const src = readFileSync(resolve(here, "..", "examples", "errors.wdl"), "utf8");
     expect(() => compileDsl(src)).toThrow(/parse failed/i);

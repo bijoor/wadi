@@ -364,8 +364,14 @@ export function computeWallAreas(config: HouseConfig): WallAreaReport {
   };
 }
 
-// Normalise a room's `walls` (dict {side:cfg} or array of side names) to a
-// side→config map covering only declared sides.
+const ALL_SIDES: readonly Side[] = ["north", "south", "east", "west"];
+
+// Normalise a room's `walls` (dict {side:cfg}, array of side names, or OMITTED)
+// to a side→config map. A declared block (dict or array) is a whitelist of the
+// sides that exist. An ABSENT block means all four walls — because that is what
+// the 3D renderer builds (emitRoomWalls defaults undefined → [n,s,e,w]); the
+// wall-area report must count the walls the model actually draws, or a bare room
+// shows a full box in 3D but zero wall area in Quantities.
 function roomSides(o: Bag): Partial<Record<Side, Bag>> {
   const w = o.walls;
   const out: Partial<Record<Side, Bag>> = {};
@@ -373,6 +379,8 @@ function roomSides(o: Bag): Partial<Record<Side, Bag>> {
     for (const s of w) if (isSide(s)) out[s] = {};
   } else if (w && typeof w === "object") {
     for (const s of Object.keys(w as Bag)) if (isSide(s)) out[s] = (w as Bag)[s] as Bag;
+  } else {
+    for (const s of ALL_SIDES) out[s] = {}; // no block → enclosed (all four)
   }
   return out;
 }

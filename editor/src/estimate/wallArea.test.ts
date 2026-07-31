@@ -32,6 +32,18 @@ describe("computeWallAreas", () => {
     expect(west.intAreaU).toBe(200 * H);
   });
 
+  it("room with NO walls block counts all four walls (matches the 3D renderer)", () => {
+    // A bare room draws a full box in 3D (emitRoomWalls undefined → all 4), so
+    // the wall-area report must count all four, not zero.
+    const bare = computeWallAreas(cfg([{ type: "room", name: "R", x: 0, y: 0, width: 100, length: 200 }]));
+    const all4 = computeWallAreas(
+      cfg([{ type: "room", name: "R", x: 0, y: 0, width: 100, length: 200, walls: { north: {}, south: {}, east: {}, west: {} } }]),
+    );
+    expect(bare.inventory).toHaveLength(4);
+    expect(bare.external.net).toBe(all4.external.net);
+    expect(bare.internal.net).toBe(all4.internal.net);
+  });
+
   it("inventory labels each wall once: perimeter=external, partition=internal", () => {
     const r = computeWallAreas(
       cfg([

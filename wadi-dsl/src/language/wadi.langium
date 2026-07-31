@@ -177,8 +177,10 @@ Room:
         ('height' height=Expr)?
         Common ('material' material=STRING)?
         ('{' (walls+=RoomWall | items+=RoomItem)* '}')?;
+// One or more sides in a single statement: plain walls read `wall east west
+// north`; a wall that carries openings is declared on its own side with a block.
 RoomWall:
-    'wall' side=Side
+    'wall' sides+=Side (sides+=Side)*
         ('height' height=Expr)? ('height_end' height_end=Expr)?
         ('{' openings+=Opening* '}')?;
 Opening:

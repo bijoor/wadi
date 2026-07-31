@@ -20,10 +20,10 @@
 // Scope limits which PAGES it controls — not which requests it sees — so it
 // still intercepts the page's root-absolute and cross-origin fetches.
 
-const VERSION = "29f3f942";
+const VERSION = "460d8ed8";
 const SHELL_CACHE = `wadi-shell-${VERSION}`;
 const RUNTIME_CACHE = `wadi-runtime-${VERSION}`;
-const PRECACHE = ["./","./index.html","./assets/viewer-BhHBsitG.js","./assets/viewer-QTnfLwEv.js","./assets/viewer-DiBI4YMN.css","./assets/viewer-BKX0hPRw.js","./assets/viewer-BcpAKpW7.js","./assets/viewer-BwOyiXJA.js","./assets/viewer-s_7dLOsV.js","./assets/viewer-8aE7s4Y6.js","./assets/viewer-BhQl5Ec1.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.json","./templates/family_home.wadi","./templates/index.json","./templates/single_story_cottage.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
+const PRECACHE = ["./","./index.html","./assets/viewer-LxiYgk5S.js","./assets/viewer-QTnfLwEv.js","./assets/viewer-DiBI4YMN.css","./assets/viewer-kz5ulVMz.js","./assets/viewer-CicCabXq.js","./assets/viewer-Bqw9MQ_3.js","./assets/viewer-s_7dLOsV.js","./assets/viewer-BvpzkVyr.js","./assets/viewer-hCIC4Atz.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.json","./templates/family_home.wadi","./templates/index.json","./templates/single_story_cottage.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
 
 // Absolute URL of the app-shell document, used as the navigation fallback.
 const SHELL_URL = new URL("index.html", self.registration.scope).href;

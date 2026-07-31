@@ -131,7 +131,13 @@ function done(o: Record<string, unknown>, formulas: Record<string, string>): Rec
 function room(r: ast.Room): Record<string, unknown> {
   const { formulas, put } = geom();
   const walls: Record<string, unknown> = {};
-  for (const w of r.walls) walls[w.side] = roomWall(w);
+  // A `wall` statement may list several sides (`wall east west north`); each
+  // named side gets the same per-wall config (openings/heights normally only
+  // appear on a single-side statement).
+  for (const w of r.walls) {
+    const wc = roomWall(w);
+    for (const side of w.sides) walls[side] = wc;
+  }
   const items = r.items.map(roomItem);
   const o: Record<string, unknown> = {
     type: "room",
