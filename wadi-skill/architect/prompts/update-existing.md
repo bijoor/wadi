@@ -6,17 +6,19 @@ verandah south by 3 ft"). Apply a **minimal patch**.
 
 ## Workflow
 
-1. **Read the current working file** (the one the app has loaded). Don't work from
-   memory — read the actual JSON.
+1. **Read the current source `.wdl`** (the one that compiles to the app's watched
+   `.wadi`). Don't work from memory — read the actual `.wdl`.
 2. **Locate the target object(s)** by `name`/`type`.
-3. **Change only what's needed.** Preserve every other object **verbatim** — same
+3. **Change only what's needed.** Preserve every other line **verbatim** — same
    order, same formatting — so the diff shows exactly what moved. Do not
-   re-emit or "tidy" the whole file.
+   re-emit or "tidy" the whole file. (With formulas + grid lines, many edits are a
+   single number or expression.)
 4. **Propagate dependents.** If the change moves an edge, fix the neighbours that
    were positioned relative to it (adjacent rooms, vertically-aligned baths, roof
-   footprint). If a brief exists (`house_brief.md`), update it too.
-5. **Validate** (`scripts/validate.mjs`), fix any errors, **save complete valid
-   JSON**.
+   footprint) — or, better, express them as formulas of the grid so they follow
+   automatically. If a brief exists (`house_brief.md`), update it too.
+5. **Compile** (`scripts/compile.sh house.wdl house.wadi`) — it parses, resolves,
+   and validates. Fix any reported error before continuing.
 6. **Tell the user what changed** in one line ("Widened Bedroom 2 from 10→12 ft and
    shifted the ensuite east to match"). The app updates live; they react.
 

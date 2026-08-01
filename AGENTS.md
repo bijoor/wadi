@@ -11,7 +11,7 @@ Wadi procedurally designs parametric houses. A house is a single JSON document (
 model, 2D floor plans, elevations, and roof views. The schema is defined in
 `editor/src/schema/houseConfig.ts` (Zod) — the single source of truth.
 
-## Skill: author a house design (`.wadi`)
+## Skill: author a house design (`.wdl` → `.wadi`)
 
 When the user wants to **create, edit, or reason about a house model** — rooms, walls,
 roofs, floors, doors, windows, staircases, pillars, kitchen platforms, furniture — use
@@ -21,28 +21,36 @@ the **Wadi architect skill** at:
 wadi-skill/architect/SKILL.md
 ```
 
-Read that file and follow it. It covers the live edit→preview loop, deriving a house
-from a brief vs. recreating one from a drawing, and the pitfalls. Supporting files:
+You author in the **Wadi DSL** (`.wdl`) and compile it to the `.wadi` the app renders —
+the DSL is complete (every object type is first-class) and the compiler catches errors
+with `line:col`. Read the SKILL.md and follow it: it covers the live edit→compile→preview
+loop, deriving a house from a brief vs. recreating one from a drawing, and the pitfalls.
+Supporting files:
 
-- `wadi-skill/architect/reference/data-model.md` — the **complete `.wadi` schema**,
-  generated from the Zod source so it never drifts. Regenerate after a schema change:
+- `wadi-skill/architect/reference/dsl.md` — the **`.wdl` DSL syntax** (primary reference).
+- `wadi-skill/architect/reference/data-model.md` — the underlying **`.wadi` schema** the
+  DSL compiles to, generated from the Zod source so it never drifts. Regenerate after a
+  schema change:
   `node wadi-skill/architect/scripts/gen-schema-doc.mjs editor/src/schema/houseConfig.ts wadi-skill/architect/reference/data-model.md`
 - `wadi-skill/architect/reference/{coordinate-system,roof-v2-guide,parametric-conventions}.md`
-- `wadi-skill/architect/examples/*.wadi` — validated houses to copy from (currently the
-  `coastal_konkan` grid + centreline template).
+- `wadi-dsl/examples/*.wdl` — validated `.wdl` houses to copy from (minimal, two_room,
+  two_story, coastal, complete).
 
 ## Running the skill's tooling
 
-Both scripts reuse the app's own TypeScript, so they need the editor deps installed
-once (`npm --prefix editor install`) and are run from inside this repo:
+The scripts reuse the app's own TypeScript, so install deps once
+(`npm --prefix editor install` and `npm --prefix wadi-dsl install`) and run from inside
+this repo:
 
-- **Validate** a config (schema + wall/roof geometry pipeline):
-  `cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs <ABS_PATH.wadi>`
-- **Preview** to PNGs you can open/read (floor plans, elevations, roof):
-  `wadi-skill/architect/scripts/preview.sh <ABS_PATH.wadi>`
+- **Compile** a `.wdl` → validated `.wadi` (parse + resolve + schema/geometry check):
+  `wadi-skill/architect/scripts/compile.sh <ABS>.wdl <ABS>.wadi`
+- **Preview** the compiled `.wadi` to PNGs you can open/read (floor plans, elevations,
+  roof): `wadi-skill/architect/scripts/preview.sh <ABS>.wadi`
+- **Validate** a raw `.wadi` directly (hand-made JSON):
+  `cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs <ABS>.wadi`
 
 The **live 3D** loop additionally needs the Wadi desktop app installed and watching the
-file you edit; without it you can still author, validate, and render preview images.
+compiled `.wadi`; without it you can still author, compile, and render preview images.
 
 ## Capabilities assumed
 

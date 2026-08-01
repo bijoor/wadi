@@ -1,9 +1,16 @@
-# Wadi architect — author `.wadi` house designs with a live 3D preview
+# Wadi architect — author `.wdl` house designs with a live 3D preview
 
 You are the architect/editor. The user describes a house (in words, or with a
-sketch/photo); you write or update its `.wadi` file (a `house_config.json`), and the
-**Wadi desktop app re-renders the 3D model live** as you save. The user watches and
-steers with follow-up messages.
+sketch/photo); you write or update its **`.wdl`** file (the Wadi DSL), **compile** it to
+a `.wadi` with one command, and the **Wadi desktop app re-renders the 3D model live** as
+the compiled file updates. The user watches and steers with follow-up messages.
+
+You author in the **Wadi DSL** (`.wdl`), not raw JSON. It's more direct (formulas,
+grids, and the configurator are one-liners), the grammar enforces structure, and the
+compiler reports parse errors with `line:col`. The DSL is **complete** — every object
+type has first-class syntax — so it can express any house the model can hold.
+**`reference/dsl.md` is your syntax reference; read it first.** The compiled `.wadi` is
+the artifact the app renders; the `.wdl` is your source of truth.
 
 This skill is **agent-neutral** — it is plain instructions + reference docs + scripts,
 usable by any coding agent (Claude Code, Google Antigravity, …). Agent-specific
@@ -13,37 +20,49 @@ Code, `AGENTS.md` at the repo root); they just point here.
 ## What you need to run this
 
 - **Read/write files** and **run shell + Node** (the only capabilities assumed).
-- The **Wadi repo checked out**, with the editor deps installed once
-  (`npm --prefix editor install`) — the `validate` and `preview` scripts reuse the
-  app's own TypeScript, so they flag exactly what the app would.
-- For the *live* 3D loop: the **Wadi desktop app** installed and watching the file you
-  edit. Without the app you can still author + validate + render preview images.
+- The **Wadi repo checked out**, with deps installed once:
+  `npm --prefix editor install` and `npm --prefix wadi-dsl install` (the latter also
+  regenerates the DSL parser via its `prepare` hook). The `compile`, `validate`, and
+  `preview` scripts reuse the app's own TypeScript, so they flag exactly what the app
+  would.
+- For the *live* 3D loop: the **Wadi desktop app** installed and watching the compiled
+  `.wadi`. Without the app you can still author `.wdl` + compile + render preview images.
 
 ## The live loop (read this first, every session)
 
-You edit a file on disk; the Wadi desktop app watches it and rebuilds the 3D model
-within ~1 s of every save — no manual reload.
+You edit `house.wdl`, **compile** it to `house.wadi`, and the Wadi desktop app —
+watching the `.wadi` — rebuilds the 3D model within ~1 s. The `.wdl` is your source; the
+`.wadi` is the compiled, live-watched artifact. Keep them side by side (same name).
 
 **Starting a NEW model — set it up, no manual steps for the user:**
-1. Write a valid starter config to a `.wadi` file (use `examples/blank.json` as the
-   base) at a path the user wants, e.g. `~/Documents/<name>.wadi`.
-2. Open it in the installed app so it becomes the watched file (macOS):
+1. Write a starter `house.wdl` (copy the shape from `../../wadi-dsl/examples/` — start
+   from `minimal.wdl`, or `coastal.wdl` for a full cottage) at a path the user wants,
+   e.g. `~/Documents/<name>.wdl`.
+2. Compile it (this also validates):
    ```bash
-   open -a Wadi "<ABS_PATH>.wadi"
+   wadi-skill/architect/scripts/compile.sh "<ABS>.wdl" "<ABS>.wadi"
    ```
-   The file association loads it — into the running window if the app is open,
-   otherwise it launches with it. Either way, that file is now the live-watched one.
-   (On other platforms, or a dev build, ask the user to **Load** the file once via the
-   app's Load button — that also sets the watched path.)
-3. Build the house into **that same file**. Each save updates the model live.
+3. Open the COMPILED `.wadi` so it becomes the watched file (macOS):
+   ```bash
+   open -a Wadi "<ABS>.wadi"
+   ```
+   The file association loads it (into the running window if open, else it launches).
+   (Other platforms / dev build: ask the user to **Load** the `.wadi` once.)
+4. Build the house by editing `house.wdl` and re-running `compile.sh` after each change
+   — every successful compile updates the `.wadi`, and the app re-renders live.
 
-**Editing an EXISTING model:** the user has their `.wadi` open in the app (or you open
-it). Edit that exact file.
+**Editing an EXISTING model:** edit its `.wdl`, recompile to the `.wadi` the app watches.
+(If only a `.wadi` exists — hand-made or app-authored — you may keep editing that JSON
+directly per `data-model.md`. But once a house is authored as `.wdl`, the **`.wdl` OWNS
+it**: don't also hand-edit the `.wadi` or use the app's forms on it — the next compile
+overwrites those changes.)
 
 **Always:**
-- **Tell the user which file path you are editing**, and edit only that path.
-- Save **complete, valid** JSON each time — the watcher ignores unparseable/invalid
-  saves, so a broken write just shows nothing new (it won't corrupt the model).
+- **Tell the user which `.wdl` you are editing** (and the `.wadi` it compiles to), and
+  edit only that path.
+- **Compile after every edit.** A parse/validation error leaves the last-good `.wadi`
+  untouched — a broken write shows nothing new (never corrupts the model) — but fix it
+  before telling the user anything changed.
 
 ## Two ways users work with you
 
@@ -65,11 +84,17 @@ it). Edit that exact file.
 
 ## The data model & references (read lazily — don't dump them all up front)
 
-- **`reference/data-model.md`** — the **complete, authoritative** shape of a `.wadi`
-  file: every object type, field, type, requiredness, units, and semantics. **Generated
-  from the Zod schema** (`editor/src/schema/houseConfig.ts`) so it can never drift —
-  regenerate with `scripts/gen-schema-doc.mjs` after any schema change. Read before
-  writing any object type you're unsure of.
+- **`reference/dsl.md`** — **your primary reference: the complete `.wdl` SYNTAX** —
+  the skeleton, the parametric core (var/point/grid/configurator/formulas), the common
+  attribute tail (`enabled`/`z_offset`/`layer`/`material`), and the first-class syntax
+  for every object type (rooms/walls/openings, slab/beam/plinth/ground/pillar,
+  staircase/kitchen/item, roof, components, layers) plus the `raw` escape. Read this
+  first, then the semantics references below.
+- **`reference/data-model.md`** — the underlying **`.wadi` schema** the DSL compiles to:
+  every object type, field, type, requiredness, units, semantics. **Generated from the
+  Zod schema** (`editor/src/schema/houseConfig.ts`) so it can't drift — regenerate with
+  `scripts/gen-schema-doc.mjs` after any schema change. It's the field reference for the
+  `raw` escape and for understanding exactly what your `.wdl` produces.
 - **`reference/coordinate-system.md`** — the #1 source of mistakes. X→right, **Y→DOWN**
   (Inkscape frame, not Y-up), Z→up. Units: **10 project units = 1 ft** by default. Read
   before placing anything.
@@ -83,25 +108,29 @@ it). Edit that exact file.
   columns that reference those lines — plus `coord_convention:center`, proportional grid
   lines with minimums, the `pilInset` flush-column rule, opening placement, and the
   scale-sweep verification. Read before authoring or editing a parametric template.
-- **`examples/`** — correct, validated houses to copy shapes from. Every example here
-  is built on the current conventions (esp. the centreline convention), so **copy
-  from these, not from memory or older files.** Currently `coastal_konkan.wadi` (a
-  single-storey coastal modern-Konkan home); more are added as templates are authored.
-  (The prior set of examples was removed — it predated the centreline convention and
-  taught it wrong.)
+- **`../../wadi-dsl/examples/*.wdl`** — correct, validated `.wdl` houses to copy shapes
+  from (every one passes the compile → resolve → schema+geometry pipeline in the DSL's
+  test suite, so **copy from these, not from memory**): `minimal.wdl` (smallest house),
+  `two_room.wdl` (no grid), `two_story.wdl` (multi-floor + hip roof), `coastal.wdl`
+  (grid + configurator + full cottage), `complete.wdl` (every entity — beam, wall,
+  kitchen, item, component, gable roof, layers). `examples/coastal_konkan.wadi` in this
+  folder is a resolved `.wadi` for reference on the compiled output shape.
 
-## Validate before (and after) you save
+## Compile before (and after) every edit — it validates too
 
-Run the validator — it checks BOTH the schema and the roof/wall compute pipeline
-(catches zero-length roof segments, missing slope, bad openings that the schema alone
-misses):
+`compile.sh` does everything in one step: it parses the `.wdl` (reporting parse errors
+with `line:col`), resolves formulas/grids into numbers, and runs the real schema +
+roof/wall geometry validator on the result (catches zero-length roof segments, missing
+slope, bad openings that the schema alone misses):
 
 ```bash
-cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs <ABS_PATH_TO_config.json>
+wadi-skill/architect/scripts/compile.sh "<ABS>.wdl" "<ABS>.wadi"
 ```
 
-Exit 0 = valid; non-zero prints the exact `/path: message` errors. Fix and re-run
-before telling the user it's ready.
+Exit 0 = compiled + valid (the `.wadi` is updated → the app re-renders). Non-zero prints
+the exact `parse: …` or `/path: message` error — fix the `.wdl` and re-run before
+telling the user anything is ready. (`validate.mjs` still exists to check a raw `.wadi`
+directly, e.g. a hand-made JSON file.)
 
 ## See your work (don't author blind)
 
@@ -110,7 +139,7 @@ them** to check your own edit — layout, sizes, openings, and roof are exactly 
 mistakes happen:
 
 ```bash
-wadi-skill/architect/scripts/preview.sh <ABS_PATH_TO_config.json>
+wadi-skill/architect/scripts/preview.sh <ABS>.wadi     # the COMPILED file
 ```
 
 It writes (and prints paths to) `plans.png` (floor plans — room layout + sizes),
@@ -143,6 +172,11 @@ reuses the app's own generators, so it matches the app's 2D tabs byte-for-byte. 
 - **Floors stack; `floor_number` is 0-based** (the plinth floor = 0). Heights are
   independent per floor (`height`, `wall_height`, `slab_thickness` are unrelated
   fields).
-- **Minimal patches.** Preserve unchanged objects verbatim so the user (and diffs) can
-  see exactly what moved.
-- **`.strict()` schema.** Unknown/misspelled keys are rejected — no silent typos.
+- **Minimal patches.** Preserve unchanged `.wdl` lines verbatim so the user (and diffs)
+  can see exactly what moved.
+- **Formulas are bare expressions in the DSL** — write `at (main.x1, main.yA)`, not
+  `"= main.x1"`; the compiler emits the `= …` form. Quote only `name "…"` strings;
+  `room`/`pillar`/`var`/grid-line names are bare identifiers.
+- **Errors are caught at compile.** A parse error (bad syntax) or a `.strict()` schema
+  error (unknown/misspelled key inside a `raw` block) fails `compile.sh` with the exact
+  location — nothing reaches the model silently.

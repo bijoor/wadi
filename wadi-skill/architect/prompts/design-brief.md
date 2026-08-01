@@ -1,16 +1,17 @@
 # Brief → house (Wadi's higher-level language)
 
-This is how you turn a plain-English brief into a base `house_config.json`, and
+This is how you turn a plain-English brief into a base `.wdl` design, and
 keep it maintainable. **You are the compiler**: the brief is the high-level
-intent, the config is the derived low-level artifact. Keeping the brief means the
+intent, the `.wdl` is the derived low-level artifact (which the Wadi DSL then
+compiles to the `.wadi` the app renders). Keeping the brief means the
 user can change *requirements* ("add an ensuite", "make it L-shaped") and you
 **re-derive** the affected objects — instead of the user hand-editing every
 dependent coordinate.
 
 ## 1. Keep a design brief as the source of truth
 
-Maintain a short brief alongside the config. Simplest: a file
-`house_brief.md` next to `house_config.json`, or (if the user prefers one file) a
+Maintain a short brief alongside the design. Simplest: a file
+`house_brief.md` next to `house.wdl`, or (if the user prefers one file) a
 concise summary you restate in chat and update each turn. Capture **intent, not
 coordinates**:
 
@@ -93,7 +94,7 @@ When the user changes a requirement:
 2. Re-derive only the affected objects, recomputing dependents (neighbouring room
    positions, aligned baths, roof footprint) so the model stays consistent.
 3. Keep unchanged objects verbatim (minimal patch — see `update-existing.md`).
-4. Validate, save, let the live model confirm.
+4. Compile (`scripts/compile.sh`), let the live model confirm.
 
 This "edit the brief, re-derive the config" loop is what replaces a formula
 engine: the *intent* is preserved and re-computable, so dependents follow

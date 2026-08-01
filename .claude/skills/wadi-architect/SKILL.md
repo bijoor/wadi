@@ -20,10 +20,16 @@ references, examples, and the validate/preview scripts — lives in the repo at
 truth for the workflow (the live edit→preview loop, brief→house vs drawings→house,
 validation, and the pitfalls).
 
+You author in the **Wadi DSL** (`.wdl`) and compile it to a `.wadi` the app renders —
+not raw JSON. `reference/dsl.md` is the syntax reference; `scripts/compile.sh` compiles
++ validates in one step.
+
 Key files (read lazily, as SKILL.md directs):
-- `wadi-skill/architect/reference/data-model.md` — complete `.wadi` schema (generated
-  from `editor/src/schema/houseConfig.ts`).
+- `wadi-skill/architect/reference/dsl.md` — the **`.wdl` DSL syntax** (primary reference).
+- `wadi-skill/architect/reference/data-model.md` — the underlying `.wadi` schema the DSL
+  compiles to (generated from `editor/src/schema/houseConfig.ts`).
 - `wadi-skill/architect/reference/{coordinate-system,roof-v2-guide,parametric-conventions}.md`
-- `wadi-skill/architect/examples/*.wadi` — validated houses to copy from (currently the
-  `coastal_konkan` grid + centreline template).
-- `wadi-skill/architect/scripts/validate.mjs` and `preview.sh` — validate + render.
+- `wadi-dsl/examples/*.wdl` — validated `.wdl` houses to copy from (minimal, two_room,
+  two_story, coastal, complete).
+- `wadi-skill/architect/scripts/compile.sh` (`.wdl` → validated `.wadi`) and `preview.sh`
+  (render PNGs). `validate.mjs` still checks a raw `.wadi`.
