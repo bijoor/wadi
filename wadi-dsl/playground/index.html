@@ -29,6 +29,10 @@
     }
     .tb-btn:hover, .tb-sel:hover { background: #3c3c3c; border-color: #555; }
     .tb-sel { padding: 5px 6px; }
+    #filename {
+      font-size: .8rem; color: var(--muted); white-space: nowrap; font-variant: tabular-nums;
+    }
+    #filename.dirty { color: var(--accent); font-weight: 600; }
     #status {
       font-size: .8rem; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
       background: #2d4a3e; color: #8fe3bf;
@@ -88,11 +92,13 @@
       <option value="complete">complete (all entities)</option>
       <option value="errors">errors (broken)</option>
     </select>
-    <button id="open" class="tb-btn" title="Open a .wdl file">📂 Open</button>
-    <button id="save" class="tb-btn" title="Download the current .wdl">💾 Save .wdl</button>
-    <button id="download" class="tb-btn" title="Download the compiled .wadi">⬇ .wadi</button>
+    <button id="open" class="tb-btn" title="Open a .wdl file (⌘O)">📂 Open</button>
+    <button id="save" class="tb-btn" title="Save the .wdl (⌘S)">💾 Save</button>
+    <button id="saveas" class="tb-btn" title="Save to a new file (⇧⌘S)">Save As…</button>
+    <button id="download" class="tb-btn" title="Export the compiled .wadi">⬇ .wadi</button>
     <button id="reference" class="tb-btn" title="DSL reference">📖 Reference</button>
     <span class="spacer"></span>
+    <span id="filename" title="Current file">untitled.wdl</span>
     <span id="status">starting…</span>
     <a class="applink" href="/app/" target="_blank" rel="noopener">Open the app →</a>
   </header>

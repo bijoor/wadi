@@ -164,6 +164,7 @@ async function attachFile(path: string): Promise<void> {
   const text = await readTextFile(path);
   lastDiskText = text;
   editor.setValue(text);                     // fires onDidChangeModelContent → recompile + render
+  updateFileLabel();
   const stop = await watch(
     path,
     async () => {
@@ -194,6 +195,66 @@ async function autosave(): Promise<void> {
   try {
     const { writeTextFile } = await import("@tauri-apps/plugin-fs");
     await writeTextFile(openFilePath, content);
+    updateFileLabel();
+  } catch (e) {
+    setStatus(`save failed: ${(e as Error).message}`, true);
+  }
+}
+
+function baseName(p: string): string {
+  return p.split(/[/\\]/).pop() ?? p;
+}
+
+// The header label showing the open file + a • when there are unsaved edits.
+function updateFileLabel(): void {
+  const el = document.getElementById("filename");
+  if (!el) return;
+  if (!openFilePath) { el.textContent = "untitled.wdl"; el.classList.remove("dirty"); return; }
+  const dirty = editor.getValue() !== lastDiskText;
+  el.textContent = baseName(openFilePath) + (dirty ? " •" : "");
+  el.classList.toggle("dirty", dirty);
+}
+
+// Save (desktop): write to the open+watched file, or — if none yet — Save As so
+// the user PICKS a location; that file then becomes the watched, co-edited one.
+async function saveWdl(): Promise<void> {
+  if (!isTauri()) {
+    downloadText(`${currentName}.wdl`, editor.getValue(), "text/plain;charset=utf-8");
+    return;
+  }
+  if (openFilePath) {
+    lastDiskText = editor.getValue();
+    try {
+      const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+      await writeTextFile(openFilePath, lastDiskText);
+      setStatus(`✓ saved ${baseName(openFilePath)}`);
+      updateFileLabel();
+    } catch (e) {
+      setStatus(`save failed: ${(e as Error).message}`, true);
+    }
+    return;
+  }
+  await saveAsWdl();
+}
+
+// Save As (desktop): native dialog to choose a path, write, then WATCH it.
+async function saveAsWdl(): Promise<void> {
+  if (!isTauri()) {
+    downloadText(`${currentName}.wdl`, editor.getValue(), "text/plain;charset=utf-8");
+    return;
+  }
+  const { save } = await import("@tauri-apps/plugin-dialog");
+  const path = await save({
+    defaultPath: `${currentName || "house"}.wdl`,
+    filters: [{ name: "Wadi DSL", extensions: ["wdl"] }],
+  });
+  if (!path) return;
+  try {
+    const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+    await writeTextFile(path, editor.getValue());
+    await attachFile(path); // now the watched, co-edited file
+    setStatus(`✓ saved + watching ${baseName(path)}`);
+    updateFileLabel();
   } catch (e) {
     setStatus(`save failed: ${(e as Error).message}`, true);
   }
@@ -201,12 +262,17 @@ async function autosave(): Promise<void> {
 
 let debounce: number | undefined;
 editor.onDidChangeModelContent(() => {
+  updateFileLabel(); // responsive dirty dot
   window.clearTimeout(debounce);
   debounce = window.setTimeout(() => {
     run();
     void autosave(); // persist the human's edits so the agent reads them (desktop only)
   }, 300);
 });
+
+// ⌘S / Ctrl+S saves (desktop → to the watched file, or Save As; browser → download).
+editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveWdl());
+editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS, () => void saveAsWdl());
 
 // ---- Toolbar: sample picker · Open / Save .wdl · Download .wadi · Reference ----
 
@@ -248,19 +314,31 @@ function wireToolbar(): void {
     file.value = "";
   });
 
-  // Save the current .wdl source.
-  $("save").addEventListener("click", () => {
-    downloadText(`${currentName}.wdl`, editor.getValue(), "text/plain;charset=utf-8");
-  });
+  // Save (desktop → to the watched file / Save-As dialog; browser → download).
+  $("save").addEventListener("click", () => void saveWdl());
+  const saveAsBtn = document.getElementById("saveas");
+  if (saveAsBtn) saveAsBtn.addEventListener("click", () => void saveAsWdl());
 
-  // Download the compiled .wadi (feed the desktop app / share).
-  $("download").addEventListener("click", () => {
+  // Export the compiled .wadi (native Save dialog in the desktop app; download in
+  // the browser). Rarely needed — the app renders the .wdl directly — but handy
+  // for sharing a resolved config.
+  $("download").addEventListener("click", async () => {
     const { config, diagnostics } = compileWithDiagnostics(editor.getValue());
     if (!config) {
       setStatus(`can't export — fix ${diagnostics.length} error${diagnostics.length === 1 ? "" : "s"}`, true);
       return;
     }
-    downloadText(`${currentName}.wadi`, JSON.stringify(config, null, 2), "application/json");
+    const json = JSON.stringify(config, null, 2);
+    if (isTauri()) {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const path = await save({ defaultPath: `${currentName || "house"}.wadi`, filters: [{ name: "Wadi house", extensions: ["wadi"] }] });
+      if (!path) return;
+      const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+      await writeTextFile(path, json);
+      setStatus(`✓ exported ${baseName(path)}`);
+    } else {
+      downloadText(`${currentName}.wadi`, json, "application/json");
+    }
   });
 
   // Reference slide-over.
@@ -280,4 +358,5 @@ wireToolbar();
 (window as unknown as { monaco: typeof monaco }).monaco = monaco;
 
 // First compile + boot.
+updateFileLabel();
 run();
