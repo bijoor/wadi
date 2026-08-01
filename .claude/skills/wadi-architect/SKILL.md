@@ -20,16 +20,20 @@ references, examples, and the validate/preview scripts — lives in the repo at
 truth for the workflow (the live edit→preview loop, brief→house vs drawings→house,
 validation, and the pitfalls).
 
-You author in the **Wadi DSL** (`.wdl`) and compile it to a `.wadi` the app renders —
-not raw JSON. `reference/dsl.md` is the syntax reference; `scripts/compile.sh` compiles
-+ validates in one step.
+You author in the **Wadi DSL** (`.wdl`), not raw JSON — and you **never produce a
+`.wadi`**. The Wadi app's DSL previewer compiles + renders the `.wdl` live (desktop
+**⌘⇧D**, or `wadi.house/dsl`), so a single `.wdl` on disk is the **shared source you and
+the human co-edit**. `reference/dsl.md` is the syntax reference; `scripts/check.sh`
+validates a `.wdl` for feedback (against a throwaway temp — no `.wadi` written).
 
 Key files (read lazily, as SKILL.md directs):
 - `wadi-skill/architect/reference/dsl.md` — the **`.wdl` DSL syntax** (primary reference).
 - `wadi-skill/architect/reference/data-model.md` — the underlying `.wadi` schema the DSL
-  compiles to (generated from `editor/src/schema/houseConfig.ts`).
+  compiles to (generated from `editor/src/schema/houseConfig.ts`; also the `raw`-escape
+  field reference).
 - `wadi-skill/architect/reference/{coordinate-system,roof-v2-guide,parametric-conventions}.md`
 - `wadi-dsl/examples/*.wdl` — validated `.wdl` houses to copy from (minimal, two_room,
   two_story, coastal, complete).
-- `wadi-skill/architect/scripts/compile.sh` (`.wdl` → validated `.wadi`) and `preview.sh`
-  (render PNGs). `validate.mjs` still checks a raw `.wadi`.
+- `wadi-skill/architect/scripts/check.sh` (validate a `.wdl`, no `.wadi`) and `preview.sh`
+  (render plans/elevations/roof PNGs from a `.wdl`). `validate.mjs` still checks a raw
+  `.wadi` if you ever have one.

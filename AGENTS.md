@@ -21,11 +21,12 @@ the **Wadi architect skill** at:
 wadi-skill/architect/SKILL.md
 ```
 
-You author in the **Wadi DSL** (`.wdl`) and compile it to the `.wadi` the app renders —
-the DSL is complete (every object type is first-class) and the compiler catches errors
-with `line:col`. Read the SKILL.md and follow it: it covers the live edit→compile→preview
-loop, deriving a house from a brief vs. recreating one from a drawing, and the pitfalls.
-Supporting files:
+You author in the **Wadi DSL** (`.wdl`), not raw JSON — and you **never produce a
+`.wadi`**. The Wadi app's DSL previewer compiles + renders the `.wdl` live, so one `.wdl`
+on disk is the shared source you and the human **co-edit**. The DSL is complete (every
+object type is first-class) and the compiler catches errors with `line:col`. Read the
+SKILL.md and follow it: it covers the co-edit → check → preview loop, deriving a house
+from a brief vs. recreating one from a drawing, and the pitfalls. Supporting files:
 
 - `wadi-skill/architect/reference/dsl.md` — the **`.wdl` DSL syntax** (primary reference).
 - `wadi-skill/architect/reference/data-model.md` — the underlying **`.wadi` schema** the
@@ -42,15 +43,16 @@ The scripts reuse the app's own TypeScript, so install deps once
 (`npm --prefix editor install` and `npm --prefix wadi-dsl install`) and run from inside
 this repo:
 
-- **Compile** a `.wdl` → validated `.wadi` (parse + resolve + schema/geometry check):
-  `wadi-skill/architect/scripts/compile.sh <ABS>.wdl <ABS>.wadi`
-- **Preview** the compiled `.wadi` to PNGs you can open/read (floor plans, elevations,
-  roof): `wadi-skill/architect/scripts/preview.sh <ABS>.wadi`
-- **Validate** a raw `.wadi` directly (hand-made JSON):
+- **Check** a `.wdl` (parse + resolve + schema/geometry, against a throwaway temp — **no
+  `.wadi` produced**): `wadi-skill/architect/scripts/check.sh <ABS>.wdl`
+- **Preview** a `.wdl` to PNGs you can open/read (floor plans, elevations, roof):
+  `wadi-skill/architect/scripts/preview.sh <ABS>.wdl`
+- **Validate** a raw `.wadi` directly (only if you ever have hand-made JSON):
   `cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs <ABS>.wadi`
 
-The **live 3D** loop additionally needs the Wadi desktop app installed and watching the
-compiled `.wadi`; without it you can still author, compile, and render preview images.
+The **live render** comes from the Wadi app's DSL previewer (desktop **⌘⇧D → Open**, or
+`wadi.house/dsl`) open on the `.wdl`; without it you can still author, check, and render
+preview images.
 
 ## Capabilities assumed
 

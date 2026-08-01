@@ -12,6 +12,7 @@
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
+import { isTauri } from "@tauri-apps/api/core";
 import { registerWadiDsl, LANG_ID } from "./dsl-language";
 import { compileWithDiagnostics } from "../src/generator/toHouseConfig";
 import { REFERENCE_HTML } from "./reference";
@@ -145,10 +146,66 @@ function trim(m: string): string {
   return m.length > 80 ? m.slice(0, 79) + "…" : m;
 }
 
+// ---- Native file sync (desktop): open + WATCH + autosave a .wdl on disk, so a
+//      human and a coding agent CO-EDIT the same file. Mirrors the app's
+//      configWatcher: native fs `watch()` reloads the editor when the file
+//      changes on disk (the agent's write), and edits here autosave back to it
+//      (so the agent reads the human's changes). Browser build: no-ops. ----
+
+let openFilePath: string | null = null;
+let lastDiskText: string | null = null;      // break the write→watch→reload echo loop
+let unwatchFile: (() => void) | null = null;
+
+async function attachFile(path: string): Promise<void> {
+  const { readTextFile, watch } = await import("@tauri-apps/plugin-fs");
+  if (unwatchFile) { unwatchFile(); unwatchFile = null; }
+  openFilePath = path;
+  currentName = (path.split(/[/\\]/).pop() ?? "house").replace(/\.(wdl|txt)$/i, "") || "house";
+  const text = await readTextFile(path);
+  lastDiskText = text;
+  editor.setValue(text);                     // fires onDidChangeModelContent → recompile + render
+  const stop = await watch(
+    path,
+    async () => {
+      try {
+        const t = await readTextFile(path);
+        if (t === lastDiskText || t === editor.getValue()) { lastDiskText = t; return; }
+        lastDiskText = t;
+        editor.setValue(t);                  // external (agent/human) edit → reload + re-render
+      } catch { /* transient mid-write; the next event retries */ }
+    },
+    { delayMs: 250 },
+  );
+  unwatchFile = stop;
+}
+
+async function openWdlNative(): Promise<void> {
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const picked = await open({ multiple: false, filters: [{ name: "Wadi DSL", extensions: ["wdl"] }] });
+  const path = typeof picked === "string" ? picked : null;
+  if (path) await attachFile(path);
+}
+
+async function autosave(): Promise<void> {
+  if (!openFilePath) return;
+  const content = editor.getValue();
+  if (content === lastDiskText) return;
+  lastDiskText = content;                    // mark BEFORE the write so the watch echo is a no-op
+  try {
+    const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+    await writeTextFile(openFilePath, content);
+  } catch (e) {
+    setStatus(`save failed: ${(e as Error).message}`, true);
+  }
+}
+
 let debounce: number | undefined;
 editor.onDidChangeModelContent(() => {
   window.clearTimeout(debounce);
-  debounce = window.setTimeout(run, 300);
+  debounce = window.setTimeout(() => {
+    run();
+    void autosave(); // persist the human's edits so the agent reads them (desktop only)
+  }, 300);
 });
 
 // ---- Toolbar: sample picker · Open / Save .wdl · Download .wadi · Reference ----
@@ -176,9 +233,13 @@ function wireToolbar(): void {
     sample.selectedIndex = 0; // reset the label
   });
 
-  // Open a .wdl from disk.
+  // Open a .wdl from disk. Desktop → native dialog + live file WATCH (co-edit);
+  // browser → a one-shot file read (no disk watch available).
   const file = $("file") as HTMLInputElement;
-  $("open").addEventListener("click", () => file.click());
+  $("open").addEventListener("click", () => {
+    if (isTauri()) void openWdlNative();
+    else file.click();
+  });
   file.addEventListener("change", async () => {
     const f = file.files?.[0];
     if (!f) return;

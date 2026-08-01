@@ -94,7 +94,7 @@ When the user changes a requirement:
 2. Re-derive only the affected objects, recomputing dependents (neighbouring room
    positions, aligned baths, roof footprint) so the model stays consistent.
 3. Keep unchanged objects verbatim (minimal patch — see `update-existing.md`).
-4. Compile (`scripts/compile.sh`), let the live model confirm.
+4. Check (`scripts/check.sh`), let the live model (the app's DSL editor) confirm.
 
 This "edit the brief, re-derive the config" loop is what replaces a formula
 engine: the *intent* is preserved and re-computable, so dependents follow

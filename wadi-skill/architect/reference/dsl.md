@@ -4,7 +4,7 @@ You author houses in the **Wadi DSL** — a small, formal language (`.wdl`) that
 compiles to a resolved `.wadi` (`house_config.json`). The DSL is **complete**:
 every object type in the model has first-class syntax, so you rarely need the
 `raw` escape. Authoring the DSL is more direct and less error-prone than writing
-JSON — the grammar enforces structure, and `compile.sh` reports parse errors with
+JSON — the grammar enforces structure, and `check.sh` reports parse errors with
 line:col.
 
 **This file is the SYNTAX reference.** The *semantics* live in the other
@@ -19,14 +19,13 @@ references and apply unchanged — read them:
 
 ## The loop
 
-1. Write / edit `house.wdl`.
-2. `wadi-skill/architect/scripts/compile.sh house.wdl house.wadi` — parses,
-   resolves formulas, and validates (schema + wall/roof geometry). Fix any
-   reported error and re-run.
-3. The **`.wdl` is the source of truth**; `house.wadi` is the compiled artifact
-   the app watches/renders. Do NOT hand-edit the `.wadi` or rely on app form-edits
-   — they are overwritten on the next compile. You own the `.wdl`.
-4. `preview.sh house.wadi` → read the PNGs to check your work.
+1. Write / edit `house.wdl` — the **single shared source** (you and the human
+   co-edit it; the app's DSL previewer renders it live). You never produce a `.wadi`.
+2. `wadi-skill/architect/scripts/check.sh house.wdl` — runs the DSL compiler +
+   validator (schema + wall/roof geometry) against a **throwaway temp** just for
+   feedback; fix any reported error and re-run.
+3. `preview.sh house.wdl` → read the PNGs (plans / elevations / roof) to check your
+   work. (It also compiles to a throwaway temp — no persistent `.wadi`.)
 
 ## Skeleton
 

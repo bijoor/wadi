@@ -17,8 +17,8 @@ verandah south by 3 ft"). Apply a **minimal patch**.
    were positioned relative to it (adjacent rooms, vertically-aligned baths, roof
    footprint) — or, better, express them as formulas of the grid so they follow
    automatically. If a brief exists (`house_brief.md`), update it too.
-5. **Compile** (`scripts/compile.sh house.wdl house.wadi`) — it parses, resolves,
-   and validates. Fix any reported error before continuing.
+5. **Check** (`scripts/check.sh house.wdl`) — it parses, resolves, and validates (no
+   `.wadi` produced). Fix any reported error before continuing.
 6. **Tell the user what changed** in one line ("Widened Bedroom 2 from 10→12 ft and
    shifted the ensuite east to match"). The app updates live; they react.
 

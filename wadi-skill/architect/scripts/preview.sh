@@ -28,6 +28,16 @@ while [ "$REPO" != "/" ] && [ ! -f "$REPO/editor/package.json" ]; do REPO="$(dir
 CONFIG_ABS="$(cd "$(dirname "$CONFIG")" && pwd)/$(basename "$CONFIG")"
 mkdir -p "$OUT"
 
+# Accept EITHER a .wadi or a .wdl. A .wdl is compiled to a THROWAWAY temp .wadi
+# just for rendering — this preview is your own visual check, not the app's render
+# artifact (the app's DSL previewer renders the .wdl live). The temp is deleted.
+if [[ "$CONFIG_ABS" == *.wdl ]]; then
+  TMP="$(mktemp -t wadi-preview.XXXXXX).wadi"
+  trap 'rm -f "$TMP"' EXIT
+  npm --prefix "$REPO/wadi-dsl" run --silent gen -- "$CONFIG_ABS" "$TMP"
+  CONFIG_ABS="$TMP"
+fi
+
 # 1. Generate all 2D SVGs from the config (dump-svgs validates first).
 ( cd "$REPO/editor" && npx tsx scripts/dump-svgs.mjs --in "$CONFIG_ABS" --out "$OUT" ) >/dev/null
 

@@ -1,16 +1,20 @@
 # Wadi architect — author `.wdl` house designs with a live 3D preview
 
 You are the architect/editor. The user describes a house (in words, or with a
-sketch/photo); you write or update its **`.wdl`** file (the Wadi DSL), **compile** it to
-a `.wadi` with one command, and the **Wadi desktop app re-renders the 3D model live** as
-the compiled file updates. The user watches and steers with follow-up messages.
+sketch/photo); you write or update its **`.wdl`** file (the Wadi DSL), and the **Wadi
+app's DSL editor renders the model live** from that same file. The user watches and
+steers with follow-up messages — and can edit the `.wdl` alongside you.
 
 You author in the **Wadi DSL** (`.wdl`), not raw JSON. It's more direct (formulas,
 grids, and the configurator are one-liners), the grammar enforces structure, and the
 compiler reports parse errors with `line:col`. The DSL is **complete** — every object
 type has first-class syntax — so it can express any house the model can hold.
-**`reference/dsl.md` is your syntax reference; read it first.** The compiled `.wadi` is
-the artifact the app renders; the `.wdl` is your source of truth.
+**`reference/dsl.md` is your syntax reference; read it first.**
+
+**The `.wdl` IS the design — do not produce a `.wadi`.** The Wadi app's DSL previewer
+compiles + renders the `.wdl` live (in-app), so a single `.wdl` file on disk is the
+**shared source you and the human co-edit**. You never convert it to JSON; you just
+author the `.wdl` and verify it with `check.sh`.
 
 This skill is **agent-neutral** — it is plain instructions + reference docs + scripts,
 usable by any coding agent (Claude Code, Google Antigravity, …). Agent-specific
@@ -22,47 +26,40 @@ Code, `AGENTS.md` at the repo root); they just point here.
 - **Read/write files** and **run shell + Node** (the only capabilities assumed).
 - The **Wadi repo checked out**, with deps installed once:
   `npm --prefix editor install` and `npm --prefix wadi-dsl install` (the latter also
-  regenerates the DSL parser via its `prepare` hook). The `compile`, `validate`, and
-  `preview` scripts reuse the app's own TypeScript, so they flag exactly what the app
-  would.
-- For the *live* 3D loop: the **Wadi desktop app** installed and watching the compiled
-  `.wadi`. Without the app you can still author `.wdl` + compile + render preview images.
+  regenerates the DSL parser via its `prepare` hook). The `check` and `preview` scripts
+  reuse the app's own TypeScript, so they flag exactly what the app would.
+- For the *live* render: the **Wadi app's DSL editor** open on the `.wdl` you edit —
+  desktop **⌘⇧D → Open**, or the browser playground at `wadi.house/dsl`. It compiles +
+  renders the `.wdl` live. Without it you can still author + `check` + render preview
+  images yourself.
 
 ## The live loop (read this first, every session)
 
-You edit `house.wdl`, **compile** it to `house.wadi`, and the Wadi desktop app —
-watching the `.wadi` — rebuilds the 3D model within ~1 s. The `.wdl` is your source; the
-`.wadi` is the compiled, live-watched artifact. Keep them side by side (same name).
+The **`.wdl` file is the single shared source.** You edit it; the Wadi app's DSL editor
+— open on that same file — compiles and re-renders it live; the human can edit it too (in
+the DSL editor, in their own editor, or by asking you). **You never produce or touch a
+`.wadi`** — the app does the `.wdl` → render conversion.
 
-**Starting a NEW model — set it up, no manual steps for the user:**
+**Starting a NEW model:**
 1. Write a starter `house.wdl` (copy the shape from `../../wadi-dsl/examples/` — start
    from `minimal.wdl`, or `coastal.wdl` for a full cottage) at a path the user wants,
    e.g. `~/Documents/<name>.wdl`.
-2. Compile it (this also validates):
-   ```bash
-   wadi-skill/architect/scripts/compile.sh "<ABS>.wdl" "<ABS>.wadi"
-   ```
-3. Open the COMPILED `.wadi` so it becomes the watched file (macOS):
-   ```bash
-   open -a Wadi "<ABS>.wadi"
-   ```
-   The file association loads it (into the running window if open, else it launches).
-   (Other platforms / dev build: ask the user to **Load** the `.wadi` once.)
-4. Build the house by editing `house.wdl` and re-running `compile.sh` after each change
-   — every successful compile updates the `.wadi`, and the app re-renders live.
+2. Tell the user to open it in the **Wadi DSL editor** (**⌘⇧D → Open** in the desktop
+   app) so it renders live and watches the file.
+3. Build the house by editing `house.wdl`. Run `check.sh` after each change to confirm it
+   still compiles + validates; the editor re-renders as the file changes.
 
-**Editing an EXISTING model:** edit its `.wdl`, recompile to the `.wadi` the app watches.
-(If only a `.wadi` exists — hand-made or app-authored — you may keep editing that JSON
-directly per `data-model.md`. But once a house is authored as `.wdl`, the **`.wdl` OWNS
-it**: don't also hand-edit the `.wadi` or use the app's forms on it — the next compile
-overwrites those changes.)
+**Editing an EXISTING model:** edit its `.wdl`. Because it's a **co-edited** file, **read
+it first** (the human may have changed it since your last edit) and make a **minimal
+patch** — change only the lines you need and preserve the rest verbatim, so your edit
+merges cleanly with theirs.
 
 **Always:**
-- **Tell the user which `.wdl` you are editing** (and the `.wadi` it compiles to), and
-  edit only that path.
-- **Compile after every edit.** A parse/validation error leaves the last-good `.wadi`
-  untouched — a broken write shows nothing new (never corrupts the model) — but fix it
-  before telling the user anything changed.
+- **Tell the user which `.wdl` you are editing**, and edit only that path.
+- **Run `check.sh` after every edit.** It runs the DSL compiler + validator against a
+  **throwaway temp** (it does NOT create a `.wadi`) purely for feedback — fix any
+  reported error before telling the user anything changed. A broken `.wdl` just makes the
+  editor show a diagnostic and keep the last good render; it never corrupts anything.
 
 ## Two ways users work with you
 
@@ -116,40 +113,40 @@ overwrites those changes.)
   kitchen, item, component, gable roof, layers). `examples/coastal_konkan.wadi` in this
   folder is a resolved `.wadi` for reference on the compiled output shape.
 
-## Compile before (and after) every edit — it validates too
+## Check after every edit (get compiler feedback — no `.wadi` produced)
 
-`compile.sh` does everything in one step: it parses the `.wdl` (reporting parse errors
-with `line:col`), resolves formulas/grids into numbers, and runs the real schema +
-roof/wall geometry validator on the result (catches zero-length roof segments, missing
-slope, bad openings that the schema alone misses):
+`check.sh` runs the DSL end-to-end for **feedback only**: it parses the `.wdl` (reporting
+parse errors with `line:col`), resolves formulas/grids into numbers, and runs the real
+schema + roof/wall geometry validator (catches zero-length roof segments, missing slope,
+bad openings that the schema alone misses) — all against a **throwaway temp** that is
+deleted. It never writes a `.wadi`; the app's DSL previewer does the real conversion.
 
 ```bash
-wadi-skill/architect/scripts/compile.sh "<ABS>.wdl" "<ABS>.wadi"
+wadi-skill/architect/scripts/check.sh "<ABS>.wdl"
 ```
 
-Exit 0 = compiled + valid (the `.wadi` is updated → the app re-renders). Non-zero prints
-the exact `parse: …` or `/path: message` error — fix the `.wdl` and re-run before
-telling the user anything is ready. (`validate.mjs` still exists to check a raw `.wadi`
-directly, e.g. a hand-made JSON file.)
+Exit 0 = compiles + valid. Non-zero prints the exact `parse: …` or `/path: message`
+error — fix the `.wdl` and re-run before telling the user anything is ready.
 
 ## See your work (don't author blind)
 
-You can't see the app's live render, but you CAN render the config to images and **read
+You can't see the app's live render, but you CAN render your `.wdl` to images and **read
 them** to check your own edit — layout, sizes, openings, and roof are exactly where
-mistakes happen:
+mistakes happen. `preview.sh` takes the `.wdl` directly (it compiles to a throwaway temp
+just for rendering — again, no persistent `.wadi`):
 
 ```bash
-wadi-skill/architect/scripts/preview.sh <ABS>.wadi     # the COMPILED file
+wadi-skill/architect/scripts/preview.sh "<ABS>.wdl"
 ```
 
 It writes (and prints paths to) `plans.png` (floor plans — room layout + sizes),
-`elevations.png` (front/back/left/right — heights + roof profile), and `roof.png` (roof
-top view), plus all SVGs under `.../2d/`. **Read the PNGs** after a non-trivial edit and
-confirm what you built matches the request (rooms in the right place, not overlapping,
-correct sizes in feet, roof over the plinth). **If it doesn't match, fix the config and
-re-render — repeat until it looks right, and only then tell the user it's ready.** It
-reuses the app's own generators, so it matches the app's 2D tabs byte-for-byte. See
-`prompts/verify-visually.md`.
+`elevations.png` (front/back/left/right — heights + **roof profile**, the 2D view of the
+built 3D model), and `roof.png` (roof top view), plus all SVGs under `.../2d/`. **Read
+the PNGs** after a non-trivial edit and confirm what you built matches the request (rooms
+in the right place, not overlapping, correct sizes in feet, roof over the plinth). **If
+it doesn't match, fix the `.wdl` and re-render — repeat until it looks right, and only
+then tell the user it's ready.** It reuses the app's own generators, so it matches the
+app's 2D tabs byte-for-byte. See `prompts/verify-visually.md`.
 
 ## Top pitfalls (memorize)
 
@@ -177,6 +174,7 @@ reuses the app's own generators, so it matches the app's 2D tabs byte-for-byte. 
 - **Formulas are bare expressions in the DSL** — write `at (main.x1, main.yA)`, not
   `"= main.x1"`; the compiler emits the `= …` form. Quote only `name "…"` strings;
   `room`/`pillar`/`var`/grid-line names are bare identifiers.
-- **Errors are caught at compile.** A parse error (bad syntax) or a `.strict()` schema
-  error (unknown/misspelled key inside a `raw` block) fails `compile.sh` with the exact
-  location — nothing reaches the model silently.
+- **Errors are caught by `check.sh`.** A parse error (bad syntax) or a `.strict()` schema
+  error (unknown/misspelled key inside a `raw` block) fails `check.sh` with the exact
+  location — and the app's DSL editor shows the same squiggle live; nothing reaches the
+  model silently.
