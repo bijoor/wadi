@@ -68,7 +68,8 @@ Architects can work three ways:
 - **On the desktop** — the Wadi desktop app live-watches a `.wadi` file on disk, so you
   can edit it in any tool and see the 3D model update within about a second.
 - **By chatting** — describe a house to an AI coding agent (Claude Code, Google
-  Antigravity) and it writes the `.wadi` for you while the desktop app previews it.
+  Antigravity) and it writes the design in the **Wadi DSL** (a `.wdl` file) while the
+  Wadi **DSL editor** renders it live. You and the agent co-edit the same `.wdl`.
 
 The desktop app and the AI skill need a one-time setup — see
 [Technical details](#technical-details).
@@ -123,56 +124,84 @@ Each floor holds an `objects` list; every object has a `type`:
 Full details: `wadi-skill/architect/reference/coordinate-system.md` and
 `parametric-conventions.md`.
 
-## The AI architect skill — setup
+## The AI architect skill — setup & use
+
+Describe a house to a coding agent and it authors the design for you in the **Wadi DSL**
+— a small formal language saved as a **`.wdl`** file — while the Wadi **DSL editor**
+compiles and renders it live. The `.wdl` is a single file you and the agent **co-edit**;
+the agent never produces raw JSON (`.wadi`), because the DSL editor does that conversion.
 
 The skill ships as an **agent-neutral core** plus thin per-agent adapters, so the same
 content drives any coding agent:
 
 ```
 wadi-skill/architect/            the skill — instructions, references, examples, scripts
-.claude/skills/wadi-architect/   Claude Code adapter   → points at the skill
+.claude/skills/wadi-architect/   Claude Code adapter        → points at the skill
 AGENTS.md                        vendor-neutral entrypoint (Antigravity, Cursor, …) → the skill
 ```
 
-**Prerequisites (once):**
+### 1. Install (once)
 
 ```bash
 git clone https://github.com/bijoor/wadi.git
 cd wadi
-npm --prefix editor install      # the skill's validate/preview scripts reuse the app's TypeScript
+npm --prefix editor   install    # the skill's check/preview scripts reuse the app's TypeScript
+npm --prefix wadi-dsl install    # the DSL compiler (its `prepare` hook builds the parser)
 ```
 
-Optional but recommended for the live loop: keep your `.wadi` open in the Wadi desktop
-app (below) so the 3D model updates as the agent saves.
+### 2. Open the DSL editor for the live preview (recommended)
 
-**Claude Code** — the skill lives in `.claude/skills/`, so Claude Code auto-discovers it
-when run from inside the repo:
+Keep your `.wdl` open in the Wadi DSL editor so the 3D model + plans update as the agent
+saves (and it watches the file, so your own edits show too):
+
+- **Desktop:** the Wadi app → **⌘⇧D → Open** your `.wdl` (see [Desktop app](#desktop-app-tauri)).
+- **Browser:** **<https://wadi.house/dsl>** — paste or open a `.wdl`.
+
+### 3. Ask the agent to design
+
+**Claude Code** (auto-discovers the skill from `.claude/skills/` when run inside the repo):
 
 1. `cd wadi && claude` (or open the repo in the Claude Code IDE extension / desktop app).
-2. Invoke it by asking naturally ("design a 3-bed L-shaped bungalow, hip roof, ~1500 sq
-   ft") or explicitly with `/wadi-architect`.
-3. To use it in every project, copy the adapter into your user skills dir (it still
-   points back at this repo's files, so keep the repo checked out):
+2. Ask naturally — *"design a 3-bed L-shaped bungalow, hip roof, ~1500 sq ft"* — or invoke
+   it explicitly with `/wadi-architect`. It creates a `.wdl`, tells you the path, and runs
+   `check.sh` after every edit.
+3. Open that `.wdl` in the DSL editor (step 2) to watch it render; edit it yourself too and
+   the agent picks up your changes.
+4. To use the skill in *every* project, copy the adapter into your user skills dir (it
+   still points back at this repo, so keep it checked out):
    `cp -R .claude/skills/wadi-architect ~/.claude/skills/`
 
-**Google Antigravity (and other `AGENTS.md`-aware agents: Cursor, …)** — these read
-`AGENTS.md` at the repo root automatically:
+**Google Antigravity / Cursor / other `AGENTS.md`-aware agents** (read `AGENTS.md`
+automatically):
 
 1. Open the `wadi` repo as your workspace.
-2. Ask it to create or edit a house ("make a coastal Konkan cottage with a verandah"). It
-   follows `AGENTS.md` → `wadi-skill/architect/SKILL.md` and writes the `.wadi`.
+2. Ask it to create or edit a house — *"make a coastal Konkan cottage with a verandah"*. It
+   follows `AGENTS.md` → `wadi-skill/architect/SKILL.md` and authors the `.wdl`.
 3. If your agent doesn't pick up `AGENTS.md` on its own, tell it:
-   *"Follow the instructions in `wadi-skill/architect/SKILL.md` to author this `.wadi`."*
+   *"Follow the instructions in `wadi-skill/architect/SKILL.md` to author this `.wdl`."*
 
-**Verify the tooling** — both scripts reuse the app's own generators, so they match the
-app byte-for-byte:
+### 4. The tooling the agent runs (you can too)
+
+Both scripts reuse the app's own generators, so they match the app byte-for-byte. Pass an
+**absolute** path to the `.wdl`:
 
 ```bash
-# Validate a config (schema + wall/roof pipeline)
-cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs <ABS_PATH_TO.wadi>
-# Render floor plans / elevations / roof to PNGs the agent can read
-wadi-skill/architect/scripts/preview.sh <ABS_PATH_TO.wadi>
+# Check a .wdl: parse + resolve + schema/roof-wall geometry + structural conventions.
+# (No .wadi is written — it checks against a throwaway temp.)
+wadi-skill/architect/scripts/check.sh <ABS_PATH_TO.wdl>
+
+# Render floor plans / elevations / roof to PNGs the agent (and you) can read.
+wadi-skill/architect/scripts/preview.sh <ABS_PATH_TO.wdl>
 ```
+
+`check.sh` also enforces the **structural conventions**
+(`wadi-skill/architect/reference/conventions.md`) — e.g. the plinth-floor height must
+match the plinth block, a room must wall its exterior sides, a floor with no slab must set
+`slab_thickness 0` — failing on errors and printing warnings, so the agent (and you) catch
+a house that would float or sit open to the weather.
+
+> Hand-written raw JSON? `validate.mjs` still checks a `.wadi` directly:
+> `cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs <ABS_PATH_TO.wadi>`.
 
 ## Run & develop locally
 
@@ -222,6 +251,8 @@ docs/                      GitHub Pages root, served at wadi.house
   templates/               bundled starter templates + index.json
   house_config.json        default design (root house_config.json → symlink)
 src-tauri/                 desktop app (Tauri) wrapping docs/
+wadi-dsl/                  the Wadi DSL (.wdl): Langium grammar, compiler, DSL editor
+  examples/*.wdl              validated sample houses the skill copies from
 wadi-skill/architect/      agent-neutral AI skill (Claude Code, Antigravity, …)
 .claude/skills/            Claude Code skill adapters
 AGENTS.md                  vendor-neutral entrypoint for coding agents
@@ -246,9 +277,11 @@ python/  archive/          RETIRED Blender/Python pipeline — history only, do 
 
 ## References
 
-- **`wadi-skill/architect/`** — the AI skill: `SKILL.md` + `reference/{data-model,
-  coordinate-system,parametric-conventions,roof-v2-guide}.md` + validated `examples/`.
-  The reference docs are the authoritative, current description of the model.
+- **`wadi-skill/architect/`** — the AI skill: `SKILL.md` (the step-by-step authoring
+  loop) + `reference/{dsl,data-model,coordinate-system,parametric-conventions,conventions,
+  roof-v2-guide}.md` + validated `examples/`. The reference docs are the authoritative,
+  current description of the DSL, the model, and the structural conventions.
+- **`wadi-dsl/README.md`** — the Wadi DSL (`.wdl`): grammar, compiler, and the DSL editor.
 - **`editor/README.md`** — editor internals and architecture.
 - **`TEMPLATE_HOSTING.md`** — R2 bucket + CORS setup for templates / furniture.
 
