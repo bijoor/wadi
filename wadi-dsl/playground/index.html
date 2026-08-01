@@ -29,6 +29,8 @@
     }
     .tb-btn:hover, .tb-sel:hover { background: #3c3c3c; border-color: #555; }
     .tb-sel { padding: 5px 6px; }
+    .tb-muted { background: transparent; border-color: transparent; color: var(--muted); font-size: .78rem; }
+    .tb-muted:hover { background: #333; border-color: #444; }
     #filename {
       font-size: .8rem; color: var(--muted); white-space: nowrap; font-variant: tabular-nums;
     }
@@ -83,15 +85,6 @@
 <body>
   <header>
     <span class="brand">Wadi <b>DSL</b></span>
-    <select id="sample" class="tb-sel" title="Load a sample">
-      <option value="" disabled selected>Sample…</option>
-      <option value="minimal">minimal</option>
-      <option value="two_room">two_room</option>
-      <option value="two_story">two_story</option>
-      <option value="coastal">coastal</option>
-      <option value="complete">complete (all entities)</option>
-      <option value="errors">errors (broken)</option>
-    </select>
     <button id="open" class="tb-btn" title="Open a .wdl file (⌘O)">📂 Open</button>
     <button id="save" class="tb-btn" title="Save the .wdl (⌘S)">💾 Save</button>
     <button id="saveas" class="tb-btn" title="Save to a new file (⇧⌘S)">Save As…</button>
@@ -100,6 +93,15 @@
     <span class="spacer"></span>
     <span id="filename" title="Current file">untitled.wdl</span>
     <span id="status">starting…</span>
+    <select id="sample" class="tb-sel tb-muted" title="Start over from a bundled sample">
+      <option value="" disabled selected>New from sample…</option>
+      <option value="minimal">minimal</option>
+      <option value="two_room">two_room</option>
+      <option value="two_story">two_story</option>
+      <option value="coastal">coastal</option>
+      <option value="complete">complete (all entities)</option>
+      <option value="errors">errors (broken)</option>
+    </select>
     <a class="applink" href="/app/" target="_blank" rel="noopener">Open the app →</a>
   </header>
   <main>

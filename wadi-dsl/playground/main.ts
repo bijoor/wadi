@@ -31,7 +31,7 @@ const SAMPLES: Record<string, string> = {
   complete: completeSrc,
   errors: errorsSrc,
 };
-let currentName = "coastal"; // base filename for Save / Download
+let currentName = "minimal"; // base filename for Save / Download
 
 // Monaco only needs its base editor worker (plain-text language, no TS/JSON).
 self.MonacoEnvironment = { getWorker: () => new editorWorker() };
@@ -39,7 +39,7 @@ self.MonacoEnvironment = { getWorker: () => new editorWorker() };
 registerWadiDsl(monaco);
 
 const editor = monaco.editor.create(document.getElementById("editor")!, {
-  value: coastalSrc,
+  value: minimalSrc,
   language: LANG_ID,
   theme: "vs-dark",
   automaticLayout: true,
@@ -206,7 +206,11 @@ function baseName(p: string): string {
 }
 
 // The header label showing the open file + a • when there are unsaved edits.
+// The sample picker is a "start from scratch" affordance — once a real file is
+// open (loaded or saved), hide it so it stops distracting from the actual work.
 function updateFileLabel(): void {
+  const sample = document.getElementById("sample");
+  if (sample) sample.hidden = !!openFilePath;
   const el = document.getElementById("filename");
   if (!el) return;
   if (!openFilePath) { el.textContent = "untitled.wdl"; el.classList.remove("dirty"); return; }
