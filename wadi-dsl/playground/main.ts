@@ -205,12 +205,16 @@ function baseName(p: string): string {
   return p.split(/[/\\]/).pop() ?? p;
 }
 
+// Detach from the currently watched file → a fresh, unsaved "untitled" document
+// (used by New). Save As re-attaches to a chosen path.
+function detachFile(): void {
+  if (unwatchFile) { unwatchFile(); unwatchFile = null; }
+  openFilePath = null;
+  lastDiskText = null;
+}
+
 // The header label showing the open file + a • when there are unsaved edits.
-// The sample picker is a "start from scratch" affordance — once a real file is
-// open (loaded or saved), hide it so it stops distracting from the actual work.
 function updateFileLabel(): void {
-  const sample = document.getElementById("sample");
-  if (sample) sample.hidden = !!openFilePath;
   const el = document.getElementById("filename");
   if (!el) return;
   if (!openFilePath) { el.textContent = "untitled.wdl"; el.classList.remove("dirty"); return; }
@@ -292,16 +296,28 @@ function downloadText(name: string, text: string, type: string): void {
 function wireToolbar(): void {
   const $ = (id: string) => document.getElementById(id)!;
 
-  // Load a bundled sample.
-  const sample = $("sample") as HTMLSelectElement;
-  sample.addEventListener("change", () => {
-    const src = SAMPLES[sample.value];
-    if (src) {
-      editor.setValue(src); // fires onDidChangeModelContent → recompile + render
-      currentName = sample.value;
-    }
-    sample.selectedIndex = 0; // reset the label
+  // New — a menu of starter samples. Picking one starts a fresh, UNSAVED
+  // document (detached from any open file); Save As then writes it to disk.
+  const newBtn = $("new");
+  const newMenu = $("new-menu");
+  newBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    newMenu.hidden = !newMenu.hidden;
   });
+  newMenu.querySelectorAll<HTMLButtonElement>("button[data-sample]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const key = b.dataset.sample ?? "";
+      const src = SAMPLES[key];
+      if (src) {
+        detachFile();          // start a fresh, unsaved document
+        editor.setValue(src);  // fires onDidChangeModelContent → recompile + render
+        currentName = key;
+        updateFileLabel();
+      }
+      newMenu.hidden = true;
+    }),
+  );
+  document.addEventListener("click", () => { newMenu.hidden = true; });
 
   // Open a .wdl from disk. Desktop → native dialog + live file WATCH (co-edit);
   // browser → a one-shot file read (no disk watch available).
