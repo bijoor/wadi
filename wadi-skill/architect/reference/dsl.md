@@ -12,6 +12,9 @@ references and apply unchanged — read them:
 
 - `coordinate-system.md` — X→right, **Y→DOWN**, Z→up; **10 units = 1 ft**;
   the **centreline** convention. The #1 source of mistakes.
+- `conventions.md` — the **structural coding conventions** (`check.sh` enforces
+  them): plinth-floor height must match the plinth block, rooms must wall every
+  exterior side, a no-slab floor must set `slab_thickness 0`.
 - `parametric-conventions.md` — the grid-first recipe for reusable templates.
 - `roof-v2-guide.md` — roof segments, hip vs gable, trusses, joints.
 - `data-model.md` — the underlying `.wadi` schema (what the DSL compiles to; also
@@ -214,5 +217,9 @@ raw "type" { "field": 1, "formulas": { "field": "= expr" } }
   (no spaces, and not a reserved word like `width`, `height`, `size`, `at`).
 - **Roof alone on the top floor**; segment widths/positions come from the walls
   they sit on. See `roof-v2-guide.md`.
+- **Structural conventions are enforced** — `check.sh` fails on floating floors
+  (plinth-floor `height` ≠ plinth block height; a no-slab floor with nonzero
+  `slab_thickness`) and warns on exterior room sides left open. See
+  `conventions.md`; the DSL editor shows the same findings in its status pill.
 - Compile after **every** edit; a parse error means the `.wadi` wasn't updated, so
   the live model just won't change — never silently wrong.

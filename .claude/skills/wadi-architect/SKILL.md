@@ -31,6 +31,8 @@ Key files (read lazily, as SKILL.md directs):
 - `wadi-skill/architect/reference/data-model.md` — the underlying `.wadi` schema the DSL
   compiles to (generated from `editor/src/schema/houseConfig.ts`; also the `raw`-escape
   field reference).
+- `wadi-skill/architect/reference/conventions.md` — the **structural coding conventions**
+  `check.sh` enforces (floating floors, open exterior walls, no-slab floors).
 - `wadi-skill/architect/reference/{coordinate-system,roof-v2-guide,parametric-conventions}.md`
 - `wadi-dsl/examples/*.wdl` — validated `.wdl` houses to copy from (minimal, two_room,
   two_story, coastal, complete).

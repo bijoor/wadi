@@ -146,6 +146,26 @@ export function roomSideIsExternal(
   return !inAnyRoom(rects, cx + nx * probe, cy + ny * probe);
 }
 
+// Robust "open to the weather" test for a WHOLE room side, for structural
+// linting. Samples several points along the side and reports it external only
+// if NONE of them has a room just beyond — so a side sheltered by rooms above
+// (even where two rooms meet exactly at this side's midpoint) is not mistaken
+// for an exposed exterior wall the way a single centre probe can be.
+export function roomSideOpenToWeather(
+  rects: Rect[], rx: number, ry: number, rw: number, rl: number, side: Side, wallT: number,
+): boolean {
+  const probe = probeDist(wallT);
+  const [nx, ny] = OUT_NORMAL[side];
+  const horizontal = side === "north" || side === "south";
+  const fixed = side === "south" ? ry + rl : side === "north" ? ry : side === "east" ? rx + rw : rx;
+  for (const f of [0.25, 0.5, 0.75]) {
+    const cx = horizontal ? rx + rw * f : fixed;
+    const cy = horizontal ? fixed : ry + rl * f;
+    if (inAnyRoom(rects, cx + nx * probe, cy + ny * probe)) return false; // sheltered somewhere
+  }
+  return true;
+}
+
 // Split a wall run [lo,hi] (varying along `alongAxis`) into exposed/covered
 // segments, based on which sub-intervals have a room JUST BEYOND the outer face.
 // `beyond` is the fixed perpendicular coordinate of the sample line (already a

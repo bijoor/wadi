@@ -36,7 +36,7 @@ house CompleteShowcase {
     y: A @ wallT / 2, B @ House.L - wallT / 2
   }
 
-  floor 0 "Plinth" {
+  floor 0 "Plinth" height 40 {                 // floor height == plinth height (C1)
     ground name "Ground" at (0, 0) size (400, 500) layer "ground"
     plinth name "Plinth"
       at (main.x1, main.yA) size (main.x2 - main.x1, main.yB - main.yA)

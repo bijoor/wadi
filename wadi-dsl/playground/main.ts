@@ -15,6 +15,13 @@ import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { isTauri } from "@tauri-apps/api/core";
 import { registerWadiDsl, LANG_ID } from "./dsl-language";
 import { compileWithDiagnostics } from "../src/generator/toHouseConfig";
+import { resolveParametric } from "../../editor/src/param/resolve";
+import {
+  lintStructure,
+  partitionFindings,
+  formatFinding,
+  type LintFinding,
+} from "../../editor/src/lint/structural";
 import { REFERENCE_HTML } from "./reference";
 import minimalSrc from "../examples/minimal.wdl?raw";
 import twoRoomSrc from "../examples/two_room.wdl?raw";
@@ -99,7 +106,7 @@ function nudgeUntilSettled(): void {
   }, 500);
 }
 
-async function pushToViewer(config: Record<string, unknown>): Promise<void> {
+async function pushToViewer(config: Record<string, unknown>, findings: LintFinding[] = []): Promise<void> {
   try {
     if (!booted) {
       // Boot the app WITH the model present via ?load=<url>, so it runs its
@@ -114,13 +121,13 @@ async function pushToViewer(config: Record<string, unknown>): Promise<void> {
       booted = true;
       setTimeout(() => URL.revokeObjectURL(blobUrl), 10000); // after the app fetched it
       nudgeUntilSettled(); // first paint: correct the canvas size once laid out
-      setStatus("✓ rendered");
+      applyRenderedStatus(findings);
       return;
     }
     const wadi = await wadiPromise!;
     wadi.load(config); // live, in-place render (scene renders continuously)
     pokeResize();
-    setStatus("✓ rendered");
+    applyRenderedStatus(findings);
   } catch (e) {
     setStatus(`preview: ${(e as Error).message}`, true);
   }
@@ -136,14 +143,44 @@ function run(): void {
   );
   if (config) {
     setStatus("compiling…");
-    void pushToViewer(config);
+    void pushToViewer(config, lintCurrent(config));
   } else {
     const first = diagnostics[0];
     setStatus(first ? `⚠ ${first.startLineNumber}:${first.startColumn} ${trim(first.message)}` : "error", true);
+    statusEl.title = "";
   }
 }
 function trim(m: string): string {
   return m.length > 80 ? m.slice(0, 79) + "…" : m;
+}
+
+// Resolve formulas + run the structural-conventions linter (C1/C2/C3). Pure and
+// fast; a resolve failure just yields no findings (the compile diagnostics or the
+// viewer surface the real problem instead). The model still renders even with
+// findings — the point is to SHOW the unsound bits, not block the preview.
+function lintCurrent(config: Record<string, unknown>): LintFinding[] {
+  try {
+    const { config: resolved } = resolveParametric(config as never);
+    return lintStructure(resolved as never);
+  } catch {
+    return [];
+  }
+}
+
+// Fold lint findings into the status pill: a summary count, err-styled when any
+// are structural errors, with the full list in the hover title.
+function applyRenderedStatus(findings: LintFinding[]): void {
+  if (!findings.length) {
+    setStatus("✓ rendered");
+    statusEl.title = "";
+    return;
+  }
+  const { errors, warnings } = partitionFindings(findings);
+  const parts: string[] = [];
+  if (errors.length) parts.push(`✖ ${errors.length} structural error${errors.length === 1 ? "" : "s"}`);
+  if (warnings.length) parts.push(`⚠ ${warnings.length} warning${warnings.length === 1 ? "" : "s"}`);
+  setStatus(`✓ rendered · ${parts.join(" · ")}`, errors.length > 0);
+  statusEl.title = findings.map(formatFinding).join("\n");
 }
 
 // ---- Native file sync (desktop): open + WATCH + autosave a .wdl on disk, so a

@@ -36,7 +36,7 @@ house CoastalCottage {
   }
 
   // --- Plinth floor: terrain + raised base ---
-  floor 0 "Plinth" {
+  floor 0 "Plinth" height 40 {                 // floor height == plinth height (C1)
     ground name "Ground" at (0, 0) size (600, 700) layer "ground"
     plinth name "Plinth"
       at (main.x1, main.yA) size (main.x3 - main.x1, main.yC - main.yA)
@@ -50,6 +50,7 @@ house CoastalCottage {
     room Living
       at   (main.x1, main.yA)
       size (main.x2 - main.x1, main.yB - main.yA) {
+        wall west                                     // exterior side (C2)
         wall north { window LivWinN at 55 size (55, 55) sill 35 }
         wall south { door  LivDoor  at 60 size (32, 80) }
       }
@@ -57,12 +58,14 @@ house CoastalCottage {
     room Kitchen
       at   (main.x2, main.yA)
       size (main.x3 - main.x2, main.yB - main.yA) {
+        wall north                                    // exterior side (C2)
         wall east { window KitWinE at 40 size (45, 45) sill 40 }
       }
 
     room Bedroom
       at   (main.x1, main.yB)
       size (main.x3 - main.x1, main.yC - main.yB) {
+        wall east                                     // exterior side (C2)
         wall west  { window BedWinW at 50 size (55, 55) sill 35 }
         wall south { door  BedDoor  at 70 size (32, 80) }
       }

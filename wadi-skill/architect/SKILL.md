@@ -99,6 +99,11 @@ merges cleanly with theirs.
   joints, trusses, shed). Its fields are freeform in the schema (validated at
   derivation), so this guide is the field reference for roofs. Read before touching a
   roof.
+- **`reference/conventions.md`** — the **structural coding conventions** every house
+  must follow (plinth-floor height must match the plinth block, rooms must wall every
+  exterior side, a floor with no slab must set `slab_thickness 0`, …). These are
+  *enforced* by `check.sh` — errors fail, warnings are advisory — and shown in the DSL
+  editor's status. Read it so you author sound houses the first time.
 - **`reference/parametric-conventions.md`** — how to build a **fully-parametric** model
   (a reusable template that stays valid under any knob change): the **grid-first**
   recipe — variables (knobs) → named grid lines (formulas of the house size) → rooms &
@@ -118,8 +123,14 @@ merges cleanly with theirs.
 `check.sh` runs the DSL end-to-end for **feedback only**: it parses the `.wdl` (reporting
 parse errors with `line:col`), resolves formulas/grids into numbers, and runs the real
 schema + roof/wall geometry validator (catches zero-length roof segments, missing slope,
-bad openings that the schema alone misses) — all against a **throwaway temp** that is
-deleted. It never writes a `.wadi`; the app's DSL previewer does the real conversion.
+bad openings that the schema alone misses), and finally the **structural conventions**
+linter (`reference/conventions.md`: floating floors, open exterior walls, no-slab floors)
+— all against a **throwaway temp** that is deleted. It never writes a `.wadi`; the app's
+DSL previewer does the real conversion.
+
+Convention **errors** (`✖ [C…]`) fail the check — fix them. Convention **warnings**
+(`⚠ [C…]`) are printed but don't fail; fix them, or keep them if the open side is a
+deliberate verandah.
 
 ```bash
 wadi-skill/architect/scripts/check.sh "<ABS>.wdl"
@@ -168,7 +179,13 @@ app's 2D tabs byte-for-byte. See `prompts/verify-visually.md`.
   up/down, change floor heights, not the roof. (See `reference/roof-v2-guide.md`.)
 - **Floors stack; `floor_number` is 0-based** (the plinth floor = 0). Heights are
   independent per floor (`height`, `wall_height`, `slab_thickness` are unrelated
-  fields).
+  fields) — *except* where the **structural conventions** require a match: the
+  plinth-floor `height` must equal the plinth block height, and a floor with no slab
+  must set `slab_thickness 0`, or the floors above float. See `reference/conventions.md`.
+- **A partial `wall` list makes a room a whitelist.** A bare room (no `wall` lines) is
+  enclosed on all four sides; add one `wall` line and every side you don't list becomes a
+  hole. Wall every **exterior** side (convention C2). List plain sides compactly:
+  `wall east west`, then the opening sides separately.
 - **Minimal patches.** Preserve unchanged `.wdl` lines verbatim so the user (and diffs)
   can see exactly what moved.
 - **Formulas are bare expressions in the DSL** — write `at (main.x1, main.yA)`, not

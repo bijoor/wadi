@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { validate } from "../../../editor/src/schema/houseConfig";
 import { computeMergedV2Spec } from "../../../editor/src/svg2d/roof/v2/computeFromHouse";
+import { lintStructure, partitionFindings, formatFinding } from "../../../editor/src/lint/structural";
 
 function readInput() {
   const arg = process.argv[2];
@@ -52,4 +53,19 @@ try {
   process.exit(1);
 }
 
-console.log("✅ Valid — schema + wall/roof pipeline OK");
+// 3. Structural conventions (soundness the schema/geometry can't see: floating
+//    floors, missing exterior walls, no-slab floors). Errors fail; warnings are
+//    advisory. See wadi-skill/architect/reference/conventions.md.
+const { errors, warnings } = partitionFindings(lintStructure(res.data));
+for (const w of warnings) console.error("   " + formatFinding(w));
+if (errors.length) {
+  console.error(`❌ Structural conventions failed (${errors.length} error${errors.length === 1 ? "" : "s"}):`);
+  for (const e of errors) console.error("   " + formatFinding(e));
+  process.exit(1);
+}
+
+console.log(
+  warnings.length
+    ? `✅ Valid — schema + wall/roof pipeline OK (${warnings.length} convention warning${warnings.length === 1 ? "" : "s"} above)`
+    : "✅ Valid — schema + wall/roof pipeline + structural conventions OK",
+);

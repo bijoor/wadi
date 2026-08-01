@@ -33,6 +33,9 @@ from a brief vs. recreating one from a drawing, and the pitfalls. Supporting fil
   DSL compiles to, generated from the Zod source so it never drifts. Regenerate after a
   schema change:
   `node wadi-skill/architect/scripts/gen-schema-doc.mjs editor/src/schema/houseConfig.ts wadi-skill/architect/reference/data-model.md`
+- `wadi-skill/architect/reference/conventions.md` — the **structural coding
+  conventions** every house must follow (enforced by `check.sh`; shown in the DSL
+  editor). Floating floors, open exterior walls, no-slab floors.
 - `wadi-skill/architect/reference/{coordinate-system,roof-v2-guide,parametric-conventions}.md`
 - `wadi-dsl/examples/*.wdl` — validated `.wdl` houses to copy from (minimal, two_room,
   two_story, coastal, complete).

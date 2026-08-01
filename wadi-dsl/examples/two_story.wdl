@@ -15,7 +15,9 @@ house TwoStory {
     y: A @ wallT / 2, B @ House.L / 2, C @ House.L - wallT / 2
   }
 
-  floor 0 "Plinth" {
+  // The plinth floor's height MUST equal the plinth block height (convention
+  // C1) or the Ground Floor above would float 40 units into the air.
+  floor 0 "Plinth" height 40 {
     ground name "Ground" at (0, 0) size (500, 500) layer "ground"
     plinth name "Plinth"
       at (main.x1, main.yA) size (main.x3 - main.x1, main.yC - main.yA)
@@ -25,12 +27,15 @@ house TwoStory {
   floor 1 "Ground Floor" {
     slab at (main.x1, main.yA) size (main.x3 - main.x1, main.yC - main.yA)
     room Hall at (main.x1, main.yA) size (main.x3 - main.x1, main.yB - main.yA) {
+      wall north east west                            // all three exterior sides (C2)
       wall south { door Main at 120 size (36, 84) }
     }
     room Kitchen at (main.x1, main.yB) size (main.x2 - main.x1, main.yC - main.yB) {
+      wall south                                      // exterior side (C2)
       wall west { window KW at 40 size (45, 45) sill 40 }
     }
     room Bath at (main.x2, main.yB) size (main.x3 - main.x2, main.yC - main.yB) {
+      wall south                                      // exterior side (C2)
       wall east { window BW at 30 size (40, 40) sill 45 }
     }
   }
@@ -38,9 +43,11 @@ house TwoStory {
   floor 2 "First Floor" {
     slab at (main.x1, main.yA) size (main.x3 - main.x1, main.yC - main.yA)
     room Bedroom1 at (main.x1, main.yA) size (main.x2 - main.x1, main.yC - main.yA) {
+      wall north south                                // exterior sides (C2)
       wall west { window B1 at 60 size (55, 50) sill 35 }
     }
     room Bedroom2 at (main.x2, main.yA) size (main.x3 - main.x2, main.yC - main.yA) {
+      wall north south                                // exterior sides (C2)
       wall east { window B2 at 60 size (55, 50) sill 35 }
     }
     staircase name "Stair" at (300, 60) step (7, 10, 36) direction south
