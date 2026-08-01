@@ -1,0 +1,28 @@
+{
+  "name": "wadi-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for the Wadi house designer — check, preview, and reference the Wadi DSL (.wdl) without the repo.",
+  "type": "module",
+  "bin": {
+    "wadi-mcp": "dist/server.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "gen-assets": "node scripts/gen-assets.mjs",
+    "dev": "npm run gen-assets && tsx src/server.ts",
+    "smoke": "npm run gen-assets && tsx scripts/smoke.mjs",
+    "build": "npm run gen-assets && node esbuild.mjs",
+    "start": "node dist/server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@resvg/resvg-js": "^2.6.2",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "tsx": "^4.19.0"
+  }
+}

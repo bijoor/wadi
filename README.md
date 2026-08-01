@@ -203,6 +203,34 @@ a house that would float or sit open to the weather.
 > Hand-written raw JSON? `validate.mjs` still checks a `.wadi` directly:
 > `cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs <ABS_PATH_TO.wadi>`.
 
+### Repo-free: run it as an MCP server
+
+Everything above needs the repo checked out (the scripts reuse the app's TypeScript). To
+use the skill **without a clone**, run **`wadi-mcp/`** — an MCP server that bundles the
+whole pipeline (DSL compiler + schema + geometry + conventions + 2D renderers) and the
+examples/reference docs into one self-contained file. It exposes agent-native tools:
+
+| Tool | Replaces |
+| --- | --- |
+| `wadi_check` | `check.sh` — parse + resolve + schema/geometry + structural conventions |
+| `wadi_preview` | `preview.sh` — renders plans / elevations / roof to **PNG images** the agent reads |
+| `wadi_examples` | the `examples/*.wdl` (embedded) |
+| `wadi_reference` | the reference docs (embedded: guide, dsl, conventions, …) |
+
+```bash
+cd wadi-mcp && npm install && npm run build   # → dist/server.mjs (only @resvg/resvg-js external)
+```
+
+Register it with any MCP client (Claude Code, Cursor, Claude Desktop, …):
+
+```json
+{ "mcpServers": { "wadi": { "command": "node", "args": ["/abs/path/to/wadi-mcp/dist/server.mjs"] } } }
+```
+
+Then the agent authors a `.wdl` using `wadi_reference` / `wadi_examples` and verifies with
+`wadi_check` / `wadi_preview` — no repo, no desktop app. (The live 3D preview still comes
+from the DSL editor if you want it.) See **`wadi-mcp/README.md`**.
+
 ## Run & develop locally
 
 ```bash
@@ -254,6 +282,7 @@ src-tauri/                 desktop app (Tauri) wrapping docs/
 wadi-dsl/                  the Wadi DSL (.wdl): Langium grammar, compiler, DSL editor
   examples/*.wdl              validated sample houses the skill copies from
 wadi-skill/architect/      agent-neutral AI skill (Claude Code, Antigravity, …)
+wadi-mcp/                  MCP server — the skill's tooling, repo-free (check/preview/examples)
 .claude/skills/            Claude Code skill adapters
 AGENTS.md                  vendor-neutral entrypoint for coding agents
 library/                   reference parametric .wadi models

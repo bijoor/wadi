@@ -57,6 +57,12 @@ The **live render** comes from the Wadi app's DSL previewer (desktop **⌘⇧D �
 `wadi.house/dsl`) open on the `.wdl`; without it you can still author, check, and render
 preview images.
 
+**Repo-free option — MCP.** If you can't/don't want to clone the repo, run the **`wadi-mcp`**
+server (`wadi-mcp/`, `npm install && npm run build` → `dist/server.mjs`) and register it with
+your MCP client. It bundles the whole pipeline + the examples/reference docs and exposes
+`wadi_check`, `wadi_preview` (PNG images), `wadi_examples`, and `wadi_reference` — the
+tool-based equivalents of the scripts above, with no checkout needed. See `wadi-mcp/README.md`.
+
 ## Capabilities assumed
 
 File read/write + shell + Node. Nothing agent-specific — any agent with those can run
