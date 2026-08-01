@@ -53,9 +53,35 @@
     }
     #status.err { background: #4a2d2d; color: #f0a3a3; }
     main { flex: 1; display: grid; grid-template-columns: minmax(340px, 44%) 1fr; min-height: 0; position: relative; }
-    #editor { min-width: 0; height: 100%; border-right: 1px solid var(--border); }
+    .editor-col { display: flex; flex-direction: column; min-width: 0; height: 100%; border-right: 1px solid var(--border); }
+    #editor { flex: 1 1 auto; min-height: 0; }
     .preview { position: relative; min-width: 0; background: #0d0d0d; }
     .preview iframe { width: 100%; height: 100%; border: 0; display: block; background: #cfe3d8; }
+
+    /* Problems panel — the detailed, readable list of errors + warnings. */
+    #problems { flex: 0 0 auto; max-height: 45%; display: flex; flex-direction: column;
+      border-top: 1px solid var(--border); background: #1b1b1b; }
+    #problems[hidden] { display: none; }
+    #problems.collapsed { max-height: none; }
+    #problems.collapsed #prob-list { display: none; }
+    .prob-head { display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer;
+      user-select: none; background: #252526; border-bottom: 1px solid var(--border); font-size: .82rem; }
+    .prob-head:hover { background: #2c2c2c; }
+    #prob-title { font-weight: 600; }
+    .prob-count { font-variant: tabular-nums; margin-left: 2px; }
+    .prob-count .e { color: #f0a3a3; } .prob-count .w { color: #e6c07b; }
+    #prob-chevron { margin-left: auto; color: var(--muted); transition: transform .12s; }
+    #problems.collapsed #prob-chevron { transform: rotate(-90deg); }
+    #prob-list { overflow-y: auto; padding: 3px 0; }
+    .prob { display: flex; gap: 9px; align-items: baseline; padding: 5px 12px; font-size: .82rem;
+      line-height: 1.45; border-left: 3px solid transparent; }
+    .prob:hover { background: #2a2a2a; }
+    .prob.error { border-left-color: #d9534f; } .prob.warn { border-left-color: #c8952f; }
+    .prob.jump { cursor: pointer; }
+    .prob .ic { flex: 0 0 auto; } .prob.error .ic { color: #f0a3a3; } .prob.warn .ic { color: #e6c07b; }
+    .prob .loc { flex: 0 0 auto; color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace;
+      white-space: nowrap; }
+    .prob .msg { color: var(--text); }
 
     /* Reference slide-over (over the preview) */
     #reference-panel {
@@ -89,7 +115,7 @@
 
     @media (max-width: 760px) {
       main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
-      #editor { border-right: 0; border-bottom: 1px solid var(--border); }
+      .editor-col { border-right: 0; border-bottom: 1px solid var(--border); }
       header .brand { display: none; }
     }
   </style>
@@ -118,7 +144,16 @@
     <a class="applink" href="/app/" target="_blank" rel="noopener">Open the app →</a>
   </header>
   <main>
-    <div id="editor"></div>
+    <div class="editor-col">
+      <div id="editor"></div>
+      <div id="problems" hidden>
+        <div class="prob-head">
+          <span id="prob-title">Problems</span>
+          <span id="prob-chevron">▾</span>
+        </div>
+        <div id="prob-list"></div>
+      </div>
+    </div>
     <div class="preview">
       <!-- main.ts boots the app at /app/?panels=off&load=<blob url of the first
            compiled house> (the ?load path frames the camera), then live-updates

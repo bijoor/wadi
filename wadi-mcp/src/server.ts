@@ -21,8 +21,8 @@ server.registerTool(
     title: "Check a Wadi DSL (.wdl) design",
     description:
       "Compile and validate a Wadi DSL house: parse, resolve formulas/grids, then run the real schema + " +
-      "wall/roof geometry checks and the structural conventions (C1 plinth height, C2 exterior walls, " +
-      "C3 no-slab slab_thickness). Returns pass/fail with errors and warnings. Run after every edit.",
+      "wall/roof geometry checks and the structural conventions (plinth height, exterior walls, no-slab " +
+      "slab_thickness, floor height = wall + slab). Returns pass/fail with errors and warnings. Run after every edit.",
     inputSchema: { wdl: z.string().describe("The full .wdl source text to check.") },
   },
   async ({ wdl }) => {

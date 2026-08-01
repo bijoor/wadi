@@ -66,6 +66,37 @@ describe("structural lint — C3 no slab ⇒ slab_thickness 0", () => {
   });
 });
 
+describe("structural lint — C4 floor height = wall_height + slab_thickness", () => {
+  const occupied = (extra: Record<string, unknown>) => ({
+    floor_number: 1,
+    name: "Ground",
+    objects: [
+      { type: "floor_slab", x: 0, y: 0, width: 200, length: 200 },
+      { type: "room", name: "R", x: 4, y: 4, width: 190, length: 190, walls: ["north", "south", "east", "west"] },
+    ],
+    ...extra,
+  });
+  const above = { floor_number: 2, name: "Upper", objects: [] };
+
+  it("warns when height ≠ wall_height + slab_thickness (gap over the walls)", () => {
+    const f = lintStructure(house([occupied({ height: 120, wall_height: 108, slab_thickness: 8 }), above]));
+    const c4 = f.filter((x) => x.rule === "C4");
+    expect(c4).toHaveLength(1);
+    expect(c4[0].level).toBe("warn");
+    expect(c4[0].message).toContain("gap");
+  });
+
+  it("passes when height == wall_height + slab_thickness", () => {
+    const f = lintStructure(house([occupied({ height: 116, wall_height: 108, slab_thickness: 8 }), above]));
+    expect(f.filter((x) => x.rule === "C4")).toHaveLength(0);
+  });
+
+  it("does not apply to the topmost floor (nothing sits on its walls)", () => {
+    const f = lintStructure(house([occupied({ height: 120, wall_height: 108, slab_thickness: 8 })]));
+    expect(f.filter((x) => x.rule === "C4")).toHaveLength(0);
+  });
+});
+
 describe("structural lint — C2 rooms must wall every exterior side", () => {
   const single = (walls: unknown) => ({
     floor_number: 1,

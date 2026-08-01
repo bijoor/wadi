@@ -66,6 +66,73 @@ function setStatus(text: string, error = false): void {
   statusEl.classList.toggle("err", error);
 }
 
+// ---- Problems panel: the detailed, readable list of parse errors + lint findings.
+const problemsEl = document.getElementById("problems")!;
+const probListEl = document.getElementById("prob-list")!;
+const probTitleEl = document.getElementById("prob-title")!;
+document.querySelector(".prob-head")!.addEventListener("click", () => problemsEl.classList.toggle("collapsed"));
+// The status pill expands the panel (in case it was collapsed) so a click reveals detail.
+statusEl.style.cursor = "pointer";
+statusEl.addEventListener("click", () => {
+  if (!problemsEl.hidden) problemsEl.classList.remove("collapsed");
+});
+
+type DslDiagnostic = { startLineNumber: number; startColumn: number; message: string };
+
+function escHtml(s: string): string {
+  return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+}
+function probRow(level: "error" | "warn", badge: string, message: string, line?: number, col?: number): string {
+  const cls = `prob ${level}${line ? " jump" : ""}`;
+  const data = line ? ` data-line="${line}" data-col="${col ?? 1}"` : "";
+  const icon = level === "error" ? "✖" : "⚠";
+  const loc = badge ? `<span class="loc">${escHtml(badge)}</span>` : "";
+  return `<div class="${cls}"${data}><span class="ic">${icon}</span>${loc}<span class="msg">${escHtml(message)}</span></div>`;
+}
+// Render every diagnostic (parse errors, with line:col + jump) and lint finding
+// (rule + level) into the panel. Hidden when there's nothing to show.
+function renderProblems(diagnostics: DslDiagnostic[], findings: LintFinding[]): void {
+  const rows: string[] = [];
+  let e = 0;
+  let w = 0;
+  for (const d of diagnostics) {
+    e++;
+    rows.push(probRow("error", `Ln ${d.startLineNumber}:${d.startColumn}`, d.message, d.startLineNumber, d.startColumn));
+  }
+  for (const f of findings.filter((f) => f.level === "error")) {
+    e++;
+    rows.push(probRow("error", f.rule ?? "", f.message));
+  }
+  for (const f of findings.filter((f) => f.level === "warn")) {
+    w++;
+    rows.push(probRow("warn", f.rule ?? "", f.message));
+  }
+  if (!rows.length) {
+    problemsEl.hidden = true;
+    probListEl.innerHTML = "";
+    return;
+  }
+  problemsEl.hidden = false;
+  const counts =
+    `<span class="prob-count">` +
+    (e ? `<span class="e">✖ ${e}</span> ` : "") +
+    (w ? `<span class="w">⚠ ${w}</span>` : "") +
+    `</span>`;
+  probTitleEl.innerHTML = `Problems ${counts}`;
+  probListEl.innerHTML = rows.join("");
+  probListEl.querySelectorAll<HTMLElement>(".prob.jump").forEach((el) => {
+    el.addEventListener("click", () => {
+      const ln = Number(el.dataset.line || 0);
+      const col = Number(el.dataset.col || 1);
+      if (ln) {
+        editor.revealLineInCenter(ln);
+        editor.setPosition({ lineNumber: ln, column: col });
+        editor.focus();
+      }
+    });
+  });
+}
+
 type Wadi = { load: (c: unknown) => unknown };
 
 // The iframe's window.wadi appears once the viewer has booted. Resolve to it.
@@ -141,9 +208,11 @@ function run(): void {
     "wadi-dsl",
     diagnostics.map((d) => ({ ...d, severity: monaco.MarkerSeverity.Error })),
   );
+  const findings = config ? lintCurrent(config) : [];
+  renderProblems(diagnostics, findings);
   if (config) {
     setStatus("compiling…");
-    void pushToViewer(config, lintCurrent(config));
+    void pushToViewer(config, findings);
   } else {
     const first = diagnostics[0];
     setStatus(first ? `⚠ ${first.startLineNumber}:${first.startColumn} ${trim(first.message)}` : "error", true);

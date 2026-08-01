@@ -10,7 +10,7 @@ house CoastalCottage {
   units feet_inches per_unit 10
 
   site { plot (600, 700) ref (0, 0) }
-  defaults { floor_height 120 wall_height 108 slab_thickness 8 wall_thickness 8 }
+  defaults { floor_height 116 wall_height 108 slab_thickness 8 wall_thickness 8 }  // floor_height = wall_height + slab_thickness (C4)
 
   // --- Parametric core: the degrees of freedom + the grid scaffold ---
   var wallT     = 8

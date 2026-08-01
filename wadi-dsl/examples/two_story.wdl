@@ -6,7 +6,7 @@ house TwoStory {
   units feet_inches per_unit 10
 
   site { plot (500, 500) ref (0, 0) }
-  defaults { floor_height 120 wall_height 108 slab_thickness 8 wall_thickness 8 }
+  defaults { floor_height 116 wall_height 108 slab_thickness 8 wall_thickness 8 }  // floor_height = wall_height + slab_thickness (C4)
 
   var wallT = 8
   point House { x = 352, y = 352 }

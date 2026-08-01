@@ -124,6 +124,27 @@ harmless.)*
 
 ---
 
+## C4 — A stacked floor's height should equal wall_height + slab_thickness · **warning**
+
+**Statement.** A floor that carries a floor above it (and has walls/rooms) should set
+`height` = `wall_height` + `slab_thickness`.
+
+**Rationale.** The next floor sits at `base + height`; this floor's walls stand on the
+deck and reach `base + slab_thickness + wall_height`. When `height` is larger, the floor
+above leaves a gap over the walls; when smaller, the walls poke through it. (These three
+fields are otherwise independent — see the vertical model above.) It is a **warning** — a
+deliberate gap is legitimate (a service plenum, a deep transfer beam) — but usually they
+should match.
+
+**Fix.** Make them add up, most simply via the house defaults:
+
+```wdl
+defaults { floor_height 116 wall_height 108 slab_thickness 8 }   // 108 + 8 = 116
+```
+
+*(Skipped for the plinth floor — governed by C1 — and for the topmost floor, since nothing
+stacks on its walls.)*
+
 ## Running the checks
 
 ```bash

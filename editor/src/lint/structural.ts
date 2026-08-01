@@ -45,6 +45,7 @@ export const CONVENTIONS: ConventionMeta[] = [
   { id: "C1", title: "The plinth floor's height must match the plinth block height", level: "error" },
   { id: "C2", title: "A room must wall every exterior side", level: "warn" },
   { id: "C3", title: "A floor with no slab must set slab_thickness to 0", level: "error" },
+  { id: "C4", title: "A stacked floor's height should equal wall_height + slab_thickness", level: "warn" },
 ];
 
 type Bag = Record<string, unknown>;
@@ -135,6 +136,10 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
   const wallTDefault = num(defaults.wall_thickness ?? DEFAULT_GLOBAL_CONFIG.wall_thickness);
   const slabDefault =
     defaults.slab_thickness != null ? num(defaults.slab_thickness) : DEFAULT_GLOBAL_CONFIG.floor_slab_thickness;
+  const floorHeightDefault =
+    defaults.floor_height != null ? num(defaults.floor_height) : DEFAULT_GLOBAL_CONFIG.floor_height;
+  const wallHeightDefault =
+    defaults.wall_height != null ? num(defaults.wall_height) : DEFAULT_GLOBAL_CONFIG.wall_height;
 
   const findings: LintFinding[] = [];
   // Room footprints across all floors — used for C2's exterior/interior verdict.
@@ -143,7 +148,8 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
   // one already walled by a neighbour / overlapping room / standalone wall.
   const wallSegs = collectWallSegments(floors);
 
-  for (const fl of floors) {
+  for (let fi = 0; fi < floors.length; fi++) {
+    const fl = floors[fi];
     const objs = activeObjects(fl);
     const fnum = num(fl.floor_number);
 
@@ -201,6 +207,33 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
             `${cap(floorLabel(fl))} has ${deckObjs.length} wall/room object${deckObjs.length === 1 ? "" : "s"} ` +
             `but no floor slab, yet slab_thickness is ${eff}${explicit == null ? " (default)" : ""}. ` +
             `The walls float ${eff} units above the floor base. Set \`slab_thickness 0\` on this floor, or add a \`slab\`.`,
+        });
+      }
+    }
+
+    // ---- C4: a stacked floor's height should equal wall_height + slab_thickness ----
+    // The next floor sits at base + height; this floor's walls stand on the deck
+    // and reach base + slab_thickness + wall_height. When those differ, the floor
+    // above leaves a gap over the walls (or the walls poke through it). Only
+    // applies to an OCCUPIED floor that carries a floor above it; the plinth floor
+    // is governed by C1 instead.
+    const hasFloorAbove = fi < floors.length - 1;
+    if (deckObjs.length && hasFloorAbove && !plinths.length) {
+      const h = fl.height != null ? num(fl.height) : floorHeightDefault;
+      const wh = fl.wall_height != null ? num(fl.wall_height) : wallHeightDefault;
+      const st = fl.slab_thickness != null ? num(fl.slab_thickness) : slabDefault;
+      const gap = h - (wh + st);
+      if (Math.abs(gap) > 1e-3) {
+        findings.push({
+          rule: "C4",
+          level: "warn",
+          floor: fnum,
+          message:
+            `${cap(floorLabel(fl))}: floor height (${h}) ≠ wall_height (${wh}) + slab_thickness (${st}) = ${wh + st}. ` +
+            (gap > 0
+              ? `The floor above leaves a ${gap}-unit gap over the walls. `
+              : `The walls poke ${Math.abs(gap)} units through the floor above. `) +
+            `Set height = wall_height + slab_thickness (or adjust them) unless the gap is intentional.`,
         });
       }
     }
