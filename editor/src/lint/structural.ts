@@ -79,6 +79,55 @@ function declaredSides(walls: unknown): "all" | Set<Side> {
   return "all";
 }
 
+// An axis-aligned wall segment: a line (horizontal or vertical) at `at`, spanning
+// [lo, hi] along the other axis.
+interface Seg {
+  horiz: boolean;
+  at: number;
+  lo: number;
+  hi: number;
+}
+function sideSegment(x: number, y: number, w: number, l: number, side: Side): Seg {
+  if (side === "north") return { horiz: true, at: y, lo: x, hi: x + w };
+  if (side === "south") return { horiz: true, at: y + l, lo: x, hi: x + w };
+  if (side === "west") return { horiz: false, at: x, lo: y, hi: y + l };
+  return { horiz: false, at: x + w, lo: y, hi: y + l }; // east
+}
+
+// Every wall segment present in the config: each room's DECLARED sides and every
+// standalone wall. Used so C2 doesn't flag a room's exterior side that already
+// has a wall on its line — e.g. a shared boundary walled by the neighbour, or an
+// overlapping room whose wall runs along this side.
+function collectWallSegments(floors: Bag[]): Seg[] {
+  const segs: Seg[] = [];
+  for (const fl of floors) {
+    for (const o of activeObjects(fl)) {
+      if (o.type === "room") {
+        const declared = declaredSides(o.walls);
+        const sides: Side[] = declared === "all" ? ALL_SIDES : [...declared];
+        const x = num(o.x), y = num(o.y), w = num(o.width), l = num(o.length);
+        for (const s of sides) segs.push(sideSegment(x, y, w, l, s));
+      } else if (o.type === "wall") {
+        const sx = num(o.start_x), sy = num(o.start_y), ex = num(o.end_x), ey = num(o.end_y);
+        if (Math.abs(sy - ey) < 1) segs.push({ horiz: true, at: sy, lo: Math.min(sx, ex), hi: Math.max(sx, ex) });
+        else if (Math.abs(sx - ex) < 1) segs.push({ horiz: false, at: sx, lo: Math.min(sy, ey), hi: Math.max(sy, ey) });
+      }
+    }
+  }
+  return segs;
+}
+
+// Is there already a wall on this side's line, covering it? (line coordinate
+// within tolerance; a real overlap along the side.)
+function sideHasWall(segs: Seg[], seg: Seg): boolean {
+  for (const s of segs) {
+    if (s.horiz !== seg.horiz) continue;
+    if (Math.abs(s.at - seg.at) > 1.5) continue;
+    if (Math.min(s.hi, seg.hi) - Math.max(s.lo, seg.lo) > 2) return true;
+  }
+  return false;
+}
+
 export function lintStructure(config: HouseConfig): LintFinding[] {
   const cfg = config as unknown as Bag;
   const floors = (cfg.floors as Bag[] | undefined) ?? [];
@@ -90,6 +139,9 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
   const findings: LintFinding[] = [];
   // Room footprints across all floors — used for C2's exterior/interior verdict.
   const rects = buildRoomRects(config);
+  // Every declared wall segment — so C2 can tell a truly-open exterior side from
+  // one already walled by a neighbour / overlapping room / standalone wall.
+  const wallSegs = collectWallSegments(floors);
 
   for (const fl of floors) {
     const objs = activeObjects(fl);
@@ -163,8 +215,12 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
       const missing = ALL_SIDES.filter((s) => !declared.has(s));
       if (!missing.length) continue;
       const wallT = num(o.wall_thickness ?? o.thickness ?? wallTDefault);
+      const rx = num(o.x), ry = num(o.y), rw = num(o.width), rl = num(o.length);
       for (const side of missing) {
-        if (roomSideOpenToWeather(rects, num(o.x), num(o.y), num(o.width), num(o.length), side, wallT)) {
+        // Already walled on this line (by a neighbour / overlapping room / standalone
+        // wall)? Then it isn't open, even though this room doesn't declare it.
+        if (sideHasWall(wallSegs, sideSegment(rx, ry, rw, rl, side))) continue;
+        if (roomSideOpenToWeather(rects, rx, ry, rw, rl, side, wallT)) {
           findings.push({
             rule: "C2",
             level: "warn",

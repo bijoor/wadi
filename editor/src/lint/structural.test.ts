@@ -93,6 +93,22 @@ describe("structural lint — C2 rooms must wall every exterior side", () => {
     expect(f.filter((x) => x.rule === "C2")).toHaveLength(0);
   });
 
+  it("does not warn for an exterior side already walled by an overlapping/adjacent room", () => {
+    // Bath sits in Big's corner; Bath declares only south+west, but its north and
+    // east lines are already walled by Big — so those sides are NOT open.
+    const floor = {
+      floor_number: 1,
+      name: "Ground",
+      slab_thickness: 0,
+      objects: [
+        { type: "room", name: "Big", x: 0, y: 0, width: 200, length: 200, walls: ["north", "south", "east", "west"] },
+        { type: "room", name: "Bath", x: 100, y: 0, width: 100, length: 100, walls: ["south", "west"] },
+      ],
+    };
+    const f = lintStructure(house([floor]));
+    expect(f.filter((x) => x.rule === "C2")).toHaveLength(0);
+  });
+
   it("does not warn for an interior (shared) side left open", () => {
     // Two abutting rooms; Bedroom's west side is shared with Living (interior),
     // so leaving it undeclared must NOT warn — only its exterior sides can.

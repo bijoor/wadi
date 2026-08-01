@@ -92,7 +92,10 @@ room Living at (x,y) size (w,l) {
 ```
 
 *(The check samples several points along each side, so a side sheltered by rooms
-above is correctly treated as interior, not open.)*
+above is correctly treated as interior, not open. It also skips a side that
+already has a wall on its line — one declared by an adjacent or overlapping room,
+or a standalone wall — so a shared exterior wall the neighbour declares is not
+double-flagged.)*
 
 ---
 
