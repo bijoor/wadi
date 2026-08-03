@@ -139,3 +139,30 @@ describe("computeWallAreas", () => {
     expect(r.grandExternal).toBe(r.external.net + r.gables.area);
   });
 });
+
+describe("splitWallByCoverage — only same-floor rooms shelter a wall", () => {
+  it("a higher-floor outboard room (open landing/balcony) leaves the wall below EXTERIOR", async () => {
+    const { splitWallByCoverage } = await import("./wallArea");
+    // Ground east wall: axis y, outer face beyond x=220, span y 8..240, on floor 1.
+    // A first-floor (idx 2) landing sits outboard+above at x 200..268, y 0..68.
+    const rects = [
+      { x: 0, y: 0, w: 208, l: 248, floor: 1 },        // ground room (same floor)
+      { x: 200, y: 0, w: 68, l: 68, floor: 2 },         // first-floor landing (higher)
+    ];
+    const segs = splitWallByCoverage(rects, "y", 220, 8, 240, 1);
+    // Whole wall stays exterior — the landing a floor up does NOT shelter it.
+    expect(segs).toEqual([{ s: 8, e: 240, external: true }]);
+  });
+
+  it("a SAME-floor outboard room (verandah in front) DOES make the wall interior", async () => {
+    const { splitWallByCoverage } = await import("./wallArea");
+    const rects = [
+      { x: 0, y: 0, w: 208, l: 248, floor: 1 },
+      { x: 200, y: 0, w: 68, l: 68, floor: 1 },         // same floor → shelters
+    ];
+    const segs = splitWallByCoverage(rects, "y", 220, 8, 240, 1);
+    // y 8..68 covered by the verandah → interior; the rest exterior.
+    expect(segs.some((s) => !s.external && s.s < 68)).toBe(true);
+    expect(segs.some((s) => s.external)).toBe(true);
+  });
+});

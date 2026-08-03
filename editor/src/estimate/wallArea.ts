@@ -180,13 +180,19 @@ export function splitWallByCoverage(
   beyond: number,
   lo: number,
   hi: number,
-  minFloor = -Infinity,
+  // The wall's own floor. Only a room OUTBOARD of the wall on the SAME floor (a
+  // verandah in front) encloses the wall's outer face → interior. A room a floor
+  // up/down that's outboard (an open balcony/landing) does NOT enclose this
+  // wall's level — the wall there still faces open air, so it stays exterior.
+  // (A too-loose "same floor OR HIGHER" rule left the ground wall under an open
+  // first-floor landing classified interior, so its outer brick face vanished.)
+  // Omitted → all floors count (legacy / unit tests without a floor).
+  wallFloor?: number,
 ): Array<{ s: number; e: number; external: boolean }> {
   const EPS = 0.5;
   const covered: Array<[number, number]> = [];
   for (const r of rects) {
-    // Only rooms on the same floor or higher shelter this wall's outer face.
-    if ((r.floor ?? 0) < minFloor) continue;
+    if (wallFloor !== undefined && (r.floor ?? 0) !== wallFloor) continue;
     // The rect's span on the axis the sample line is fixed on.
     const perpLo = alongAxis === "x" ? r.y : r.x;
     const perpHi = alongAxis === "x" ? r.y + r.l : r.x + r.w;
