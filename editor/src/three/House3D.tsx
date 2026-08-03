@@ -48,6 +48,15 @@ interface Obj {
 
 const POS_TOL = 2.0; // matches Python's normalize_edge_key tolerance
 
+// Short deterministic hash of an object's content, appended to its React key so
+// a geometry change remounts the object (see the key comment in byLayer). djb2.
+function objHash(o: unknown): string {
+  const s = JSON.stringify(o);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
 // Publish geometry warnings (invalid openings dropped during expansion) so
 // the viewer shell can show a banner. Deduped against the last set so React
 // re-renders with the same problems don't re-fire the banner. Stored on
@@ -203,7 +212,13 @@ export function House3D({ config }: { config: HouseConfig }) {
 
       for (let oi = 0; oi < objects.length; oi++) {
         const obj = objects[oi];
-        const key = `f${fi}-${oi}`;
+        // Key includes a hash of the object's CONTENT, not just its index. An
+        // in-place prop update to an R3F mesh can fail to repaint in WKWebView
+        // (the desktop webview) — e.g. a room resized so a wall MOVES but keeps
+        // the same index-key would silently not update. Hashing the geometry
+        // means any change gives a new key → React remounts that object fresh
+        // (like a reload), while unchanged objects keep their key (no churn).
+        const key = `f${fi}-${oi}-${objHash(obj)}`;
 
         // Registry-driven types (item, + future ports) render themselves.
         const nodeDef = getNode(obj.type);
