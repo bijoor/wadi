@@ -109,8 +109,13 @@ ground [name "N"] at (x,y) size (w,l) [height <h>]        // terrain plane
 pillar Name       at (x,y) size (w,l) [height <h>]        // (x,y) = TOP-LEFT corner
 ```
 
-`at (x,y)` is the top-left corner; `size (w,l)` is width × length. All accept the
-common tail.
+`at (x,y)` is the **TOP-LEFT CORNER** — **not the centre** — for every one of these
+(same as rooms/slabs/beams); `size (w,l)` is width × length. All accept the common tail.
+
+**Pillars catch people out here.** A column reads as "placed at a point," but `at` is
+still its corner. To **centre a column on a point** `(cx, cy)` — a grid node, a room
+corner — place it at **`at (cx - w/2, cy - l/2)`**, never at `(cx, cy)`. On a grid, the
+`pilInset` idiom (see `parametric-conventions.md`) does exactly this so columns sit flush.
 
 ## Objects — rooms, walls & openings
 
@@ -140,6 +145,22 @@ wall Name from (x1,y1) to (x2,y2) [height <h>] [height_end <h>] [facing north|�
   … door/window openings …
 }
 ```
+
+- `from`/`to` are the wall's **centreline** endpoints; the wall is drawn as a rectangle
+  `wall_thickness` wide, centred on that line.
+- **Overlap walls at corners — they do NOT auto-mitre.** Two free-standing walls that
+  merely *touch* at a shared endpoint leave an unfilled square notch (½·`wall_thickness`)
+  at the corner, because each is just a rectangle capped at its endpoint. To fill the
+  corner, **extend the endpoints so the wall bodies OVERLAP** — run at least one wall's
+  end **half the wall thickness past** the shared point (overlapping by the full thickness
+  is fine and simplest). For an L of thickness 8 meeting at `(160,40)`:
+
+  ```wdl
+  wall H from (40, 40)  to (164, 40)  height 108   // ends 4 (½·8) PAST the corner
+  wall V from (160, 40) to (160, 160) height 108    // butts into H's overlapped body
+  ```
+
+  (Room walls handle their own corners; this only applies to `wall … from … to …`.)
 
 ## Objects — circulation & fittings
 
@@ -242,6 +263,13 @@ raw "type" { "field": 1, "formulas": { "field": "= expr" } }
   (no spaces, and not a reserved word like `width`, `height`, `size`, `at`).
 - **Roof alone on the top floor**; segment widths/positions come from the walls
   they sit on. See `roof-v2-guide.md`.
+- **A pillar's `at` is its TOP-LEFT corner, not its centre.** To centre a column on
+  `(cx,cy)`, author `at (cx - w/2, cy - l/2)`.
+- **Free-standing walls don't auto-mitre at corners** — extend endpoints so the wall
+  bodies overlap (≥ ½·`wall_thickness` past the shared point), or the corner is left
+  as a gap.
+- **Staircases are top-anchored** — put them on the UPPER floor; they descend to the
+  floor below (`check.sh` C5 flags one that lands below ground). See the staircase note.
 - **Structural conventions are enforced** — `check.sh` fails on floating floors
   (plinth-floor `height` ≠ plinth block height; a no-slab floor with nonzero
   `slab_thickness`) and warns on exterior room sides left open. See

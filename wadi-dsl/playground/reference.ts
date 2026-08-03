@@ -62,6 +62,9 @@ beam   [name "N"] at (x,y) size (w,l) [height &lt;h&gt;]
 plinth [name "N"] at (x,y) size (w,l) height &lt;h&gt;
 ground [name "N"] at (x,y) size (w,l) [height &lt;h&gt;]
 pillar Name       at (x,y) size (w,l) [height &lt;h&gt;]</pre>
+<p class="ref-note"><code>at (x,y)</code> is the <b>TOP-LEFT corner</b> (not the centre),
+same as rooms/slabs. To centre a column on a point <code>(cx,cy)</code> — e.g. a grid
+node — place it at <code>at (cx - w/2, cy - l/2)</code>.</p>
 
 <h3>Rooms, walls &amp; openings</h3>
 <pre>room Name at (x,y) size (w,l) [height &lt;h&gt;] {
@@ -75,6 +78,10 @@ wall Name from (x1,y1) to (x2,y2) [height &lt;h&gt;] [facing north|…] { …ope
 no <code>wall</code> lines is enclosed on all four sides). Declare plain walls
 compactly — <code>wall east west north</code> — and give a wall its own line only
 when it carries a door/window. Omit a side to leave it open (verandah).</p>
+<p class="ref-note"><b>Free-standing walls don't auto-mitre at corners.</b> Two
+<code>wall … from … to …</code> that just touch at a point leave a small notch; extend
+the endpoints so the bodies <b>overlap</b> (≥ ½·wall_thickness past the shared point) to
+fill the corner. Room walls handle their own corners.</p>
 
 <h3>Circulation &amp; fittings</h3>
 <pre>staircase [name "N"] at (start_x, start_y) step (rise, tread, width)
