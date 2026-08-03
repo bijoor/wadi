@@ -100,7 +100,8 @@ item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
       [high_side left|right] [start_endpoint …] [end_endpoint …]
       [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)]
       [overhang &lt;o&gt;]                            // uniform eave (all four sides)
-      [overhang_start/overhang_end/overhang_low/overhang_high &lt;o&gt;]  // SHED per-side
+      [overhang_start/overhang_end &lt;o&gt;]          // along axis (shed · gable end)
+      [overhang_low/overhang_high &lt;o&gt;]           // SHED eaves · [overhang_left/right] PITCHED eaves
       [tie_beams N]
     truss "segId" fink|mono_pitch at (pos, pos, …)
   }</pre>

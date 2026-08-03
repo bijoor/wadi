@@ -434,3 +434,37 @@ describe("derivePitchedRoof — gable walls (thickness + gable band)", () => {
     }
   });
 });
+
+describe("derivePitchedRoof — per-eave overhang (left/right) + unified end keywords", () => {
+  it("extends one eave independently (left/west), dropping its edge along the same pitch", () => {
+    // yAxisCfg: N→S segment cx=150 width 300 → left eave = west (x<150).
+    // ridge_h 50, min_overhang 25, dCrit=150 (open gable). overhang_left 60.
+    const cfg = yAxisCfg({
+      default_endpoint: "open",
+      segments: [{ id: "s0", start: [150, 0], end: [150, 500], width: 300, overhang_left: 60 }],
+    });
+    const fp = pitchedSlopeFootprint(derivePitchedRoof(cfg, { wallTopZ: 100 }))!;
+    expect(fp.x_min).toBeCloseTo(-60);   // west eave: 150 - (150 + 60)
+    expect(fp.x_max).toBeCloseTo(325);   // east eave default 25: 150 + (150 + 25)
+    expect(fp.eave_z).toBeCloseTo(80);   // west eave dropped 60·50/150 = 20 below wallTop 100
+  });
+
+  it("omitting per-eave == the uniform min_overhang (existing roofs unchanged)", () => {
+    const a = pitchedSlopeFootprint(derivePitchedRoof(yAxisCfg({ default_endpoint: "open" }), { wallTopZ: 100 }))!;
+    const b = pitchedSlopeFootprint(derivePitchedRoof(
+      yAxisCfg({ default_endpoint: "open", segments: [{ id: "s0", start: [150, 0], end: [150, 500], width: 300, overhang_left: 25, overhang_right: 25 }] }),
+      { wallTopZ: 100 })!)!;
+    expect(b).toEqual(a);
+  });
+
+  it("overhang_end aliases gable_overhang_end on an open (gable) end", () => {
+    const viaAlias = pitchedRidge(derivePitchedRoof(
+      yAxisCfg({ default_endpoint: "open", segments: [{ id: "s0", start: [150, 0], end: [150, 500], width: 300, overhang_end: 70 }] }),
+      { wallTopZ: 100 }))!;
+    const viaGable = pitchedRidge(derivePitchedRoof(
+      yAxisCfg({ default_endpoint: "open", segments: [{ id: "s0", start: [150, 0], end: [150, 500], width: 300, gable_overhang_end: 70 }] }),
+      { wallTopZ: 100 }))!;
+    expect(viaAlias.end[1]).toBeCloseTo(viaGable.end[1]);
+    expect(viaAlias.end[1]).toBeCloseTo(570); // 500 + 70
+  });
+});

@@ -65,19 +65,27 @@ export interface RoofSegment {
   // and are not directly overridable.
   min_overhang?: number;
 
-  // SHED-only per-side overhang overrides — in project units. Each
-  // falls back to the segment's uniform overhang (`min_overhang` →
-  // cfg.min_overhang → 20). Let you cantilever one edge (e.g. a big
-  // `overhang_end` over an entry landing) while keeping the others tight.
-  //   • overhang_start / overhang_end — along the ridge AXIS, at the
-  //     seg.start / seg.end ends.
-  //   • overhang_low / overhang_high — the two sloped EAVES (the down-
-  //     slope low eave and the up-slope high eave). A larger eave overhang
-  //     also drops/raises that eave's outer edge proportionally (eaveDrop).
+  // Per-side overhang overrides — in project units. Each falls back to the
+  // segment's uniform overhang (`min_overhang` → cfg.min_overhang → 20). Let
+  // you cantilever one edge (e.g. a big `overhang_end` over an entry landing)
+  // while keeping the others tight.
+  //   • overhang_start / overhang_end — along the ridge AXIS, at seg.start /
+  //     seg.end. On a PITCHED open (gable) end these alias gable_overhang_*.
+  //     On a hip (closed) end the reach is geometric (hip_setback) — ignored.
+  //   • overhang_low / overhang_high — SHED only: the down-slope (low) and
+  //     up-slope (high) eaves.
+  //   • overhang_left / overhang_right — PITCHED only: the two eaves, left /
+  //     right of the ridge (by the segment's left normal). A larger eave
+  //     overhang drops that eave's outer edge proportionally (per-side eaveZ),
+  //     so the two slopes stay planar. NOTE: on a MULTI-segment pitched roof
+  //     the eaves share one height for clean joints — set per-eave only on a
+  //     single-segment roof, else the joint eaves may not line up.
   overhang_start?: number;
   overhang_end?: number;
   overhang_low?: number;
   overhang_high?: number;
+  overhang_left?: number;
+  overhang_right?: number;
 
   // Flat wall-top TIE BEAMS (horizontal ceiling ties): N members
   // running the full segment length (start→end), spread at equal

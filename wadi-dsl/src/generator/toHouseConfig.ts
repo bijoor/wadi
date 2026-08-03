@@ -446,8 +446,9 @@ function roofSegment(s: ast.Segment): Record<string, unknown> {
   }
   const mo = put("min_overhang", s.min_overhang);
   if (mo !== undefined) seg.min_overhang = mo;
-  // SHED per-side overhang overrides (each falls back to `overhang`).
-  for (const side of ["overhang_start", "overhang_end", "overhang_low", "overhang_high"] as const) {
+  // Per-side overhang overrides (each falls back to `overhang`). start/end apply
+  // to shed + gable ends; low/high are shed eaves; left/right are pitched eaves.
+  for (const side of ["overhang_start", "overhang_end", "overhang_low", "overhang_high", "overhang_left", "overhang_right"] as const) {
     const v = put(side, s[side]);
     if (v !== undefined) seg[side] = v;
   }

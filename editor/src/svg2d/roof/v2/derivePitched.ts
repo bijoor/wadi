@@ -162,11 +162,17 @@ export function derivePitchedRoof(
     // Gable overhangs (only for open leaf endpoints). Default to
     // min_overhang so a plain gable end has an eave overhang
     // matching the side eaves — the architectural convention. Set
-    // to 0 explicitly to disable.
+    // to 0 explicitly to disable. `overhang_start`/`overhang_end` are
+    // unified aliases (the same keyword shed uses); the more specific
+    // `gable_overhang_*` wins if both are set.
     const gableOverhangStart =
-      startRes === "open" ? (seg.gable_overhang_start ?? minOverhang) : 0;
+      startRes === "open"
+        ? (seg.gable_overhang_start ?? seg.overhang_start ?? minOverhang)
+        : 0;
     const gableOverhangEnd =
-      endRes === "open" ? (seg.gable_overhang_end ?? minOverhang) : 0;
+      endRes === "open"
+        ? (seg.gable_overhang_end ?? seg.overhang_end ?? minOverhang)
+        : 0;
 
     // Use the ROOF-level global dCrit (min across all segments) so
     // multi-segment configs share the same eaveZ. For a single-
@@ -176,11 +182,19 @@ export function derivePitchedRoof(
       throw new Error(`pitched segment ${seg.id}: dCrit=${dCrit} — hip setbacks must be > 0`);
     }
 
-    const eaveDrop = (minOverhang * ridgeH) / dCrit;
-    const eaveZ = opts.wallTopZ - eaveDrop;
     const ridgeZ = opts.wallTopZ + ridgeH;
 
-    const oCross = (minOverhang * crossHalf) / dCrit;
+    // Per-eave overhang (left/right of the ridge). Each defaults to the uniform
+    // min_overhang → with no override eaveZLeft==eaveZRight==the old shared eaveZ,
+    // so existing roofs are unchanged. A larger eave overhang extends that eave
+    // further out (oCross) AND drops its outer edge (eaveDrop) along the same
+    // pitch, keeping the slope planar. (Single-segment roofs only — see model.ts.)
+    const ohLeft = seg.overhang_left ?? minOverhang;
+    const ohRight = seg.overhang_right ?? minOverhang;
+    const eaveZLeft = opts.wallTopZ - (ohLeft * ridgeH) / dCrit;
+    const eaveZRight = opts.wallTopZ - (ohRight * ridgeH) / dCrit;
+    const oCrossLeft = (ohLeft * crossHalf) / dCrit;
+    const oCrossRight = (ohRight * crossHalf) / dCrit;
     // Along overhang: closed hips derive it from the hip pitch,
     // open gables use gable_overhang, joints get 0 (the neighbour
     // provides the roof coverage past this endpoint).
@@ -204,10 +218,10 @@ export function derivePitchedRoof(
     // Eave outline corners (extended past the segment endpoints).
     const startBase = shift(seg.start, unit, -oStart);
     const endBase = shift(seg.end, unit, +oEnd);
-    const backLeft = shift(startBase, leftN, crossHalf + oCross);   // BL
-    const backRight = shift(startBase, rightN, crossHalf + oCross); // BR
-    const frontLeft = shift(endBase, leftN, crossHalf + oCross);    // FL
-    const frontRight = shift(endBase, rightN, crossHalf + oCross);  // FR
+    const backLeft = shift(startBase, leftN, crossHalf + oCrossLeft);   // BL
+    const backRight = shift(startBase, rightN, crossHalf + oCrossRight); // BR
+    const frontLeft = shift(endBase, leftN, crossHalf + oCrossLeft);    // FL
+    const frontRight = shift(endBase, rightN, crossHalf + oCrossRight);  // FR
 
     // Ridge endpoints (on the segment centreline, at ridgeZ).
     //   closed → trim inward by hip_setback
@@ -233,10 +247,10 @@ export function derivePitchedRoof(
     planes.push({
       id: `${seg.id}.slope.left`,
       vertices: [
-        to3D(backLeft, eaveZ),
+        to3D(backLeft, eaveZLeft),
         ridgeStart3D,
         ridgeEnd3D,
-        to3D(frontLeft, eaveZ),
+        to3D(frontLeft, eaveZLeft),
       ],
       role: "slope",
       source_segment_id: seg.id,
@@ -244,15 +258,15 @@ export function derivePitchedRoof(
       rafter_direction: normaliseVec3([
         backLeft[0] - ridgeStart2D[0],
         backLeft[1] - ridgeStart2D[1],
-        eaveZ - ridgeZ,
+        eaveZLeft - ridgeZ,
       ]),
       purlin_direction: [unit[0], unit[1], 0],
     });
     planes.push({
       id: `${seg.id}.slope.right`,
       vertices: [
-        to3D(backRight, eaveZ),
-        to3D(frontRight, eaveZ),
+        to3D(backRight, eaveZRight),
+        to3D(frontRight, eaveZRight),
         ridgeEnd3D,
         ridgeStart3D,
       ],
@@ -262,7 +276,7 @@ export function derivePitchedRoof(
       rafter_direction: normaliseVec3([
         backRight[0] - ridgeStart2D[0],
         backRight[1] - ridgeStart2D[1],
-        eaveZ - ridgeZ,
+        eaveZRight - ridgeZ,
       ]),
       purlin_direction: [unit[0], unit[1], 0],
     });
@@ -357,14 +371,14 @@ export function derivePitchedRoof(
       // diagonals; we brace them at distance `ridgeExtStart` from apex.
       emitVentExtension(
         ridgeMemberStart, ridgeStart3D,
-        to3D(backLeft, eaveZ), to3D(backRight, eaveZ),
+        to3D(backLeft, eaveZLeft), to3D(backRight, eaveZRight),
         ridgeExtStart, "start",
       );
     }
     if (endRes === "closed" && ridgeExtEnd > 0) {
       emitVentExtension(
         ridgeMemberEnd, ridgeEnd3D,
-        to3D(frontLeft, eaveZ), to3D(frontRight, eaveZ),
+        to3D(frontLeft, eaveZLeft), to3D(frontRight, eaveZRight),
         ridgeExtEnd, "end",
       );
     }
@@ -429,8 +443,8 @@ export function derivePitchedRoof(
         planes.push({
           id: `${seg.id}.hip_face.start`,
           vertices: [
-            to3D(backRight, eaveZ),
-            to3D(backLeft, eaveZ),
+            to3D(backRight, eaveZRight),
+            to3D(backLeft, eaveZLeft),
             ridgeStart3D,
           ],
           role: "hip_face",
@@ -440,14 +454,14 @@ export function derivePitchedRoof(
         members.push({
           id: `${seg.id}.hip.start.left`,
           start: ridgeStart3D,
-          end: to3D(backLeft, eaveZ),
+          end: to3D(backLeft, eaveZLeft),
           role: "hip",
           source_segment_id: seg.id,
         });
         members.push({
           id: `${seg.id}.hip.start.right`,
           start: ridgeStart3D,
-          end: to3D(backRight, eaveZ),
+          end: to3D(backRight, eaveZRight),
           role: "hip",
           source_segment_id: seg.id,
         });
@@ -491,8 +505,8 @@ export function derivePitchedRoof(
         planes.push({
           id: `${seg.id}.hip_face.end`,
           vertices: [
-            to3D(frontLeft, eaveZ),
-            to3D(frontRight, eaveZ),
+            to3D(frontLeft, eaveZLeft),
+            to3D(frontRight, eaveZRight),
             ridgeEnd3D,
           ],
           role: "hip_face",
@@ -502,14 +516,14 @@ export function derivePitchedRoof(
         members.push({
           id: `${seg.id}.hip.end.left`,
           start: ridgeEnd3D,
-          end: to3D(frontLeft, eaveZ),
+          end: to3D(frontLeft, eaveZLeft),
           role: "hip",
           source_segment_id: seg.id,
         });
         members.push({
           id: `${seg.id}.hip.end.right`,
           start: ridgeEnd3D,
-          end: to3D(frontRight, eaveZ),
+          end: to3D(frontRight, eaveZRight),
           role: "hip",
           source_segment_id: seg.id,
         });

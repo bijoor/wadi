@@ -224,8 +224,10 @@ roof [name "N"] pitched|shed|flat
       [start_endpoint open|closed] [end_endpoint open|closed]
       [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)]
       [overhang <o>]                                // uniform eave, all four sides
-      [overhang_start <o>] [overhang_end <o>]       // SHED: per-side override — along the axis
-      [overhang_low <o>] [overhang_high <o>]        // SHED: per-side override — the two eaves
+      [overhang_start <o>] [overhang_end <o>]       // per-side along the axis (shed;
+                                                    //   on a gable end = gable_overhang)
+      [overhang_low <o>] [overhang_high <o>]        // SHED eaves (down-slope / up-slope)
+      [overhang_left <o>] [overhang_right <o>]      // PITCHED eaves (left / right of ridge)
       [tie_beams N]
     truss "segId" fink|mono_pitch at (pos, pos, …)
   }
@@ -234,10 +236,16 @@ roof [name "N"] pitched|shed|flat
 Segment `from`/`to`/`width` and the `hip_setback`/… values accept formulas, so a
 roof scales with the plot (e.g. `width House.W`, `hip_setback (Verandah.L, Padvi.L)`).
 
-**Per-side shed overhang (cantilever one edge).** `overhang <o>` sets a uniform eave
-on all four sides. For a shed you can override any side independently — each defaults
-to `overhang`: `overhang_start` / `overhang_end` extend along the ridge axis (at the
-`from` / `to` ends); `overhang_low` / `overhang_high` extend the two sloped eaves.
+**Per-side overhang (cantilever one edge).** `overhang <o>` sets a uniform eave on
+all four sides. Any sloping roof can override a side independently — each defaults to
+`overhang`. **Along the axis:** `overhang_start` / `overhang_end` (on a shed, or a
+gable open end — there they're the same as `gable_overhang`; a hip end is geometric,
+tuned via `hip_setback`). **Eaves:** `overhang_low` / `overhang_high` on a **shed**
+(down-slope / up-slope); `overhang_left` / `overhang_right` on a **pitched** roof
+(the two eaves either side of the ridge). A bigger eave overhang also drops that
+eave's edge along the same pitch, so the slope stays planar. (Per-eave on a *pitched*
+roof is single-segment only — on a multi-segment roof the eaves share one height so
+joints line up.)
 Idiom: keep the roof FOOTPRINT (its supported edges) on the main room, then cantilever
 one eave to cover an entry landing / stair — end the axis on the room wall and set a big
 `overhang_end`:

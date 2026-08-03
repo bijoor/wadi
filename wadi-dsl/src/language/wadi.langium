@@ -325,6 +325,8 @@ Segment:
         ('overhang_end' overhang_end=Expr)?
         ('overhang_low' overhang_low=Expr)?
         ('overhang_high' overhang_high=Expr)?
+        ('overhang_left' overhang_left=Expr)?
+        ('overhang_right' overhang_right=Expr)?
         ('tie_beams' tie_beam_count=NUMBER)?;
 Truss:
     'truss' segment_id=STRING type=('fink' | 'mono_pitch')
