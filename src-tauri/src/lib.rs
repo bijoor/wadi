@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::{channel, Sender};
 use std::sync::Mutex;
-use tauri::{Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 
 // A file path the app was asked to open before the webview was ready
 // (cold start via double-click on macOS, or a CLI arg on Windows/Linux).
@@ -10,6 +13,127 @@ struct PendingOpen(Mutex<Option<String>>);
 #[tauri::command]
 fn take_pending_open(state: tauri::State<'_, PendingOpen>) -> Option<String> {
   state.0.lock().unwrap().take()
+}
+
+// ---- Localhost MCP bridge (Phase 2) -----------------------------------------
+// The wadi-mcp server POSTs a resolved house config here; we drive the MAIN
+// window's live 3D view (`window.wadi.load`) and, for /capture, read back a 3D
+// image (`window.wadiCapture3D`). Rust and the webview rendezvous by request id:
+// the HTTP thread parks on a channel that the `bridge_response` command fills
+// once the webview has loaded/captured. Bound to 127.0.0.1 only.
+struct BridgeReply {
+  ok: bool,
+  png: Option<String>,
+  mime: Option<String>,
+  error: Option<String>,
+}
+struct BridgeState(Mutex<HashMap<String, Sender<BridgeReply>>>);
+
+#[tauri::command]
+fn bridge_response(
+  state: tauri::State<'_, BridgeState>,
+  id: String,
+  ok: bool,
+  png: Option<String>,
+  mime: Option<String>,
+  error: Option<String>,
+) {
+  if let Some(tx) = state.0.lock().unwrap().remove(&id) {
+    let _ = tx.send(BridgeReply { ok, png, mime, error });
+  }
+}
+
+fn respond_json(req: tiny_http::Request, status: u16, body: serde_json::Value) {
+  let header =
+    tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap();
+  let resp = tiny_http::Response::from_string(body.to_string())
+    .with_status_code(status)
+    .with_header(header);
+  let _ = req.respond(resp);
+}
+
+fn start_bridge(app: AppHandle) {
+  static COUNTER: AtomicU64 = AtomicU64::new(1);
+  let port: u16 = std::env::var("WADI_APP_PORT")
+    .ok()
+    .and_then(|s| s.parse().ok())
+    .unwrap_or(8765);
+  let server = match tiny_http::Server::http(("127.0.0.1", port)) {
+    Ok(s) => s,
+    Err(e) => {
+      log::warn!("[wadi bridge] could not bind 127.0.0.1:{port}: {e}");
+      return;
+    }
+  };
+  log::info!("[wadi bridge] listening on http://127.0.0.1:{port}");
+  std::thread::spawn(move || {
+    for mut req in server.incoming_requests() {
+      let url = req.url().to_string();
+      if url == "/health" {
+        respond_json(req, 200, serde_json::json!({ "ok": true, "app": "wadi" }));
+        continue;
+      }
+      if url != "/load" && url != "/capture" {
+        respond_json(req, 404, serde_json::json!({ "ok": false, "error": "not found" }));
+        continue;
+      }
+      let mut body = String::new();
+      if req.as_reader().read_to_string(&mut body).is_err() {
+        respond_json(req, 400, serde_json::json!({ "ok": false, "error": "unreadable body" }));
+        continue;
+      }
+      let parsed: serde_json::Value = match serde_json::from_str(&body) {
+        Ok(v) => v,
+        Err(_) => {
+          respond_json(req, 400, serde_json::json!({ "ok": false, "error": "invalid json" }));
+          continue;
+        }
+      };
+      let config = parsed
+        .get("config")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+      let action = if url == "/capture" { "capture" } else { "load" };
+      let id = COUNTER.fetch_add(1, Ordering::Relaxed).to_string();
+      let (tx, rx) = channel::<BridgeReply>();
+      if let Some(state) = app.try_state::<BridgeState>() {
+        state.0.lock().unwrap().insert(id.clone(), tx);
+      }
+      let _ = app.emit_to(
+        "main",
+        "wadi://bridge-request",
+        serde_json::json!({ "id": id, "action": action, "config": config }),
+      );
+      match rx.recv_timeout(std::time::Duration::from_secs(20)) {
+        Ok(reply) if reply.ok => {
+          if action == "capture" {
+            respond_json(
+              req,
+              200,
+              serde_json::json!({ "ok": true, "png": reply.png, "mime": reply.mime }),
+            );
+          } else {
+            respond_json(req, 200, serde_json::json!({ "ok": true }));
+          }
+        }
+        Ok(reply) => respond_json(
+          req,
+          500,
+          serde_json::json!({ "ok": false, "error": reply.error.unwrap_or_default() }),
+        ),
+        Err(_) => {
+          if let Some(state) = app.try_state::<BridgeState>() {
+            state.0.lock().unwrap().remove(&id);
+          }
+          respond_json(
+            req,
+            504,
+            serde_json::json!({ "ok": false, "error": "webview did not respond" }),
+          );
+        }
+      }
+    }
+  });
 }
 
 // Open (or focus) the DSL editor+renderer window — the bundled Monaco playground
@@ -47,7 +171,8 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_clipboard_manager::init())
     .manage(PendingOpen(Mutex::new(initial)))
-    .invoke_handler(tauri::generate_handler![take_pending_open])
+    .manage(BridgeState(Mutex::new(HashMap::new())))
+    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response])
     // Custom menu on macOS: the default Edit menu claims Cmd+Z / Shift+Cmd+Z
     // for native undo/redo, which would shadow the app's model-level
     // undo/redo (handled in the webview via the standard keyboard shortcuts).
@@ -109,6 +234,8 @@ pub fn run() {
             .build(),
         )?;
       }
+      // Start the localhost MCP bridge (Phase 2) so wadi-mcp can drive the live view.
+      start_bridge(app.handle().clone());
       Ok(())
     })
     .build(tauri::generate_context!())

@@ -216,6 +216,7 @@ examples/reference docs into one self-contained file. It exposes agent-native to
 | `wadi_preview` | `preview.sh` — renders plans / elevations / roof to **PNG images** the agent reads |
 | `wadi_examples` | the `examples/*.wdl` (embedded) |
 | `wadi_reference` | the reference docs (embedded: guide, dsl, conventions, …) |
+| `wadi_view_3d` / `wadi_capture_3d` | *(needs the desktop app open)* load a design into the app's live 3D view, or get a real 3D image back — via a localhost bridge the app serves |
 
 Register it with any MCP client (Claude Code, Cursor, Claude Desktop, …). Published to npm,
 it's zero-install:

@@ -19,6 +19,12 @@ repo; this server replaces them for agents that speak MCP.)
 | `wadi_preview` | Render a `.wdl` to **PNG images** you can look at — floor plans, elevations, roof top view. Confirm layout/sizes/openings/roof visually. |
 | `wadi_examples` | List, or fetch the full source of, a validated example `.wdl` (`minimal` / `two_room` / `two_story` / `coastal` / `complete`). Copy from these. |
 | `wadi_reference` | The authoring docs, embedded: `guide`, `dsl`, `conventions`, `coordinate-system`, `parametric-conventions`, `roof-v2-guide`, `data-model`. |
+| `wadi_view_3d` | Load a `.wdl` into the **running Wadi desktop app's** live 3D view (so you + the user see the same model). Needs the app open. |
+| `wadi_capture_3d` | Render a `.wdl` in the running app and return a **real 3D image** (the textured model). Needs the app open. |
+
+The last two reach the desktop app over a localhost bridge (`127.0.0.1:8765`, override
+`WADI_APP_PORT`); when the app isn't running they return a "open the Wadi app" message and
+you fall back to `wadi_preview` (headless 2D). The first four never need the app.
 
 ## Run it
 
@@ -87,6 +93,8 @@ DSL, the conventions, or the docs.
 published tarball always contains a freshly-bundled, tested `dist/server.mjs` (the only
 files shipped are `dist/` + `package.json` + this README). Bump `version` first.
 
-_Phase 2: the Tauri desktop app hosts extra tools — `wadi_view_3d` / `wadi_capture_3d` —
-that reuse its live renderer, so an agent can load a design into the open app and get a
-real **3D** capture, not just 2D drawings._
+The `wadi_view_3d` / `wadi_capture_3d` tools are backed by a localhost HTTP bridge the
+Tauri desktop app serves (`src-tauri/src/lib.rs` → `/health`, `/load`, `/capture`); the
+main window's viewer answers via a `wadi://bridge-request` listener that drives
+`window.wadi.load` + `window.wadiCapture3D` (`editor/src/viewer/main.ts`). Bound to
+127.0.0.1 only.

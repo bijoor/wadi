@@ -9,7 +9,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { checkWdl, renderSvgs, rasterize, ALL_VIEWS, type ViewName } from "./pipeline";
+import { checkWdl, compileConfig, renderSvgs, rasterize, ALL_VIEWS, type ViewName } from "./pipeline";
+import { appReachable, appLoad, appCapture, APP_NOT_RUNNING } from "./appBridge";
 import { EXAMPLES, DOCS } from "./assets.generated";
 
 const server = new McpServer({ name: "wadi-mcp", version: "0.1.0" });
@@ -93,6 +94,67 @@ server.registerTool(
   },
 );
 
+// ---- wadi_view_3d (needs the running desktop app) ----------------------------
+server.registerTool(
+  "wadi_view_3d",
+  {
+    title: "Show a Wadi design in the live app",
+    description:
+      "Load a Wadi DSL house into the RUNNING Wadi desktop app's live 3D view, so you and the user " +
+      "see the same model (and it updates as you iterate). Requires the Wadi app to be open. For a " +
+      "headless image you can look at without the app, use wadi_preview (2D) or wadi_capture_3d (3D).",
+    inputSchema: { wdl: z.string().describe("The full .wdl source text.") },
+  },
+  async ({ wdl }) => {
+    let config: unknown;
+    try {
+      config = compileConfig(wdl);
+    } catch (e) {
+      return { content: [{ type: "text", text: "❌ Could not compile: " + (e as Error).message }], isError: true };
+    }
+    if (!(await appReachable())) return { content: [{ type: "text", text: APP_NOT_RUNNING }] };
+    try {
+      await appLoad(config);
+      return { content: [{ type: "text", text: "✅ Loaded into the Wadi app's live 3D view." }] };
+    } catch (e) {
+      return { content: [{ type: "text", text: "❌ App load failed: " + (e as Error).message }], isError: true };
+    }
+  },
+);
+
+// ---- wadi_capture_3d (needs the running desktop app) -------------------------
+server.registerTool(
+  "wadi_capture_3d",
+  {
+    title: "Capture a 3D image of a Wadi design",
+    description:
+      "Render a Wadi DSL house in the RUNNING Wadi desktop app and return a real 3D PNG you can look " +
+      "at — the actual textured model, not a 2D drawing. Requires the Wadi app to be open. (Headless " +
+      "2D plans/elevations/roof: wadi_preview.)",
+    inputSchema: { wdl: z.string().describe("The full .wdl source text.") },
+  },
+  async ({ wdl }) => {
+    let config: unknown;
+    try {
+      config = compileConfig(wdl);
+    } catch (e) {
+      return { content: [{ type: "text", text: "❌ Could not compile: " + (e as Error).message }], isError: true };
+    }
+    if (!(await appReachable())) return { content: [{ type: "text", text: APP_NOT_RUNNING }] };
+    try {
+      const img = await appCapture(config);
+      return {
+        content: [
+          { type: "text", text: "— 3D view (from the live app) —" },
+          { type: "image", data: img.data, mimeType: img.mime },
+        ],
+      };
+    } catch (e) {
+      return { content: [{ type: "text", text: "❌ 3D capture failed: " + (e as Error).message }], isError: true };
+    }
+  },
+);
+
 // ---- wadi_examples -----------------------------------------------------------
 server.registerTool(
   "wadi_examples",
@@ -172,4 +234,6 @@ server.registerTool(
 // ---- boot --------------------------------------------------------------------
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error("[wadi-mcp] ready — tools: wadi_check, wadi_preview, wadi_examples, wadi_reference");
+console.error(
+  "[wadi-mcp] ready — tools: wadi_check, wadi_preview, wadi_examples, wadi_reference, wadi_view_3d, wadi_capture_3d",
+);

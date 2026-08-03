@@ -119,6 +119,39 @@ async function bootViewer(): Promise<void> {
     void listen<string>("wadi://open-file", (e) => {
       if (e.payload) void openWadiPath(e.payload);
     });
+    // MCP bridge (Phase 2): the wadi-mcp server POSTs to the app's localhost
+    // bridge; Rust emits the request here. Load the config into the live 3D
+    // view and, for a capture, read back a 3D image after the scene settles.
+    void listen<{ id: string; action: string; config: unknown }>("wadi://bridge-request", async (e) => {
+      const { id, action, config } = e.payload;
+      try {
+        window.wadi?.load(config);
+        if (action === "capture") {
+          // Let React reconcile the new config into the R3F scene, then capture.
+          // Use setTimeout, not requestAnimationFrame — RAF is paused when the
+          // window is backgrounded, but wadiCapture3D forces its own gl.render(),
+          // so a plain timer is enough and never hangs.
+          await new Promise((r) => setTimeout(r, 800));
+          const url = window.wadiCapture3D?.(1200) ?? null;
+          if (!url) {
+            await invoke("bridge_response", { id, ok: false, error: "capture returned null" });
+            return;
+          }
+          const comma = url.indexOf(",");
+          const data = comma >= 0 ? url.slice(comma + 1) : url;
+          const mime = /^data:(.*?);/.exec(url)?.[1] ?? "image/jpeg";
+          await invoke("bridge_response", { id, ok: true, png: data, mime });
+        } else {
+          await invoke("bridge_response", { id, ok: true });
+        }
+      } catch (err) {
+        try {
+          await invoke("bridge_response", { id, ok: false, error: String(err) });
+        } catch {
+          /* ignore */
+        }
+      }
+    });
     // Cold start: drain any path captured before the webview was ready.
     try {
       const pending = await invoke<string | null>("take_pending_open");

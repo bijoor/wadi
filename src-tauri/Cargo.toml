@@ -26,3 +26,6 @@ tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = { version = "2", features = ["watch"] }
 tauri-plugin-clipboard-manager = "2"
+# Tiny synchronous HTTP server for the localhost MCP bridge (Phase 2): lets the
+# wadi-mcp server load a config into the live 3D view and capture a 3D image.
+tiny_http = "0.12"
