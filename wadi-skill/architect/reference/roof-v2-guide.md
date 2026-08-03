@@ -81,7 +81,11 @@ are literal outer-face positions and no grow happens.)
       "width": 200,                          // perpendicular span, segment centred in it
       "slope": { … },                        // optional per-segment slope override
       "shed_high_side": "…",                 // shed only
-      "hip_setback_start": …, "hip_setback_end": …  // optional, tune closed hip faces
+      "hip_setback_start": …, "hip_setback_end": …, // optional, tune closed hip faces
+      // SHED per-side overhang overrides (each defaults to min_overhang). Cantilever
+      // one edge — e.g. big overhang_end over an entry landing — while others stay tight.
+      "overhang_start": …, "overhang_end": …,  // along the ridge axis (at start / end)
+      "overhang_low": …, "overhang_high": …    // the two sloped eaves
     }
   ],
   "trusses": [

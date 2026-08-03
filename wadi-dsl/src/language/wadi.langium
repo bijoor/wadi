@@ -321,6 +321,10 @@ Segment:
         ('gable_overhang' '(' gable_overhang_start=Expr ',' gable_overhang_end=Expr ')')?
         ('hip_ridge_extension' '(' hip_ridge_extension_start=Expr ',' hip_ridge_extension_end=Expr ')')?
         ('overhang' min_overhang=Expr)?
+        ('overhang_start' overhang_start=Expr)?
+        ('overhang_end' overhang_end=Expr)?
+        ('overhang_low' overhang_low=Expr)?
+        ('overhang_high' overhang_high=Expr)?
         ('tie_beams' tie_beam_count=NUMBER)?;
 Truss:
     'truss' segment_id=STRING type=('fink' | 'mono_pitch')

@@ -98,7 +98,10 @@ item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
   [overhang &lt;o&gt;] [slab_thickness &lt;t&gt;] [parapet &lt;h&gt; x &lt;t&gt;] {
     segment "id" from (x,y) to (x,y) width &lt;w&gt;
       [high_side left|right] [start_endpoint …] [end_endpoint …]
-      [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)] [tie_beams N]
+      [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)]
+      [overhang &lt;o&gt;]                            // uniform eave (all four sides)
+      [overhang_start/overhang_end/overhang_low/overhang_high &lt;o&gt;]  // SHED per-side
+      [tie_beams N]
     truss "segId" fink|mono_pitch at (pos, pos, …)
   }</pre>
 <p class="ref-note"><b>Roof coordinates are wall centrelines, like rooms.</b>

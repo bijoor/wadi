@@ -237,6 +237,38 @@ describe("deriveShedRoof — gable walls (thickness + gable band)", () => {
     );
   });
 
+  it("per-side overhang overrides extend each edge independently (fallback = uniform)", () => {
+    // base: start[0,50] end[200,50] width 100, high_side left, rise 20, run 100.
+    // overhang_start 5, overhang_end 50, overhang_low 10, overhang_high 20.
+    const spec = deriveShedRoof(
+      baseCfg({
+        segments: [{
+          id: "s0", start: [0, 50], end: [200, 50], width: 100, shed_high_side: "left",
+          overhang_start: 5, overhang_end: 50, overhang_low: 10, overhang_high: 20,
+        }],
+      }),
+      { wallTopZ: 100 },
+    );
+    const fp = shedSlopeFootprint(spec)!;
+    expect(fp.x_min).toBeCloseTo(-5);   // start extended by 5
+    expect(fp.x_max).toBeCloseTo(250);  // end extended by 50 (cantilever)
+    expect(fp.y_min).toBeCloseTo(-10);  // low eave: 50 - (width/2 + 10)
+    expect(fp.y_max).toBeCloseTo(120);  // high eave: 50 + (width/2 + 20)
+    expect(fp.low_z).toBeCloseTo(98);   // 100 - (10·20/100)
+    expect(fp.high_z).toBeCloseTo(124); // 100 + 20 + (20·20/100)
+  });
+
+  it("omitting per-side overhang == the uniform min_overhang", () => {
+    const a = shedSlopeFootprint(deriveShedRoof(baseCfg({ min_overhang: 15 }), { wallTopZ: 100 }))!;
+    const b = shedSlopeFootprint(deriveShedRoof(
+      baseCfg({ segments: [{
+        id: "s0", start: [0, 50], end: [200, 50], width: 100, shed_high_side: "left",
+        overhang_start: 15, overhang_end: 15, overhang_low: 15, overhang_high: 15,
+      }] }),
+      { wallTopZ: 100 })!)!;
+    expect(b).toEqual(a);
+  });
+
   it("each open leaf end emits 1 gable_band member along its rake", () => {
     const spec = deriveShedRoof(baseCfg(), { wallTopZ: 100, wallThickness: 8 });
     // baseCfg has 2 leaf endpoints → 1 band each.

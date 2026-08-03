@@ -59,13 +59,13 @@ function to3D(pt: Point2D, z: number): Point3D {
   return [pt[0], pt[1], z];
 }
 
-function extendSegment(seg: RoofSegment, byEachEnd: number): RoofSegment {
-  if (byEachEnd === 0) return seg;
+function extendSegment(seg: RoofSegment, byStart: number, byEnd: number): RoofSegment {
+  if (byStart === 0 && byEnd === 0) return seg;
   const [ux, uy] = segmentUnitVector(seg);
   return {
     ...seg,
-    start: [seg.start[0] - ux * byEachEnd, seg.start[1] - uy * byEachEnd],
-    end: [seg.end[0] + ux * byEachEnd, seg.end[1] + uy * byEachEnd],
+    start: [seg.start[0] - ux * byStart, seg.start[1] - uy * byStart],
+    end: [seg.end[0] + ux * byEnd, seg.end[1] + uy * byEnd],
   };
 }
 
@@ -101,23 +101,31 @@ export function deriveShedRoof(
     if (!(rise > 0)) {
       throw new Error(`shed segment ${seg.id}: rise must be > 0`);
     }
-    // Per-segment overhang override.
+    // Overhang: uniform per-segment default, with optional PER-SIDE
+    // overrides (start/end along the axis; low/high on the two eaves).
     const overhang = seg.min_overhang ?? roofOverhang;
-    const eaveDrop = (overhang * rise) / run;
+    const ohStart = seg.overhang_start ?? overhang;
+    const ohEnd = seg.overhang_end ?? overhang;
+    const ohLow = seg.overhang_low ?? overhang;
+    const ohHigh = seg.overhang_high ?? overhang;
+    // Each eave's outer edge drops (low) / rises (high) proportionally to
+    // ITS own overhang, so the roof plane stays planar at the given pitch.
+    const eaveDropLow = (ohLow * rise) / run;
+    const eaveDropHigh = (ohHigh * rise) / run;
 
-    // High/low signed perpendicular offsets, INCLUDING overhang.
+    // High/low signed perpendicular offsets, INCLUDING each eave's overhang.
     // offsetLine sign convention: +distance = LEFT of segment.
     const highSign = highSide === "left" ? +1 : -1;
-    const highOffset = highSign * (seg.width / 2 + overhang);
-    const lowOffset = -highSign * (seg.width / 2 + overhang);
+    const highOffset = highSign * (seg.width / 2 + ohHigh);
+    const lowOffset = -highSign * (seg.width / 2 + ohLow);
 
-    // Extend segment along its axis by overhang at each end.
-    const extended = extendSegment(seg, overhang);
+    // Extend segment along its axis by the (per-end) along-overhang.
+    const extended = extendSegment(seg, ohStart, ohEnd);
     const highEdge = offsetLine(extended, highOffset);
     const lowEdge = offsetLine(extended, lowOffset);
 
-    const zHigh = opts.wallTopZ + rise + eaveDrop;
-    const zLow = opts.wallTopZ - eaveDrop;
+    const zHigh = opts.wallTopZ + rise + eaveDropHigh;
+    const zLow = opts.wallTopZ - eaveDropLow;
 
     // Slope quad — CCW when viewed from above/outward (normal has
     // both a horizontal component perpendicular to seg and a

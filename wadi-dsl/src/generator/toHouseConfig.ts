@@ -446,6 +446,11 @@ function roofSegment(s: ast.Segment): Record<string, unknown> {
   }
   const mo = put("min_overhang", s.min_overhang);
   if (mo !== undefined) seg.min_overhang = mo;
+  // SHED per-side overhang overrides (each falls back to `overhang`).
+  for (const side of ["overhang_start", "overhang_end", "overhang_low", "overhang_high"] as const) {
+    const v = put(side, s[side]);
+    if (v !== undefined) seg[side] = v;
+  }
   if (s.tie_beam_count !== undefined) seg.tie_beam_count = Math.round(s.tie_beam_count);
   return done(seg, formulas);
 }
