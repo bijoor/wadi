@@ -101,6 +101,11 @@ item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
       [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)] [tie_beams N]
     truss "segId" fink|mono_pitch at (pos, pos, …)
   }</pre>
+<p class="ref-note"><b>Roof coordinates are wall centrelines, like rooms.</b>
+<code>from</code>/<code>to</code> is the axis and <code>width</code> its span
+centred on it — author them on the same grid as the walls and the roof auto-grows
+to the <b>outer wall face</b> (then <code>overhang</code> extends beyond). Don't add
+½-wall fudge factors, or the roof lands half a wall thickness inside the walls.</p>
 
 <h3>Component library <span class="ref-dim">— reusable mini-house</span></h3>
 <pre>component Bench {              // define once (local coords, origin 0,0)

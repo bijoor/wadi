@@ -54,6 +54,16 @@ line means depends on `roof_type`:
 
 Segments can run in **any direction** (not just axis-aligned).
 
+**Centreline convention (`coord_convention: "center"`).** A segment's
+`start`/`end`/`width` are **wall centrelines**, exactly like a room's
+`x/y/width/length`. On expand, each segment grows to the **outer wall face** —
+the axis is extended by ½·`wall_thickness` at each end and `width` grows by
+`wall_thickness` — then `overhang` extends beyond that. So author segments on the
+**same centreline grid as the walls below** (e.g. `width House.W`, axis endpoints
+on grid lines); do **not** hand-add ½-wall offsets, or the roof lands half a wall
+thickness inside the walls. (In the default `"outer"` convention the coordinates
+are literal outer-face positions and no grow happens.)
+
 ## Object shape
 
 ```jsonc

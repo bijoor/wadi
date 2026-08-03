@@ -135,6 +135,39 @@ export function expandRoomWalls(
         } else if (o.type === "pillar") {
           if (typeof r.x === "number" && typeof r.width === "number") r.x = (r.x as number) - (r.width as number) / 2;
           if (typeof r.y === "number" && typeof r.length === "number") r.y = (r.y as number) - (r.length as number) / 2;
+        } else if (o.type === "roof") {
+          // A roof segment's start→end is its ridge/axis and `width` its span
+          // CENTRED on that axis (svg2d/roof/v2/segments.ts segmentRect). In
+          // "center" mode those coordinates are wall CENTRELINES — so a roof
+          // drawn on the same grid as the rooms sits t/2 short of the outer wall
+          // face on every side. Grow each segment to the outer face exactly like
+          // a room: extend the axis by t/2 at each end and widen by t. Overhang
+          // then extends further out from the outer face, as expected. (Without
+          // this the roof lands half a wall-thickness inside the walls.)
+          const segs = r.segments as Array<Record<string, unknown>> | undefined;
+          if (Array.isArray(segs)) {
+            const half = t / 2;
+            for (const s of segs) {
+              const st = s.start as unknown;
+              const en = s.end as unknown;
+              if (
+                Array.isArray(st) && Array.isArray(en) &&
+                typeof st[0] === "number" && typeof st[1] === "number" &&
+                typeof en[0] === "number" && typeof en[1] === "number"
+              ) {
+                const dx = (en[0] as number) - (st[0] as number);
+                const dy = (en[1] as number) - (st[1] as number);
+                const len = Math.hypot(dx, dy);
+                if (len > 0) {
+                  const ux = dx / len;
+                  const uy = dy / len;
+                  s.start = [(st[0] as number) - ux * half, (st[1] as number) - uy * half];
+                  s.end = [(en[0] as number) + ux * half, (en[1] as number) + uy * half];
+                }
+              }
+              if (typeof s.width === "number") s.width = (s.width as number) + t;
+            }
+          }
         }
       }
     }

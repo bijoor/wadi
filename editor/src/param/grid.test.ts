@@ -73,4 +73,25 @@ describe("centreline convention + grid symbols", () => {
     const a = find(expandRoomWalls(house([room("A", 0, 0, 150, 160)])), "A");
     expect([a.x, a.y, a.width, a.length]).toEqual([0, 0, 150, 160]);
   });
+
+  it("in center mode a roof segment grows to the outer wall face (like a room)", () => {
+    // Segment authored on the wall centreline grid: axis x 4→252 at y=124,
+    // width 240 (y 4→244). t=8 ⇒ extend axis by 4 each end and widen by 8, so
+    // the roof rect reaches the outer faces x 0→256, y 0→248 (same t/2 grow a
+    // room gets), instead of sitting half a wall-thickness inside.
+    const roof = (extra: Any = {}): Any => ({
+      type: "roof", name: "R", roof_type: "shed",
+      segments: [{ id: "seg0", start: [4, 124], end: [252, 124], width: 240 }],
+      ...extra,
+    });
+    const r = find(expandRoomWalls(house([roof()], { coord_convention: "center" })), "R");
+    expect(r.segments[0].start).toEqual([0, 124]);
+    expect(r.segments[0].end).toEqual([256, 124]);
+    expect(r.segments[0].width).toBe(248);
+    // Outer mode leaves the segment exactly as authored.
+    const o = find(expandRoomWalls(house([roof()])), "R");
+    expect(o.segments[0].start).toEqual([4, 124]);
+    expect(o.segments[0].end).toEqual([252, 124]);
+    expect(o.segments[0].width).toBe(240);
+  });
 });

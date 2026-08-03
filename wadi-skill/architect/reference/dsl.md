@@ -231,6 +231,17 @@ roof [name "N"] pitched|shed|flat
 Segment `from`/`to`/`width` and the `hip_setback`/… values accept formulas, so a
 roof scales with the plot (e.g. `width House.W`, `hip_setback (Verandah.L, Padvi.L)`).
 
+**Roof coordinates are wall centrelines (under `convention center`), same as
+rooms.** `from`/`to` is the segment's ridge/axis and `width` its span *centred on
+that axis*. Author them on the **same centreline grid as the walls** — a segment
+whose axis + width match the rooms' centrelines auto-grows to the **outer wall
+face** on every side (the compiler extends the axis by ½·wall_thickness at each end
+and widens by wall_thickness, exactly the grow a room gets). `overhang` then
+extends *beyond* the outer face. So to cover a footprint spanning wall centrelines
+`x1..x2` (E–W) and `yA..yB` (N–S), write `from (x1, (yA+yB)/2) to (x2, (yA+yB)/2)
+width (yB - yA)` — do **not** add ½-wall fudge factors; the convention handles it.
+(Before this, a roof drawn on the grid sat half a wall-thickness *inside* the walls.)
+
 ## Components & layers
 
 ```wdl
