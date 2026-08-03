@@ -29,6 +29,7 @@ await build({
   // __dirname at runtime; shim them for the ESM output.
   banner: {
     js: [
+      "#!/usr/bin/env node",
       "import { createRequire as __cr } from 'module';",
       "import { fileURLToPath as __f } from 'url';",
       "import { dirname as __d } from 'path';",

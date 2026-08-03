@@ -217,11 +217,15 @@ examples/reference docs into one self-contained file. It exposes agent-native to
 | `wadi_examples` | the `examples/*.wdl` (embedded) |
 | `wadi_reference` | the reference docs (embedded: guide, dsl, conventions, …) |
 
-```bash
-cd wadi-mcp && npm install && npm run build   # → dist/server.mjs (only @resvg/resvg-js external)
+Register it with any MCP client (Claude Code, Cursor, Claude Desktop, …). Published to npm,
+it's zero-install:
+
+```json
+{ "mcpServers": { "wadi": { "command": "npx", "args": ["-y", "wadi-mcp"] } } }
 ```
 
-Register it with any MCP client (Claude Code, Cursor, Claude Desktop, …):
+Or from a local build (`cd wadi-mcp && npm install && npm run build` → `dist/server.mjs`,
+only `@resvg/resvg-js` external), point at the bundle by path:
 
 ```json
 { "mcpServers": { "wadi": { "command": "node", "args": ["/abs/path/to/wadi-mcp/dist/server.mjs"] } } }

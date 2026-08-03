@@ -40,18 +40,23 @@ installed alongside it.
 
 ## Register with an agent
 
-**Claude Code** — `claude mcp add`, or add to your MCP config:
+**Published to npm — zero install** (nothing to build or clone; `npx` fetches on first run):
 
+```bash
+claude mcp add wadi -- npx -y wadi-mcp        # Claude Code
+```
 ```json
-{
-  "mcpServers": {
-    "wadi": { "command": "node", "args": ["/abs/path/to/wadi-mcp/dist/server.mjs"] }
-  }
-}
+{ "mcpServers": { "wadi": { "command": "npx", "args": ["-y", "wadi-mcp"] } } }
 ```
 
-**Any MCP client** (Cursor, Windsurf, Claude Desktop, …) — point it at the same
-`command` + `args` (stdio transport). Then ask the agent to design a house; it calls
+**From a local build** (`npm run build` above) — point at the bundle by path:
+
+```json
+{ "mcpServers": { "wadi": { "command": "node", "args": ["/abs/path/to/wadi-mcp/dist/server.mjs"] } } }
+```
+
+**Any MCP client** (Cursor, Windsurf, Claude Desktop, …) — use the same `command` + `args`
+(stdio transport). Then ask the agent to design a house; it calls
 `wadi_reference('guide')` to learn the workflow, `wadi_examples` to copy a starting
 point, and `wadi_check` / `wadi_preview` as it authors the `.wdl`.
 
@@ -76,5 +81,12 @@ no second implementation to drift. `scripts/gen-assets.mjs` re-embeds the exampl
 reference docs at build time. Rebuild (`npm run build`) after changing the schema, the
 DSL, the conventions, or the docs.
 
-_Phase 2 (planned): the Tauri desktop app hosts the same tools plus real **3D** captures,
-reusing its live renderer — so an agent can get a rendered 3D view, not just 2D drawings._
+## Publishing
+
+`npm publish` (from `wadi-mcp/`). `prepublishOnly` runs `build` + `smoke` first, so the
+published tarball always contains a freshly-bundled, tested `dist/server.mjs` (the only
+files shipped are `dist/` + `package.json` + this README). Bump `version` first.
+
+_Phase 2: the Tauri desktop app hosts extra tools — `wadi_view_3d` / `wadi_capture_3d` —
+that reuse its live renderer, so an agent can load a design into the open app and get a
+real **3D** capture, not just 2D drawings._
