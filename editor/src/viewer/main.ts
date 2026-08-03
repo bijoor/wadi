@@ -1570,6 +1570,17 @@ function wireHeaderButtons(): void {
   const btnRedo = document.getElementById("btn-redo");
   const fileInput = document.getElementById("file-input-json") as HTMLInputElement | null;
 
+  // Prominent entry to the DSL (code) editor. Desktop opens the dedicated DSL
+  // window (same as ⌘⇧D); browser opens /dsl in a new tab so the app stays open.
+  document.getElementById("dsl-editor-link")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (isTauri()) {
+      void invoke("show_dsl_editor").catch((err) => console.warn("show_dsl_editor failed:", err));
+    } else {
+      window.open("/dsl/", "_blank", "noopener");
+    }
+  });
+
   // Share: pack the current house into a '#'-fragment link and copy it.
   // Anyone opening the link loads this exact design on the web app (no
   // backend); if they have the desktop app we can later offer to hand

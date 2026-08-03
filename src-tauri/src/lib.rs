@@ -156,6 +156,13 @@ fn open_dsl_editor(app: &tauri::AppHandle) {
   }
 }
 
+// Command form of `open_dsl_editor`, so the app's own header link (main window)
+// can open the DSL editor window — same as the ⌘⇧D menu item.
+#[tauri::command]
+fn show_dsl_editor(app: tauri::AppHandle) {
+  open_dsl_editor(&app);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   // Windows/Linux hand the opened file to the process as a CLI argument;
@@ -172,7 +179,7 @@ pub fn run() {
     .plugin(tauri_plugin_clipboard_manager::init())
     .manage(PendingOpen(Mutex::new(initial)))
     .manage(BridgeState(Mutex::new(HashMap::new())))
-    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response])
+    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response, show_dsl_editor])
     // Custom menu on macOS: the default Edit menu claims Cmd+Z / Shift+Cmd+Z
     // for native undo/redo, which would shadow the app's model-level
     // undo/redo (handled in the webview via the standard keyboard shortcuts).

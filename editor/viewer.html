@@ -185,6 +185,9 @@
             opacity: 0.8;
         }
         .persona-switch:hover { text-decoration: underline; opacity: 1; }
+        /* The DSL (code) editor entry — a peer of the persona switch, set off
+           with a divider so it reads as a distinct tool, not another mode. */
+        .dsl-link { margin-left: 10px; padding-left: 10px; border-left: 1px solid currentColor; }
         /* Group that holds the actual buttons; hamburger toggles it on
            narrow screens. */
         .header-actions-buttons {
@@ -2074,6 +2077,10 @@
                 <!-- Cross-navigation between the two persona surfaces (Gharkul
                      owner ⇄ Nakasha architect). href + label set by applyPersona(). -->
                 <a id="persona-switch" class="persona-switch" href="?"></a>
+                <!-- Open the Wadi DSL (code) editor. Desktop: opens the DSL
+                     window (⌘⇧D); browser: opens /dsl in a new tab. Wired in main.ts. -->
+                <a id="dsl-editor-link" class="persona-switch dsl-link" href="/dsl/"
+                   title="Edit designs as code — the Wadi DSL editor (⌘⇧D)">⟨/⟩ DSL editor →</a>
             </div>
             <div class="header-actions">
                 <!-- Mobile-only hamburger: on narrow screens the button
