@@ -1,680 +1,680 @@
 {
- "site": {
-  "reference_x": 0,
-  "reference_y": 0,
-  "plot_length": 700,
-  "plot_width": 600
- },
- "defaults": {
-  "floor_height": 120,
-  "wall_height": 108,
-  "slab_thickness": 8,
-  "wall_thickness": 8
- },
- "grids": {
-  "main": {
-   "x": [
-    {
-     "name": "1",
-     "at": "= wallT / 2",
-     "role": "structural"
-    },
-    {
-     "name": "2",
-     "at": "= round(wallT / 2 + 0.208738 * (House.W - wallT))"
-    },
-    {
-     "name": "3",
-     "at": "= round(wallT / 2 + 0.354369 * (House.W - wallT))"
-    },
-    {
-     "name": "4",
-     "at": "= round(wallT / 2 + 0.402913 * (House.W - wallT))"
-    },
-    {
-     "name": "5",
-     "at": "= round(wallT / 2 + 0.572816 * (House.W - wallT))"
-    },
-    {
-     "name": "6",
-     "at": "= round(wallT / 2 + 0.645631 * (House.W - wallT))"
-    },
-    {
-     "name": "7",
-     "at": "= round(wallT / 2 + 0.815534 * (House.W - wallT))"
-    },
-    {
-     "name": "8",
-     "at": "= House.W - wallT / 2",
-     "role": "structural"
-    }
-   ],
-   "y": [
-    {
-     "name": "A",
-     "at": "= wallT / 2",
-     "role": "structural"
-    },
-    {
-     "name": "B",
-     "at": "= round(wallT / 2 + 0.164502 * (House.L - wallT))"
-    },
-    {
-     "name": "C",
-     "at": "= round(wallT / 2 + 0.337662 * (House.L - wallT))"
-    },
-    {
-     "name": "D",
-     "at": "= round(wallT / 2 + 0.640693 * (House.L - wallT))"
-    },
-    {
-     "name": "E",
-     "at": "= round(wallT / 2 + 0.857143 * (House.L - wallT))"
-    },
-    {
-     "name": "F",
-     "at": "= House.L - wallT / 2",
-     "role": "structural"
-    }
-   ]
-  }
- },
- "floors": [
-  {
-   "floor_number": 0,
-   "name": "Plinth",
-   "height": 40,
-   "objects": [
-    {
-     "type": "ground",
-     "name": "Ground",
-     "layer": "ground",
-     "x": 0,
-     "y": 0,
-     "width": 600,
-     "length": 700
-    },
-    {
-     "type": "plinth",
-     "name": "Plinth",
-     "layer": "plinth",
-     "x": 4,
-     "y": 4,
-     "width": 412,
-     "length": 462,
-     "height": 40,
-     "formulas": {
-      "x": "= main.x1",
-      "y": "= main.yA",
-      "width": "= main.x8 - main.x1",
-      "length": "= main.yF - main.yA"
-     }
-    }
-   ]
+  "site": {
+    "reference_x": 0,
+    "reference_y": 0,
+    "plot_length": 700,
+    "plot_width": 600
   },
-  {
-   "floor_number": 1,
-   "name": "Ground Floor",
-   "objects": [
-    {
-     "type": "floor_slab",
-     "x": 4,
-     "y": 4,
-     "width": 412,
-     "length": 462,
-     "formulas": {
-      "x": "= main.x1",
-      "y": "= main.yA",
-      "width": "= main.x8 - main.x1",
-      "length": "= main.yF - main.yA"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Master_Bedroom",
-     "x": 4,
-     "y": 4,
-     "width": 166,
-     "length": 156,
-     "walls": {
-      "north": {
-       "openings": [
+  "defaults": {
+    "floor_height": 120,
+    "wall_height": 108,
+    "slab_thickness": 8,
+    "wall_thickness": 8
+  },
+  "grids": {
+    "main": {
+      "x": [
         {
-         "kind": "window",
-         "name": "MB_Win_N",
-         "offset": 55,
-         "width": 55,
-         "height": 55,
-         "sill_height": 35
-        }
-       ]
-      },
-      "west": {
-       "openings": [
-        {
-         "kind": "window",
-         "name": "MB_Win_W",
-         "offset": 50,
-         "width": 55,
-         "height": 55,
-         "sill_height": 35
-        }
-       ]
-      },
-      "east": {},
-      "south": {
-       "openings": [
-        {
-         "kind": "door",
-         "name": "MB_Door",
-         "offset": 60,
-         "width": 32,
-         "height": 80
-        }
-       ]
-      }
-     },
-     "formulas": {
-      "x": "= main.x1",
-      "y": "= main.yA",
-      "width": "= main.x4 - main.x1",
-      "length": "= main.yC - main.yA"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Master_Toilet",
-     "x": 170,
-     "y": 4,
-     "width": 70,
-     "length": 76,
-     "walls": {
-      "north": {
-       "openings": [
-        {
-         "kind": "window",
-         "name": "MT_Win_N",
-         "offset": 22,
-         "width": 26,
-         "height": 35,
-         "sill_height": 45
-        }
-       ]
-      },
-      "west": {
-       "openings": [
-        {
-         "kind": "door",
-         "name": "MT_Door",
-         "offset": 20,
-         "width": 26,
-         "height": 80
-        }
-       ]
-      },
-      "east": {},
-      "south": {}
-     },
-     "formulas": {
-      "x": "= main.x4",
-      "y": "= main.yA",
-      "width": "= main.x5 - main.x4",
-      "length": "= main.yB - main.yA"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Common_Toilet",
-     "x": 170,
-     "y": 80,
-     "width": 70,
-     "length": 80,
-     "walls": {
-      "east": {
-       "openings": [
-        {
-         "kind": "door",
-         "name": "CT_Door",
-         "offset": 24,
-         "width": 26,
-         "height": 80
-        }
-       ]
-      },
-      "west": {},
-      "north": {},
-      "south": {}
-     },
-     "formulas": {
-      "x": "= main.x4",
-      "y": "= main.yB",
-      "width": "= main.x5 - main.x4",
-      "length": "= main.yC - main.yB"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Bedroom_2",
-     "x": 240,
-     "y": 4,
-     "width": 176,
-     "length": 156,
-     "walls": {
-      "north": {
-       "openings": [
-        {
-         "kind": "window",
-         "name": "B2_Win_N",
-         "offset": 65,
-         "width": 60,
-         "height": 55,
-         "sill_height": 35
-        }
-       ]
-      },
-      "east": {
-       "openings": [
-        {
-         "kind": "window",
-         "name": "B2_Win_E",
-         "offset": 55,
-         "width": 55,
-         "height": 55,
-         "sill_height": 35
-        }
-       ]
-      },
-      "west": {},
-      "south": {
-       "openings": [
-        {
-         "kind": "door",
-         "name": "B2_Door",
-         "offset": 40,
-         "width": 32,
-         "height": 80
-        }
-       ]
-      }
-     },
-     "formulas": {
-      "x": "= main.x5",
-      "y": "= main.yA",
-      "width": "= main.x8 - main.x5",
-      "length": "= main.yC - main.yA"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Kitchen",
-     "x": 4,
-     "y": 160,
-     "width": 146,
-     "length": 140,
-     "walls": {
-      "west": {
-       "openings": [
-        {
-         "kind": "window",
-         "name": "K_Win_W",
-         "offset": 55,
-         "width": 55,
-         "height": 45,
-         "sill_height": 50
-        }
-       ]
-      },
-      "north": {},
-      "east": {},
-      "south": {
-       "openings": [
-        {
-         "kind": "door",
-         "name": "K_Door",
-         "offset": 55,
-         "width": 30,
-         "height": 80
-        }
-       ]
-      }
-     },
-     "formulas": {
-      "x": "= main.x1",
-      "y": "= main.yC",
-      "width": "= main.x3 - main.x1",
-      "length": "= main.yD - main.yC"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Living",
-     "x": 150,
-     "y": 160,
-     "width": 266,
-     "length": 140,
-     "material": "hall",
-     "walls": {
-      "east": {
-       "openings": [
-        {
-         "kind": "window",
-         "name": "LV_Win_E1",
-         "offset": 20,
-         "width": 50,
-         "height": 60,
-         "sill_height": 30
+          "name": "1",
+          "at": "= wallT / 2",
+          "role": "structural"
         },
         {
-         "kind": "window",
-         "name": "LV_Win_E2",
-         "offset": 80,
-         "width": 50,
-         "height": 60,
-         "sill_height": 30
-        }
-       ]
-      },
-      "north": {},
-      "west": {},
-      "south": {}
-     },
-     "formulas": {
-      "x": "= main.x3",
-      "y": "= main.yC",
-      "width": "= main.x8 - main.x3",
-      "length": "= main.yD - main.yC"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Utility",
-     "x": 4,
-     "y": 300,
-     "width": 86,
-     "length": 100,
-     "walls": {
-      "west": {
-       "openings": [
+          "name": "2",
+          "at": "= round(wallT / 2 + 0.208738 * (House.W - wallT))"
+        },
         {
-         "kind": "window",
-         "name": "U_Win_W",
-         "offset": 40,
-         "width": 40,
-         "height": 40,
-         "sill_height": 50
-        }
-       ]
-      },
-      "north": {},
-      "east": {},
-      "south": {
-       "openings": [
+          "name": "3",
+          "at": "= round(wallT / 2 + 0.354369 * (House.W - wallT))"
+        },
         {
-         "kind": "door",
-         "name": "U_Door",
-         "offset": 30,
-         "width": 30,
-         "height": 80
-        }
-       ]
-      }
-     },
-     "formulas": {
-      "x": "= main.x1",
-      "y": "= main.yD",
-      "width": "= main.x2 - main.x1",
-      "length": "= main.yE - main.yD"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Dining",
-     "x": 90,
-     "y": 300,
-     "width": 180,
-     "length": 100,
-     "walls": {
-      "north": {
-       "openings": [
+          "name": "4",
+          "at": "= round(wallT / 2 + 0.402913 * (House.W - wallT))"
+        },
         {
-         "kind": "door",
-         "name": "D_to_Living",
-         "offset": 70,
-         "width": 45,
-         "height": 82,
-         "open": true
-        }
-       ]
-      },
-      "east": {},
-      "west": {},
-      "south": {}
-     },
-     "formulas": {
-      "x": "= main.x2",
-      "y": "= main.yD",
-      "width": "= main.x6 - main.x2",
-      "length": "= main.yE - main.yD"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Shrine",
-     "x": 270,
-     "y": 300,
-     "width": 70,
-     "length": 100,
-     "walls": {
-      "north": {
-       "openings": [
+          "name": "5",
+          "at": "= round(wallT / 2 + 0.572816 * (House.W - wallT))"
+        },
         {
-         "kind": "door",
-         "name": "SH_Door",
-         "offset": 24,
-         "width": 30,
-         "height": 82,
-         "open": true
-        }
-       ]
-      },
-      "east": {},
-      "west": {},
-      "south": {}
-     },
-     "formulas": {
-      "x": "= main.x6",
-      "y": "= main.yD",
-      "width": "= main.x7 - main.x6",
-      "length": "= main.yE - main.yD"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Entrance_Lobby",
-     "x": 340,
-     "y": 300,
-     "width": 76,
-     "length": 100,
-     "walls": {
-      "north": {
-       "openings": [
+          "name": "6",
+          "at": "= round(wallT / 2 + 0.645631 * (House.W - wallT))"
+        },
         {
-         "kind": "door",
-         "name": "EL_to_Living",
-         "offset": 25,
-         "width": 36,
-         "height": 82,
-         "open": true
-        }
-       ]
-      },
-      "east": {
-       "openings": [
+          "name": "7",
+          "at": "= round(wallT / 2 + 0.815534 * (House.W - wallT))"
+        },
         {
-         "kind": "window",
-         "name": "EL_Win_E",
-         "offset": 40,
-         "width": 40,
-         "height": 55,
-         "sill_height": 35
+          "name": "8",
+          "at": "= House.W - wallT / 2",
+          "role": "structural"
         }
-       ]
-      },
-      "west": {},
-      "south": {
-       "openings": [
+      ],
+      "y": [
         {
-         "kind": "door",
-         "name": "Main_Entry",
-         "offset": 22,
-         "width": 45,
-         "height": 85
+          "name": "A",
+          "at": "= wallT / 2",
+          "role": "structural"
+        },
+        {
+          "name": "B",
+          "at": "= round(wallT / 2 + 0.164502 * (House.L - wallT))"
+        },
+        {
+          "name": "C",
+          "at": "= round(wallT / 2 + 0.337662 * (House.L - wallT))"
+        },
+        {
+          "name": "D",
+          "at": "= round(wallT / 2 + 0.640693 * (House.L - wallT))"
+        },
+        {
+          "name": "E",
+          "at": "= round(wallT / 2 + 0.857143 * (House.L - wallT))"
+        },
+        {
+          "name": "F",
+          "at": "= House.L - wallT / 2",
+          "role": "structural"
         }
-       ]
-      }
-     },
-     "formulas": {
-      "x": "= main.x7",
-      "y": "= main.yD",
-      "width": "= main.x8 - main.x7",
-      "length": "= main.yE - main.yD"
-     }
-    },
-    {
-     "type": "room",
-     "name": "Verandah",
-     "x": 4,
-     "y": 400,
-     "width": 412,
-     "length": 66,
-     "material": "verandah",
-     "walls": {
-      "east": {},
-      "west": {}
-     },
-     "formulas": {
-      "x": "= main.x1",
-      "y": "= main.yE",
-      "width": "= main.x8 - main.x1",
-      "length": "= main.yF - main.yE"
-     }
-    },
-    {
-     "type": "pillar",
-     "name": "V_Pillar_1",
-     "x": 5,
-     "y": 465,
-     "width": 10,
-     "length": 10,
-     "height": 116,
-     "formulas": {
-      "x": "= (main.x1) + pilInset",
-      "y": "= (main.yF) - pilInset",
-      "width": "= pillarW",
-      "length": "= pillarW"
-     }
-    },
-    {
-     "type": "pillar",
-     "name": "V_Pillar_2",
-     "x": 150,
-     "y": 465,
-     "width": 10,
-     "length": 10,
-     "height": 116,
-     "formulas": {
-      "x": "= main.x3",
-      "y": "= (main.yF) - pilInset",
-      "width": "= pillarW",
-      "length": "= pillarW"
-     }
-    },
-    {
-     "type": "pillar",
-     "name": "V_Pillar_3",
-     "x": 270,
-     "y": 465,
-     "width": 10,
-     "length": 10,
-     "height": 116,
-     "formulas": {
-      "x": "= main.x6",
-      "y": "= (main.yF) - pilInset",
-      "width": "= pillarW",
-      "length": "= pillarW"
-     }
-    },
-    {
-     "type": "pillar",
-     "name": "V_Pillar_4",
-     "x": 415,
-     "y": 465,
-     "width": 10,
-     "length": 10,
-     "height": 116,
-     "formulas": {
-      "x": "= (main.x8) - pilInset",
-      "y": "= (main.yF) - pilInset",
-      "width": "= pillarW",
-      "length": "= pillarW"
-     }
+      ]
     }
-   ]
   },
-  {
-   "floor_number": 2,
-   "name": "Loft Floor",
-   "objects": [
+  "floors": [
     {
-     "type": "roof",
-     "roof_type": "pitched",
-     "default_endpoint": "closed",
-     "min_overhang": 25,
-     "slope": {
-      "by": "height",
-      "ridge_h": 100
-     },
-     "segments": [
-      {
-       "id": "seg0",
-       "start": [
-        210,
-        0
-       ],
-       "end": [
-        210,
-        470
-       ],
-       "width": 420,
-       "hip_setback_start": 90,
-       "hip_setback_end": 90
-      }
-     ],
-     "trusses": [
-      {
-       "segment_id": "seg0",
-       "type": "fink",
-       "positions_along": [
-        95,
-        235,
-        375
-       ]
-      }
-     ]
+      "floor_number": 0,
+      "name": "Plinth",
+      "height": 40,
+      "objects": [
+        {
+          "type": "ground",
+          "name": "Ground",
+          "layer": "ground",
+          "x": 0,
+          "y": 0,
+          "width": 600,
+          "length": 700
+        },
+        {
+          "type": "plinth",
+          "name": "Plinth",
+          "layer": "plinth",
+          "x": 4,
+          "y": 4,
+          "width": 412,
+          "length": 462,
+          "height": 40,
+          "formulas": {
+            "x": "= main.x1",
+            "y": "= main.yA",
+            "width": "= main.x8 - main.x1",
+            "length": "= main.yF - main.yA"
+          }
+        }
+      ]
+    },
+    {
+      "floor_number": 1,
+      "name": "Ground Floor",
+      "objects": [
+        {
+          "type": "floor_slab",
+          "x": 4,
+          "y": 4,
+          "width": 412,
+          "length": 462,
+          "formulas": {
+            "x": "= main.x1",
+            "y": "= main.yA",
+            "width": "= main.x8 - main.x1",
+            "length": "= main.yF - main.yA"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Master_Bedroom",
+          "x": 4,
+          "y": 4,
+          "width": 166,
+          "length": 156,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "MB_Win_N",
+                  "offset": 55,
+                  "width": 55,
+                  "height": 55,
+                  "sill_height": 35
+                }
+              ]
+            },
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "MB_Win_W",
+                  "offset": 50,
+                  "width": 55,
+                  "height": 55,
+                  "sill_height": 35
+                }
+              ]
+            },
+            "east": {},
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "MB_Door",
+                  "offset": 60,
+                  "width": 32,
+                  "height": 80
+                }
+              ]
+            }
+          },
+          "formulas": {
+            "x": "= main.x1",
+            "y": "= main.yA",
+            "width": "= main.x4 - main.x1",
+            "length": "= main.yC - main.yA"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Master_Toilet",
+          "x": 170,
+          "y": 4,
+          "width": 70,
+          "length": 76,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "MT_Win_N",
+                  "offset": 22,
+                  "width": 26,
+                  "height": 35,
+                  "sill_height": 45
+                }
+              ]
+            },
+            "west": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "MT_Door",
+                  "offset": 20,
+                  "width": 26,
+                  "height": 80
+                }
+              ]
+            },
+            "east": {},
+            "south": {}
+          },
+          "formulas": {
+            "x": "= main.x4",
+            "y": "= main.yA",
+            "width": "= main.x5 - main.x4",
+            "length": "= main.yB - main.yA"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Common_Toilet",
+          "x": 170,
+          "y": 80,
+          "width": 70,
+          "length": 80,
+          "walls": {
+            "east": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "CT_Door",
+                  "offset": 24,
+                  "width": 26,
+                  "height": 80
+                }
+              ]
+            },
+            "west": {},
+            "north": {},
+            "south": {}
+          },
+          "formulas": {
+            "x": "= main.x4",
+            "y": "= main.yB",
+            "width": "= main.x5 - main.x4",
+            "length": "= main.yC - main.yB"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bedroom_2",
+          "x": 240,
+          "y": 4,
+          "width": 176,
+          "length": 156,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "B2_Win_N",
+                  "offset": 65,
+                  "width": 60,
+                  "height": 55,
+                  "sill_height": 35
+                }
+              ]
+            },
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "B2_Win_E",
+                  "offset": 55,
+                  "width": 55,
+                  "height": 55,
+                  "sill_height": 35
+                }
+              ]
+            },
+            "west": {},
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "B2_Door",
+                  "offset": 40,
+                  "width": 32,
+                  "height": 80
+                }
+              ]
+            }
+          },
+          "formulas": {
+            "x": "= main.x5",
+            "y": "= main.yA",
+            "width": "= main.x8 - main.x5",
+            "length": "= main.yC - main.yA"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Kitchen",
+          "x": 4,
+          "y": 160,
+          "width": 146,
+          "length": 140,
+          "walls": {
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "K_Win_W",
+                  "offset": 55,
+                  "width": 55,
+                  "height": 45,
+                  "sill_height": 50
+                }
+              ]
+            },
+            "north": {},
+            "east": {},
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "K_Door",
+                  "offset": 55,
+                  "width": 30,
+                  "height": 80
+                }
+              ]
+            }
+          },
+          "formulas": {
+            "x": "= main.x1",
+            "y": "= main.yC",
+            "width": "= main.x3 - main.x1",
+            "length": "= main.yD - main.yC"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Living",
+          "x": 150,
+          "y": 160,
+          "width": 266,
+          "length": 140,
+          "material": "hall",
+          "walls": {
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "LV_Win_E1",
+                  "offset": 20,
+                  "width": 50,
+                  "height": 60,
+                  "sill_height": 30
+                },
+                {
+                  "kind": "window",
+                  "name": "LV_Win_E2",
+                  "offset": 80,
+                  "width": 50,
+                  "height": 60,
+                  "sill_height": 30
+                }
+              ]
+            },
+            "north": {},
+            "west": {},
+            "south": {}
+          },
+          "formulas": {
+            "x": "= main.x3",
+            "y": "= main.yC",
+            "width": "= main.x8 - main.x3",
+            "length": "= main.yD - main.yC"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Utility",
+          "x": 4,
+          "y": 300,
+          "width": 86,
+          "length": 100,
+          "walls": {
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "U_Win_W",
+                  "offset": 40,
+                  "width": 40,
+                  "height": 40,
+                  "sill_height": 50
+                }
+              ]
+            },
+            "north": {},
+            "east": {},
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "U_Door",
+                  "offset": 30,
+                  "width": 30,
+                  "height": 80
+                }
+              ]
+            }
+          },
+          "formulas": {
+            "x": "= main.x1",
+            "y": "= main.yD",
+            "width": "= main.x2 - main.x1",
+            "length": "= main.yE - main.yD"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Dining",
+          "x": 90,
+          "y": 300,
+          "width": 180,
+          "length": 100,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "D_to_Living",
+                  "offset": 70,
+                  "width": 45,
+                  "height": 82,
+                  "open": true
+                }
+              ]
+            },
+            "east": {},
+            "west": {},
+            "south": {}
+          },
+          "formulas": {
+            "x": "= main.x2",
+            "y": "= main.yD",
+            "width": "= main.x6 - main.x2",
+            "length": "= main.yE - main.yD"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Shrine",
+          "x": 270,
+          "y": 300,
+          "width": 70,
+          "length": 100,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "SH_Door",
+                  "offset": 24,
+                  "width": 30,
+                  "height": 82,
+                  "open": true
+                }
+              ]
+            },
+            "east": {},
+            "west": {},
+            "south": {}
+          },
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.yD",
+            "width": "= main.x7 - main.x6",
+            "length": "= main.yE - main.yD"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Entrance_Lobby",
+          "x": 340,
+          "y": 300,
+          "width": 76,
+          "length": 100,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "EL_to_Living",
+                  "offset": 25,
+                  "width": 36,
+                  "height": 82,
+                  "open": true
+                }
+              ]
+            },
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "EL_Win_E",
+                  "offset": 40,
+                  "width": 40,
+                  "height": 55,
+                  "sill_height": 35
+                }
+              ]
+            },
+            "west": {},
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Main_Entry",
+                  "offset": 22,
+                  "width": 45,
+                  "height": 85
+                }
+              ]
+            }
+          },
+          "formulas": {
+            "x": "= main.x7",
+            "y": "= main.yD",
+            "width": "= main.x8 - main.x7",
+            "length": "= main.yE - main.yD"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Verandah",
+          "x": 4,
+          "y": 400,
+          "width": 412,
+          "length": 66,
+          "material": "verandah",
+          "walls": {
+            "east": {},
+            "west": {}
+          },
+          "formulas": {
+            "x": "= main.x1",
+            "y": "= main.yE",
+            "width": "= main.x8 - main.x1",
+            "length": "= main.yF - main.yE"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "V_Pillar_1",
+          "x": 0,
+          "y": 460,
+          "width": 10,
+          "length": 10,
+          "height": 116,
+          "formulas": {
+            "x": "= ((main.x1) + pilInset) - (pillarW) / 2",
+            "y": "= ((main.yF) - pilInset) - (pillarW) / 2",
+            "width": "= pillarW",
+            "length": "= pillarW"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "V_Pillar_2",
+          "x": 145,
+          "y": 460,
+          "width": 10,
+          "length": 10,
+          "height": 116,
+          "formulas": {
+            "x": "= (main.x3) - (pillarW) / 2",
+            "y": "= ((main.yF) - pilInset) - (pillarW) / 2",
+            "width": "= pillarW",
+            "length": "= pillarW"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "V_Pillar_3",
+          "x": 265,
+          "y": 460,
+          "width": 10,
+          "length": 10,
+          "height": 116,
+          "formulas": {
+            "x": "= (main.x6) - (pillarW) / 2",
+            "y": "= ((main.yF) - pilInset) - (pillarW) / 2",
+            "width": "= pillarW",
+            "length": "= pillarW"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "V_Pillar_4",
+          "x": 410,
+          "y": 460,
+          "width": 10,
+          "length": 10,
+          "height": 116,
+          "formulas": {
+            "x": "= ((main.x8) - pilInset) - (pillarW) / 2",
+            "y": "= ((main.yF) - pilInset) - (pillarW) / 2",
+            "width": "= pillarW",
+            "length": "= pillarW"
+          }
+        }
+      ]
+    },
+    {
+      "floor_number": 2,
+      "name": "Loft Floor",
+      "objects": [
+        {
+          "type": "roof",
+          "roof_type": "pitched",
+          "default_endpoint": "closed",
+          "min_overhang": 25,
+          "slope": {
+            "by": "height",
+            "ridge_h": 100
+          },
+          "segments": [
+            {
+              "id": "seg0",
+              "start": [
+                210,
+                0
+              ],
+              "end": [
+                210,
+                470
+              ],
+              "width": 420,
+              "hip_setback_start": 90,
+              "hip_setback_end": 90
+            }
+          ],
+          "trusses": [
+            {
+              "segment_id": "seg0",
+              "type": "fink",
+              "positions_along": [
+                95,
+                235,
+                375
+              ]
+            }
+          ]
+        }
+      ]
     }
-   ]
-  }
- ],
- "points": {
-  "House": {
-   "x": 420,
-   "y": 470
-  }
- },
- "variables": {
-  "wallT": 8,
-  "pillarW": 10,
-  "pilInset": "= (pillarW - wallT) / 2"
- },
- "coord_convention": "center"
+  ],
+  "points": {
+    "House": {
+      "x": 420,
+      "y": 470
+    }
+  },
+  "variables": {
+    "wallT": 8,
+    "pillarW": 10,
+    "pilInset": "= (pillarW - wallT) / 2"
+  },
+  "coord_convention": "center"
 }

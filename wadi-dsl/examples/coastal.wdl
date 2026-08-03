@@ -70,8 +70,10 @@ house CoastalCottage {
         wall south { door  BedDoor  at 70 size (32, 80) }
       }
 
-    pillar C1 at (main.x1 + pilInset, main.yA + pilInset) size (pillarW, pillarW) height 116
-    pillar C2 at (main.x3 - pilInset, main.yA + pilInset) size (pillarW, pillarW) height 116
+    // A pillar's `at` is its TOP-LEFT corner — to centre a column on a grid node,
+    // subtract half its width (perimeter columns also inset by pilInset).
+    pillar C1 at (main.x1 + pilInset - pillarW/2, main.yA + pilInset - pillarW/2) size (pillarW, pillarW) height 116
+    pillar C2 at (main.x3 - pillarW/2,            main.yA + pilInset - pillarW/2) size (pillarW, pillarW) height 116
   }
 
   // --- Loft floor: the hip roof (first-class — nested segments/slope/trusses) ---

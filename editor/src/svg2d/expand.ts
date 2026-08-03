@@ -117,10 +117,11 @@ export function expandRoomWalls(
   //     +t extent) so the wall-drawing below (which insets inward by t) lands the
   //     wall centred on the boundary; two rooms sharing a centreline produce the
   //     same wall (one shared wall). Rooms ABUT on grid lines, no overlap, no math.
-  //   • pillar — its (x,y) is the column CENTRE (so `x:"= main.x1", y:"= main.yF"`
-  //     drops a column exactly on grid node 1F); convert to the top-left corner the
-  //     renderers expect by subtracting half the column's own footprint. Size is
-  //     the physical column, so it is left unchanged (never grown by t).
+  //   • pillar — NOT adjusted. A pillar's (x,y) is its TOP-LEFT CORNER in BOTH
+  //     conventions (columns align to corners; author them where the corner
+  //     should sit). To CENTRE a column on a grid node/point, subtract half its
+  //     own footprint in the formula: `x:"= main.x1 - pillarW/2"`. Size is the
+  //     physical column, never grown by t.
   if ((hc as { coord_convention?: string }).coord_convention === "center" && hc.floors) {
     const RECT_TYPES = new Set(["room", "floor_slab", "plinth"]);
     for (const fl of hc.floors) {
@@ -132,9 +133,6 @@ export function expandRoomWalls(
           if (typeof r.y === "number") r.y = (r.y as number) - ot / 2;
           if (typeof r.width === "number") r.width = (r.width as number) + ot;
           if (typeof r.length === "number") r.length = (r.length as number) + ot;
-        } else if (o.type === "pillar") {
-          if (typeof r.x === "number" && typeof r.width === "number") r.x = (r.x as number) - (r.width as number) / 2;
-          if (typeof r.y === "number" && typeof r.length === "number") r.y = (r.y as number) - (r.length as number) / 2;
         } else if (o.type === "roof") {
           // A roof segment's start→end is its ridge/axis and `width` its span
           // CENTRED on that axis (svg2d/roof/v2/segments.ts segmentRect). In

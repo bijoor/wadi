@@ -18,6 +18,10 @@ function house(objects: Any[], extra: Any = {}): HouseConfig {
 const find = (c: Any, n: string): Any => {
   for (const fl of c.floors) for (const o of fl.objects) if (o.name === n) return o;
 };
+// Resolve formulas THEN expand — needed when a pillar's centre-on-node formula
+// references a grid line (`= main.x1 - width/2`).
+const resolveThenExpand = (c: HouseConfig): Any =>
+  expandRoomWalls(resolveParametric(c).config as HouseConfig);
 
 describe("centreline convention + grid symbols", () => {
   it("a centreline config expands to the SAME outer footprint as the overlap equivalent", () => {
@@ -58,15 +62,23 @@ describe("centreline convention + grid symbols", () => {
     expect(find(r, "K").width).toBe(292); // (300-4) - 4
   });
 
-  it("in center mode a pillar's x/y is its CENTRE (dropped on the grid node)", () => {
-    // A 10×10 column authored at grid node (x1=100, yA=200) must render with its
-    // top-left at (95, 195) — centred on the node — and keep its physical size.
+  it("a pillar's x/y is its TOP-LEFT CORNER in BOTH conventions (never shifted)", () => {
+    // Pillars align to corners: `at` is the top-left corner and is left untouched
+    // by either convention (unlike rooms, which grow to the outer face in center
+    // mode). To CENTRE a column on a node, the author subtracts half its width in
+    // the formula — the convention does not do it for them.
     const p = (extra: Any = {}): Any => ({ type: "pillar", name: "P", x: 100, y: 200, width: 10, length: 10, height: 100, ...extra });
-    const centred = find(expandRoomWalls(house([p()], { coord_convention: "center" })), "P");
-    expect([centred.x, centred.y, centred.width, centred.length]).toEqual([95, 195, 10, 10]);
-    // Outer mode leaves the pillar's top-left corner exactly as authored.
+    const centre = find(expandRoomWalls(house([p()], { coord_convention: "center" })), "P");
+    expect([centre.x, centre.y, centre.width, centre.length]).toEqual([100, 200, 10, 10]);
     const outer = find(expandRoomWalls(house([p()])), "P");
     expect([outer.x, outer.y]).toEqual([100, 200]);
+    // Centre-on-node idiom: corner = node − width/2.
+    const onNode = find(
+      resolveThenExpand(house([p({ formulas: { x: "= main.x1 - 10/2", y: "= main.yA - 10/2" } })],
+        { coord_convention: "center", grids: { main: { x: [{ name: "1", at: 100 }], y: [{ name: "A", at: 200 }] } } })),
+      "P",
+    );
+    expect([onNode.x, onNode.y]).toEqual([95, 195]); // centred on node (100,200)
   });
 
   it("default (outer) convention leaves footprints unchanged on expand", () => {

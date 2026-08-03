@@ -97,26 +97,31 @@ Define `grids.main` with X and Y lines. The **outer** lines anchor to the plinth
 - **Keep valid placeholder literals** on `x/y/width/length` (positive numbers) — the
   strict schema checks stored literals *before* resolve. The resolver overwrites them.
 
-## 5. Pillars — centre on a node, inset at the perimeter
+## 5. Pillars — corner-anchored; centre on a node by subtracting half the width
 
-In `center` mode a pillar's `(x,y)` is its **centre**, so it drops onto a grid node:
+A pillar's `(x,y)` is its **TOP-LEFT CORNER** in **both** conventions (columns align
+to corners — the convention never shifts a pillar the way it grows a room). To drop a
+column **centred** on a grid node, subtract **half its width** in the formula:
 
 ```jsonc
 { "type":"pillar", "name":"P_mid",
-  "formulas": { "x":"= main.x3", "y":"= main.yF", "width":"= pillarW", "length":"= pillarW" } }
+  "formulas": { "x":"= main.x3 - pillarW/2", "y":"= main.yF - pillarW/2",
+                "width":"= pillarW", "length":"= pillarW" } }
 ```
 
-- **Interior columns** sit exactly on their node — reference the line directly.
+- **Interior columns** centre on their node: `"= main.x3 - pillarW/2"`.
 - **Perimeter columns** are wider than the wall, so centred on an outer line they'd jut
-  past the plinth. Move them inward by `pilInset` **in the formula** (self-describing —
-  never rely on a renderer clamp):
-  - on the **min** line (`x1`, `yA`): `"= (main.x1) + pilInset"`
-  - on the **max** line (`x8`, `yF`): `"= (main.x8) - pilInset"`
-  - a corner column does both; a front-row column that's interior in X only insets in Y.
-- Because `pilInset = (pillarW − wallT)/2` is a formula, columns stay flush when you
-  resize the plot, the wall, or the column.
-- **Colonnade columns** between nodes: place by a named point / midpoint formula
-  (`"= (main.x1 + main.x2)/2"`); still inset the axis that sits on an outer line.
+  past the plinth. Inset by `pilInset` first, **then** subtract `pillarW/2` — the net
+  effect puts the column's OUTER face flush with the wall's outer face:
+  - on the **min** line (`x1`, `yA`): `"= (main.x1) + pilInset - pillarW/2"`
+  - on the **max** line (`x8`, `yF`): `"= (main.x8) - pilInset - pillarW/2"`
+  - a corner column does both axes; a front-row column that's interior in X only insets Y.
+- Because `pilInset = (pillarW − wallT)/2` and `pillarW` are formulas, columns stay flush
+  when you resize the plot, the wall, or the column.
+- **Colonnade columns** between nodes: `"= (main.x1 + main.x2)/2 - pillarW/2"` (centre on
+  the midpoint); still inset the axis that sits on an outer line.
+- **Freehand (no grid):** put `at (x,y)` where the column's **corner** should sit — it
+  lands there exactly, so you can butt a column against a room corner or wall junction.
 
 ## 6. Openings
 
