@@ -136,7 +136,7 @@ fn start_bridge(app: AppHandle) {
   });
 }
 
-// Open (or focus) the DSL editor+renderer window — the bundled Monaco playground
+// Open (or focus) the WDL editor+renderer window — the bundled Monaco playground
 // at /dsl, which compiles .wdl in-webview and drives the app renderer in a
 // same-origin iframe. Fully offline; no dev server, no VS Code, no watch loop.
 fn open_dsl_editor(app: &tauri::AppHandle) {
@@ -145,19 +145,19 @@ fn open_dsl_editor(app: &tauri::AppHandle) {
     return;
   }
   match WebviewWindowBuilder::new(app, "dsl", WebviewUrl::App("/dsl/index.html".into()))
-    .title("Wadi DSL — editor + live renderer")
+    .title("Wadi WDL — editor + live renderer")
     .inner_size(1500.0, 950.0)
     .min_inner_size(1000.0, 640.0)
     .resizable(true)
     .build()
   {
     Ok(_) => {}
-    Err(e) => eprintln!("[wadi] failed to open DSL editor window: {e}"),
+    Err(e) => eprintln!("[wadi] failed to open WDL editor window: {e}"),
   }
 }
 
 // Command form of `open_dsl_editor`, so the app's own header link (main window)
-// can open the DSL editor window — same as the ⌘⇧D menu item.
+// can open the WDL editor window — same as the ⌘⇧D menu item.
 #[tauri::command]
 fn show_dsl_editor(app: tauri::AppHandle) {
   open_dsl_editor(&app);
@@ -208,7 +208,7 @@ pub fn run() {
           .paste()
           .select_all()
           .build()?;
-        let dsl_item = MenuItemBuilder::new("DSL Editor")
+        let dsl_item = MenuItemBuilder::new("WDL Editor")
           .id("open-dsl")
           .accelerator("Cmd+Shift+D")
           .build(handle)?;
