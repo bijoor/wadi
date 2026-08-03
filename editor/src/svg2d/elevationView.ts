@@ -390,14 +390,21 @@ export function generateElevationView(
     const wallZ = currentZ + floorSlabThickness;  // top of slab / bottom of walls
     const wallTop = currentZ + floorHeight;       // top of floor = next floor's start
 
-    // Plinth object → a filled rectangle spanning this floor's band, drawn by
-    // type dispatch (like House3D). Uses the plinth object's own height.
+    // Plinth object → a filled rectangle spanning this floor's Z band, drawn by
+    // type dispatch (like House3D). Uses the plinth object's own height AND its
+    // own footprint projected onto the view axis (same projection as floor_slab)
+    // — NOT the full plot width — so its size matches the 3D model and it sits
+    // directly under the walls above.
     for (const obj of activeObjects(floorConfig.objects as Obj[])) {
       if (obj.type !== "plinth") continue;
       const ph = (obj.height as number | undefined) ?? floorHeight;
       const pTopY = zToY(slabZ + ph);
       const pBotY = zToY(slabZ);
-      svg += `<rect x="0" y="${fFloat(pTopY)}" width="${f(width)}" height="${fFloat(pBotY - pTopY)}" fill="#A0826D" stroke="#000" stroke-width="1"/>\n`;
+      const isSideView = viewType === "left" || viewType === "right";
+      const pObjXWorld = isSideView ? (obj.y as number) : (obj.x as number);
+      const pObjW = isSideView ? (obj.length as number) : (obj.width as number);
+      const pSvgX = worldToSvgX(pObjXWorld, pObjW);
+      svg += `<rect x="${fFloat(pSvgX)}" y="${fFloat(pTopY)}" width="${fFloat(pObjW)}" height="${fFloat(pBotY - pTopY)}" fill="#A0826D" stroke="#000" stroke-width="1"/>\n`;
     }
 
     const floorName = floorConfig.name ?? `Floor ${floorNum}`;
