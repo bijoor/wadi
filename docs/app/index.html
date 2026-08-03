@@ -1590,7 +1590,11 @@
            toolbar just above the footer so the layer/view menus don't collide
            with the tabs (+ safe-area for notched devices). */
         @media (max-width: 640px) {
-            #viewer-3d-toolbar {
+            /* Embedded preview (WDL editor / chat-driven) is a DESKTOP surface
+               even when the iframe is < 640px — it has no phone tab-footer, so
+               don't lift the layer/view toolbar off the bottom (that pushed it
+               out of view in the WDL editor's narrow preview pane). */
+            body:not([data-embed="1"]) #viewer-3d-toolbar {
                 bottom: calc(3.25rem + env(safe-area-inset-bottom, 0px));
                 gap: 0.3rem;
                 padding: 0.35rem 0.45rem;
@@ -1877,7 +1881,9 @@
             /* Tabs pinned to the bottom of the viewport as a footer so
                the top of the screen is title only and the 3-D viewer
                gets the full middle band. */
-            .tabs {
+            /* …and keep the tabs on TOP in the embed (not a fixed bottom
+               footer), so they don't collide with the bottom toolbar. */
+            body:not([data-embed="1"]) .tabs {
                 position: fixed;
                 left: 0; right: 0; bottom: 0;
                 margin: 0 !important;
