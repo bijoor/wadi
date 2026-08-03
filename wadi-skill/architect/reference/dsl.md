@@ -151,6 +151,31 @@ staircase [name "N"] at (start_x, start_y) step (rise, tread, width)
 
 kitchen [name "N"] path ((x,y), (x,y), …) side left|right
   depth <d> height <h> [base_z <z>]        // path points are literal numbers
+```
+
+**Staircases are TOP-anchored — this is the #1 mistake.** You put a staircase on the
+**UPPER** floor and it **DESCENDS** to the floor below:
+
+- `at (x,y)` is the **TOP** of the stair (where it meets the floor it's declared on).
+- `direction` is the **descent** direction (the way it travels going *down*).
+- `total_height` is the **drop** to the floor below (omit → the floor-below's height).
+- `max_run` caps a flight's run; exceed it and the stair auto-splits into switchback
+  flights with turn landings (`landing_depth`/`turn`/`flight_gap` tune the switchback).
+
+So a stair connecting the ground floor **up** to the first floor lives on the **First
+Floor**, descending to the ground:
+
+```wdl
+floor 2 "First Floor" height 116 {
+  slab at (…) size (…)
+  staircase name "Stair" at (212, 64) step (7, 11, 44)   // top = this floor, at the landing
+    direction south total_height 116                     // descends south to the floor below
+}
+```
+
+Put it on the *lower* floor (thinking of it as "climbing up") and it descends the wrong way
+— **below ground** — where it draws in 2D plans but is buried/invisible in 3D. `check.sh`
+catches that (convention **C5**), but author it top-anchored from the start.
 
 item [name "N"] asset { id "sofa" src "furniture/sofa.glb" dims (w,h,d) [category "…"] }
   at (x,y) [rotation <deg>] [scale <s>]

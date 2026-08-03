@@ -46,6 +46,7 @@ export const CONVENTIONS: ConventionMeta[] = [
   { id: "C2", title: "A room must wall every exterior side", level: "warn" },
   { id: "C3", title: "A floor with no slab must set slab_thickness to 0", level: "error" },
   { id: "C4", title: "A stacked floor's height should equal wall_height + slab_thickness", level: "warn" },
+  { id: "C5", title: "A staircase must land on a floor, not below ground", level: "warn" },
 ];
 
 type Bag = Record<string, unknown>;
@@ -148,10 +149,16 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
   // one already walled by a neighbour / overlapping room / standalone wall.
   const wallSegs = collectWallSegments(floors);
 
+  // Running base elevation of each floor (sum of the heights below it) — the same
+  // stack computeFloorZBands uses, for the C5 staircase-depth check.
+  let baseZ = 0;
+
   for (let fi = 0; fi < floors.length; fi++) {
     const fl = floors[fi];
     const objs = activeObjects(fl);
     const fnum = num(fl.floor_number);
+    const floorBaseZ = baseZ;
+    baseZ += fl.height != null ? num(fl.height) : floorHeightDefault;
 
     // ---- C1: the plinth floor's height must match the plinth block height ----
     // Floor N+1 sits at the running sum of floor `height`s; the plinth block
@@ -234,6 +241,38 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
               ? `The floor above leaves a ${gap}-unit gap over the walls. `
               : `The walls poke ${Math.abs(gap)} units through the floor above. `) +
             `Set height = wall_height + slab_thickness (or adjust them) unless the gap is intentional.`,
+        });
+      }
+    }
+
+    // ---- C5: a staircase must land on a floor, not below ground ----
+    // Staircases are TOP-anchored: put them on the UPPER floor and they DESCEND to
+    // the floor below. Placed on the wrong floor (or with too big a height), the
+    // expanded flight lands BELOW the ground plane — it draws in 2D plans but is
+    // buried (invisible) in 3D, with no other error. Recompute the bottom z the
+    // way expand.ts/stairExpand do and flag a below-ground landing.
+    for (const o of objs) {
+      if (o.type !== "staircase") continue;
+      const riser = num(o.step_rise);
+      if (riser <= 0) continue;
+      const belowH =
+        fi > 0 && floors[fi - 1].height != null ? num(floors[fi - 1].height) : floorHeightDefault;
+      const riseHeight = o.rise_height != null && num(o.rise_height) > 0 ? num(o.rise_height) : belowH;
+      const totalRise = Math.max(1, Math.round(riseHeight / riser)) * riser;
+      const slabT = fl.slab_thickness != null ? num(fl.slab_thickness) : slabDefault;
+      const topZ = o.z_offset != null ? num(o.z_offset) : slabT;
+      const bottomZ = floorBaseZ + (topZ - totalRise);
+      if (bottomZ < -1) {
+        findings.push({
+          rule: "C5",
+          level: "warn",
+          floor: fnum,
+          where: objLabel(o),
+          message:
+            `Staircase ${objLabel(o)} on ${floorLabel(fl)} descends to z=${Math.round(bottomZ)} — below the ground ` +
+            `plane, so it draws in 2D plans but is buried (invisible) in 3D. Staircases are TOP-anchored: place them ` +
+            `on the UPPER floor and they DESCEND to the floor below (\`direction\` is the descent). Move it up a floor ` +
+            `or reduce total_height.`,
         });
       }
     }

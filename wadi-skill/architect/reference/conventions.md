@@ -145,6 +145,31 @@ defaults { floor_height 116 wall_height 108 slab_thickness 8 }   // 108 + 8 = 11
 *(Skipped for the plinth floor — governed by C1 — and for the topmost floor, since nothing
 stacks on its walls.)*
 
+## C5 — A staircase must land on a floor, not below ground · **warning**
+
+**Statement.** A staircase's descent must not carry it below the ground plane (z < 0).
+
+**Rationale.** Staircases are **top-anchored**: you place one on the **upper** floor and it
+**descends** to the floor below (`at` is the top, `direction` is the descent, `total_height`
+is the drop). Put it on the *lower* floor (as if climbing up), or give it too large a
+`total_height`, and the expanded flight lands **below ground** — it still draws in the 2D
+plans (which ignore Z) but is **buried and invisible in 3D**, with no other error. This is
+the one that bit a real design: a stair on the ground floor "climbing" to the first floor
+was expanded to `z_offset: -105` and vanished from the 3D view.
+
+**Fix.** Move the staircase **up one floor** and let it descend. The stair that connects the
+ground floor to the first floor lives on the **First Floor**:
+
+```wdl
+floor 2 "First Floor" height 116 {
+  slab at (…) size (…)
+  staircase name "Stair" at (212, 64) step (7, 11, 44)   // `at` = the TOP (this floor)
+    direction south total_height 116                     // descends to the floor below
+}
+```
+
+*(See the staircase section of `dsl.md` for the full top-anchored convention.)*
+
 ## Running the checks
 
 ```bash

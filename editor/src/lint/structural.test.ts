@@ -97,6 +97,50 @@ describe("structural lint — C4 floor height = wall_height + slab_thickness", (
   });
 });
 
+describe("structural lint — C5 staircase must land on a floor, not below ground", () => {
+  it("warns when a staircase descends below the ground plane (buried)", () => {
+    const f = lintStructure(
+      house([
+        { floor_number: 0, name: "Plinth", height: 30, objects: [{ type: "plinth", name: "P", x: 0, y: 0, width: 100, length: 100, height: 30 }] },
+        {
+          floor_number: 1,
+          name: "Ground",
+          height: 108,
+          slab_thickness: 0,
+          objects: [
+            { type: "room", name: "R", x: 4, y: 4, width: 90, length: 90, walls: ["north", "south", "east", "west"] },
+            // On the LOWER floor with a large height ⇒ descends to z≈-75.
+            { type: "staircase", name: "S", start_x: 20, start_y: 80, step_rise: 7, step_tread: 11, step_width: 44, direction: "north", rise_height: 108 },
+          ],
+        },
+      ]),
+    );
+    const c5 = f.filter((x) => x.rule === "C5");
+    expect(c5).toHaveLength(1);
+    expect(c5[0].level).toBe("warn");
+    expect(c5[0].message).toContain("buried");
+  });
+
+  it("passes when the staircase is on the upper floor and lands above ground", () => {
+    const f = lintStructure(
+      house([
+        { floor_number: 0, name: "Plinth", height: 30, objects: [{ type: "plinth", name: "P", x: 0, y: 0, width: 100, length: 100, height: 30 }] },
+        { floor_number: 1, name: "Ground", height: 108, slab_thickness: 0, objects: [{ type: "room", name: "R", x: 4, y: 4, width: 90, length: 90, walls: ["north", "south", "east", "west"] }] },
+        {
+          floor_number: 2,
+          name: "First",
+          height: 116,
+          objects: [
+            { type: "floor_slab", x: 0, y: 0, width: 100, length: 100 },
+            { type: "staircase", name: "S", start_x: 20, start_y: 20, step_rise: 7, step_tread: 11, step_width: 44, direction: "south", rise_height: 116 },
+          ],
+        },
+      ]),
+    );
+    expect(f.filter((x) => x.rule === "C5")).toHaveLength(0);
+  });
+});
+
 describe("structural lint — C2 rooms must wall every exterior side", () => {
   const single = (walls: unknown) => ({
     floor_number: 1,
