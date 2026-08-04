@@ -7,6 +7,7 @@ import { compileDsl } from "../src/generator/toHouseConfig.js";
 // The REAL Wadi resolver (pure TS, no zod) — proves the DSL drives the actual
 // pipeline, not a parallel reimplementation.
 import { resolveParametric } from "../../editor/src/param/resolve";
+import { FURNITURE_CATALOG, furnitureAsset } from "../../editor/src/furniture/catalog";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "..", "..");
@@ -205,6 +206,28 @@ describe("Wadi DSL round-trip", () => {
       expect(() => compileDsl(free(`import "std-furniture" as f`, `f."bed_double"`))).toThrow(
         /imports need a module resolver/,
       );
+    });
+  });
+
+  describe("std-furniture.wdl (generated module)", () => {
+    const mod = readFileSync(resolve(here, "..", "std-modules", "std-furniture.wdl"), "utf8");
+    const resolveModule = (ref: string) => (ref === "std-furniture" ? mod : undefined);
+    const norm = (o: Record<string, unknown>) =>
+      JSON.stringify(Object.fromEntries(Object.entries(o).sort()));
+
+    it("compiles house-less (it's a pure asset library)", () => {
+      expect(() => compileDsl(mod)).not.toThrow();
+    });
+
+    it("every asset resolves byte-identical to furnitureAsset() — no drift", () => {
+      // If this fails, the module is stale: re-run scripts/gen-std-modules.mjs.
+      for (const spec of FURNITURE_CATALOG) {
+        const src = `house H { import "std-furniture" as f
+          floor 1 "G" { item f.${JSON.stringify(spec.id)} at (0,0) } }`;
+        const cfg = compileDsl(src, { resolveModule }) as { floors: { objects: any[] }[] };
+        const got = cfg.floors[0].objects.find((o) => o.type === "item").asset;
+        expect(norm(got)).toBe(norm(furnitureAsset(spec.id) as Record<string, unknown>));
+      }
     });
   });
 

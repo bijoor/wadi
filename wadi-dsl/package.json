@@ -6,6 +6,7 @@
   "description": "A Langium DSL for the Wadi parametric house model — a formalization demo for the parametric-domain-modeling method.",
   "scripts": {
     "langium:generate": "langium generate",
+    "gen:std-modules": "tsx scripts/gen-std-modules.mjs",
     "compile": "tsc --noEmit",
     "gen": "tsx src/cli/main.ts",
     "test": "vitest run",
