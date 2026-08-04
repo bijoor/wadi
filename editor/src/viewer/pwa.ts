@@ -106,10 +106,44 @@ async function warmOfflineCache(): Promise<void> {
   }
 }
 
+// The desktop app must NOT run a service worker. The embedded Tauri server
+// already serves the bundle locally and offline, so a worker adds nothing —
+// but a PERSISTED WKWebView worker (left by an older build, or a web session
+// sharing this webview's storage) keeps controlling the page across launches
+// and can strand it on a stale/partial bundle: after an app update the old
+// worker prunes its cache, the still-running old index.html then lazy-loads a
+// code-split `viewer-*.js` chunk that 404s, and the 3D view renders broken (an
+// unpopulated ground plane, missing geometry). Registration is already skipped
+// in Tauri, but skipping isn't enough — an ALREADY-registered worker lingers.
+// So proactively tear any worker + its caches down; if one was controlling this
+// very load, reload ONCE to boot cleanly from the embedded server.
+async function purgeStaleWorkers(): Promise<void> {
+  try {
+    const hadController = "serviceWorker" in navigator && !!navigator.serviceWorker.controller;
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    if (hadController && !sessionStorage.getItem("wadi.swPurged")) {
+      sessionStorage.setItem("wadi.swPurged", "1"); // guard against a reload loop
+      location.reload();
+    }
+  } catch {
+    /* best-effort teardown; a failure just leaves the (harmless) status quo */
+  }
+}
+
 // Register the service worker (web only) and, once it controls the page, warm
 // the offline cache in the background (on idle, so it never competes with boot).
 export function registerServiceWorker(): void {
-  if (!isSecureBrowser()) return; // Tauri / file:// → native offline, no SW
+  if (!isSecureBrowser()) {
+    void purgeStaleWorkers(); // Tauri / file:// → native offline; kill any SW left behind
+    return;
+  }
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch(() => {
       /* offline support is best-effort; ignore registration failures */
