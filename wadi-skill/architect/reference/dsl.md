@@ -215,6 +215,24 @@ in **metres** `(width, height, depth)`; `src` is a GLB URL (an unreachable GLB
 shows a placeholder box, never a blank). `anchor` is one of `top-left top-center
 top-right center-left center center-right bottom-left bottom-center bottom-right`.
 
+**Orientation — this is how you point furniture the right way.** A piece's FRONT
+(the side you sit at / the doors / the open side) faces a known compass direction
+per its `rotation` (degrees):
+
+| `rotation` | front faces |
+|---|---|
+| `0`   | **South** (the plot front / entrance side, +Y) |
+| `90`  | East |
+| `180` | North |
+| `270` | West |
+
+So a sofa against the NORTH wall (facing into the room, i.e. south) is `rotation
+0`; against the SOUTH wall (facing north) it's `rotation 180`; against the WEST
+wall (facing east) `rotation 90`. The floor plan (`wadi_preview plans`) draws a
+small triangle on each piece's front edge so you can verify the way it points;
+for a definitive 3D check use `wadi_capture_3d({ room: "…" })` (first-person from
+inside the room).
+
 ## Imports & modules (reusable `.wdl` libraries)
 
 A `.wdl` file can be a **module** — top-level declarations (no `house` needed) —

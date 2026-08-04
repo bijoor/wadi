@@ -397,6 +397,11 @@ server.registerTool(
         }
       }
       lines.push(`  e.g. \`item ns."${assets[0].id}" at (x, y)\` or in a room \`item ns."${assets[0].id}" anchor center\``);
+      lines.push(
+        `  Orientation: a piece's front faces SOUTH at rotation 0 (90=East, 180=North, 270=West) — ` +
+          `e.g. a sofa on the north wall faces south = rotation 0, on the south wall = rotation 180. ` +
+          `wadi_preview plans draws a front-notch; wadi_capture_3d({room}) shows it from inside.`,
+      );
     }
     return { content: [{ type: "text", text: lines.join("\n") }] };
   },

@@ -187,7 +187,25 @@ export function svgDrawItem(
   const x = cx - w / 2;
   const y = cy - l / 2;
   const rot = yawDeg ? ` transform="rotate(${fFloat(yawDeg)} ${fFloat(cx)} ${fFloat(cy)})"` : "";
-  return `<rect${rot} x="${fFloat(x)}" y="${fFloat(y)}" width="${f(w)}" height="${f(l)}" rx="${f(Math.min(w, l) * 0.06)}" fill="#e8d8c0" fill-opacity="0.2" stroke="#a0826d" stroke-width="0.8"/>\n`;
+  const rect = `<rect${rot} x="${fFloat(x)}" y="${fFloat(y)}" width="${f(w)}" height="${f(l)}" rx="${f(
+    Math.min(w, l) * 0.06,
+  )}" fill="#e8d8c0" fill-opacity="0.2" stroke="#a0826d" stroke-width="0.8"/>`;
+  // FRONT indicator — a small triangle on the piece's front edge so orientation
+  // reads in plan (a plain rect can't show which way a sofa/bed faces). The
+  // convention, verified against the 3D: `rotation 0` faces SOUTH, +90 East,
+  // 180 North, 270 West — i.e. the front unit vector in plan coords (X→east,
+  // Y→south) is (sin θ, cos θ). Placed on the front (depth) edge, half-depth out.
+  const r = (yawDeg * Math.PI) / 180;
+  const fx = Math.sin(r), fy = Math.cos(r); // front direction (E=+x, S=+y)
+  const px = -fy, py = fx; // across-front (perpendicular)
+  const ex = cx + fx * (l / 2), ey = cy + fy * (l / 2); // front-edge centre
+  const hw = Math.min(w * 0.35, Math.min(w, l) * 0.28); // base half-width
+  const hh = Math.min(w, l) * 0.22; // point height (outward)
+  const p1 = `${fFloat(ex + px * hw)},${fFloat(ey + py * hw)}`;
+  const p2 = `${fFloat(ex - px * hw)},${fFloat(ey - py * hw)}`;
+  const tip = `${fFloat(ex + fx * hh)},${fFloat(ey + fy * hh)}`;
+  const front = `<polygon points="${p1} ${p2} ${tip}" fill="#a0826d" fill-opacity="0.9"/>`;
+  return `${rect}${front}\n`;
 }
 
 export function svgDrawBeam(
