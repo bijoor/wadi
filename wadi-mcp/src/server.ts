@@ -14,7 +14,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkWdl, compileConfig, renderSvgs, rasterize, ALL_VIEWS, type ViewName } from "./pipeline";
 import { appReachable, appLoad, appCapture, APP_NOT_RUNNING } from "./appBridge";
-import { EXAMPLES, DOCS } from "./assets.generated";
+import { EXAMPLES, DOCS, MODULES } from "./assets.generated";
+import { moduleExports } from "../../wadi-dsl/src/generator/toHouseConfig";
 
 const server = new McpServer({ name: "wadi-mcp", version: "0.1.0" });
 
@@ -262,9 +263,93 @@ server.registerTool(
   },
 );
 
+// ---- wadi_modules / wadi_module (importable DSL libraries) -------------------
+server.registerTool(
+  "wadi_modules",
+  {
+    title: "List importable Wadi modules (libraries)",
+    description:
+      "List the bundled Wadi DSL modules a design can `import` — reusable `.wdl` libraries (e.g. the " +
+      "built-in furniture pack). Each is importable by name: `import \"<name>\" as ns`. Call wadi_module " +
+      "with a name to see what it exports (asset ids, dimensions) before using `item ns.\"<id>\"`.",
+    inputSchema: {},
+  },
+  async () => {
+    const names = Object.keys(MODULES);
+    if (!names.length) return { content: [{ type: "text", text: "No modules bundled." }] };
+    const list = names.map((n) => `- ${n} — ${MODULES[n].summary}`).join("\n");
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "Importable modules (call wadi_module with a name for its exports):\n" +
+            list +
+            '\n\nUse: `import "<name>" as f` then `item f."<asset-id>"`.',
+        },
+      ],
+    };
+  },
+);
+
+server.registerTool(
+  "wadi_module",
+  {
+    title: "Show a Wadi module's exports",
+    description:
+      "Show what a bundled Wadi module exports so you can use it: its asset ids with real-world " +
+      "dimensions and category. Import it (`import \"<name>\" as f`) and place assets with " +
+      "`item f.\"<id>\"` (free-standing, needs `at (x,y)`) or inside a room (`item f.\"<id>\" anchor …`). " +
+      "An optional query keyword-filters the assets.",
+    inputSchema: {
+      name: z.string().describe("Module name (e.g. std-furniture). Call wadi_modules to list."),
+      query: z.string().optional().describe("Optional keyword to filter assets by id/name/category."),
+    },
+  },
+  async ({ name, query }) => {
+    const mod = MODULES[name];
+    if (!mod) {
+      return {
+        content: [{ type: "text", text: `No module "${name}". Available: ${Object.keys(MODULES).join(", ")}` }],
+        isError: true,
+      };
+    }
+    let assets = moduleExports(mod.source).assets;
+    if (query && query.trim()) {
+      const q = query.trim().toLowerCase();
+      assets = assets.filter(
+        (a) =>
+          a.id.toLowerCase().includes(q) ||
+          (a.name ?? "").toLowerCase().includes(q) ||
+          (a.category ?? "").toLowerCase().includes(q),
+      );
+    }
+    if (!assets.length) {
+      return { content: [{ type: "text", text: `Module "${name}": no assets${query ? ` match "${query}"` : ""}.` }] };
+    }
+    // Group by category for a readable surface.
+    const byCat = new Map<string, typeof assets>();
+    for (const a of assets) {
+      const c = a.category ?? "Other";
+      (byCat.get(c) ?? byCat.set(c, []).get(c)!).push(a);
+    }
+    const lines = [`Module "${name}" — ${mod.summary}`, `Import: \`import "${name}" as f\``, ""];
+    for (const [cat, items] of byCat) {
+      lines.push(`${cat}:`);
+      for (const a of items) {
+        const [w, h, d] = a.dimensions;
+        lines.push(`  ${a.id} — ${a.name ?? a.id} (${w}×${h}×${d} m)`);
+      }
+    }
+    lines.push("", `Use e.g. \`item f."${assets[0].id}" at (x, y)\` or inside a room \`item f."${assets[0].id}" anchor center\`.`);
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  },
+);
+
 // ---- boot --------------------------------------------------------------------
 const transport = new StdioServerTransport();
 await server.connect(transport);
 console.error(
-  "[wadi-mcp] ready — tools: wadi_check, wadi_preview, wadi_examples, wadi_reference, wadi_view_3d, wadi_capture_3d",
+  "[wadi-mcp] ready — tools: wadi_check, wadi_preview, wadi_examples, wadi_reference, " +
+    "wadi_modules, wadi_module, wadi_view_3d, wadi_capture_3d",
 );

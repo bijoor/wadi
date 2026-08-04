@@ -816,6 +816,25 @@ export function compileDsl(text: string, opts: CompileOptions = {}): Record<stri
   return modelToHouseConfig(model, linked);
 }
 
+/** A module's public surface (for discovery): its exported asset declarations.
+ *  Phase 1 lists assets; `component`s (with `goal`) join in Phase 2. */
+export interface ModuleExports {
+  assets: Array<{
+    id: string;
+    src: string;
+    dimensions: [number, number, number];
+    name?: string;
+    category?: string;
+  }>;
+}
+export function moduleExports(text: string): ModuleExports {
+  const services = createWadiServices(EmptyFileSystem).Wadi;
+  const model = parseModel(services, text);
+  return {
+    assets: model.assets.map((a) => assetDeclToObj(a) as ModuleExports["assets"][number]),
+  };
+}
+
 // A Monaco-shaped diagnostic (1-based line/column, half-open end column).
 export interface DslDiagnostic {
   message: string;

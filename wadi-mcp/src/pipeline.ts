@@ -14,6 +14,13 @@ import { computeRoofSections } from "../../editor/src/svg2d/roof/index";
 import { setDimensionUnits } from "../../editor/src/svg2d/format";
 import { setTextScale, computeTextScale, houseSpanUnits } from "../../editor/src/svg2d/config";
 import { Resvg } from "@resvg/resvg-js";
+import { MODULES } from "./assets.generated";
+
+// Serve the bundled std-* DSL modules to the DSL compiler so a design can
+// `import "std-furniture"` (and future std packs) over MCP with no filesystem.
+export function stdResolveModule(ref: string): string | undefined {
+  return MODULES[ref]?.source;
+}
 
 export type ViewName = "plans" | "elevations" | "roof";
 export const ALL_VIEWS: ViewName[] = ["plans", "elevations", "roof"];
@@ -35,7 +42,7 @@ type Cfg = Record<string, unknown>;
 
 /** Compile .wdl → resolved HouseConfig (formulas folded to numbers). Throws on parse error. */
 export function compileConfig(wdl: string): Cfg {
-  const compiled = compileDsl(wdl); // throws "DSL parse failed: …" on syntax error
+  const compiled = compileDsl(wdl, { resolveModule: stdResolveModule }); // throws on syntax/import error
   const { config } = resolveParametric(compiled as never);
   return config as Cfg;
 }

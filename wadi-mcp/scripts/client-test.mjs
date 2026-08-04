@@ -40,6 +40,29 @@ ok(imgs.length === 1 && imgs[0].mimeType === "image/png" && imgs[0].data.length 
 const ref = await client.callTool({ name: "wadi_reference", arguments: { doc: "conventions" } });
 ok(textOf(ref).includes("C1") && textOf(ref).includes("C3"), "wadi_reference('conventions') returns the spec");
 
+ok(
+  ["wadi_modules", "wadi_module"].every((n) => tools.some((t) => t.name === n)),
+  `module tools registered: ${tools.filter((t) => t.name.startsWith("wadi_module")).map((t) => t.name).join(", ")}`,
+);
+
+const mods = await client.callTool({ name: "wadi_modules", arguments: {} });
+ok(textOf(mods).includes("std-furniture"), "wadi_modules lists std-furniture");
+
+const mod = await client.callTool({ name: "wadi_module", arguments: { name: "std-furniture", query: "bed" } });
+ok(textOf(mod).includes("bed_double") && textOf(mod).includes('import "std-furniture"'), `wadi_module('std-furniture', 'bed') → ${textOf(mod).split("\n").find((l) => l.includes("bed_double"))?.trim()?.slice(0, 50)}`);
+
+// a design importing the pack renders through wadi_preview
+const furnitureWdl = `house H {
+  site { plot (300, 300) }
+  import "std-furniture" as f
+  floor 1 "G" slab_thickness 0 {
+    room Bed at (20, 20) size (160, 200) { wall north east south west
+      item f."bed_double" anchor center }
+  }
+}`;
+const impPrev = await client.callTool({ name: "wadi_preview", arguments: { wdl: furnitureWdl, views: ["plans"] } });
+ok(imagesOf(impPrev).length === 1, "wadi_preview renders an `import`ing design");
+
 await client.close();
 console.error(failures ? `\n✗ ${failures} MCP failure(s)` : "\n✓ all MCP client checks passed");
 process.exit(failures ? 1 : 0);
