@@ -153,18 +153,24 @@ server.registerTool(
     title: "Capture a 3D image of a Wadi design",
     description:
       "Render a Wadi DSL house in the RUNNING Wadi desktop app and return a real 3D PNG — the actual " +
-      "textured model, not a 2D drawing. Requires the Wadi app to be open. The PNG is BOTH returned inline " +
-      "AND written to a file whose absolute path is in the text (open it if your client can't show inline " +
-      "images). (Headless 2D plans/elevations/roof: wadi_preview.)",
+      "textured model, not a 2D drawing. Requires the Wadi app to be open. Pass `room` (a room name from " +
+      "the .wdl, e.g. \"Bedroom\") to place the camera INSIDE that room for a first-person look — the best " +
+      "way to check FURNITURE PLACEMENT and ORIENTATION, which a plan can't show. Omit `room` for the " +
+      "outside orbit view. The PNG is BOTH returned inline AND written to a file whose path is in the text. " +
+      "(Headless 2D plans/elevations/roof: wadi_preview.)",
     inputSchema: {
       wdl: z.string().describe("The full .wdl source text."),
+      room: z
+        .string()
+        .optional()
+        .describe("A room name (as written in the .wdl) to view from inside. Omit for the outside orbit view."),
       out_dir: z
         .string()
         .optional()
         .describe("Absolute directory to save the PNG to. Default: the OS temp dir. The saved path is returned in the text."),
     },
   },
-  async ({ wdl, out_dir }) => {
+  async ({ wdl, room, out_dir }) => {
     let config: unknown;
     try {
       config = compileConfig(wdl);
@@ -173,11 +179,12 @@ server.registerTool(
     }
     if (!(await appReachable())) return { content: [{ type: "text", text: APP_NOT_RUNNING }] };
     try {
-      const img = await appCapture(config);
-      const file = savePng(Buffer.from(img.data, "base64"), out_dir, "wadi_3d.png");
+      const img = await appCapture(config, room ? { room } : undefined);
+      const file = savePng(Buffer.from(img.data, "base64"), out_dir, room ? `wadi_3d_${room.replace(/\W+/g, "_")}.png` : "wadi_3d.png");
+      const label = room ? `3D interior view of "${room}" (from the live app)` : "3D view (from the live app)";
       return {
         content: [
-          { type: "text", text: `— 3D view (from the live app) — saved to: ${file}` },
+          { type: "text", text: `— ${label} — saved to: ${file}` },
           { type: "image", data: img.data, mimeType: img.mime },
         ],
       };

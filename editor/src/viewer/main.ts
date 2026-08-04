@@ -122,17 +122,37 @@ async function bootViewer(): Promise<void> {
     // MCP bridge (Phase 2): the wadi-mcp server POSTs to the app's localhost
     // bridge; Rust emits the request here. Load the config into the live 3D
     // view and, for a capture, read back a 3D image after the scene settles.
-    void listen<{ id: string; action: string; config: unknown }>("wadi://bridge-request", async (e) => {
-      const { id, action, config } = e.payload;
+    void listen<{ id: string; action: string; config: unknown; view?: { room?: string } }>(
+      "wadi://bridge-request",
+      async (e) => {
+      const { id, action, config, view } = e.payload;
       try {
         window.wadi?.load(config);
         if (action === "capture") {
           // Let React reconcile the new config into the R3F scene, then capture.
           // Use setTimeout, not requestAnimationFrame — RAF is paused when the
-          // window is backgrounded, but wadiCapture3D forces its own gl.render(),
-          // so a plain timer is enough and never hangs.
+          // window is backgrounded, but the capture bridges force their own
+          // gl.render(), so a plain timer is enough and never hangs.
           await new Promise((r) => setTimeout(r, 800));
-          const url = window.wadiCapture3D?.(1200) ?? null;
+          // Optional interior view: seat the camera INSIDE a named room so the
+          // model can inspect furniture placement/orientation. Resolve the room's
+          // eye position from the config and capture directly — no enterRoom /
+          // React re-render, so it works with the window backgrounded (an MCP
+          // capture never has focus). Falls back to the outside orbit if the
+          // room isn't found.
+          let url: string | null = null;
+          const roomQuery = view?.room?.trim();
+          if (roomQuery && window.wadiCaptureInterior) {
+            const q = roomQuery.toLowerCase();
+            const rooms = listRooms(config);
+            const match =
+              rooms.find((r) => r.key === roomQuery) ??
+              rooms.find((r) => r.name.toLowerCase() === q) ??
+              rooms.find((r) => r.name.toLowerCase().includes(q)) ??
+              rooms.find((r) => `${r.floorName}: ${r.name}`.toLowerCase().includes(q));
+            if (match) url = window.wadiCaptureInterior(match.eye, 1200);
+          }
+          if (url === null) url = window.wadiCapture3D?.(1200) ?? null;
           if (!url) {
             await invoke("bridge_response", { id, ok: false, error: "capture returned null" });
             return;

@@ -230,6 +230,32 @@ function CaptureBridge() {
 
     window.wadiCapture3D = (maxW = 720) => grab(maxW);
 
+    // Interior capture that DIRECTLY seats the camera at `eye` (no React /
+    // useFrame), so it works with the window backgrounded. Looks north (−Z),
+    // slightly down — the same default the walk-through uses — then restores.
+    window.wadiCaptureInterior = (eye, maxW = 720) => {
+      const cam = camera as unknown as { fov?: number; updateProjectionMatrix: () => void };
+      const savePos = camera.position.clone();
+      const saveQuat = camera.quaternion.clone();
+      const saveFov = typeof cam.fov === "number" ? cam.fov : null;
+      camera.position.set(eye[0], eye[1], eye[2]);
+      if (saveFov !== null) {
+        cam.fov = 72;
+        cam.updateProjectionMatrix();
+      }
+      camera.lookAt(eye[0], eye[1] - 0.05, eye[2] - 1);
+      camera.updateMatrixWorld(true);
+      const url = grab(maxW);
+      camera.position.copy(savePos);
+      camera.quaternion.copy(saveQuat);
+      if (saveFov !== null) {
+        cam.fov = saveFov;
+        cam.updateProjectionMatrix();
+      }
+      camera.updateMatrixWorld(true);
+      return url;
+    };
+
     // Auto-capture: orbit the camera to a few oblique 3/4 angles (relative to
     // wherever it currently points, so it respects any orientation the
     // architect framed) and grab each. Distinct, feature-revealing views —
@@ -282,6 +308,7 @@ function CaptureBridge() {
 
     return () => {
       delete window.wadiCapture3D;
+      delete window.wadiCaptureInterior;
       delete window.wadiCaptureAngles;
     };
   }, [gl, scene, camera, controls]);
@@ -293,6 +320,11 @@ declare global {
     /** Capture the CURRENT 3D frame as a downscaled JPEG data URL (manual
      *  "take a shot"). Returns null if the canvas isn't ready. */
     wadiCapture3D?: (maxW?: number) => string | null;
+    /** Capture a first-person frame from `eye` (Three world coords) looking
+     *  north — positions the camera DIRECTLY in the call (no React re-render),
+     *  so it works even when the window is backgrounded (e.g. an MCP interior
+     *  capture). Restores the camera afterwards. */
+    wadiCaptureInterior?: (eye: [number, number, number], maxW?: number) => string | null;
     /** Orbit to `n` oblique angles and capture each — returns the data URLs.
      *  Restores the camera afterwards. Async (waits for each frame to render). */
     wadiCaptureAngles?: (n?: number, maxW?: number) => Promise<string[]>;
@@ -338,6 +370,16 @@ function InteriorController({
       pitch.current = -0.05;
       camera.position.set(target.eye[0], target.eye[1], target.eye[2]);
       setFov(72);
+      // Aim into the room NOW, not just in useFrame — useFrame is throttled when
+      // the window is backgrounded (e.g. an MCP interior capture), so the enter
+      // effect must fully seat both the camera position AND its look direction.
+      const cp0 = Math.cos(pitch.current);
+      camera.lookAt(
+        target.eye[0] + Math.sin(yaw.current) * cp0,
+        target.eye[1] + Math.sin(pitch.current),
+        target.eye[2] + Math.cos(yaw.current) * cp0,
+      );
+      camera.updateMatrixWorld(true);
     } else {
       camera.position.set(exteriorPos[0], exteriorPos[1], exteriorPos[2]);
       setFov(exteriorFov);

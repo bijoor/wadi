@@ -93,6 +93,9 @@ fn start_bridge(app: AppHandle) {
         .get("config")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+      // Optional { room } view hint for an interior capture — forwarded verbatim
+      // to the webview, which resolves the room and seats the first-person camera.
+      let view = parsed.get("view").cloned().unwrap_or(serde_json::Value::Null);
       let action = if url == "/capture" { "capture" } else { "load" };
       let id = COUNTER.fetch_add(1, Ordering::Relaxed).to_string();
       let (tx, rx) = channel::<BridgeReply>();
@@ -102,7 +105,7 @@ fn start_bridge(app: AppHandle) {
       let _ = app.emit_to(
         "main",
         "wadi://bridge-request",
-        serde_json::json!({ "id": id, "action": action, "config": config }),
+        serde_json::json!({ "id": id, "action": action, "config": config, "view": view }),
       );
       match rx.recv_timeout(std::time::Duration::from_secs(20)) {
         Ok(reply) if reply.ok => {

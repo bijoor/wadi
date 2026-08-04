@@ -33,12 +33,17 @@ export async function appLoad(config: unknown): Promise<void> {
   if (!r.ok) throw new Error(`app /load returned ${r.status}`);
 }
 
-/** Load a config and capture a 3D image (base64 + mime) from the app's renderer. */
-export async function appCapture(config: unknown): Promise<{ data: string; mime: string }> {
+/** Load a config and capture a 3D image (base64 + mime) from the app's renderer.
+ *  With `view.room` the app seats the first-person camera inside that room before
+ *  capturing (interior view), then restores the outside orbit. */
+export async function appCapture(
+  config: unknown,
+  view?: { room?: string },
+): Promise<{ data: string; mime: string }> {
   const r = await fetch(`${BASE}/capture`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ config }),
+    body: JSON.stringify({ config, view }),
     signal: AbortSignal.timeout(25000),
   });
   if (!r.ok) throw new Error(`app /capture returned ${r.status}`);
