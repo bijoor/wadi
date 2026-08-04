@@ -471,13 +471,41 @@ export function House3D({ config }: { config: HouseConfig }) {
 
   return (
     <>
-      {displayLayers.map((l) => (
-        <group key={l.id} visible={visible[l.id] !== false}>
-          {byLayer[l.id]}
-        </group>
-      ))}
+      {displayLayers.map((l) => {
+        const kids = byLayer[l.id];
+        // Openings (door/window fills) leak: when a room PERSISTS but its
+        // openings change or are removed, R3F doesn't dispose the old
+        // OpeningPane meshes on the in-place child swap (removing the room
+        // entirely does clear them — so it's specific to a surviving parent
+        // group). Wrap the openings content in an inner group re-KEYED by its
+        // child set, so any change remounts it and the stale panes are
+        // disposed. Scoped to openings sub-layers: the CSG-heavy wall/structure
+        // layers keep their per-object useMemo caches (no needless recompute).
+        const content = l.id.endsWith("_openings") ? (
+          <group key={childSig(kids)}>{kids}</group>
+        ) : (
+          kids
+        );
+        return (
+          <group key={l.id} visible={visible[l.id] !== false}>
+            {content}
+          </group>
+        );
+      })}
     </>
   );
+}
+
+// A stable signature of a layer's children, from their React keys. Changes
+// whenever a child is added, removed, or re-keyed (our keys embed a content
+// hash), so using it as a group key forces a clean remount on any change.
+function childSig(kids: React.ReactNode[] | undefined): string {
+  if (!Array.isArray(kids) || kids.length === 0) return "empty";
+  const keys: string[] = [];
+  for (const k of kids) {
+    if (k && typeof k === "object" && "key" in k && k.key != null) keys.push(String(k.key));
+  }
+  return keys.length ? keys.join("|") : `n${kids.length}`;
 }
 
 // ---- helpers -------------------------------------------------------

@@ -52,10 +52,15 @@
       background: #2d4a3e; color: #8fe3bf;
     }
     #status.err { background: #4a2d2d; color: #f0a3a3; }
-    main { flex: 1; display: grid; grid-template-columns: minmax(340px, 44%) 1fr; min-height: 0; position: relative; }
-    .editor-col { display: flex; flex-direction: column; min-width: 0; height: 100%; border-right: 1px solid var(--border); }
+    /* grid-template-rows: an explicit minmax(0, 1fr) row is REQUIRED — without it
+       the implicit `auto` row sizes to the preview iframe's content (which, via
+       `height: 100%`, inflates to a large intrinsic height), so the iframe grows
+       TALLER than the window and its bottom — where the app's 3D layer/view
+       toolbar lives — is clipped off-screen (only visible when maximized). */
+    main { flex: 1; display: grid; grid-template-columns: minmax(340px, 44%) 1fr; grid-template-rows: minmax(0, 1fr); min-height: 0; position: relative; }
+    .editor-col { display: flex; flex-direction: column; min-width: 0; height: 100%; min-height: 0; border-right: 1px solid var(--border); }
     #editor { flex: 1 1 auto; min-height: 0; }
-    .preview { position: relative; min-width: 0; background: #0d0d0d; }
+    .preview { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #0d0d0d; }
     .preview iframe { width: 100%; height: 100%; border: 0; display: block; background: #cfe3d8; }
 
     /* Problems panel — the detailed, readable list of errors + warnings. */
@@ -114,7 +119,7 @@
     .ref-table td:first-child { color: #e0a97a; white-space: nowrap; font-family: ui-monospace, Menlo, monospace; }
 
     @media (max-width: 760px) {
-      main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+      main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
       .editor-col { border-right: 0; border-bottom: 1px solid var(--border); }
       header .brand { display: none; }
     }
