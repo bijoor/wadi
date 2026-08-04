@@ -170,6 +170,35 @@ floor 2 "First Floor" height 116 {
 
 *(See the staircase section of `dsl.md` for the full top-anchored convention.)*
 
+## C6 — Openings on the same wall must not overlap · **error**
+
+**Statement.** Two openings (doors/windows) cut into the **same physical wall** must not
+overlap along it. This includes openings that belong to **two different rooms sharing a
+boundary wall** — a door on Living's east side and a door on Bedroom's west side sit on the
+same wall line and can collide.
+
+**Rationale.** Each opening is a boolean-subtract from the wall. Overlapping spans merge into
+one ragged hole (or fight over the same brick), which is never what you meant — and on a
+shared wall it silently punches a bigger gap than either room's plan shows.
+
+**Fix.** Offset or narrow one opening so the spans are disjoint. Openings are measured from
+the wall's start corner (`offset` = near edge; the opening occupies `[offset, offset+width]`).
+For a shared wall, remember both rooms' offsets are measured along the **same** line, so a
+door at `offset 50 width 40` (→ `[50,90]`) on one room clears a door at `offset 90` on the
+other, but not one at `offset 60`.
+
+## C7 — Furniture items should not overlap · **warning**
+
+**Statement.** Two furniture `item`s whose plan footprints overlap are flagged — as a
+**warning**, because it is sometimes intentional (a rug under a table, a lamp on a desk,
+deliberately stacked pieces).
+
+**Rationale.** More often it's a placement slip — two beds dropped on the same spot, or an
+anchored piece that reflowed into another when a room was resized. The footprint used is the
+item's rotated bounding box (yaw-aware), so it matches what the plan draws.
+
+**Fix.** Reposition one item, or ignore the warning if the overlap is deliberate.
+
 ## Running the checks
 
 ```bash

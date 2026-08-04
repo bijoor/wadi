@@ -202,3 +202,86 @@ describe("structural lint — C2 rooms must wall every exterior side", () => {
     expect(c2).toHaveLength(0);
   });
 });
+
+describe("structural lint — C6 overlapping openings on the same wall", () => {
+  const roomWith = (walls: Record<string, unknown>) => ({
+    floor_number: 1,
+    name: "Ground",
+    slab_thickness: 0,
+    objects: [{ type: "room", name: "Hall", x: 0, y: 0, width: 300, length: 200, walls }],
+  });
+
+  it("errors when two openings overlap on the same room wall", () => {
+    const f = lintStructure(
+      house([
+        roomWith({
+          north: {}, east: {}, west: {},
+          south: { openings: [
+            { kind: "door", name: "D1", offset: 40, width: 40 },
+            { kind: "window", name: "W1", offset: 60, width: 40 }, // [60,100] overlaps [40,80]
+          ] },
+        }),
+      ]),
+    );
+    const c6 = f.filter((x) => x.rule === "C6");
+    expect(c6).toHaveLength(1);
+    expect(c6[0].level).toBe("error");
+    expect(c6[0].message).toContain("overlap");
+  });
+
+  it("does not error for touching / non-overlapping openings on the same wall", () => {
+    const f = lintStructure(
+      house([
+        roomWith({
+          south: { openings: [
+            { kind: "door", name: "D1", offset: 40, width: 40 },   // [40,80]
+            { kind: "window", name: "W1", offset: 90, width: 40 }, // [90,130] — clear gap
+          ] },
+        }),
+      ]),
+    );
+    expect(f.filter((x) => x.rule === "C6")).toHaveLength(0);
+  });
+
+  it("errors when openings on a SHARED wall between two rooms overlap", () => {
+    // Living (0..200 x) and Bedroom (200..400 x) abut on the x=200 line.
+    // Living's east wall (at x=200) and Bedroom's west wall (at x=200) are the
+    // same physical wall; overlapping openings there collide.
+    const floor = {
+      floor_number: 1,
+      name: "Ground",
+      slab_thickness: 0,
+      objects: [
+        { type: "room", name: "Living", x: 0, y: 0, width: 200, length: 200,
+          walls: { north: {}, south: {}, west: {}, east: { openings: [{ kind: "door", name: "LD", offset: 50, width: 40 }] } } },
+        { type: "room", name: "Bedroom", x: 200, y: 0, width: 200, length: 200,
+          walls: { north: {}, south: {}, east: {}, west: { openings: [{ kind: "door", name: "BD", offset: 60, width: 40 }] } } },
+      ],
+    };
+    const c6 = lintStructure(house([floor])).filter((x) => x.rule === "C6");
+    expect(c6).toHaveLength(1);
+    expect(c6[0].level).toBe("error");
+    expect(c6[0].message).toContain("shared wall");
+  });
+});
+
+describe("structural lint — C7 overlapping furniture (warning)", () => {
+  const item = (name: string, x: number, y: number) => ({
+    type: "item", name, x, y,
+    asset: { id: "bed", src: "/f/bed.glb", dimensions: [2, 1, 2] as [number, number, number] },
+  });
+  const floor = (items: unknown[]) => ({ floor_number: 1, name: "Ground", slab_thickness: 0, objects: items });
+
+  it("warns (not errors) when two furniture footprints overlap", () => {
+    const c7 = lintStructure(house([floor([item("Bed A", 100, 100), item("Bed B", 110, 100)])]))
+      .filter((x) => x.rule === "C7");
+    expect(c7).toHaveLength(1);
+    expect(c7[0].level).toBe("warn");
+  });
+
+  it("does not warn when furniture is well separated", () => {
+    const c7 = lintStructure(house([floor([item("Bed A", 100, 100), item("Bed B", 400, 400)])]))
+      .filter((x) => x.rule === "C7");
+    expect(c7).toHaveLength(0);
+  });
+});

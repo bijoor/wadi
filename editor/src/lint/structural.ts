@@ -20,6 +20,7 @@
 
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 import { buildRoomRects, roomSideOpenToWeather, type Side } from "../estimate/wallArea";
+import { expandRoomWalls } from "../svg2d/expand";
 import type { HouseConfig } from "../schema/houseConfig";
 
 export type LintLevel = "error" | "warn";
@@ -47,6 +48,8 @@ export const CONVENTIONS: ConventionMeta[] = [
   { id: "C3", title: "A floor with no slab must set slab_thickness to 0", level: "error" },
   { id: "C4", title: "A stacked floor's height should equal wall_height + slab_thickness", level: "warn" },
   { id: "C5", title: "A staircase must land on a floor, not below ground", level: "warn" },
+  { id: "C6", title: "Openings on the same wall must not overlap", level: "error" },
+  { id: "C7", title: "Furniture items should not overlap", level: "warn" },
 ];
 
 type Bag = Record<string, unknown>;
@@ -130,6 +133,92 @@ function sideHasWall(segs: Seg[], seg: Seg): boolean {
   return false;
 }
 
+// ---- C6/C7 geometry helpers ------------------------------------------------
+
+// One opening, projected onto its wall's world line: `at` = the perpendicular
+// coordinate of the wall, [lo, hi] = the span the opening occupies along it.
+interface OpSeg {
+  horiz: boolean; // wall on a horizontal line (north/south) vs vertical (east/west)
+  at: number;
+  lo: number;
+  hi: number;
+  owner: string; // "room "Hall" south" / "wall "W1"" — the wall the opening is cut into
+  label: string; // opening kind + name
+}
+function openLabel(op: Bag): string {
+  const kind = typeof op.kind === "string" ? op.kind : "opening";
+  const nm = typeof op.name === "string" && op.name ? ` "${op.name}"` : "";
+  return `${kind}${nm}`;
+}
+// Every opening on a floor as a world-line segment. Openings live nested in each
+// room's `walls[side].openings` (offset = the near edge measured from the room's
+// start corner: north/south from x, east/west from y) and in a standalone wall's
+// `openings` (offset from the wall's lower-coordinate end).
+function collectOpeningSegs(objs: Bag[]): OpSeg[] {
+  const out: OpSeg[] = [];
+  for (const o of objs) {
+    if (o.type === "room") {
+      const walls = o.walls;
+      if (!walls || typeof walls !== "object" || Array.isArray(walls)) continue;
+      const rx = num(o.x), ry = num(o.y), rw = num(o.width), rl = num(o.length);
+      for (const side of ALL_SIDES) {
+        const ops = (walls as Record<string, { openings?: Bag[] }>)[side]?.openings;
+        if (!Array.isArray(ops)) continue;
+        for (const op of ops) {
+          const off = num(op.offset), w = num(op.width);
+          const owner = `room ${objLabel(o)} ${side}`;
+          const label = openLabel(op);
+          if (side === "north") out.push({ horiz: true, at: ry, lo: rx + off, hi: rx + off + w, owner, label });
+          else if (side === "south") out.push({ horiz: true, at: ry + rl, lo: rx + off, hi: rx + off + w, owner, label });
+          else if (side === "west") out.push({ horiz: false, at: rx, lo: ry + off, hi: ry + off + w, owner, label });
+          else out.push({ horiz: false, at: rx + rw, lo: ry + off, hi: ry + off + w, owner, label });
+        }
+      }
+    } else if (o.type === "wall") {
+      const ops = o.openings;
+      if (!Array.isArray(ops)) continue;
+      const sx = num(o.start_x), sy = num(o.start_y), ex = num(o.end_x), ey = num(o.end_y);
+      const horiz = Math.abs(sy - ey) < 1, vert = Math.abs(sx - ex) < 1;
+      if (!horiz && !vert) continue; // diagonal wall — skip
+      const start = horiz ? Math.min(sx, ex) : Math.min(sy, ey);
+      for (const op of ops as Bag[]) {
+        const off = num(op.offset), w = num(op.width);
+        out.push({ horiz, at: horiz ? sy : sx, lo: start + off, hi: start + off + w, owner: `wall ${objLabel(o)}`, label: openLabel(op) });
+      }
+    }
+  }
+  return out;
+}
+
+// Convert a metric length to project units using the config's own display units
+// (checkWdl doesn't set the render-time global that svg2d/format reads, so do it
+// locally). Default 10 units = 1 ft (feet_inches), matching the item footprint.
+const FEET_PER_METER = 3.280839895;
+const FEET_PER_DISPLAY: Record<string, number> = {
+  feet_inches: 1, feet: 1, meters: 3.280839895, centimeters: 0.032808399, millimeters: 0.003280839,
+};
+function itemMetersToUnits(m: number, units?: { system?: string; per_unit?: number }): number {
+  const perUnit = units?.per_unit ?? 10;
+  const fpu = FEET_PER_DISPLAY[units?.system ?? "feet_inches"] ?? 1;
+  return m * (perUnit / fpu) * FEET_PER_METER;
+}
+// Axis-aligned footprint (plan) of a resolved item, accounting for yaw — the same
+// rotated-bbox half-extents anchorItem uses, so it agrees with the drawn piece.
+interface Box { x0: number; y0: number; x1: number; y1: number; }
+function itemBox(it: Bag, units?: { system?: string; per_unit?: number }): Box | null {
+  const asset = it.asset as { dimensions?: [number, number, number] } | undefined;
+  if (!asset?.dimensions) return null;
+  const scale = it.scale != null ? num(it.scale) : 1;
+  const fw = itemMetersToUnits(asset.dimensions[0], units) * scale;
+  const fd = itemMetersToUnits(asset.dimensions[2], units) * scale;
+  const th = (num(it.rotation) * Math.PI) / 180;
+  const c = Math.abs(Math.cos(th)), s = Math.abs(Math.sin(th));
+  const hx = (fw / 2) * c + (fd / 2) * s;
+  const hy = (fw / 2) * s + (fd / 2) * c;
+  const cx = num(it.x), cy = num(it.y);
+  return { x0: cx - hx, y0: cy - hy, x1: cx + hx, y1: cy + hy };
+}
+
 export function lintStructure(config: HouseConfig): LintFinding[] {
   const cfg = config as unknown as Bag;
   const floors = (cfg.floors as Bag[] | undefined) ?? [];
@@ -148,6 +237,18 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
   // Every declared wall segment — so C2 can tell a truly-open exterior side from
   // one already walled by a neighbour / overlapping room / standalone wall.
   const wallSegs = collectWallSegments(floors);
+
+  // Furniture (C7) is resolved: anchored/room-nested items only get x/y after
+  // expansion. Expand once, leniently, and index the flattened items per floor;
+  // if the geometry is too broken to expand, skip the furniture check (the
+  // geometry pipeline reports that separately).
+  const units = cfg.units as { system?: string; per_unit?: number } | undefined;
+  let expandedFloors: Bag[] = [];
+  try {
+    expandedFloors = ((expandRoomWalls(config, undefined, { lenient: true }) as unknown as Bag).floors as Bag[]) ?? [];
+  } catch {
+    expandedFloors = [];
+  }
 
   // Running base elevation of each floor (sum of the heights below it) — the same
   // stack computeFloorZBands uses, for the C5 staircase-depth check.
@@ -302,6 +403,69 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
               `Room ${objLabel(o)} on ${floorLabel(fl)}: the ${side} side faces outside but has no wall — ` +
               `the room is open to the weather there. Add \`wall ${side}\` unless this side is intentionally ` +
               `open (e.g. a verandah).`,
+          });
+        }
+      }
+    }
+
+    // ---- C6: openings on the same wall must not overlap ----
+    // Two openings whose spans overlap along a wall can't both be cut — the hole
+    // merges/collides. Openings from TWO rooms sharing a boundary wall land on the
+    // same world line, so this catches that too. Adjacent (touching) openings are
+    // fine; only a real overlap (> 1 unit) is flagged.
+    {
+      const segs = collectOpeningSegs(objs);
+      const OVERLAP = 1; // units; ignore float-noise / edge-touching
+      for (let a = 0; a < segs.length; a++) {
+        for (let b = a + 1; b < segs.length; b++) {
+          const A = segs[a], B = segs[b];
+          if (A.horiz !== B.horiz) continue;
+          if (Math.abs(A.at - B.at) > 1.5) continue; // different wall lines
+          const overlap = Math.min(A.hi, B.hi) - Math.max(A.lo, B.lo);
+          if (overlap <= OVERLAP) continue;
+          const by = Math.round(overlap);
+          findings.push({
+            rule: "C6",
+            level: "error",
+            floor: fnum,
+            where: A.owner,
+            message:
+              A.owner === B.owner
+                ? `${cap(floorLabel(fl))}: ${A.label} and ${B.label} overlap by ~${by} units on ${A.owner}. ` +
+                  `Two openings can't occupy the same span of a wall — move or narrow one.`
+                : `${cap(floorLabel(fl))}: ${A.label} on ${A.owner} overlaps ${B.label} on ${B.owner} by ~${by} units — ` +
+                  `they sit on the same shared wall and collide. Offset or resize one.`,
+          });
+        }
+      }
+    }
+
+    // ---- C7: furniture items should not overlap (warning) ----
+    // Overlapping footprints are usually a placement mistake, but can be intended
+    // (a rug under a table, stacked items), so this is a warning, not an error.
+    // Uses the RESOLVED items (anchored ones only have coords post-expansion).
+    {
+      const expObjs = ((expandedFloors[fi]?.objects as Bag[] | undefined) ?? []).filter(
+        (o) => o.type === "item" && o.enabled !== false,
+      );
+      const boxes = expObjs.map((o) => ({ o, box: itemBox(o, units) })).filter((e) => e.box) as {
+        o: Bag; box: Box;
+      }[];
+      const MARGIN = 2; // units; both axes must overlap by more than this
+      for (let a = 0; a < boxes.length; a++) {
+        for (let b = a + 1; b < boxes.length; b++) {
+          const A = boxes[a], B = boxes[b];
+          const ox = Math.min(A.box.x1, B.box.x1) - Math.max(A.box.x0, B.box.x0);
+          const oy = Math.min(A.box.y1, B.box.y1) - Math.max(A.box.y0, B.box.y0);
+          if (ox <= MARGIN || oy <= MARGIN) continue;
+          findings.push({
+            rule: "C7",
+            level: "warn",
+            floor: fnum,
+            where: objLabel(A.o),
+            message:
+              `${cap(floorLabel(fl))}: furniture ${objLabel(A.o)} and ${objLabel(B.o)} overlap ` +
+              `(~${Math.round(ox)}×${Math.round(oy)} units). Reposition one if that isn't intentional.`,
           });
         }
       }
