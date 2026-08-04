@@ -29,6 +29,7 @@ import twoRoomSrc from "../examples/two_room.wdl?raw";
 import twoStorySrc from "../examples/two_story.wdl?raw";
 import coastalSrc from "../examples/coastal.wdl?raw";
 import completeSrc from "../examples/complete.wdl?raw";
+import konkanCottageSrc from "../examples/konkan_cottage.wdl?raw";
 import errorsSrc from "../examples/errors.wdl?raw";
 
 const SAMPLES: Record<string, string> = {
@@ -37,6 +38,7 @@ const SAMPLES: Record<string, string> = {
   two_story: twoStorySrc,
   coastal: coastalSrc,
   complete: completeSrc,
+  konkan_cottage: konkanCottageSrc,
   errors: errorsSrc,
 };
 let currentName = "minimal"; // base filename for Save / Download

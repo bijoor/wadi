@@ -17,6 +17,7 @@ const EXAMPLES = {
   two_story: "wadi-dsl/examples/two_story.wdl",
   coastal: "wadi-dsl/examples/coastal.wdl",
   complete: "wadi-dsl/examples/complete.wdl",
+  konkan_cottage: "wadi-dsl/examples/konkan_cottage.wdl",
 };
 
 // bundled std-* DSL modules (importable by name over MCP) -> repo-relative path

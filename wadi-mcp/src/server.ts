@@ -199,7 +199,10 @@ server.registerTool(
       name: z
         .string()
         .optional()
-        .describe("Example name (minimal | two_room | two_story | coastal | complete). Omit to list."),
+        .describe(
+          "Example name (minimal | two_room | two_story | coastal | complete | konkan_cottage). " +
+            "konkan_cottage shows `import`ing the furniture + konkan/base packs. Omit to list.",
+        ),
     },
   },
   async ({ name }) => {

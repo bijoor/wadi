@@ -220,7 +220,8 @@ top-right center-left center center-right bottom-left bottom-center bottom-right
 A `.wdl` file can be a **module** — top-level declarations (no `house` needed) —
 that another file `import`s. Two bundled ones: `std-furniture` (asset pack →
 `item ns."id"`) and `konkan/base` (goal-tagged component pack → `use ns.Comp`;
-Stairwell / Verandah / Otla).
+Stairwell, Verandah, Otla, Bathroom, Kitchen, TulsiVrindavan, Parapet). The
+`konkan_cottage` example (`wadi_examples`) assembles a whole house from both.
 
 ```wdl
 house Home {

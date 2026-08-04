@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { compileDsl, moduleExports } from "../src/generator/toHouseConfig.js";
@@ -15,11 +15,18 @@ const repo = resolve(here, "..", "..");
 
 // Every valid sample must compile → resolve → pass the real schema + geometry
 // pipeline. (errors.wdl is intentionally broken and covered separately.)
-const SAMPLES = ["minimal", "two_room", "two_story", "coastal", "complete"];
+// konkan_cottage `import`s the bundled std packs — it exercises the module path.
+const SAMPLES = ["minimal", "two_room", "two_story", "coastal", "complete", "konkan_cottage"];
+
+// Serve the bundled std-* modules from disk so examples that `import` them compile.
+function stdResolveModule(ref: string): string | undefined {
+  const p = resolve(here, "..", "std-modules", `${ref}.wdl`);
+  return existsSync(p) ? readFileSync(p, "utf8") : undefined;
+}
 
 function compileAndResolve(name: string) {
   const src = readFileSync(resolve(here, "..", "examples", `${name}.wdl`), "utf8");
-  const compiled = compileDsl(src);
+  const compiled = compileDsl(src, { resolveModule: stdResolveModule });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return resolveParametric(compiled as any) as { config: any; warnings: any[] };
 }
@@ -242,7 +249,25 @@ describe("Wadi DSL round-trip", () => {
       const stair = ex.components.find((c) => c.name === "Stairwell");
       expect(stair?.goal).toBe("climb to the next floor");
       expect(stair?.params.map((p) => p.name)).toEqual(["rise", "run"]);
-      expect(ex.components.map((c) => c.name)).toEqual(["Stairwell", "Verandah", "Otla"]);
+      expect(ex.components.map((c) => c.name)).toEqual([
+        "Stairwell", "Verandah", "Otla", "Bathroom", "Kitchen", "TulsiVrindavan", "Parapet",
+      ]);
+      // Every exported component carries a goal (the discovery key).
+      expect(ex.components.every((c) => typeof c.goal === "string" && c.goal.length > 0)).toBe(true);
+    });
+
+    it("every component stamps into a host + expands to concrete objects", () => {
+      for (const c of moduleExports(base).components) {
+        const wdl = `house H { site { plot (400, 400) }
+          import "konkan/base" as kb
+          floor 1 "G" slab_thickness 0 { use kb.${c.name} at (40, 40) } }`;
+        const cfg = resolveParametric(compileDsl(wdl, { resolveModule }) as never).config;
+        const expanded = expandRoomWalls(cfg as never) as { floors: { objects: any[] }[] };
+        // The `component` instance flattened into ≥1 concrete (non-component) object.
+        const objs = expanded.floors[0].objects;
+        expect(objs.length).toBeGreaterThan(0);
+        expect(objs.every((o) => o.type !== "component")).toBe(true);
+      }
     });
 
     it("`use kb.Comp` expands byte-identical to an inline same-file component", () => {
