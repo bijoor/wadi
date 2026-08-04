@@ -13,7 +13,7 @@ import { resolveParametric } from "../param/resolve";
 import { buildScope } from "../param/resolve";
 import { evalFormula } from "../param/formula";
 import { expandStaircase } from "./stairExpand";
-import { anchorItem, type RoomRect } from "./furnitureAnchor";
+import { anchorItem, anchorFacing, type RoomRect } from "./furnitureAnchor";
 
 type Side = "north" | "south" | "east" | "west";
 const SIDES: readonly Side[] = ["north", "south", "east", "west"];
@@ -237,13 +237,20 @@ export function expandRoomWalls(
     // the spec's `= formula` fields (rotation/scale/gap/z_offset) first.
     const anchoredItem = (rect: RoomRect, specIn: Obj): Obj => {
       const spec = resolveItemFormulas(specIn);
+      // An anchored piece with no explicit `rotation` faces AWAY from its wall,
+      // into the room (anchorFacing). An explicit rotation always wins. The
+      // resolved rotation is written back onto the flattened item, so the plan
+      // notch, the 3D view and anything reading the config all show the same
+      // orientation — the anchor never silently changes facing behind the model.
+      const rotation =
+        (spec.rotation as number | undefined) ?? anchorFacing(spec.anchor as string | undefined);
       const p = anchorItem(
         rect,
         {
           anchor: spec.anchor as string | undefined,
           gapX: spec.gap_x as number | undefined,
           gapY: spec.gap_y as number | undefined,
-          rotation: spec.rotation as number | undefined,
+          rotation,
           scale: spec.scale as number | undefined,
           dimensions: (spec.asset as { dimensions: [number, number, number] }).dimensions,
         },
@@ -256,7 +263,7 @@ export function expandRoomWalls(
         asset: spec.asset,
         x: p.x,
         y: p.y,
-        rotation: (spec.rotation as number | undefined) ?? 0,
+        rotation,
         scale: spec.scale,
         z_offset: spec.z_offset,
         layer: spec.layer,
@@ -308,6 +315,7 @@ export function expandRoomWalls(
             const p = anchoredItem(rr, obj);
             obj.x = p.x;
             obj.y = p.y;
+            obj.rotation = (p as { rotation?: number }).rotation; // explicit, else anchor-derived
           } else if (opts?.lenient) {
             opts.onWarning?.(`item '${obj.name ?? "?"}': anchor_to room '${at}' not found`);
           }

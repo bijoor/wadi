@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { anchorItem } from "./furnitureAnchor";
+import { anchorItem, anchorFacing } from "./furnitureAnchor";
 import { expandRoomWalls } from "./expand";
 
 // Room 200×300 at origin, wallT 8 → inner FACE inset = full wallT = 8 → [8,8]..[192,292].
@@ -140,5 +140,76 @@ describe("furniture anchoring through expandRoomWalls", () => {
     const wide = findPlant(make(400));
     expect((wide.x as number) - (narrow.x as number)).toBeCloseTo(200, 1); // bottom-right tracks the east wall
     expect(wide.y).toBeCloseTo(narrow.y as number, 2);
+    expect(narrow.rotation).toBe(180); // bottom (south) wall → face north, derived
+  });
+});
+
+describe("anchorFacing (anchor → default facing) + derived rotation", () => {
+  it("faces away from the wall it hugs", () => {
+    expect(anchorFacing("top-center")).toBe(0); // north wall → south
+    expect(anchorFacing("bottom-center")).toBe(180); // south wall → north
+    expect(anchorFacing("center-left")).toBe(90); // west wall → east
+    expect(anchorFacing("center-right")).toBe(270); // east wall → west
+    expect(anchorFacing("center")).toBe(0); // no wall → default south
+    expect(anchorFacing(undefined)).toBe(0);
+    // A corner anchors to two walls; the vertical edge wins (single-valued).
+    expect(anchorFacing("top-left")).toBe(0);
+    expect(anchorFacing("bottom-right")).toBe(180);
+  });
+
+  it("expand derives rotation from the anchor when none is given", () => {
+    const asset = { id: "b", src: "/f/b.glb", dimensions: [1.5, 0.5, 2.0] };
+    const cfg = {
+      site: { plot_width: 500, plot_length: 500 },
+      floors: [
+        {
+          floor_number: 1,
+          name: "GF",
+          objects: [
+            {
+              type: "room",
+              name: "BR",
+              x: 0,
+              y: 0,
+              width: 200,
+              length: 300,
+              items: [{ name: "Bed", asset, anchor: "bottom-center" }],
+            },
+          ],
+        },
+      ],
+    } as never;
+    const bed = (expandRoomWalls(cfg, 8, { lenient: true }).floors[0].objects as Array<Record<string, unknown>>).find(
+      (o) => o.type === "item",
+    )!;
+    expect(bed.rotation).toBe(180); // derived: south wall → face north
+  });
+
+  it("an explicit rotation always overrides the anchor default", () => {
+    const asset = { id: "b", src: "/f/b.glb", dimensions: [1.5, 0.5, 2.0] };
+    const cfg = {
+      site: { plot_width: 500, plot_length: 500 },
+      floors: [
+        {
+          floor_number: 1,
+          name: "GF",
+          objects: [
+            {
+              type: "room",
+              name: "BR",
+              x: 0,
+              y: 0,
+              width: 200,
+              length: 300,
+              items: [{ name: "Bed", asset, anchor: "bottom-center", rotation: 45 }],
+            },
+          ],
+        },
+      ],
+    } as never;
+    const bed = (expandRoomWalls(cfg, 8, { lenient: true }).floors[0].objects as Array<Record<string, unknown>>).find(
+      (o) => o.type === "item",
+    )!;
+    expect(bed.rotation).toBe(45); // explicit wins over the anchor default (180)
   });
 });

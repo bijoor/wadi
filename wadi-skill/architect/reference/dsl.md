@@ -233,6 +233,14 @@ small triangle on each piece's front edge so you can verify the way it points;
 for a definitive 3D check use `wadi_capture_3d({ room: "…" })` (first-person from
 inside the room).
 
+**Anchoring auto-orients.** When you `anchor` a piece to a wall and DON'T give a
+`rotation`, it automatically faces away from that wall, into the room — `anchor
+top-center` → faces south, `bottom-center` → north, `center-left` → east,
+`center-right` → west (a corner uses its north/south edge). So `item f."bed_double"
+anchor top-center` needs no rotation. An explicit `rotation` always overrides,
+and the derived value is written into the resolved model, so the plan notch and
+the 3D view show it — anchoring never changes facing silently.
+
 ## Imports & modules (reusable `.wdl` libraries)
 
 A `.wdl` file can be a **module** — top-level declarations (no `house` needed) —

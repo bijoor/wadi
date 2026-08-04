@@ -86,3 +86,20 @@ export function anchorItem(
 
   return { x, y };
 }
+
+// Default facing (yaw°) implied by an anchor: a piece anchored to a wall faces
+// AWAY from that wall, into the room, per the item convention (rotation 0 =
+// south, 90 = east, 180 = north, 270 = west). Used only when the item has no
+// explicit `rotation` — an explicit rotation always wins. A corner anchors to two
+// walls; the vertical edge (north/south) takes precedence so the rule is single-
+// valued and predictable; `center` (no wall) keeps the south-facing default.
+//   top → face south (0)   bottom → face north (180)
+//   left → face east (90)  right → face west (270)   center → 0
+export function anchorFacing(anchor?: string): number {
+  const { h, v } = parseAnchor(anchor);
+  if (v === "top") return 0;
+  if (v === "bottom") return 180;
+  if (h === "left") return 90;
+  if (h === "right") return 270;
+  return 0;
+}
