@@ -1,6 +1,7 @@
 # Wadi modules & imports — a `.wdl` file is the unit of reuse
 
-Status: **DESIGN — for review.** Not yet implemented.
+Status: **Phase 1 SHIPPED** (P1a–P1e, commits 0b28dfc · 8131267 · 440fd64 · 58ec274 · a267bbd).
+Phases 2–3 (function modules + goals; save + git/URL sharing) not yet started.
 
 ## The model (refined per feedback)
 
@@ -150,7 +151,13 @@ auto-import it).
    path = bundled `std-*` modules + a local `modules/` dir (relative paths also allowed).
 4. **`std-furniture` is explicit.** Examples `import` it; the language never auto-imports.
 
-## Phase 1 — implementation checklist (module imports + assets + `item "id"`)
+## Phase 1 — implementation checklist (module imports + assets + `item "id"`) ✅ DONE
+All seven items shipped. Grammar: top-level decls + optional `house`, `Import`/`AssetDecl`,
+`item (assetRef | asset{…})`. Compiler: `compileDsl(text,{resolveModule})` + link pre-pass
+(aliased `ns."id"` / bare `"id"` scopes) + `moduleExports()`. `std-furniture.wdl` generated
+from the catalog (byte-identical, test-locked). MCP: `stdResolveModule` + `wadi_modules` /
+`wadi_module`. Docs in dsl.md. 23 DSL tests + MCP smoke + client-test all green.
+
 Link-based resolution (not Langium multi-doc): the compiler collects `import` refs, asks a
 **resolver** for each module's `.wdl` text, parses it, extracts its exported `asset`s (P1) /
 `component`s (P2), and links them into a namespaced scope before emitting.
