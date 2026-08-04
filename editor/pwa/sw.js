@@ -34,8 +34,16 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE).then((cache) => cache.addAll(PRECACHE)),
   );
-  // No skipWaiting: a new version waits until existing tabs close, so a running
-  // editing session never has its assets swapped mid-flight.
+  // skipWaiting: activate the new worker immediately instead of waiting for all
+  // open tabs to close. This is what lets a REINSTALLED desktop app pick up the
+  // new viewer bundle — otherwise the persisted WKWebView service worker keeps
+  // serving the old shell across reinstalls (its "client" never counts as
+  // closed), and rebuilt viewer code silently doesn't run. The tradeoff (a live
+  // browser editing session could get the new worker mid-flight) is bounded:
+  // the already-loaded page keeps its in-memory assets, and the fresh shell only
+  // takes effect on the NEXT navigation/reload. (activate keeps the current
+  // version's caches; only strictly-older versions are pruned.)
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
