@@ -1,7 +1,10 @@
 # Wadi modules & imports — a `.wdl` file is the unit of reuse
 
-Status: **Phase 1 SHIPPED** (P1a–P1e, commits 0b28dfc · 8131267 · 440fd64 · 58ec274 · a267bbd).
-Phases 2–3 (function modules + goals; save + git/URL sharing) not yet started.
+Status: **Phases 1 & 2 SHIPPED.** P1 (asset imports, commits 0b28dfc · 8131267 · 440fd64 ·
+58ec274 · a267bbd · b438cf6). P2 (goal-tagged component packs + cross-file `use ns.Comp`,
+konkan/base, commit df27e2d). Phase 3 (save + git/URL sharing + module→module chains) not
+started. Note: module components must stay FLAT (no component-uses-component) until P3 wires
+intra-module ref remapping.
 
 ## The model (refined per feedback)
 
@@ -184,5 +187,15 @@ Link-based resolution (not Langium multi-doc): the compiler collects `import` re
 7. **Docs + tests:** `dsl.md`/playground `item` + `import`; DSL round-trip test (`item
    f."bed_double"` == inline asset; unknown id/module errors); examples still green.
 
-Phase 2 adds `component … goal "…"` linking + `use ns.Comp` + function exports in
-`wadi_module`. Phase 3 adds `wadi_save_module` + git/URL refs + module→module imports.
+## Phase 2 — SHIPPED (component packs + goals + cross-file `use`)
+Grammar `component … goal "…"` + `use ns.Comp`. linkModules collects imported components
+(bare + byNs); modelToHouseConfig merges them into cfg.components under `ns.Name` keys that
+`resolveComponentRef` targets → expandComponent unchanged; expands byte-identical to inline.
+moduleExports returns components (name+goal+params). `wadi_module` lists components; a
+`wadi_modules` query keyword-matches component GOALS. Bundled `konkan/base` (Stairwell /
+Verandah / Otla). Fixed two latent bugs en route: component `param` defaults now seed the
+expansion scope; formula-driven staircase rise_height/max_run use a positive placeholder so
+an unresolved component def passes the `>0` schema check.
+
+Phase 3 adds `wadi_save_module` + git/URL refs + module→module imports (and intra-module
+component composition — the flat-only constraint above).
