@@ -1,15 +1,19 @@
 // Coverage showcase — every model entity as FIRST-CLASS syntax, no `raw`:
-// layers, a component library (definition + `use` instance), ground, plinth,
-// slab, beam, room (with openings + an anchored item), a free-standing wall,
-// a kitchen platform, free furniture (item), a pillar, and a gable roof that is
-// `enabled`-gated by the configurator variable. If it compiles + validates,
-// the DSL covers the whole model.
+// module imports, layers, a goal-tagged component library (definition + in-file
+// `use` + cross-file `use kb.Comp`), ground, plinth, slab, beam, room (with
+// openings + a pack item AND an inline item), a free-standing wall, a kitchen
+// platform, free furniture, a pillar, and a gable roof that is `enabled`-gated by
+// the configurator. If it compiles + validates, the DSL covers the whole model.
 house CompleteShowcase {
   convention center
   units feet_inches per_unit 10
 
   site { plot (400, 500) ref (0, 0) }
   defaults { floor_height 116 wall_height 108 slab_thickness 8 wall_thickness 8 }  // floor_height = wall_height + slab_thickness (C4)
+
+  // Module packs: furniture assets (item f."id") + Konkan house parts (use kb.Name).
+  import "std-furniture" as f
+  import "konkan/base"   as kb
 
   var wallT = 8
   var roof_style = 2            // 2 = Gable (drives the enabled gate below)
@@ -19,8 +23,8 @@ house CompleteShowcase {
   layer "structure" "Structure" group "Frame"
   layer "furniture" "Furniture" color "#8B5A2B"
 
-  // Reusable component: a low RCC bench, authored in local coords.
-  component Bench {
+  // Reusable in-file component (with a discovery goal), authored in local coords.
+  component Bench goal "a low bench to sit on" {
     param blen = 60 label "Bench length"
     param bdep = 18
     beam name "BenchTop" at (0, 0) size (blen, bdep) height 6 layer "structure"
@@ -49,13 +53,13 @@ house CompleteShowcase {
     // A tie beam across the rear span.
     beam name "Tie" at (main.x1, main.yB - 8) size (main.x2 - main.x1, 8) height 8 layer "structure"
 
-    // Living room with a door, a window, and a bed anchored to a corner.
+    // Living room with a door, a window, and a bed from the furniture pack
+    // (`item f."id"`) anchored to a corner.
     room Living at (main.x1, main.yA) size (main.x2 - main.x1, main.yB - main.yA) {
       wall east west                                  // plain walls — several in one line
       wall south { door Main at 120 size (36, 84) }   // walls with openings: one side each
       wall north { window N1 at 100 size (60, 50) sill 35 }
-      item asset { id "bed_double" src "furniture/bed_double.glb" dims (1.5, 0.5, 2.0) category "bedroom" }
-        anchor bottom-right gap (12, 12) rotation 0
+      item f."bed_double" anchor bottom-right gap (12, 12) rotation 0
     }
 
     // A free-standing partition wall.
@@ -65,13 +69,16 @@ house CompleteShowcase {
     // An L-shaped kitchen counter (polyline path).
     kitchen name "Counter" path ((40, 40), (140, 40), (140, 120)) side right depth 24 height 36 layer "structure"
 
-    // Free furniture placed by absolute plan coordinates.
+    // Free furniture placed by absolute plan coordinates. The inline `asset {…}`
+    // form still works for a one-off GLB not in any pack.
     item name "Sofa" asset { id "sofa" src "furniture/sofa.glb" dims (1.9, 0.8, 0.9) category "living" }
       at (150, 300) rotation 90 scale 1 layer "furniture"
 
-    // A corner column, and a stamped Bench component (param overridden).
+    // A corner column, an in-file Bench (param overridden), and a part stamped
+    // from the konkan/base pack (cross-file `use kb.Comp`).
     pillar C1 at (main.x1, main.yA) size (10, 10) height 116 layer "structure"
     use Bench as "WindowBench" at (60, 60) with { blen = 80 }
+    use kb.Otla at (155, 420) with { wide = 90, deep = 55 }   // entrance platform in the front yard
   }
 
   floor 2 "Loft" {

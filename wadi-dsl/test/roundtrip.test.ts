@@ -61,7 +61,7 @@ describe("Wadi DSL round-trip", () => {
   it("complete: every object type is first-class (no `raw`), + components + layers", () => {
     const src = readFileSync(resolve(here, "..", "examples", "complete.wdl"), "utf8");
     expect(src).not.toContain("raw ");
-    const cfg = compileDsl(src) as {
+    const cfg = compileDsl(src, { resolveModule: stdResolveModule }) as {
       components: Record<string, unknown>;
       layers: unknown[];
       floors: { objects: { type: string }[] }[];
