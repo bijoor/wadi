@@ -102,6 +102,48 @@ describe("Wadi DSL round-trip", () => {
     expect(room.walls.south.openings).toHaveLength(1);
   });
 
+  it("item shorthand: a top-level `asset` decl + `item \"id\"` == the inline asset block", () => {
+    const shorthand = `house T {
+      asset "mybed" src "https://x/bed.glb" dims (1.5, 0.5, 2.0) name "My Bed" category "Bedroom"
+      floor 1 "G" {
+        room R at (4, 4) size (200, 240) { item "mybed" anchor center }
+        item "mybed" at (10, 20) rotation 90
+      }
+    }`;
+    const inline = `house T {
+      floor 1 "G" {
+        room R at (4, 4) size (200, 240) {
+          item asset { id "mybed" src "https://x/bed.glb" dims (1.5, 0.5, 2.0) name "My Bed" category "Bedroom" } anchor center
+        }
+        item asset { id "mybed" src "https://x/bed.glb" dims (1.5, 0.5, 2.0) name "My Bed" category "Bedroom" } at (10, 20) rotation 90
+      }
+    }`;
+    const a = compileDsl(shorthand) as { floors: { objects: any[] }[] };
+    const b = compileDsl(inline) as { floors: { objects: any[] }[] };
+    const freeA = a.floors[0].objects.find((o) => o.type === "item");
+    const freeB = b.floors[0].objects.find((o) => o.type === "item");
+    const roomA = a.floors[0].objects.find((o) => o.type === "room");
+    const roomB = b.floors[0].objects.find((o) => o.type === "room");
+    // The shorthand emits the byte-identical asset object the inline block does.
+    expect(freeA.asset).toEqual(freeB.asset);
+    expect(roomA.items[0].asset).toEqual(roomB.items[0].asset);
+    expect(freeA.asset).toEqual({
+      id: "mybed",
+      src: "https://x/bed.glb",
+      dimensions: [1.5, 0.5, 2],
+      name: "My Bed",
+      category: "Bedroom",
+    });
+  });
+
+  it("item shorthand: an unknown id errors with the available ids", () => {
+    const src = `house T {
+      asset "mybed" src "https://x/bed.glb" dims (1.5, 0.5, 2.0)
+      floor 1 "G" { item "nope" at (10, 20) }
+    }`;
+    expect(() => compileDsl(src)).toThrow(/unknown asset "nope".*mybed/s);
+  });
+
   it("errors.wdl reports parse diagnostics (does not throw uncaught)", () => {
     const src = readFileSync(resolve(here, "..", "examples", "errors.wdl"), "utf8");
     expect(() => compileDsl(src)).toThrow(/parse failed/i);

@@ -30,7 +30,9 @@ entry Model:
         (units=Units)?
         (site=Site)?
         (defaults=Defaults)?
-        ( vars+=Var
+        ( imports+=Import
+        | assets+=AssetDecl
+        | vars+=Var
         | points+=Point
         | grids+=Grid
         | configurators+=Configurator
@@ -39,6 +41,15 @@ entry Model:
         | floors+=Floor
         )*
     '}';
+
+// ---- Modules & imports: any .wdl can `import` another and use its exports
+//      (its top-level `asset`/`component` decls) under a namespace alias. ----
+Import:
+    'import' ref=STRING ('as' ns=ID)?;
+// A named GLB asset export (a furniture-catalog entry authored in the DSL).
+AssetDecl:
+    'asset' id=STRING 'src' src=STRING 'dims' '(' dx=NUMBER ',' dy=NUMBER ',' dz=NUMBER ')'
+        ('name' assetName=STRING)? ('category' category=STRING)?;
 
 // ============================================================================
 // ===============  PARAMETRIC CORE  (domain-neutral — reusable)  ==============
@@ -261,7 +272,7 @@ Pt:
 // ---- Free-standing furniture (a GLB asset placed in plan) ----
 Item:
     'item' ('name' name=STRING)?
-        'asset' asset=Asset
+        (assetRef=AssetRef | 'asset' asset=Asset)
         'at' '(' x=Expr ',' y=Expr ')'
         ('rotation' rotation=Expr)?
         ('scale' scale=Expr)?
@@ -272,12 +283,17 @@ Item:
 // Furniture anchored inside a room (no x/y — placed relative to the room box).
 RoomItem:
     'item' ('name' name=STRING)?
-        'asset' asset=Asset
+        (assetRef=AssetRef | 'asset' asset=Asset)
         ('anchor' anchor=Anchor)?
         ('gap' '(' gap_x=Expr ',' gap_y=Expr ')')?
         ('rotation' rotation=Expr)?
         ('scale' scale=Expr)?
         Common;
+// Reference a named asset by id — bare (`"bed_double"`, same-file or a std module)
+// or namespaced (`f."bed_double"`, from `import "…" as f`). Resolved to a full
+// asset at compile time. The inline `asset { … }` block stays for one-off GLBs.
+AssetRef:
+    (ns=ID '.')? id=STRING;
 Asset:
     '{' 'id' id=STRING 'src' src=STRING 'dims' '(' dx=NUMBER ',' dy=NUMBER ',' dz=NUMBER ')'
         ('name' name=STRING)? ('category' category=STRING)? '}';

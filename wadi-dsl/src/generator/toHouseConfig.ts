@@ -184,7 +184,7 @@ function opening(o: ast.Opening): Record<string, unknown> {
 
 function roomItem(it: ast.RoomItem): Record<string, unknown> {
   const { formulas, put } = geom();
-  const o: Record<string, unknown> = { asset: asset(it.asset) };
+  const o: Record<string, unknown> = { asset: resolveItemAsset(it) };
   if (it.name) o.name = unquote(it.name);
   if (it.anchor) o.anchor = it.anchor;
   const gx = put("gap_x", it.gap_x);
@@ -353,11 +353,52 @@ function asset(a: ast.Asset): Record<string, unknown> {
   return o;
 }
 
+// Named asset exports declared at the top of THIS file (`asset "id" src … dims …`),
+// indexed by id. Set once per compile in modelToHouseConfig. Imported-module assets
+// (`item ns."id"`) are resolved later (module-linking step, not yet wired).
+let ASSET_INDEX = new Map<string, ast.AssetDecl>();
+
+function assetDeclToObj(a: ast.AssetDecl): Record<string, unknown> {
+  const o: Record<string, unknown> = {
+    id: unquote(a.id),
+    src: unquote(a.src),
+    dimensions: [a.dx, a.dy, a.dz],
+  };
+  if (a.assetName) o.name = unquote(a.assetName);
+  if (a.category) o.category = unquote(a.category);
+  return o;
+}
+
+// Resolve an item's asset: the inline `asset { … }` block, or an `assetRef` — a
+// bare id (`"bed_double"`) looked up in this file's `asset` decls, or a namespaced
+// id (`f."bed_double"`) from an imported module (deferred).
+function resolveItemAsset(it: ast.Item | ast.RoomItem): Record<string, unknown> {
+  if (it.asset) return asset(it.asset);
+  const ref = it.assetRef;
+  if (!ref) throw new Error("item has no asset (expected `asset { … }` or an asset id)");
+  const id = unquote(ref.id);
+  if (ref.ns) {
+    throw new Error(
+      `item asset "${ref.ns}.${id}": imported-module assets aren't linked yet — for now declare ` +
+        `the asset in this file (\`asset "${id}" src … dims …\`) or use the inline \`asset { … }\` block.`,
+    );
+  }
+  const decl = ASSET_INDEX.get(id);
+  if (!decl) {
+    const avail = [...ASSET_INDEX.keys()];
+    throw new Error(
+      `unknown asset "${id}". Declare it with a top-level \`asset "${id}" src … dims …\`` +
+        (avail.length ? ` (this file declares: ${avail.join(", ")}).` : "."),
+    );
+  }
+  return assetDeclToObj(decl);
+}
+
 function item(it: ast.Item): Record<string, unknown> {
   const { formulas, put } = geom();
   const o: Record<string, unknown> = {
     type: "item",
-    asset: asset(it.asset),
+    asset: resolveItemAsset(it),
     x: put("x", it.x, 0),
     y: put("y", it.y, 0),
   };
@@ -533,6 +574,10 @@ function componentDef(d: ast.ComponentDef): Record<string, unknown> {
 
 export function modelToHouseConfig(model: ast.Model): Record<string, unknown> {
   const cfg: Record<string, unknown> = {};
+
+  // Index this file's top-level `asset "id" …` declarations so `item "id"`
+  // shorthands resolve. (Imported-module assets are linked separately, later.)
+  ASSET_INDEX = new Map(model.assets.map((a) => [unquote(a.id), a]));
 
   if (model.convention) cfg.coord_convention = model.convention;
 
