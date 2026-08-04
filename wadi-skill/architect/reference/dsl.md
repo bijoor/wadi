@@ -198,16 +198,50 @@ Put it on the *lower* floor (thinking of it as "climbing up") and it descends th
 — **below ground** — where it draws in 2D plans but is buried/invisible in 3D. `check.sh`
 catches that (convention **C5**), but author it top-anchored from the start.
 
-item [name "N"] asset { id "sofa" src "furniture/sofa.glb" dims (w,h,d) [category "…"] }
+// three ways to name the GLB, in order of preference:
+item [name "N"] f."sofa"                                  // 1. from an imported module (see Imports)
+item [name "N"] "sofa"                                    // 2. a same-file / bare-imported `asset` id
+item [name "N"] asset { id "sofa" src "…/sofa.glb" dims (w,h,d) [category "…"] }  // 3. inline one-off
   at (x,y) [rotation <deg>] [scale <s>]
   [anchor_to "RoomName" anchor center gap (gx,gy)]
 ```
 
-Furniture `dims` are the real-world size in **metres** `(width, height, depth)`;
-`src` is a GLB URL (bundled ids resolve at `furniture/<id>.glb` — e.g. `sofa`,
-`bed_double`, `dining_table`; an unreachable GLB shows a placeholder box, never a
-blank). `anchor` is one of `top-left top-center top-right center-left center
-center-right bottom-left bottom-center bottom-right`.
+Prefer the module form (`item f."bed_double"`) — `import "std-furniture" as f`
+once and every piece is a short id, no URLs. The bare form (`item "sofa"`) needs
+a matching top-level `asset "sofa" …` in the file (or a bare `import`). The inline
+`asset { … }` block is only for a one-off GLB not in any pack. All three produce
+the identical `{id,src,dims}` downstream. Furniture `dims` are the real-world size
+in **metres** `(width, height, depth)`; `src` is a GLB URL (an unreachable GLB
+shows a placeholder box, never a blank). `anchor` is one of `top-left top-center
+top-right center-left center center-right bottom-left bottom-center bottom-right`.
+
+## Imports & modules (reusable `.wdl` libraries)
+
+A `.wdl` file can be a **module** — top-level declarations (no `house` needed) —
+that another file `import`s. The built-in furniture pack `std-furniture` is one.
+
+```wdl
+house Home {
+  import "std-furniture" as f       // aliased: refer to its assets as f."<id>"
+  // import "std-furniture"          // bare: its ids drop into scope for item "<id>"
+  floor 1 "G" slab_thickness 0 {
+    room Bed at (20,20) size (160,200) { wall north east south west
+      item f."bed_double" anchor center }
+  }
+}
+```
+
+A module file itself is just top-level `asset` (later: `component`) decls:
+
+```wdl
+// my-furniture.wdl — a house-less module (a reusable library)
+asset "daybed" src "https://…/daybed.glb" dims (1.8, 0.4, 0.9) name "Daybed" category "Living"
+```
+
+Over MCP, `wadi_modules` lists importable modules and `wadi_module "<name>"`
+shows a module's asset ids + dimensions (filter with a `query`). Import refs
+resolve by name against the bundled `std-*` packs (a local `modules/` search
+path and git refs come later).
 
 ## Objects — roof (one object; flat / shed / gable / hip)
 
