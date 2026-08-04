@@ -140,16 +140,42 @@ auto-import it).
 - **Phase 3 — save + VCS sharing + deep hierarchy**: `wadi_save_module`; git/URL import refs;
   module→module import chains; app "Save as module".
 
-## Open questions / decisions
-1. **Top-level decls vs a `module` marker:** allow `component`/`asset`/`var` at the *file top
-   level* (a module needs no `house` body) — vs require them inside `house` and treat the
-   house's inner defs as the exports. (Lean: **top-level decls, `house` body optional** — a
-   pure-function file has no house; a demo file adds one. Cleanest module model; a bounded
-   grammar change to make the top level a list of decls + optional `house`.)
-2. **Export visibility:** are *all* top-level defs exported, or only ones marked `export`?
-   (Lean: all top-level defs are exported — leaner; add `export`/private later if needed.)
-3. **Module `ref` → file resolution** for Phase 1: relative path only, or a `modules/` search
-   path + bare name (`import "std-furniture"`)? (Lean: bare name against a search path that
-   includes the bundled std modules + a local `modules/` dir.)
-4. **`std-furniture` still explicit** even though shipped — confirmed explicit; examples
-   `import` it. (Locked.)
+## Decisions (locked)
+1. **Top-level decls, `house` body optional.** The file top level is a list of
+   declarations (`import`, `component`, `asset`, `var`, `point`, `grid`, `layer`) plus an
+   optional `house { … }`. A pure-function/asset module has no `house`; a demo module adds
+   one (its own preview, not exported).
+2. **All top-level defs are exported.** No `export` marker for now; `private` added later.
+3. **Bare name against a search path.** `import "std-furniture"` resolves against a search
+   path = bundled `std-*` modules + a local `modules/` dir (relative paths also allowed).
+4. **`std-furniture` is explicit.** Examples `import` it; the language never auto-imports.
+
+## Phase 1 — implementation checklist (module imports + assets + `item "id"`)
+Link-based resolution (not Langium multi-doc): the compiler collects `import` refs, asks a
+**resolver** for each module's `.wdl` text, parses it, extracts its exported `asset`s (P1) /
+`component`s (P2), and links them into a namespaced scope before emitting.
+
+1. **Grammar** (`wadi.langium`): make the top level `(Decl | 'house' House)`; `Decl` =
+   `Import | ComponentDef | AssetDecl | Var | Point | Grid | Layer`.
+   - `Import: 'import' ref=STRING ('as' ns=ID)?;`
+   - `AssetDecl: 'asset' id=STRING 'src' src=STRING 'dims' '(' … ')' ('name' …)?('category' …)?;`
+   - `Item`/`RoomItem`: allow `asset` to also be a **ref** — bare `id=STRING`
+     (same-file/auto) or `ns=ID '.' id=STRING` (imported). Keep the inline `{…}` block.
+   - Regenerate the AST; confirm existing examples still parse + compile (additive).
+2. **Resolver interface** `resolveModule(ref) => string | undefined`, threaded through
+   `compileDsl(text, { resolveModule })`. Implementations: MCP embeds `std-furniture` (via
+   gen-assets); CLI/app read the search path.
+3. **Link step** (in `toHouseConfig` / a pre-pass): parse each imported module, collect its
+   `AssetDecl`s into `scope[ns][id] = {src,dims,name,category}`; error on unknown module.
+4. **`item` resolution:** `item "id"` / `item ns."id"` → look up in scope → emit the same
+   `{id,src,dims}` asset object the inline block produces (byte-identical). Unknown id →
+   error with near-matches.
+5. **Generate `std-furniture.wdl`** from `FURNITURE_CATALOG` (a `gen-std-modules.mjs`); ship
+   it as a bundled module (embedded in MCP; on the app/CLI search path).
+6. **MCP `wadi_modules` / `wadi_module`** (assets first): list modules + show a module's
+   asset exports.
+7. **Docs + tests:** `dsl.md`/playground `item` + `import`; DSL round-trip test (`item
+   f."bed_double"` == inline asset; unknown id/module errors); examples still green.
+
+Phase 2 adds `component … goal "…"` linking + `use ns.Comp` + function exports in
+`wadi_module`. Phase 3 adds `wadi_save_module` + git/URL refs + module→module imports.
