@@ -378,6 +378,7 @@ const MAX_COMPONENT_DEPTH = 8;
 
 type ComponentDefLoose = {
   objects: Obj[];
+  params?: Array<{ name?: string; default?: number }>;
   variables?: Record<string, number | string>;
   points?: Record<string, { x: number | string; y: number | string }>;
 };
@@ -447,9 +448,18 @@ function expandComponent(
     }
   }
 
+  // Declared `param` defaults seed the component's scope so a formula field that
+  // references an un-overridden param (e.g. `max_run run` with `param run = 200`)
+  // resolves to the default. Precedence: param defaults < component `var`s <
+  // instance overrides.
+  const paramDefaults: Record<string, number> = {};
+  for (const p of (def.params ?? []) as Array<{ name?: string; default?: number }>) {
+    if (p.name && typeof p.default === "number") paramDefaults[p.name] = p.default;
+  }
+
   const subConfig = {
     components: hostConfig.components,
-    variables: { ...(def.variables ?? {}), ...overrides },
+    variables: { ...paramDefaults, ...(def.variables ?? {}), ...overrides },
     points: def.points,
     floors: [{ floor_number: 0, name: ref, objects: structuredClone(def.objects) }],
   } as unknown as HouseConfig;

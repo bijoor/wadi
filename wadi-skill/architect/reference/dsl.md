@@ -218,7 +218,9 @@ top-right center-left center center-right bottom-left bottom-center bottom-right
 ## Imports & modules (reusable `.wdl` libraries)
 
 A `.wdl` file can be a **module** — top-level declarations (no `house` needed) —
-that another file `import`s. The built-in furniture pack `std-furniture` is one.
+that another file `import`s. Two bundled ones: `std-furniture` (asset pack →
+`item ns."id"`) and `konkan/base` (goal-tagged component pack → `use ns.Comp`;
+Stairwell / Verandah / Otla).
 
 ```wdl
 house Home {
@@ -311,6 +313,33 @@ use Bench as "B1" at (x,y) with { blen = 80 }   // stamp it onto a floor
 
 layer "structure" "Structure" [color "#rrggbb"] [group "Frame"]   // per-house layer registry
 ```
+
+A component may carry a **`goal`** — a short description of what it accomplishes,
+the discovery key for module lookup (`wadi_module` / a `wadi_modules` query):
+
+```wdl
+component Stairwell goal "climb to the next floor" {
+  param rise = 116
+  staircase name "Stair" at (0,0) step (7,11,44) direction south total_height rise
+}
+```
+
+Components can also come from an **imported module** (see *Imports & modules*),
+stamped with a namespaced `use ns.Comp`:
+
+```wdl
+house Home {
+  import "konkan/base" as kb        // Stairwell, Verandah, Otla (goal-tagged)
+  floor 1 "G" slab_thickness 0 {
+    room Hall at (20,20) size (200,200) { wall north east south west }
+    use kb.Stairwell at (60,60) with { rise = 116 }   // param args use `=`, not `:`
+  }
+}
+```
+
+`use ns.Comp` expands byte-identical to an inline `component`; keep module
+components flat (they don't `use` other components). Un-overridden `param`s fall
+back to their declared defaults.
 
 ## The `raw` escape (rarely needed)
 

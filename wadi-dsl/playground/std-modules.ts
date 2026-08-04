@@ -5,9 +5,11 @@
 // pipeline.stdResolveModule (which serves the same modules over MCP).
 
 import stdFurniture from "../std-modules/std-furniture.wdl?raw";
+import konkanBase from "../std-modules/konkan/base.wdl?raw";
 
 const STD_MODULES: Record<string, string> = {
   "std-furniture": stdFurniture,
+  "konkan/base": konkanBase,
 };
 
 /** Resolve a bundled std module name to its .wdl source (undefined if unknown). */

@@ -63,6 +63,30 @@ const furnitureWdl = `house H {
 const impPrev = await client.callTool({ name: "wadi_preview", arguments: { wdl: furnitureWdl, views: ["plans"] } });
 ok(imagesOf(impPrev).length === 1, "wadi_preview renders an `import`ing design");
 
+// --- component module (konkan/base) + goal-based discovery ---
+const byGoal = await client.callTool({ name: "wadi_modules", arguments: { query: "climb floor" } });
+ok(textOf(byGoal).includes("konkan/base"), `wadi_modules query "climb floor" surfaces konkan/base via a component goal`);
+
+const kb = await client.callTool({ name: "wadi_module", arguments: { name: "konkan/base" } });
+ok(
+  textOf(kb).includes("Stairwell") && textOf(kb).includes("climb to the next floor") && textOf(kb).includes("use ns."),
+  `wadi_module('konkan/base') shows Stairwell + its goal → ${textOf(kb).split("\n").find((l) => l.includes("Stairwell"))?.trim()?.slice(0, 60)}`,
+);
+
+// a design that `use`s a cross-file component renders through wadi_preview
+const compWdl = `house H {
+  site { plot (300, 300) }
+  import "konkan/base" as kb
+  floor 1 "G" slab_thickness 0 {
+    room Hall at (20, 20) size (200, 200) { wall north east south west }
+    use kb.Stairwell at (60, 60) with { rise = 116 }
+  }
+}`;
+const compChk = await client.callTool({ name: "wadi_check", arguments: { wdl: compWdl } });
+ok(textOf(compChk).startsWith("✅"), `wadi_check a design using kb.Stairwell → ${textOf(compChk).split("\n")[0]}`);
+const compPrev = await client.callTool({ name: "wadi_preview", arguments: { wdl: compWdl, views: ["plans"] } });
+ok(imagesOf(compPrev).length === 1, "wadi_preview renders a design using a cross-file component");
+
 await client.close();
 console.error(failures ? `\n✗ ${failures} MCP failure(s)` : "\n✓ all MCP client checks passed");
 process.exit(failures ? 1 : 0);

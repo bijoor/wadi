@@ -590,6 +590,10 @@ const componentParam = z
 const componentDef = z
   .object({
     name: z.string().optional(),
+    // A short natural-language description of what this component accomplishes
+    // (the discovery key for goal-based module lookup, e.g. "climb to the next
+    // floor"). Purely metadata — renderers ignore it.
+    goal: z.string().optional(),
     params: z.array(componentParam).optional(),
     variables: z.record(z.string(), numOrFormula).optional(),
     points: z

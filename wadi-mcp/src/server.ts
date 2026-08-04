@@ -264,28 +264,57 @@ server.registerTool(
 );
 
 // ---- wadi_modules / wadi_module (importable DSL libraries) -------------------
+// A word in `q` that matches any of the module's text (summary/asset/component/goal).
+function moduleMatchesQuery(name: string, q: string): boolean {
+  const mod = MODULES[name];
+  const ex = moduleExports(mod.source);
+  const hay = [
+    name,
+    mod.summary,
+    ...ex.assets.flatMap((a) => [a.id, a.name ?? "", a.category ?? ""]),
+    ...ex.components.flatMap((c) => [c.name, c.goal ?? ""]),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .some((w) => hay.includes(w));
+}
+
 server.registerTool(
   "wadi_modules",
   {
     title: "List importable Wadi modules (libraries)",
     description:
-      "List the bundled Wadi DSL modules a design can `import` — reusable `.wdl` libraries (e.g. the " +
-      "built-in furniture pack). Each is importable by name: `import \"<name>\" as ns`. Call wadi_module " +
-      "with a name to see what it exports (asset ids, dimensions) before using `item ns.\"<id>\"`.",
-    inputSchema: {},
+      "List the bundled Wadi DSL modules a design can `import` — reusable `.wdl` libraries: asset packs " +
+      "(furniture ids for `item`) and component packs (goal-tagged parts for `use`). Each is importable " +
+      "by name: `import \"<name>\" as ns`. Pass a `query` to find a module by keyword — including a " +
+      "component's GOAL (e.g. \"stairs\" or \"sit-out\") — then call wadi_module for its exports.",
+    inputSchema: {
+      query: z
+        .string()
+        .optional()
+        .describe("Optional keywords; matches module name/summary, asset ids, and component names + goals."),
+    },
   },
-  async () => {
-    const names = Object.keys(MODULES);
+  async ({ query }) => {
+    let names = Object.keys(MODULES);
     if (!names.length) return { content: [{ type: "text", text: "No modules bundled." }] };
+    if (query && query.trim()) names = names.filter((n) => moduleMatchesQuery(n, query.trim()));
+    if (!names.length) {
+      return { content: [{ type: "text", text: `No modules match "${query}". Try wadi_modules with no query.` }] };
+    }
     const list = names.map((n) => `- ${n} — ${MODULES[n].summary}`).join("\n");
     return {
       content: [
         {
           type: "text",
           text:
-            "Importable modules (call wadi_module with a name for its exports):\n" +
+            (query ? `Modules matching "${query}":\n` : "Importable modules (call wadi_module for exports):\n") +
             list +
-            '\n\nUse: `import "<name>" as f` then `item f."<asset-id>"`.',
+            '\n\nThen: `import "<name>" as ns` and `item ns."<asset-id>"` / `use ns.<Component>`.',
         },
       ],
     };
@@ -297,13 +326,13 @@ server.registerTool(
   {
     title: "Show a Wadi module's exports",
     description:
-      "Show what a bundled Wadi module exports so you can use it: its asset ids with real-world " +
-      "dimensions and category. Import it (`import \"<name>\" as f`) and place assets with " +
-      "`item f.\"<id>\"` (free-standing, needs `at (x,y)`) or inside a room (`item f.\"<id>\" anchor …`). " +
-      "An optional query keyword-filters the assets.",
+      "Show what a bundled Wadi module exports so you can use it: ASSETS (ids + real-world dimensions + " +
+      "category, placed with `item ns.\"<id>\"`) and COMPONENTS (name + GOAL + params, stamped with " +
+      "`use ns.<Name> at (x,y) with { param = … }`). Import first: `import \"<name>\" as ns`. An optional " +
+      "query keyword-filters both assets and components (by id/name/category/goal).",
     inputSchema: {
-      name: z.string().describe("Module name (e.g. std-furniture). Call wadi_modules to list."),
-      query: z.string().optional().describe("Optional keyword to filter assets by id/name/category."),
+      name: z.string().describe("Module name (e.g. std-furniture, konkan/base). Call wadi_modules to list."),
+      query: z.string().optional().describe("Optional keyword to filter exports by id/name/category/goal."),
     },
   },
   async ({ name, query }) => {
@@ -314,7 +343,9 @@ server.registerTool(
         isError: true,
       };
     }
-    let assets = moduleExports(mod.source).assets;
+    const ex = moduleExports(mod.source);
+    let assets = ex.assets;
+    let components = ex.components;
     if (query && query.trim()) {
       const q = query.trim().toLowerCase();
       assets = assets.filter(
@@ -323,25 +354,40 @@ server.registerTool(
           (a.name ?? "").toLowerCase().includes(q) ||
           (a.category ?? "").toLowerCase().includes(q),
       );
+      components = components.filter(
+        (c) => c.name.toLowerCase().includes(q) || (c.goal ?? "").toLowerCase().includes(q),
+      );
     }
-    if (!assets.length) {
-      return { content: [{ type: "text", text: `Module "${name}": no assets${query ? ` match "${query}"` : ""}.` }] };
+    if (!assets.length && !components.length) {
+      return { content: [{ type: "text", text: `Module "${name}": nothing${query ? ` matches "${query}"` : ""}.` }] };
     }
-    // Group by category for a readable surface.
-    const byCat = new Map<string, typeof assets>();
-    for (const a of assets) {
-      const c = a.category ?? "Other";
-      (byCat.get(c) ?? byCat.set(c, []).get(c)!).push(a);
-    }
-    const lines = [`Module "${name}" — ${mod.summary}`, `Import: \`import "${name}" as f\``, ""];
-    for (const [cat, items] of byCat) {
-      lines.push(`${cat}:`);
-      for (const a of items) {
-        const [w, h, d] = a.dimensions;
-        lines.push(`  ${a.id} — ${a.name ?? a.id} (${w}×${h}×${d} m)`);
+    const lines = [`Module "${name}" — ${mod.summary}`, `Import: \`import "${name}" as ns\``, ""];
+    if (components.length) {
+      lines.push("Components (use ns.<Name>):");
+      for (const c of components) {
+        const params = c.params.map((p) => `${p.name}${p.default !== undefined ? `=${p.default}` : ""}`).join(", ");
+        lines.push(`  ${c.name}${c.goal ? ` — goal: "${c.goal}"` : ""}${params ? ` (params: ${params})` : ""}`);
       }
+      const c0 = components[0];
+      const p0 = c0.params[0];
+      lines.push(`  e.g. \`use ns.${c0.name} at (x, y)${p0 ? ` with { ${p0.name} = ${p0.default ?? 0} }` : ""}\``, "");
     }
-    lines.push("", `Use e.g. \`item f."${assets[0].id}" at (x, y)\` or inside a room \`item f."${assets[0].id}" anchor center\`.`);
+    if (assets.length) {
+      const byCat = new Map<string, typeof assets>();
+      for (const a of assets) {
+        const c = a.category ?? "Other";
+        (byCat.get(c) ?? byCat.set(c, []).get(c)!).push(a);
+      }
+      lines.push("Assets (item ns.\"<id>\"):");
+      for (const [cat, items] of byCat) {
+        lines.push(`  ${cat}:`);
+        for (const a of items) {
+          const [w, h, d] = a.dimensions;
+          lines.push(`    ${a.id} — ${a.name ?? a.id} (${w}×${h}×${d} m)`);
+        }
+      }
+      lines.push(`  e.g. \`item ns."${assets[0].id}" at (x, y)\` or in a room \`item ns."${assets[0].id}" anchor center\``);
+    }
     return { content: [{ type: "text", text: lines.join("\n") }] };
   },
 );

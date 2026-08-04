@@ -311,9 +311,12 @@ function staircase(s: ast.Staircase): Record<string, unknown> {
     direction: s.direction,
   };
   if (s.name) o.name = unquote(s.name);
-  const rh = put("rise_height", s.rise_height);
+  // Placeholder 1 (not 0): these carry a `>0` schema constraint, and when the
+  // value is a formula (e.g. a component `param`) the stored placeholder is what
+  // schema-validation of the unresolved def sees — 0 would spuriously fail.
+  const rh = put("rise_height", s.rise_height, 1);
   if (rh !== undefined) o.rise_height = rh;
-  const mr = put("max_run", s.max_run);
+  const mr = put("max_run", s.max_run, 1);
   if (mr !== undefined) o.max_run = mr;
   const ld = put("landing_depth", s.landing_depth);
   if (ld !== undefined) o.landing_depth = ld;
@@ -435,11 +438,49 @@ function item(it: ast.Item): Record<string, unknown> {
   return done(o, formulas);
 }
 
+// Component `use` refs in scope: same-file + bare-imported names, and the
+// per-namespace maps of imported components (for `use ns.Comp`). Set per compile
+// in modelToHouseConfig; symmetric with ASSET_INDEX / NS_ASSET_INDEX.
+let COMPONENT_NAMES = new Set<string>();
+let NS_COMPONENT_INDEX = new Map<string, Map<string, ast.ComponentDef>>();
+
+// Resolve a `use [ns.]Comp` instance to the key it looks up in cfg.components:
+// a bare name for a same-file/bare-imported component, or `ns.Comp` for an
+// aliased import (which modelToHouseConfig links into cfg.components under the
+// same key). Errors, at compile time, on an unknown alias or component.
+function resolveComponentRef(c: ast.Component): string {
+  if (c.ns) {
+    const mod = NS_COMPONENT_INDEX.get(c.ns);
+    if (!mod) {
+      const nss = [...NS_COMPONENT_INDEX.keys()];
+      throw new Error(
+        `use ${c.ns}.${c.ref}: no import is aliased "${c.ns}". Add \`import "…" as ${c.ns}\`` +
+          (nss.length ? ` (imported aliases: ${nss.join(", ")}).` : "."),
+      );
+    }
+    if (!mod.has(c.ref)) {
+      throw new Error(
+        `unknown component "${c.ns}.${c.ref}" — module "${c.ns}" defines no "${c.ref}"` +
+          (mod.size ? ` (it has: ${[...mod.keys()].join(", ")}).` : "."),
+      );
+    }
+    return `${c.ns}.${c.ref}`;
+  }
+  if (COMPONENT_NAMES.size && !COMPONENT_NAMES.has(c.ref)) {
+    throw new Error(
+      `unknown component "${c.ref}". Define it with \`component ${c.ref} { … }\`, or import a ` +
+        `module that provides it and use \`use ns.${c.ref}\`` +
+        ` (in scope: ${[...COMPONENT_NAMES].join(", ")}).`,
+    );
+  }
+  return c.ref;
+}
+
 function componentInstance(c: ast.Component): Record<string, unknown> {
   const { formulas, put } = geom();
   const o: Record<string, unknown> = {
     type: "component",
-    ref: c.ref,
+    ref: resolveComponentRef(c),
     x: put("x", c.x, 0),
     y: put("y", c.y, 0),
   };
@@ -567,6 +608,7 @@ function floorObject(o: ast.FloorObject): Record<string, unknown> {
 
 function componentDef(d: ast.ComponentDef): Record<string, unknown> {
   const def: Record<string, unknown> = { objects: d.objects.map(floorObject) };
+  if (d.goal) def.goal = unquote(d.goal);
   if (d.params.length) {
     def.params = d.params.map((p) => {
       const pp: Record<string, unknown> = { name: p.name };
@@ -595,26 +637,40 @@ function componentDef(d: ast.ComponentDef): Record<string, unknown> {
 // CLI/app read a modules folder). A design with no imports needs no resolver.
 export type ResolveModule = (ref: string) => string | undefined;
 
-// The asset scope produced by linking a model's imports (before emit).
-interface LinkedAssets {
-  bare: Map<string, ast.AssetDecl>; // from `import "…"` (no alias)
-  byNs: Map<string, Map<string, ast.AssetDecl>>; // from `import "…" as ns`
+// A namespaced/bare scope of one kind of exported decl, produced by linking imports.
+interface LinkScope<T> {
+  bare: Map<string, T>; // from `import "…"` (no alias)
+  byNs: Map<string, Map<string, T>>; // from `import "…" as ns`
+}
+// Everything a model's imports contribute (assets for `item`, components for `use`).
+interface LinkedScope {
+  assets: LinkScope<ast.AssetDecl>;
+  components: LinkScope<ast.ComponentDef>;
 }
 
-const EMPTY_LINK: LinkedAssets = { bare: new Map(), byNs: new Map() };
+const emptyScope = <T>(): LinkScope<T> => ({ bare: new Map(), byNs: new Map() });
+const EMPTY_LINK: LinkedScope = { assets: emptyScope(), components: emptyScope() };
 
 export function modelToHouseConfig(
   model: ast.Model,
-  linked: LinkedAssets = EMPTY_LINK,
+  linked: LinkedScope = EMPTY_LINK,
 ): Record<string, unknown> {
   const cfg: Record<string, unknown> = {};
 
   // Asset scope for `item "id"` / `item ns."id"`: this file's own `asset` decls,
   // plus bare-imported assets (same-file decls win on a name clash), plus each
   // aliased import under its namespace.
-  ASSET_INDEX = new Map(linked.bare);
+  ASSET_INDEX = new Map(linked.assets.bare);
   for (const a of model.assets) ASSET_INDEX.set(unquote(a.id), a);
-  NS_ASSET_INDEX = linked.byNs;
+  NS_ASSET_INDEX = linked.assets.byNs;
+
+  // Component scope for `use Comp` / `use ns.Comp`: same-file + bare-imported
+  // names, and the aliased-import maps for cross-file `use ns.Comp` validation.
+  COMPONENT_NAMES = new Set<string>([
+    ...model.components.map((d) => d.name),
+    ...linked.components.bare.keys(),
+  ]);
+  NS_COMPONENT_INDEX = linked.components.byNs;
 
   if (model.convention) cfg.coord_convention = model.convention;
 
@@ -696,10 +752,17 @@ export function modelToHouseConfig(
     });
   }
 
-  if (model.components.length) {
+  // Component library: bare-imported first (same-file wins on clash), then each
+  // aliased import under a `ns.Name` key — the exact key `use ns.Comp` resolves
+  // to (resolveComponentRef) and that expandComponent looks up unchanged.
+  {
     const comps: Record<string, unknown> = {};
+    for (const [name, d] of linked.components.bare) comps[name] = componentDef(d);
     for (const d of model.components) comps[d.name] = componentDef(d);
-    cfg.components = comps;
+    for (const [ns, mod] of linked.components.byNs) {
+      for (const [name, d] of mod) comps[`${ns}.${name}`] = componentDef(d);
+    }
+    if (Object.keys(comps).length) cfg.components = comps;
   }
 
   cfg.floors = model.floors.map((f) => {
@@ -776,15 +839,17 @@ function parseModel(services: WadiServices, text: string, what = "DSL"): ast.Mod
 }
 
 // Link a model's `import` statements: resolve each ref to module text, parse it,
-// and collect its top-level `asset` decls into a namespaced (aliased) or bare
-// (unaliased) scope. Phase 1 links assets only — module `component`s come in P2.
+// and collect its top-level exports (`asset` decls for `item`, `component` defs
+// for `use`) into namespaced (aliased) or bare (unaliased) scopes. One level:
+// an imported module's OWN imports are not followed (module→module chains are
+// Phase 3), so module components must be flat (no component-uses-component).
 function linkModules(
   model: ast.Model,
   services: WadiServices,
   resolveModule?: ResolveModule,
-): LinkedAssets {
-  const bare = new Map<string, ast.AssetDecl>();
-  const byNs = new Map<string, Map<string, ast.AssetDecl>>();
+): LinkedScope {
+  const assets = emptyScope<ast.AssetDecl>();
+  const components = emptyScope<ast.ComponentDef>();
   for (const imp of model.imports ?? []) {
     const ref = unquote(imp.ref);
     if (!resolveModule) {
@@ -797,11 +862,17 @@ function linkModules(
       throw new Error(`import "${ref}": module not found on the search path.`);
     }
     const sub = parseModel(services, src, `imported module "${ref}"`);
-    const assets = new Map(sub.assets.map((a) => [unquote(a.id), a]));
-    if (imp.ns) byNs.set(imp.ns, assets);
-    else for (const [id, a] of assets) bare.set(id, a);
+    const modAssets = new Map(sub.assets.map((a) => [unquote(a.id), a]));
+    const modComponents = new Map(sub.components.map((d) => [d.name, d]));
+    if (imp.ns) {
+      assets.byNs.set(imp.ns, modAssets);
+      components.byNs.set(imp.ns, modComponents);
+    } else {
+      for (const [id, a] of modAssets) assets.bare.set(id, a);
+      for (const [name, d] of modComponents) components.bare.set(name, d);
+    }
   }
-  return { bare, byNs };
+  return { assets, components };
 }
 
 export interface CompileOptions {
@@ -816,8 +887,8 @@ export function compileDsl(text: string, opts: CompileOptions = {}): Record<stri
   return modelToHouseConfig(model, linked);
 }
 
-/** A module's public surface (for discovery): its exported asset declarations.
- *  Phase 1 lists assets; `component`s (with `goal`) join in Phase 2. */
+/** A module's public surface (for discovery): its exported asset declarations
+ *  (for `item`) and component definitions (for `use`, with their `goal`). */
 export interface ModuleExports {
   assets: Array<{
     id: string;
@@ -826,12 +897,26 @@ export interface ModuleExports {
     name?: string;
     category?: string;
   }>;
+  components: Array<{
+    name: string;
+    goal?: string;
+    params: Array<{ name: string; default?: number; label?: string }>;
+  }>;
 }
 export function moduleExports(text: string): ModuleExports {
   const services = createWadiServices(EmptyFileSystem).Wadi;
   const model = parseModel(services, text);
   return {
     assets: model.assets.map((a) => assetDeclToObj(a) as ModuleExports["assets"][number]),
+    components: model.components.map((d) => ({
+      name: d.name,
+      ...(d.goal ? { goal: unquote(d.goal) } : {}),
+      params: d.params.map((p) => ({
+        name: p.name,
+        ...(p.default !== undefined ? { default: p.default } : {}),
+        ...(p.label ? { label: unquote(p.label) } : {}),
+      })),
+    })),
   };
 }
 

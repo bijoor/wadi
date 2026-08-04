@@ -167,7 +167,7 @@ LayerDecl:
 // ---- In-file component library: a reusable mini-house authored in LOCAL
 //      coordinates (origin 0,0), stamped into a floor with `use … at (…)`. ----
 ComponentDef:
-    'component' name=ID '{'
+    'component' name=ID ('goal' goal=STRING)? '{'
         (params+=ComponentParam)*
         ( vars+=Var | points+=Point )*
         (objects+=FloorObject)*
@@ -316,9 +316,10 @@ Anchor returns string:
     | 'center-left' | 'center' | 'center-right'
     | 'bottom-left' | 'bottom-center' | 'bottom-right';
 
-// ---- Component INSTANCE — stamp a library component onto this floor ----
+// ---- Component INSTANCE — stamp a library component onto this floor. `ref`
+//      names an in-file component (bare) or an imported one (`use ns.Comp`). ----
 Component:
-    'use' ref=ID ('as' name=STRING)?
+    'use' (ns=ID '.')? ref=ID ('as' name=STRING)?
         'at' '(' x=Expr ',' y=Expr ')'
         ('with' '{' args+=ComponentArg (',' args+=ComponentArg)* '}')?
         Common;

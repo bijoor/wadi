@@ -25,6 +25,10 @@ const MODULES = {
     path: "wadi-dsl/std-modules/std-furniture.wdl",
     summary: "Built-in CC0 furniture pack (Kenney Furniture Kit) — asset ids for `item`.",
   },
+  "konkan/base": {
+    path: "wadi-dsl/std-modules/konkan/base.wdl",
+    summary: "Goal-tagged Konkan house parts (Stairwell, Verandah, Otla) — components for `use`.",
+  },
 };
 
 // doc id -> { path, title }

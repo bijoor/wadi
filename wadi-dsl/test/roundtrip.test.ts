@@ -3,10 +3,11 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { compileDsl } from "../src/generator/toHouseConfig.js";
+import { compileDsl, moduleExports } from "../src/generator/toHouseConfig.js";
 // The REAL Wadi resolver (pure TS, no zod) — proves the DSL drives the actual
 // pipeline, not a parallel reimplementation.
 import { resolveParametric } from "../../editor/src/param/resolve";
+import { expandRoomWalls } from "../../editor/src/svg2d/expand";
 import { FURNITURE_CATALOG, furnitureAsset } from "../../editor/src/furniture/catalog";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -228,6 +229,49 @@ describe("Wadi DSL round-trip", () => {
         const got = cfg.floors[0].objects.find((o) => o.type === "item").asset;
         expect(norm(got)).toBe(norm(furnitureAsset(spec.id) as Record<string, unknown>));
       }
+    });
+  });
+
+  describe("konkan/base.wdl (component module) + cross-file `use`", () => {
+    const base = readFileSync(resolve(here, "..", "std-modules", "konkan", "base.wdl"), "utf8");
+    const resolveModule = (ref: string) => (ref === "konkan/base" ? base : undefined);
+
+    it("compiles house-less and exports goal-tagged components", () => {
+      expect(() => compileDsl(base)).not.toThrow();
+      const ex = moduleExports(base);
+      const stair = ex.components.find((c) => c.name === "Stairwell");
+      expect(stair?.goal).toBe("climb to the next floor");
+      expect(stair?.params.map((p) => p.name)).toEqual(["rise", "run"]);
+      expect(ex.components.map((c) => c.name)).toEqual(["Stairwell", "Verandah", "Otla"]);
+    });
+
+    it("`use kb.Comp` expands byte-identical to an inline same-file component", () => {
+      const imported = `house H { site { plot (300, 300) }
+        import "konkan/base" as kb
+        floor 1 "G" slab_thickness 0 { use kb.Stairwell at (208, 64) with { rise = 116 } } }`;
+      const inline = `house H { site { plot (300, 300) }
+        component Stairwell goal "climb to the next floor" {
+          param rise = 116
+          param run = 200
+          staircase name "Stair" at (0, 0) step (7, 11, 44) direction south total_height rise max_run run }
+        floor 1 "G" slab_thickness 0 { use Stairwell at (208, 64) with { rise = 116 } } }`;
+      const expand = (wdl: string, res?: typeof resolveModule) => {
+        const cfg = resolveParametric(compileDsl(wdl, res ? { resolveModule: res } : {}) as never).config;
+        return expandRoomWalls(cfg as never);
+      };
+      const A = expand(imported, resolveModule) as { floors: { objects: any[] }[] };
+      const B = expand(inline) as { floors: { objects: any[] }[] };
+      // The instance's `ref` differs (kb.Stairwell vs Stairwell), but the
+      // EXPANDED geometry — what actually renders — must be identical.
+      const objs = (c: typeof A) => c.floors[0].objects.map((o) => ({ ...o, layer: undefined }));
+      expect(objs(A)).toEqual(objs(B));
+      expect(A.floors[0].objects.map((o) => o.type)).toEqual(["staircase"]);
+    });
+
+    it("errors: unknown alias and unknown component", () => {
+      const use = (ref: string) => `house H { import "konkan/base" as kb\n floor 1 "G" { use ${ref} at (0,0) } }`;
+      expect(() => compileDsl(use("zz.Stairwell"), { resolveModule })).toThrow(/no import is aliased "zz"/);
+      expect(() => compileDsl(use("kb.Nope"), { resolveModule })).toThrow(/module "kb" defines no "Nope"/);
     });
   });
 
