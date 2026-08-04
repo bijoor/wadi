@@ -15,6 +15,7 @@ import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { isTauri } from "@tauri-apps/api/core";
 import { registerWadiDsl, LANG_ID } from "./dsl-language";
 import { compileWithDiagnostics } from "../src/generator/toHouseConfig";
+import { stdResolveModule } from "./std-modules";
 import { resolveParametric } from "../../editor/src/param/resolve";
 import {
   lintStructure,
@@ -202,7 +203,7 @@ async function pushToViewer(config: Record<string, unknown>, findings: LintFindi
 
 // Compile the current source; mark errors; render a valid model.
 function run(): void {
-  const { config, diagnostics } = compileWithDiagnostics(editor.getValue());
+  const { config, diagnostics } = compileWithDiagnostics(editor.getValue(), { resolveModule: stdResolveModule });
   monaco.editor.setModelMarkers(
     model,
     "wadi-dsl",
@@ -449,7 +450,7 @@ function wireToolbar(): void {
   // the browser). Rarely needed — the app renders the .wdl directly — but handy
   // for sharing a resolved config.
   $("download").addEventListener("click", async () => {
-    const { config, diagnostics } = compileWithDiagnostics(editor.getValue());
+    const { config, diagnostics } = compileWithDiagnostics(editor.getValue(), { resolveModule: stdResolveModule });
     if (!config) {
       setStatus(`can't export — fix ${diagnostics.length} error${diagnostics.length === 1 ? "" : "s"}`, true);
       return;

@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, watch } from "node:fs";
 import { resolve, dirname, basename } from "node:path";
 import { compileDsl } from "../generator/toHouseConfig.js";
+import { makeFileResolver } from "./moduleResolver.js";
 import { resolveParametric } from "../../../editor/src/param/resolve";
 
 const [, , inArg, outArg] = process.argv;
@@ -28,7 +29,7 @@ function stamp(): string {
 
 function rebuild(): void {
   try {
-    const compiled = compileDsl(readFileSync(inPath, "utf8"));
+    const compiled = compileDsl(readFileSync(inPath, "utf8"), { resolveModule: makeFileResolver(inPath) });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { config, warnings } = resolveParametric(compiled as any);
     for (const w of warnings) console.error(`  ⚠︎ ${w.where}: ${w.message}`);

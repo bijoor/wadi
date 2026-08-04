@@ -4,6 +4,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { compileDsl } from "../generator/toHouseConfig.js";
+import { makeFileResolver } from "./moduleResolver.js";
 // Reuse the REAL Wadi resolver (pure TS, no zod) so the emitted .wadi has its
 // formulas resolved into numeric fields — exactly what the app persists, and
 // what downstream consumers (validate/render) expect.
@@ -15,7 +16,7 @@ if (!inPath) {
   process.exit(2);
 }
 try {
-  const compiled = compileDsl(readFileSync(inPath, "utf8"));
+  const compiled = compileDsl(readFileSync(inPath, "utf8"), { resolveModule: makeFileResolver(inPath) });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { config, warnings } = resolveParametric(compiled as any);
   for (const w of warnings) console.error(`⚠︎ ${w.where}: ${w.message}`);
