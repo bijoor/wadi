@@ -144,6 +144,70 @@ describe("Wadi DSL round-trip", () => {
     expect(() => compileDsl(src)).toThrow(/unknown asset "nope".*mybed/s);
   });
 
+  describe("module imports (assets)", () => {
+    const stdFurniture = `
+      asset "bed_double" src "https://r2/bed_double.glb" dims (1.5, 0.5, 2.0) name "Double bed" category "Bedroom"
+      asset "chair" src "https://r2/chair.glb" dims (0.5, 0.9, 0.5)
+    `;
+    const resolveModule = (ref: string) =>
+      ref === "std-furniture" ? stdFurniture : undefined;
+    const opts = { resolveModule };
+
+    const inlineAsset = {
+      id: "bed_double",
+      src: "https://r2/bed_double.glb",
+      dimensions: [1.5, 0.5, 2],
+      name: "Double bed",
+      category: "Bedroom",
+    };
+
+    it("aliased `item ns.\"id\"` resolves to the imported asset (== inline)", () => {
+      const src = `house H {
+        import "std-furniture" as f
+        floor 1 "G" { room R at (4,4) size (200,240) { item f."bed_double" anchor center } }
+      }`;
+      const cfg = compileDsl(src, opts) as { floors: { objects: any[] }[] };
+      const room = cfg.floors[0].objects.find((o) => o.type === "room");
+      expect(room.items[0].asset).toEqual(inlineAsset);
+    });
+
+    it("bare `import` brings assets into scope for `item \"id\"`", () => {
+      const src = `house H {
+        import "std-furniture"
+        floor 1 "G" { item "bed_double" at (10,20) }
+      }`;
+      const cfg = compileDsl(src, opts) as { floors: { objects: any[] }[] };
+      const it0 = cfg.floors[0].objects.find((o) => o.type === "item");
+      expect(it0.asset).toEqual(inlineAsset);
+    });
+
+    it("a house-less module file (assets only, no `house`) parses", () => {
+      // std-furniture.wdl itself is a pure module — it must compile without a `house`.
+      expect(() => compileDsl(stdFurniture)).not.toThrow();
+    });
+
+    it("errors: unknown module, unknown alias, unknown id, and missing resolver", () => {
+      const free = (imp: string, ref: string) =>
+        `house H { ${imp}\n floor 1 "G" { item ${ref} at (10,20) } }`;
+      // module not found on the search path
+      expect(() => compileDsl(free(`import "nope" as g`, `g."bed_double"`), opts)).toThrow(
+        /import "nope": module not found/,
+      );
+      // alias that was never imported
+      expect(() => compileDsl(free(`import "std-furniture" as f`, `g."bed_double"`), opts)).toThrow(
+        /no import is aliased "g"/,
+      );
+      // id absent from the imported module
+      expect(() => compileDsl(free(`import "std-furniture" as f`, `f."nope"`), opts)).toThrow(
+        /module "f" declares no "nope"/,
+      );
+      // imports present but no resolver supplied
+      expect(() => compileDsl(free(`import "std-furniture" as f`, `f."bed_double"`))).toThrow(
+        /imports need a module resolver/,
+      );
+    });
+  });
+
   it("errors.wdl reports parse diagnostics (does not throw uncaught)", () => {
     const src = readFileSync(resolve(here, "..", "examples", "errors.wdl"), "utf8");
     expect(() => compileDsl(src)).toThrow(/parse failed/i);

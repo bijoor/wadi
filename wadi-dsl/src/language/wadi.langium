@@ -24,8 +24,22 @@ grammar Wadi
 // model needs it.
 // ============================================================================
 
+// A .wdl file is a list of top-level, exportable declarations (a *module*) with an
+// OPTIONAL `house { … }` body. A pure asset/component library has no `house`; a
+// design (or a module's own demo) adds one. The same declaration kinds are accepted
+// at the top level and inside the house block and merge into the same arrays, so
+// every existing `house H { … }` file keeps parsing unchanged.
 entry Model:
-    'house' name=ID '{'
+    ( imports+=Import
+    | assets+=AssetDecl
+    | vars+=Var
+    | points+=Point
+    | grids+=Grid
+    | configurators+=Configurator
+    | layers+=LayerDecl
+    | components+=ComponentDef
+    )*
+    ( 'house' name=ID '{'
         ('convention' convention=('center' | 'outer'))?
         (units=Units)?
         (site=Site)?
@@ -40,7 +54,7 @@ entry Model:
         | components+=ComponentDef
         | floors+=Floor
         )*
-    '}';
+    '}' )?;
 
 // ---- Modules & imports: any .wdl can `import` another and use its exports
 //      (its top-level `asset`/`component` decls) under a namespace alias. ----

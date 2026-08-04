@@ -353,10 +353,13 @@ function asset(a: ast.Asset): Record<string, unknown> {
   return o;
 }
 
-// Named asset exports declared at the top of THIS file (`asset "id" src … dims …`),
-// indexed by id. Set once per compile in modelToHouseConfig. Imported-module assets
-// (`item ns."id"`) are resolved later (module-linking step, not yet wired).
+// Named asset exports in scope for `item "id"` (bare) resolution: this file's own
+// `asset "id" …` decls plus any assets from a bare `import "…"` (no alias). Set once
+// per compile in modelToHouseConfig; same-file decls win over bare-imported ones.
 let ASSET_INDEX = new Map<string, ast.AssetDecl>();
+// Assets from aliased imports (`import "…" as ns`), keyed ns → id → decl, for
+// `item ns."id"` resolution.
+let NS_ASSET_INDEX = new Map<string, Map<string, ast.AssetDecl>>();
 
 function assetDeclToObj(a: ast.AssetDecl): Record<string, unknown> {
   const o: Record<string, unknown> = {
@@ -378,17 +381,32 @@ function resolveItemAsset(it: ast.Item | ast.RoomItem): Record<string, unknown> 
   if (!ref) throw new Error("item has no asset (expected `asset { … }` or an asset id)");
   const id = unquote(ref.id);
   if (ref.ns) {
-    throw new Error(
-      `item asset "${ref.ns}.${id}": imported-module assets aren't linked yet — for now declare ` +
-        `the asset in this file (\`asset "${id}" src … dims …\`) or use the inline \`asset { … }\` block.`,
-    );
+    const mod = NS_ASSET_INDEX.get(ref.ns);
+    if (!mod) {
+      const nss = [...NS_ASSET_INDEX.keys()];
+      throw new Error(
+        `item asset "${ref.ns}.${id}": no import is aliased "${ref.ns}". ` +
+          `Add \`import "…" as ${ref.ns}\`` +
+          (nss.length ? ` (imported aliases: ${nss.join(", ")}).` : "."),
+      );
+    }
+    const decl = mod.get(id);
+    if (!decl) {
+      const avail = [...mod.keys()];
+      throw new Error(
+        `unknown asset "${ref.ns}.${id}" — module "${ref.ns}" declares no "${id}"` +
+          (avail.length ? ` (it has: ${avail.join(", ")}).` : "."),
+      );
+    }
+    return assetDeclToObj(decl);
   }
   const decl = ASSET_INDEX.get(id);
   if (!decl) {
     const avail = [...ASSET_INDEX.keys()];
     throw new Error(
-      `unknown asset "${id}". Declare it with a top-level \`asset "${id}" src … dims …\`` +
-        (avail.length ? ` (this file declares: ${avail.join(", ")}).` : "."),
+      `unknown asset "${id}". Declare it with a top-level \`asset "${id}" src … dims …\`, ` +
+        `bare-import a module that provides it, or use a namespaced \`item ns."${id}"\`` +
+        (avail.length ? ` (in scope: ${avail.join(", ")}).` : "."),
     );
   }
   return assetDeclToObj(decl);
@@ -572,12 +590,31 @@ function componentDef(d: ast.ComponentDef): Record<string, unknown> {
 
 // ---- Top level -----------------------------------------------------------
 
-export function modelToHouseConfig(model: ast.Model): Record<string, unknown> {
+// Resolve an `import "<ref>"` to the module's `.wdl` source text, or undefined if
+// the ref isn't on the search path. Supplied by the host (MCP embeds std-*; the
+// CLI/app read a modules folder). A design with no imports needs no resolver.
+export type ResolveModule = (ref: string) => string | undefined;
+
+// The asset scope produced by linking a model's imports (before emit).
+interface LinkedAssets {
+  bare: Map<string, ast.AssetDecl>; // from `import "…"` (no alias)
+  byNs: Map<string, Map<string, ast.AssetDecl>>; // from `import "…" as ns`
+}
+
+const EMPTY_LINK: LinkedAssets = { bare: new Map(), byNs: new Map() };
+
+export function modelToHouseConfig(
+  model: ast.Model,
+  linked: LinkedAssets = EMPTY_LINK,
+): Record<string, unknown> {
   const cfg: Record<string, unknown> = {};
 
-  // Index this file's top-level `asset "id" …` declarations so `item "id"`
-  // shorthands resolve. (Imported-module assets are linked separately, later.)
-  ASSET_INDEX = new Map(model.assets.map((a) => [unquote(a.id), a]));
+  // Asset scope for `item "id"` / `item ns."id"`: this file's own `asset` decls,
+  // plus bare-imported assets (same-file decls win on a name clash), plus each
+  // aliased import under its namespace.
+  ASSET_INDEX = new Map(linked.bare);
+  for (const a of model.assets) ASSET_INDEX.set(unquote(a.id), a);
+  NS_ASSET_INDEX = linked.byNs;
 
   if (model.convention) cfg.coord_convention = model.convention;
 
@@ -722,17 +759,61 @@ function configInput(i: ast.ConfigInput): Record<string, unknown> {
 
 // ---- Parse entry point ---------------------------------------------------
 
-export function compileDsl(text: string): Record<string, unknown> {
-  const services = createWadiServices(EmptyFileSystem).Wadi;
+type WadiServices = ReturnType<typeof createWadiServices>["Wadi"];
+
+// Parse .wdl text into a Model, throwing on lex/parse errors. Shared by the main
+// compile and by import-linking (imported modules parse the same way).
+function parseModel(services: WadiServices, text: string, what = "DSL"): ast.Model {
   const result = services.parser.LangiumParser.parse<ast.Model>(text);
   if (result.lexerErrors.length || result.parserErrors.length) {
     const msgs = [
       ...result.lexerErrors.map((e) => `lex: ${e.message}`),
       ...result.parserErrors.map((e) => `parse: ${e.message}`),
     ];
-    throw new Error(`DSL parse failed:\n  ${msgs.join("\n  ")}`);
+    throw new Error(`${what} parse failed:\n  ${msgs.join("\n  ")}`);
   }
-  return modelToHouseConfig(result.value);
+  return result.value;
+}
+
+// Link a model's `import` statements: resolve each ref to module text, parse it,
+// and collect its top-level `asset` decls into a namespaced (aliased) or bare
+// (unaliased) scope. Phase 1 links assets only — module `component`s come in P2.
+function linkModules(
+  model: ast.Model,
+  services: WadiServices,
+  resolveModule?: ResolveModule,
+): LinkedAssets {
+  const bare = new Map<string, ast.AssetDecl>();
+  const byNs = new Map<string, Map<string, ast.AssetDecl>>();
+  for (const imp of model.imports ?? []) {
+    const ref = unquote(imp.ref);
+    if (!resolveModule) {
+      throw new Error(
+        `import "${ref}": imports need a module resolver, but none is available in this context.`,
+      );
+    }
+    const src = resolveModule(ref);
+    if (src === undefined) {
+      throw new Error(`import "${ref}": module not found on the search path.`);
+    }
+    const sub = parseModel(services, src, `imported module "${ref}"`);
+    const assets = new Map(sub.assets.map((a) => [unquote(a.id), a]));
+    if (imp.ns) byNs.set(imp.ns, assets);
+    else for (const [id, a] of assets) bare.set(id, a);
+  }
+  return { bare, byNs };
+}
+
+export interface CompileOptions {
+  /** Resolve `import "<ref>"` to the module's .wdl text. Required if the design imports. */
+  resolveModule?: ResolveModule;
+}
+
+export function compileDsl(text: string, opts: CompileOptions = {}): Record<string, unknown> {
+  const services = createWadiServices(EmptyFileSystem).Wadi;
+  const model = parseModel(services, text);
+  const linked = linkModules(model, services, opts.resolveModule);
+  return modelToHouseConfig(model, linked);
 }
 
 // A Monaco-shaped diagnostic (1-based line/column, half-open end column).
@@ -747,8 +828,11 @@ export interface DslDiagnostic {
 /** Browser-friendly compile: never throws — returns the config (when the source
  *  is valid) and a list of positioned diagnostics for a code editor's markers.
  *  Used by the DSL playground; keeps the parser services warm across calls. */
-let sharedServices: ReturnType<typeof createWadiServices>["Wadi"] | undefined;
-export function compileWithDiagnostics(text: string): {
+let sharedServices: WadiServices | undefined;
+export function compileWithDiagnostics(
+  text: string,
+  opts: CompileOptions = {},
+): {
   config?: Record<string, unknown>;
   diagnostics: DslDiagnostic[];
 } {
@@ -780,7 +864,8 @@ export function compileWithDiagnostics(text: string): {
   }
   if (diagnostics.length) return { diagnostics };
   try {
-    return { config: modelToHouseConfig(result.value), diagnostics: [] };
+    const linked = linkModules(result.value, sharedServices, opts.resolveModule);
+    return { config: modelToHouseConfig(result.value, linked), diagnostics: [] };
   } catch (e) {
     return {
       diagnostics: [
