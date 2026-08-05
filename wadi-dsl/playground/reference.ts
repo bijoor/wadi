@@ -73,7 +73,8 @@ node — place it at <code>at (cx - w/2, cy - l/2)</code>.</p>
   wall west { window W at &lt;offset&gt; size (w,h) [sill &lt;s&gt;] [open] }
   item asset { … } anchor center [gap (gx,gy)]   // furniture anchored in the room
 }
-wall Name from (x1,y1) to (x2,y2) [height &lt;h&gt;] [facing north|…] { …openings… }</pre>
+wall Name from (x1,y1) to (x2,y2) [height &lt;h&gt;] [height_end &lt;h2&gt;] [facing north|…] { …openings… }
+                                                //  height_end ≠ height ⇒ sloping-top wall</pre>
 <p class="ref-note">A room shows exactly the walls you declare (a bare room with
 no <code>wall</code> lines is enclosed on all four sides). Declare plain walls
 compactly — <code>wall east west north</code> — and give a wall its own line only
@@ -86,7 +87,8 @@ fill the corner. Room walls handle their own corners.</p>
 <h3>Circulation &amp; fittings</h3>
 <pre>staircase [name "N"] at (start_x, start_y) step (rise, tread, width)
   direction north|south|east|west
-  [total_height &lt;h&gt;] [max_run &lt;r&gt;] [landing_depth …] [turn clockwise|anticlockwise]
+  [total_height &lt;h&gt;] [max_run &lt;r&gt;] [landing_depth …] [landing_thickness …] [flight_gap …] [turn clockwise|anticlockwise]
+                                //  max_run ⇒ auto switchback flights (landing_thickness / flight_gap tune it)
 kitchen [name "N"] path ((x,y), (x,y), …) side left|right depth &lt;d&gt; height &lt;h&gt; [base_z …]
 item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
   at (x,y) [rotation &lt;deg&gt;] [scale &lt;s&gt;] [anchor_to "Room" anchor center gap (gx,gy)]</pre>
@@ -96,13 +98,13 @@ item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
   [endpoint open|closed]        // open = gable end-wall · closed = hip triangle
   [slope angle &lt;deg&gt; | slope height &lt;ridge_h&gt;]        // symmetric pitch
   [slope_left angle &lt;deg&gt;] [slope_right angle &lt;deg&gt;]   // asymmetric gable (set BOTH)
-  [overhang &lt;o&gt;] [slab_thickness &lt;t&gt;] [parapet &lt;h&gt; x &lt;t&gt;] {
+  [overhang &lt;o&gt;] [slab_thickness &lt;t&gt;] [parapet &lt;h&gt; x &lt;t&gt;] [gable_wall_thickness &lt;t&gt;] {
     segment "id" from (x,y) to (x,y) width &lt;w&gt;
       [high_side left|right] [start_endpoint …] [end_endpoint …]
       [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)]
       [overhang &lt;o&gt;]                            // uniform eave (all four sides)
       [overhang_start/overhang_end &lt;o&gt;]          // along axis (shed · gable end)
-      [overhang_low/overhang_high &lt;o&gt;]           // SHED eaves · [overhang_left/right] PITCHED eaves
+      [overhang_low/overhang_high &lt;o&gt;]           // SHED eaves · [overhang_left/overhang_right] PITCHED eaves
       [tie_beams N]
     truss "segId" fink|mono_pitch at (pos, pos, …)
   }</pre>
@@ -123,7 +125,11 @@ Best on a single-segment gable (<code>endpoint open</code>).</p>
   param blen = 60 label "Bench length"
   beam name "Top" at (0,0) size (blen, 18) height 6
 }
-use Bench as "B1" at (x,y) with { blen = 80 }   // stamp it onto a floor</pre>
+use Bench as "B1" at (x,y) with { blen = 80 }   // stamp it onto a floor
+
+import "konkan/base" as kb            // reuse another .wdl's components
+use kb.Verandah as "V1" at (x,y)      // namespaced stamp from the imported module
+goal "A reusable Konkan bathroom"     // module intent (house-less .wdl = a component pack)</pre>
 
 <h3>Layers &amp; the raw escape</h3>
 <pre>layer "id" "Label" [color "#rrggbb"] [group "Group"]   // per-house layer registry
