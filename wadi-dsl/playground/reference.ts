@@ -112,7 +112,9 @@ item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
   [endpoint open|closed]        // open = gable end-wall · closed = hip triangle
   [slope angle &lt;deg&gt; | slope height &lt;ridge_h&gt;]   // symmetric pitch (one value)
   [slope angle (&lt;left&gt;, &lt;right&gt;)]                  // asymmetric (saltbox) gable — angle pair
-  [overhang &lt;o&gt;] [slab_thickness &lt;t&gt;] [parapet &lt;h&gt; x &lt;t&gt;] [gable_wall_thickness &lt;t&gt;] {
+  [overhang &lt;o&gt;] [slab_thickness &lt;t&gt;] [parapet &lt;h&gt; x &lt;t&gt;] [gable_wall_thickness &lt;t&gt;]
+  [framing { …json… }]          // advanced: structural member sizes (rafter/purlin/ridge/truss)
+  {
     segment "id" from (x,y) to (x,y) width &lt;w&gt;
       [high_side left|right] [start_endpoint …] [end_endpoint …]
       [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)]

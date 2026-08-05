@@ -139,8 +139,13 @@ Primary infers Expr:
 // Parse a dotted reference, then OPTIONALLY a call applied to it — so `min(...)`
 // becomes a Call whose callee is the ref `min`, and `main.x1` stays a Ref.
 RefOrCall infers Expr:
-    {infer Ref} parts+=ID ('.' parts+=ID)*
+    {infer Ref} parts+=ID ('.' parts+=RefPart)*
     ({infer Call.callee=current} '(' (args+=Expr (',' args+=Expr)*)? ')')?;
+// A member accessor. `x`/`y` are grammar keywords (grid `x :`/`y :`), yet the
+// resolver treats `.x/.X/.y/.Y/.w/.W/.l/.L` as coordinate synonyms — so a dotted
+// accessor must also accept the `x`/`y` keywords (e.g. `A3.y`, `E4.x`).
+RefPart returns string:
+    ID | 'x' | 'y';
 
 // ---- Raw escape: any object, as literal JSON. Guarantees the DSL can express
 //      anything the model can hold, even before a primitive has an ergonomic
@@ -199,6 +204,7 @@ Floor:
     ('height' height=NUMBER)?
     ('wall_height' wall_height=NUMBER)?
     ('slab_thickness' slab_thickness=NUMBER)?
+    ('enabled' enabled=Expr)?
     '{' objects+=FloorObject* '}';
 
 // The full discriminated union — every model object type has a first-class rule.
@@ -214,8 +220,13 @@ fragment Common:
     ('layer' layer=STRING)?;
 
 // ---- Rooms + their walls / openings / anchored furniture ----
+// An object name: a bare identifier, or a quoted string when it has hyphens/
+// spaces (e.g. "Entrance-Varandah"). The compiler unquotes either form.
+NameRef returns string:
+    ID | STRING;
+
 Room:
-    'room' name=ID
+    'room' name=NameRef
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
         ('height' height=Expr)?
@@ -228,15 +239,15 @@ RoomWall:
         ('height' height=Expr)? ('height_end' height_end=Expr)?
         ('{' openings+=Opening* '}')?;
 Opening:
-    kind=('door' | 'window') name=ID
+    kind=('door' | 'window') name=NameRef
     'at' offset=Expr 'size' '(' width=Expr ',' height=Expr ')'
-    ('sill' sill=Expr)? (open?='open')?;
+    ('sill' sill=Expr)? (open?='open')? ('direction' direction=Side)?;
 Side returns string:
     'north' | 'south' | 'east' | 'west';
 
 // A free-standing wall (its own object, not a room side).
 Wall:
-    'wall' name=ID
+    'wall' name=NameRef
         'from' '(' start_x=Expr ',' start_y=Expr ')'
         'to' '(' end_x=Expr ',' end_y=Expr ')'
         ('height' height=Expr)? ('height_end' height_end=Expr)?
@@ -245,9 +256,12 @@ Wall:
         ('{' openings+=Opening* '}')?;
 
 Pillar:
-    'pillar' name=ID
+    'pillar' name=NameRef
         'at' '(' x=Expr ',' y=Expr ')'
-        'size' '(' w=Expr ',' l=Expr ')'
+        // A pillar may set only one footprint dimension; the omitted one is
+        // written `auto` and falls back to the wall thickness at render time
+        // (a column embedded in a wall is only as deep as the wall).
+        'size' '(' (w_auto?='auto' | w=Expr) ',' (l_auto?='auto' | l=Expr) ')'
         ('height' height=Expr)?
         Common;
 
@@ -356,6 +370,9 @@ Roof:
         ('slab_thickness' slab_thickness=Expr)?
         ('parapet' parapet_height=Expr 'x' parapet_thickness=Expr)?
         ('gable_wall_thickness' gable_wall_thickness=Expr)?
+        // Detailed structural framing (rafter/purlin/ridge/truss member sizes)
+        // as a raw JSON block — an advanced, rarely-hand-authored spec.
+        ('framing' framing=JsonObject)?
         Common ('material' material=STRING)?
         '{' (segments+=Segment | trusses+=Truss)* '}';
 // Roof pitch. A single value is a symmetric gable/hip; an ANGLE PAIR (left, right)

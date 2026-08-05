@@ -141,7 +141,7 @@ function room(r: ast.Room): Record<string, unknown> {
   const items = r.items.map(roomItem);
   const o: Record<string, unknown> = {
     type: "room",
-    name: r.name,
+    name: unquote(r.name),
     x: put("x", r.x, 0),
     y: put("y", r.y, 0),
     width: put("width", r.w, 1),
@@ -171,7 +171,7 @@ function opening(o: ast.Opening): Record<string, unknown> {
   const { formulas, put } = geom();
   const obj: Record<string, unknown> = {
     kind: o.kind,
-    name: o.name,
+    name: unquote(o.name),
     offset: put("offset", o.offset, 0),
     width: put("width", o.width, 1),
     height: put("height", o.height, 1),
@@ -179,6 +179,7 @@ function opening(o: ast.Opening): Record<string, unknown> {
   const s = put("sill_height", o.sill);
   if (s !== undefined) obj.sill_height = s;
   if (o.open) obj.open = true;
+  if (o.direction) obj.direction = o.direction;
   return done(obj, formulas);
 }
 
@@ -203,7 +204,7 @@ function wall(w: ast.Wall): Record<string, unknown> {
   const { formulas, put } = geom();
   const o: Record<string, unknown> = {
     type: "wall",
-    name: w.name,
+    name: unquote(w.name),
     start_x: put("start_x", w.start_x, 0),
     start_y: put("start_y", w.start_y, 0),
     end_x: put("end_x", w.end_x, 0),
@@ -224,12 +225,13 @@ function pillar(p: ast.Pillar): Record<string, unknown> {
   const { formulas, put } = geom();
   const o: Record<string, unknown> = {
     type: "pillar",
-    name: p.name,
+    name: unquote(p.name),
     x: put("x", p.x, 0),
     y: put("y", p.y, 0),
-    width: put("width", p.w, 1),
-    length: put("length", p.l, 1),
   };
+  // `auto` (w_auto/l_auto) leaves the dimension unset → wall-thickness default.
+  if (!p.w_auto) o.width = put("width", p.w, 1);
+  if (!p.l_auto) o.length = put("length", p.l, 1);
   const h = put("height", p.height, 1);
   if (h !== undefined) o.height = h;
   applyCommon(o, formulas, p);
@@ -532,6 +534,7 @@ function roof(r: ast.Roof): Record<string, unknown> {
   }
   const gwt = put("gable_wall_thickness", r.gable_wall_thickness);
   if (gwt !== undefined) o.gable_wall_thickness = gwt;
+  if (r.framing) o.framing = jsonObject(r.framing);
   if (r.segments.length) o.segments = r.segments.map(roofSegment);
   if (r.trusses.length) o.trusses = r.trusses.map(roofTruss);
   applyCommon(o, formulas, r);
@@ -822,6 +825,7 @@ export function modelToHouseConfig(
     if (f.height !== undefined) floor.height = f.height;
     if (f.wall_height !== undefined) floor.wall_height = f.wall_height;
     if (f.slab_thickness !== undefined) floor.slab_thickness = f.slab_thickness;
+    if (f.enabled !== undefined) floor.enabled = exprToValue(f.enabled);
     return floor;
   });
 

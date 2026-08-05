@@ -46,6 +46,12 @@ function str(s: string): string {
   return JSON.stringify(String(s));
 }
 
+// An object name: bare when it's a valid identifier, else quoted (the grammar's
+// NameRef accepts either) — so a name like "Entrance-Varandah" round-trips.
+function nameTok(s: unknown): string {
+  return /^[A-Za-z_]\w*$/.test(String(s)) ? String(s) : str(String(s));
+}
+
 // A simple line writer with indentation.
 class W {
   private lines: string[] = [];
@@ -76,16 +82,17 @@ const size = (o: Obj) => `size (${fld(o, "width")}, ${fld(o, "length")})`;
 // ---- objects --------------------------------------------------------------
 
 function emitOpening(op: Obj): string {
-  let s = `${op.kind} ${op.name} at ${fld(op, "offset")} size (${fld(op, "width")}, ${fld(op, "height")})`;
+  let s = `${op.kind} ${nameTok(op.name)} at ${fld(op, "offset")} size (${fld(op, "width")}, ${fld(op, "height")})`;
   if (has(op, "sill_height")) s += ` sill ${fld(op, "sill_height")}`;
   else if (has(op, "sill")) s += ` sill ${fld(op, "sill")}`;
   if (op.open) s += " open";
+  if (op.direction !== undefined) s += ` direction ${op.direction}`;
   return s;
 }
 
 function emitRoomItem(w: W, indent: number, it: Obj): void {
   // Room-nested item (no x/y — anchored). asset inline, then anchor/gap/rotation/scale.
-  const head = it.name ? `item ${str(it.name)} ` : "item ";
+  const head = it.name ? `item name ${str(it.name)} ` : "item ";
   w.line(indent, head + assetText(it) + roomItemTail(it));
 }
 function assetText(it: Obj): string {
@@ -106,7 +113,7 @@ function roomItemTail(it: Obj): string {
 }
 
 function emitRoom(w: W, indent: number, o: Obj): void {
-  let head = `room ${o.name} ${at(o)} ${size(o)}`;
+  let head = `room ${nameTok(o.name)} ${at(o)} ${size(o)}`;
   if (has(o, "height")) head += ` height ${fld(o, "height")}`;
   head += commonSuffix(o);
   const walls = o.walls && !Array.isArray(o.walls) ? (o.walls as Record<string, Obj>) : {};
@@ -142,7 +149,7 @@ function emitRoom(w: W, indent: number, o: Obj): void {
 }
 
 function emitWall(w: W, indent: number, o: Obj): void {
-  let head = `wall ${o.name} from (${fld(o, "start_x")}, ${fld(o, "start_y")}) to (${fld(o, "end_x")}, ${fld(o, "end_y")})`;
+  let head = `wall ${nameTok(o.name)} from (${fld(o, "start_x")}, ${fld(o, "start_y")}) to (${fld(o, "end_x")}, ${fld(o, "end_y")})`;
   if (has(o, "height")) head += ` height ${fld(o, "height")}`;
   if (has(o, "height_end")) head += ` height_end ${fld(o, "height_end")}`;
   if (o.facing !== undefined) head += ` facing ${o.facing}`;
@@ -158,7 +165,11 @@ function emitWall(w: W, indent: number, o: Obj): void {
 }
 
 function emitPillar(w: W, indent: number, o: Obj): void {
-  let s = `pillar ${o.name} ${at(o)} ${size(o)}`;
+  // A pillar may set only one footprint dimension; the omitted one is `auto`
+  // (→ wall-thickness at render). size() would force both to 0.
+  const pw = has(o, "width") ? fld(o, "width") : "auto";
+  const pl = has(o, "length") ? fld(o, "length") : "auto";
+  let s = `pillar ${nameTok(o.name)} ${at(o)} size (${pw}, ${pl})`;
   if (has(o, "height")) s += ` height ${fld(o, "height")}`;
   w.line(indent, s + commonSuffix(o, false));
 }
@@ -267,6 +278,7 @@ function emitRoof(w: W, indent: number, o: Obj): void {
   if (has(o, "slab_thickness")) head += ` slab_thickness ${fld(o, "slab_thickness")}`;
   if (has(o, "parapet_height") || has(o, "parapet_thickness")) head += ` parapet ${fld(o, "parapet_height")} x ${fld(o, "parapet_thickness")}`;
   if (has(o, "gable_wall_thickness")) head += ` gable_wall_thickness ${fld(o, "gable_wall_thickness")}`;
+  if (o.framing && typeof o.framing === "object") head += ` framing ${JSON.stringify(o.framing)}`;
   head += commonSuffix(o, false);
   if (o.material !== undefined) head += ` material ${str(o.material)}`;
   const segs = Array.isArray(o.segments) ? (o.segments as Obj[]) : [];
@@ -513,6 +525,7 @@ export function emitWdl(config: Obj, houseName = "House"): string {
     if (floor.height !== undefined) fh += ` height ${num(floor.height)}`;
     if (floor.wall_height !== undefined) fh += ` wall_height ${num(floor.wall_height)}`;
     if (floor.slab_thickness !== undefined) fh += ` slab_thickness ${num(floor.slab_thickness)}`;
+    if (floor.enabled !== undefined) fh += ` enabled ${val(floor.enabled === true ? 1 : floor.enabled === false ? 0 : floor.enabled)}`;
     w.line(1, fh + " {");
     for (const o of (floor.objects ?? []) as Obj[]) emitFloorObject(w, 2, o);
     w.line(1, "}");

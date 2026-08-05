@@ -74,6 +74,58 @@ describe("decompiler — emit(cfg) rebuilds the same house", () => {
     resolve(here, "../../editor/public/templates"),
     resolve(here, "../../library"),
   ];
+  // Features a real hand-built house (atale) exposed that the templates don't:
+  // hyphenated names, lowercase `.x/.y` accessors, one-dimension pillars, an
+  // opening `direction` override, a disabled floor, roof `framing`, and a named
+  // room item with an inline asset. Guards each against re-breaking the grammar
+  // or the decompiler.
+  it("round-trips the tricky features (names, .y accessor, auto pillar, direction, framing, floor enabled)", () => {
+    const cfg = {
+      coord_convention: "center",
+      variables: { wallT: 8 },
+      points: { House: { x: 200, y: 300 }, A1: { x: 0, y: 0 } },
+      floors: [
+        {
+          floor_number: 1,
+          name: "Ground",
+          objects: [
+            // hyphen name + width-only pillar (auto length) + lowercase `.y` accessor
+            { type: "pillar", name: "Col-1", x: 0, y: 0, width: 10, height: 90, formulas: { y: "= A1.y" } },
+            {
+              type: "room",
+              name: "Liv-Room",
+              x: 0, y: 0, width: 100, length: 100,
+              walls: { north: { openings: [{ kind: "door", name: "Front-Door", offset: 20, width: 30, height: 65, direction: "south" }] } },
+              items: [{ name: "My Bed", asset: { id: "bed", src: "x.glb", dimensions: [1, 0.5, 2], name: "Bed", category: "Bedroom" }, anchor: "center" }],
+            },
+            { type: "wall", name: "Part-Wall", start_x: 0, start_y: 50, end_x: 100, end_y: 50 },
+          ],
+        },
+        {
+          floor_number: 2, name: "Loft", enabled: false,
+          objects: [{
+            type: "roof", roof_type: "pitched", name: "R",
+            slope: { by: "height", ridge_h: 60 },
+            segments: [{ id: "s0", start: [100, 0], end: [100, 300], width: 200 }],
+            framing: { rafter_size_in: [2, 4], include_king_post: true },
+          }],
+        },
+      ],
+    };
+    const c = compileDsl(emitWdl(cfg, "tricky"), opts); // must be valid .wdl
+    const g = c.floors[0].objects;
+    expect(g[0].name).toBe("Col-1");                       // hyphenated pillar name
+    expect(g[0].length).toBeUndefined();                   // width-only → auto (wall-thickness at render)
+    expect(g[0].formulas.y.replace(/\s/g, "")).toBe("=A1.y"); // lowercase .y accessor survives
+    expect(g[1].name).toBe("Liv-Room");
+    expect(g[1].walls.north.openings[0].name).toBe("Front-Door");
+    expect(g[1].walls.north.openings[0].direction).toBe("south"); // opening direction override
+    expect(g[1].items[0].name).toBe("My Bed");             // room item keeps its NAME (not read as asset id)
+    expect(g[2].name).toBe("Part-Wall");
+    expect(c.floors[1].enabled).toBe(0);                   // floor enabled false → 0
+    expect(c.floors[1].objects[0].framing.include_king_post).toBe(true); // roof framing passthrough
+  });
+
   for (const dir of wadiDirs) {
     if (!existsSync(dir)) continue;
     for (const f of readdirSync(dir).filter((x) => x.endsWith(".wadi"))) {
