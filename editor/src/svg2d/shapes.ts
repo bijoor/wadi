@@ -199,8 +199,15 @@ export function svgDrawItem(
   const fx = Math.sin(r), fy = Math.cos(r); // front direction (E=+x, S=+y)
   const px = -fy, py = fx; // across-front (perpendicular)
   const ex = cx + fx * (l / 2), ey = cy + fy * (l / 2); // front-edge centre
-  const hw = Math.min(w * 0.35, Math.min(w, l) * 0.28); // base half-width
-  const hh = Math.min(w, l) * 0.22; // point height (outward)
+  // FIXED marker size for EVERY item — it's an orientation arrow, not a scale
+  // cue, so it reads the same on a nightstand and a king bed. Project units
+  // (≈10 = 1 ft): a ~0.7 ft base × 0.5 ft tab. Only the PLACEMENT (front-edge
+  // centre above) tracks the item; the triangle itself is constant. Clamped
+  // down on a tiny footprint so it can't dwarf the piece.
+  const NOTCH_HALF_W = 3.5; // base half-width
+  const NOTCH_H = 5;        // point height, outward
+  const hw = Math.min(NOTCH_HALF_W, w * 0.45);
+  const hh = Math.min(NOTCH_H, Math.min(w, l) * 0.45);
   const p1 = `${fFloat(ex + px * hw)},${fFloat(ey + py * hw)}`;
   const p2 = `${fFloat(ex - px * hw)},${fFloat(ey - py * hw)}`;
   const tip = `${fFloat(ex + fx * hh)},${fFloat(ey + fy * hh)}`;
