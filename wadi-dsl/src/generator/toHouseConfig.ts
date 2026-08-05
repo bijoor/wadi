@@ -320,12 +320,12 @@ function staircase(s: ast.Staircase): Record<string, unknown> {
   if (rh !== undefined) o.rise_height = rh;
   const mr = put("max_run", s.max_run, 1);
   if (mr !== undefined) o.max_run = mr;
-  const ld = put("landing_depth", s.landing_depth);
+  const ld = put("landing_depth", s.landing_depth, 1); // positive() — placeholder 1, not 0
   if (ld !== undefined) o.landing_depth = ld;
-  const lt = put("landing_thickness", s.landing_thickness);
+  const lt = put("landing_thickness", s.landing_thickness); // nonnegative() — 0 is valid
   if (lt !== undefined) o.landing_thickness = lt;
   if (s.turn) o.turn = s.turn;
-  const fg = put("flight_gap", s.flight_gap);
+  const fg = put("flight_gap", s.flight_gap, 1); // positive() — placeholder 1, not 0
   if (fg !== undefined) o.flight_gap = fg;
   applyCommon(o, formulas, s);
   return done(o, formulas);

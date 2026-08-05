@@ -99,6 +99,10 @@ describe("decompiler — emit(cfg) rebuilds the same house", () => {
               items: [{ name: "My Bed", asset: { id: "bed", src: "x.glb", dimensions: [1, 0.5, 2], name: "Bed", category: "Bedroom" }, anchor: "center" }],
             },
             { type: "wall", name: "Part-Wall", start_x: 0, start_y: 50, end_x: 100, end_y: 50 },
+            // formula-driven flight_gap/landing_depth: these carry a positive() schema
+            // constraint, so the placeholder emitted for the formula must be > 0 (not 0,
+            // which fails config validation and blanks the model).
+            { type: "staircase", name: "S", start_x: 8, start_y: 0, step_rise: 5, step_tread: 10, step_width: 30, direction: "south", flight_gap: 10, landing_depth: 30, formulas: { flight_gap: "= wallT", landing_depth: "= wallT" } },
           ],
         },
         {
@@ -124,6 +128,9 @@ describe("decompiler — emit(cfg) rebuilds the same house", () => {
     expect(g[2].name).toBe("Part-Wall");
     expect(c.floors[1].enabled).toBe(0);                   // floor enabled false → 0
     expect(c.floors[1].objects[0].framing.include_king_post).toBe(true); // roof framing passthrough
+    const stair = g.find((o: { type: string }) => o.type === "staircase");
+    expect(stair.flight_gap).toBeGreaterThan(0);           // positive() placeholder, not 0
+    expect(stair.landing_depth).toBeGreaterThan(0);
   });
 
   for (const dir of wadiDirs) {
