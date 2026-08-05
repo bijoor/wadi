@@ -32,12 +32,26 @@ min  max  clamp  round  floor  ceil  abs
 refs: a var · a point (House.W) · a grid line (main.x3 - main.x1)</pre>
 
 <h3>Control knobs (owner UI)</h3>
+<p class="ref-note">The template the home owner configures. Each knob binds to a
+<code>var</code> by name (<code>target</code>). <code>title</code>/<code>note</code>
+label the panel; <code>group</code> sections it; each input takes a trailing
+<code>note</code>. Select labels are bare ids or quoted strings.</p>
 <pre>configurator {
-  slider target "Label" ft [min .. max step s]
+  title "Configure your home"
+  note  "Everything re-flows to fit."
+
+  slider target "Label" ft [min .. max step s] note "help text"
   number target "Label" ft
   toggle target "Label"
-  select target "Label" { OptA = 0, OptB = 1 }
+  select target "Label" { Thin = 6, "10 ft (std)" = 100 }
+
+  group "Section title" note "about this section" {
+    slider target2 "Label" percent [0.1 .. 0.3 step 0.01]
+  }
 }</pre>
+<p class="ref-note">To expose a plot dimension, model it as a <code>var</code>
+and reference it from the point (<code>point House { x = W }</code>), then bind the
+knob to <code>W</code> — knobs target vars, not point fields.</p>
 
 <h3>Floors <span class="ref-dim">— array order = vertical stack</span></h3>
 <pre>floor 0 "Plinth" <b>height 60</b> wall_height 108 slab_thickness 12 {

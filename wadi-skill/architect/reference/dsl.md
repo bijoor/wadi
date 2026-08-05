@@ -67,13 +67,25 @@ grid main {                         // named wall centrelines; publishes main.x1
 }
 // each line may add:  … @ <expr> thick <expr>  role structural|planning
 
-configurator {                      // the knobs a downstream user turns
-  slider pillarW    "Column size" ft [8 .. 14 step 1]
+configurator {                      // the owner-facing template you author
+  title "Configure your home"       // panel heading (optional)
+  note  "Everything re-flows to fit."   // panel subtitle (optional)
+
+  slider pillarW    "Column size" ft [8 .. 14 step 1] note "help text"  // trailing note optional
   number ceiling    "Ceiling height" ft
   toggle has_loft   "Add a loft"
   select roof_style "Roof style" { Flat = 0, Shed = 1, Gable = 2, Hip = 3 }
+  select floorH     "Ceiling height" { "9 ft" = 90, "10 ft (std)" = 100 }  // labels can be quoted strings
+
+  group "Plot" note "about this section" {   // sections the panel; label only
+    slider W "Plot width" ft [340 .. 520 step 10]
+  }
 }
 ```
+
+Every knob binds to a `var` by name (`target`). To expose a plot dimension, model
+it as a `var` and reference it from the point (`point House { x = W }`), then bind
+the knob to `W` — knobs target vars, never a point field like `House.W`.
 
 **Formulas are automatic.** Any geometry number can be a formula — just write the
 expression instead of a literal (`at (main.x1, main.yA)`, `size (House.W/2, 200)`).

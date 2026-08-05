@@ -325,45 +325,116 @@ function emitGrids(w: W, indent: number, grids: Record<string, Obj>): void {
     w.line(indent, `}`);
   }
 }
-function emitConfigurator(w: W, indent: number, cfgr: Obj): void {
-  // The DSL configurator is a subset of the config's: it has no title/description/
-  // groups, its input `target` must be a plain identifier (a var name), and
-  // control is inferred by shape when absent (form-authored inputs omit it). Emit
-  // only DSL-expressible inputs; skip the rest (configurator is UI metadata, not
-  // geometry). If nothing is expressible, drop the block entirely.
-  const inputs = Array.isArray(cfgr.inputs) ? (cfgr.inputs as Obj[]) : [];
-  const control = (i: Obj): string =>
-    (i.control as string) ?? (Array.isArray(i.options) ? "select" : i.min !== undefined ? "slider" : "number");
-  const idTarget = (i: Obj): boolean => typeof i.target === "string" && /^[A-Za-z_]\w*$/.test(i.target);
-  const lines: string[] = [];
-  for (const i of inputs) {
-    if (!idTarget(i)) continue; // dotted point/field target — not DSL-expressible
-    const unit = i.unit ? ` ${i.unit}` : "";
-    switch (control(i)) {
-      case "slider":
-        if (i.min === undefined || i.max === undefined) break;
-        lines.push(`slider ${i.target} ${str(i.label)}${unit} [${num(i.min)}..${num(i.max)}${i.step !== undefined ? ` step ${num(i.step)}` : ""}]`);
-        break;
-      case "toggle":
-        lines.push(`toggle ${i.target} ${str(i.label)}`);
-        break;
-      case "select": {
-        // DSL SelectOption is `label=ID '=' value=NUMBER` — the option label must
-        // be a plain identifier. Form-authored options carry free-text display
-        // labels ("10 ft (standard)"), which can't be expressed; skip such selects.
-        const opts = (i.options ?? []) as Obj[];
-        if (!opts.length || !opts.every((o) => typeof o.label === "string" && /^[A-Za-z_]\w*$/.test(o.label))) break;
-        lines.push(`select ${i.target} ${str(i.label)} { ${opts.map((o) => `${o.label} = ${num(o.value)}`).join(", ")} }`);
-        break;
-      }
-      default:
-        lines.push(`number ${i.target} ${str(i.label)}${unit}`);
+const isId = (s: unknown): boolean => typeof s === "string" && /^[A-Za-z_]\w*$/.test(s);
+
+// One configurator input → its DSL line, or null if the target isn't a plain
+// identifier (dotted targets are hoisted to vars up front; anything still dotted
+// here couldn't be mapped and is dropped — the configurator is UI metadata, not
+// geometry). control is inferred by shape when the config omits it.
+function configInputLine(i: Obj): string | null {
+  if (!isId(i.target)) return null;
+  const note = i.description ? ` note ${str(i.description)}` : "";
+  const unit = i.unit ? ` ${i.unit}` : "";
+  const ctrl = (i.control as string) ?? (Array.isArray(i.options) ? "select" : i.min !== undefined ? "slider" : "number");
+  switch (ctrl) {
+    case "slider":
+      if (i.min === undefined || i.max === undefined) return null;
+      return `slider ${i.target} ${str(i.label)}${unit} [${num(i.min)}..${num(i.max)}${i.step !== undefined ? ` step ${num(i.step)}` : ""}]${note}`;
+    case "toggle":
+      return `toggle ${i.target} ${str(i.label)}${note}`;
+    case "select": {
+      const opts = (i.options ?? []) as Obj[];
+      if (!opts.length) return null;
+      // Bare-identifier labels stay bare (Thin); anything else is a quoted display
+      // string ("10 ft (standard)") — both are valid SelectOption labels now.
+      const optText = opts.map((o) => `${isId(o.label) ? o.label : str(String(o.label))} = ${num(o.value)}`).join(", ");
+      return `select ${i.target} ${str(i.label)} { ${optText} }${note}`;
     }
+    default:
+      return `number ${i.target} ${str(i.label)}${unit}${note}`;
   }
-  if (!lines.length) return;
+}
+
+function emitConfigurator(w: W, indent: number, cfgr: Obj): void {
+  // Emit the full owner-facing template: title, note, named group sections (each
+  // wrapping its inputs), per-input notes, human-readable select labels.
+  const inputs = Array.isArray(cfgr.inputs) ? (cfgr.inputs as Obj[]) : [];
+  const groupsDef = Array.isArray(cfgr.groups) ? (cfgr.groups as Obj[]) : [];
+  // group id → its definition. The id is an internal key (may be any string, even
+  // a keyword like "size"); only the group LABEL is emitted (as `group "…"`).
+  const byId = new Map<string, Obj>(groupsDef.map((g) => [String(g.id), g]));
+
+  // Partition inputs → ungrouped (in order) + per-group (group-def order, then any
+  // referenced-but-undeclared group in first-seen order).
+  const ungrouped: Obj[] = [];
+  const grouped = new Map<string, Obj[]>();
+  const order: string[] = groupsDef.map((g) => String(g.id));
+  for (const i of inputs) {
+    const g = typeof i.group === "string" && i.group ? i.group : null;
+    if (g) {
+      if (!grouped.has(g)) { grouped.set(g, []); if (!byId.has(g)) order.push(g); }
+      grouped.get(g)!.push(i);
+    } else ungrouped.push(i);
+  }
+
+  // Render body first so an all-dropped configurator emits nothing.
+  const body: [number, string][] = [];
+  for (const i of ungrouped) { const l = configInputLine(i); if (l) body.push([indent + 1, l]); }
+  for (const gid of order) {
+    const lines = (grouped.get(gid) ?? []).map(configInputLine).filter((x): x is string => x !== null);
+    if (!lines.length) continue; // grammar: a group needs ≥1 input
+    const g = byId.get(gid);
+    const gnote = g?.description ? ` note ${str(g.description)}` : "";
+    body.push([indent + 1, `group ${str(g?.label ?? gid)}${gnote} {`]);
+    for (const l of lines) body.push([indent + 2, l]);
+    body.push([indent + 1, `}`]);
+  }
+  if (!body.some(([, t]) => !t.endsWith("{") && t !== "}")) return; // no real input line
+
   w.line(indent, "configurator {");
-  for (const l of lines) w.line(indent + 1, l);
+  if (cfgr.title) w.line(indent + 1, `title ${str(cfgr.title)}`);
+  if (cfgr.description) w.line(indent + 1, `note ${str(cfgr.description)}`);
+  for (const [ind, text] of body) w.line(ind, text);
   w.line(indent, "}");
+}
+
+// Hoist dotted configurator targets (`House.W`) to variables: the grammar binds a
+// knob to a `var` (target=ID), not a point field. For each dotted target we
+// synthesize a var holding the point coord's current value, rewrite the point to
+// reference that var, and retarget the knob — geometry is unchanged (the var
+// resolves to the same number, and existing `House.W` formula refs still resolve
+// through the point). Mutates the (already-cloned) config.
+function hoistConfiguratorTargets(config: Obj): void {
+  const cfgr = config.configurator;
+  if (!cfgr || !Array.isArray(cfgr.inputs)) return;
+  const points = (config.points ??= {}) as Record<string, Obj>;
+  const vars = (config.variables ??= {}) as Record<string, unknown>;
+  const coordKey = (field: string): "x" | "y" | null => {
+    const f = field.toLowerCase();
+    if (f === "w" || f === "x" || f === "width") return "x";
+    if (f === "l" || f === "y" || f === "length") return "y";
+    return null;
+  };
+  const taken = new Set(Object.keys(vars));
+  for (const input of cfgr.inputs as Obj[]) {
+    const t = input.target;
+    if (typeof t !== "string" || !t.includes(".")) continue;
+    const dot = t.indexOf(".");
+    const pt = t.slice(0, dot), field = t.slice(dot + 1);
+    const key = coordKey(field);
+    if (!key || !points[pt]) continue; // unmappable — configInputLine will drop it
+    const cur = points[pt][key];
+    // Already hoisted (the coord is `= <var>`)? just point the knob at that var.
+    const m = typeof cur === "string" && cur.match(/^=\s*([A-Za-z_]\w*)\s*$/);
+    if (m) { input.target = m[1]; continue; }
+    let base = isId(field) ? field : `${pt}_${field}`;
+    let name = base, k = 2;
+    while (taken.has(name)) name = `${base}_${k++}`;
+    taken.add(name);
+    vars[name] = cur ?? 0;         // var takes the point's current value…
+    points[pt][key] = `= ${name}`; // …and the point now references it
+    input.target = name;           // knob drives the var
+  }
 }
 function emitLayers(w: W, indent: number, layers: Obj[]): void {
   for (const l of layers) {
@@ -399,6 +470,10 @@ function emitComponentDef(w: W, indent: number, name: string, def: Obj): void {
 // ---- top level ------------------------------------------------------------
 
 export function emitWdl(config: Obj, houseName = "House"): string {
+  // Clone up front: hoistConfiguratorTargets mutates the config (synthesises vars,
+  // rewrites points), and callers pass their own object.
+  config = structuredClone(config);
+  hoistConfiguratorTargets(config);
   const w = new W();
   const name = (typeof config.name === "string" && /^[A-Za-z_]\w*$/.test(config.name)) ? config.name : houseName;
 

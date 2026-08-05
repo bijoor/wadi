@@ -82,6 +82,17 @@ describe("decompiler — emit(cfg) rebuilds the same house", () => {
         const wdl = emitWdl(a);
         const b = compileDsl(wdl, opts);
         expect(floors(b)).toEqual(floors(a));
+
+        // Configurator is the architect's owner-facing template — it must survive
+        // the round-trip in full: every input and group, the title, and NO dotted
+        // point-field targets (those are hoisted to vars so the knob binds to an ID).
+        if (a.configurator) {
+          expect(b.configurator).toBeDefined();
+          expect(b.configurator.inputs.length).toBe(a.configurator.inputs.length);
+          expect((b.configurator.groups ?? []).length).toBe((a.configurator.groups ?? []).length);
+          expect(b.configurator.title).toBe(a.configurator.title);
+          expect(b.configurator.inputs.every((i: { target: string }) => !i.target.includes("."))).toBe(true);
+        }
       });
     }
   }

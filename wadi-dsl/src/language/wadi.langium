@@ -87,20 +87,39 @@ GridLine:
     name=(ID | NUMBER) '@' at=Expr ('thick' thickness=Expr)? ('role' role=('structural' | 'planning'))?;
 
 // ---- Configurator: the curated control knobs exposed to a downstream user ----
+// This is the ARCHITECT's authoring surface for the owner-facing template: the
+// architect writes it in .wdl, and it compiles to the configurator the home
+// owner (Gharkul) drives. So it carries the full presentation — a title, a note
+// (description), named groups that section the panel, per-input notes, and
+// human-readable select labels. Knobs bind to a `var` (target=ID); to expose a
+// plot dimension, model it as a var and reference it from the point.
 Configurator:
-    'configurator' '{' inputs+=ConfigInput+ '}';
+    'configurator' '{'
+        ('title' title=STRING)?
+        ('note' description=STRING)?
+        items+=ConfigItem+
+    '}';
+ConfigItem:
+    ConfigGroup | ConfigInput;
+// A titled section of the panel. Just a label — the compiler derives the stable
+// group id (a slug of the label) that inputs are tagged with. (A bare ID here
+// would collide with grammar keywords like `size`.)
+ConfigGroup:
+    'group' label=STRING ('note' description=STRING)? '{' inputs+=ConfigInput+ '}';
 ConfigInput:
     SliderInput | NumberInput | ToggleInput | SelectInput;
 SliderInput:
-    'slider' target=ID label=STRING (unit=ID)? '[' min=NUMBER '..' max=NUMBER ('step' step=NUMBER)? ']';
+    'slider' target=ID label=STRING (unit=ID)? '[' min=NUMBER '..' max=NUMBER ('step' step=NUMBER)? ']' ('note' description=STRING)?;
 NumberInput:
-    'number' target=ID label=STRING (unit=ID)?;
+    'number' target=ID label=STRING (unit=ID)? ('note' description=STRING)?;
 ToggleInput:
-    'toggle' target=ID label=STRING;
+    'toggle' target=ID label=STRING ('note' description=STRING)?;
 SelectInput:
-    'select' target=ID label=STRING '{' options+=SelectOption (',' options+=SelectOption)* '}';
+    'select' target=ID label=STRING '{' options+=SelectOption (',' options+=SelectOption)* '}' ('note' description=STRING)?;
+// Option label is a bare identifier (Thin) or a quoted display string
+// ("10 ft (standard)"); the value is what the bound var is set to.
 SelectOption:
-    label=ID '=' value=NUMBER;
+    label=(ID | STRING) '=' value=NUMBER;
 
 // ---- Formula expression sublanguage — a faithful port of the grammar written
 //      in editor/src/param/formula.ts: + - * /, unary minus, the pure functions

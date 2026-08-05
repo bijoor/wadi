@@ -756,8 +756,38 @@ export function modelToHouseConfig(
   }
 
   if (model.configurators.length) {
-    const inputs = model.configurators[0].inputs.map(configInput);
-    cfg.configurator = { inputs };
+    const c = model.configurators[0];
+    const section: Record<string, unknown> = {};
+    if (c.title) section.title = unquote(c.title);
+    if (c.description) section.description = unquote(c.description);
+    // Walk items in source order: a group contributes a `groups[]` entry and
+    // tags each of its inputs with the group id; a bare input carries no group.
+    const groups: Record<string, unknown>[] = [];
+    const inputs: Record<string, unknown>[] = [];
+    const usedIds = new Set<string>();
+    const groupId = (label: string): string => {
+      const base = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "group";
+      let id = /^[a-z_]/.test(base) ? base : `g_${base}`;
+      for (let k = 2; usedIds.has(id); k++) id = `${base}_${k}`;
+      usedIds.add(id);
+      return id;
+    };
+    for (const item of c.items) {
+      if (item.$type === "ConfigGroup") {
+        const g = item as ast.ConfigGroup;
+        const label = unquote(g.label);
+        const id = groupId(label);
+        const gobj: Record<string, unknown> = { id, label };
+        if (g.description) gobj.description = unquote(g.description);
+        groups.push(gobj);
+        for (const i of g.inputs) inputs.push({ ...configInput(i), group: id });
+      } else {
+        inputs.push(configInput(item as ast.ConfigInput));
+      }
+    }
+    if (groups.length) section.groups = groups;
+    section.inputs = inputs;
+    cfg.configurator = section;
   }
 
   if (model.layers.length) {
@@ -811,26 +841,33 @@ function configInput(i: ast.ConfigInput): Record<string, unknown> {
       };
       if (s.unit) o.unit = s.unit;
       if (s.step !== undefined) o.step = s.step;
+      if (s.description) o.description = unquote(s.description);
       return o;
     }
     case "NumberInput": {
       const n = i as ast.NumberInput;
       const o: Record<string, unknown> = { target: n.target, label: unquote(n.label), control: "number" };
       if (n.unit) o.unit = n.unit;
+      if (n.description) o.description = unquote(n.description);
       return o;
     }
     case "ToggleInput": {
       const t = i as ast.ToggleInput;
-      return { target: t.target, label: unquote(t.label), control: "toggle" };
+      const o: Record<string, unknown> = { target: t.target, label: unquote(t.label), control: "toggle" };
+      if (t.description) o.description = unquote(t.description);
+      return o;
     }
     case "SelectInput": {
       const s = i as ast.SelectInput;
-      return {
+      const o: Record<string, unknown> = {
         target: s.target,
         label: unquote(s.label),
         control: "select",
-        options: s.options.map((op) => ({ value: op.value, label: op.label })),
+        // Option label is an ID (kept as-is) or a quoted display string (unquoted).
+        options: s.options.map((op) => ({ value: op.value, label: unquote(op.label) })),
       };
+      if (s.description) o.description = unquote(s.description);
+      return o;
     }
     default:
       throw new Error(`unhandled configurator input: ${(i as unknown as { $type: string }).$type}`);
