@@ -354,6 +354,9 @@ Anchor returns string:
 Component:
     'use' (ns=ID '.')? ref=ID ('as' name=STRING)?
         'at' '(' x=Expr ',' y=Expr ')'
+        // Standard placement: yaw° (0=south, 90=east). Right angles are exact for
+        // any component; a free angle is allowed only for furniture-only ones.
+        ('rotation' rotation=Expr)?
         ('with' '{' args+=ComponentArg (',' args+=ComponentArg)* '}')?
         Common;
 ComponentArg:

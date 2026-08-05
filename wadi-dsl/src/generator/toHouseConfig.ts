@@ -487,6 +487,8 @@ function componentInstance(c: ast.Component): Record<string, unknown> {
     y: put("y", c.y, 0),
   };
   if (c.name) o.name = unquote(c.name);
+  const rot = put("rotation", c.rotation);
+  if (rot !== undefined) o.rotation = rot;
   if (c.args.length) {
     const params: Record<string, number | string> = {};
     for (const a of c.args) params[a.name] = exprToValue(a.value);

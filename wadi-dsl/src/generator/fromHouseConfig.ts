@@ -225,6 +225,7 @@ function emitComponentUse(w: W, indent: number, o: Obj): void {
   let s = `use ${baseName(o.ref)}`;
   if (o.name !== undefined) s += ` as ${str(o.name)}`;
   s += ` ${at(o)}`;
+  if (has(o, "rotation")) s += ` rotation ${fld(o, "rotation")}`;
   const params = o.params ?? {};
   const args = Object.entries(params);
   if (args.length) s += ` with { ${args.map(([k, v]) => `${k} = ${val(v)}`).join(", ")} }`;

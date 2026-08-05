@@ -501,6 +501,10 @@ const componentObject = z
     params: z.record(z.string(), z.union([z.number(), z.string()])).optional(),
     x: z.number(),
     y: z.number(),
+    // Standard placement: yaw° about the instance origin (clockwise, same sense as
+    // item rotation: 0=south, 90=east). Right angles (0/90/180/270) are exact for
+    // any component; a non-right angle is allowed only for furniture-only ones.
+    rotation: z.number().optional(),
     z_offset: z.number().optional(),
   })
   .strict();

@@ -52,6 +52,11 @@ floor 1 "Ground" {
 ```
 
 - `at (x, y)` offsets the component's local origin onto the floor.
+- `rotation <deg>` (optional) turns the whole stamped assembly about its origin —
+  yaw°, 0=south, 90=east. **Right angles (0/90/180/270) are exact for any
+  component**; a **non-right angle** is allowed **only for a furniture-only
+  component** (a free angle on a component containing a room/pillar/beam/slab/
+  staircase is a compile error — arbitrary structural rotation is a future need).
 - `with { p = v, … }` overrides params; un-overridden params fall back to their
   declared defaults.
 - A component expands **byte-identical** to writing its objects inline — pure
@@ -186,7 +191,8 @@ component Name goal "…"? {           // goal optional (discovery key)
 }
 
 // ── stamp it (same file) ─────────────────────────────────────────────
-use Name as "id"? at (x, y) [with { p = v, … }]   // overrides use `=`
+use Name as "id"? at (x, y) [rotation <deg>] [with { p = v, … }]   // overrides use `=`
+//   rotation: 0/90/180/270 for structural, any angle for furniture-only
 
 // ── a library: a .wdl of component/asset decls, no `house` needed ─────
 // then in another file:

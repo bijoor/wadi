@@ -391,29 +391,78 @@ type ComponentDefLoose = {
   points?: Record<string, { x: number | string; y: number | string }>;
 };
 
-// Shift a set of already-resolved objects by (dx, dy) in plan and lift them by
-// dz. Handles every positional field — x/y, wall/staircase endpoints, kitchen
-// path points — and composes z_offset. Strips resolved `formulas` so the offset
-// can't be undone by a later resolve. Never touches sizes (width/length/height).
-function offsetObjects(objs: Obj[], dx: number, dy: number, dz: number): Obj[] {
+// Objects whose x/y is a TOP-LEFT box corner (not a centre) — rotated via their
+// centre so the box stays axis-aligned at right angles.
+const BOX_TYPES = new Set(["room", "pillar", "beam", "floor_slab", "plinth", "ground"]);
+// Objects that can rotate to ANY angle (points / segments). Everything else is
+// only exact at a right angle (see placeComponent's guard).
+const ANY_ANGLE_TYPES = new Set(["item", "wall"]);
+
+const SIDE_NORMAL: Record<Side, [number, number]> = {
+  north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0],
+};
+// Rotate a cardinal side by (cos,sin) [clockwise, Y-down] and snap to a cardinal.
+// Exact at right angles (cos/sin are 0/±1); a diagonal snaps to the nearer axis.
+function rotateSide(side: Side, cos: number, sin: number): Side {
+  const [nx, ny] = SIDE_NORMAL[side];
+  const rx = nx * cos + ny * sin;
+  const ry = -nx * sin + ny * cos;
+  if (Math.abs(rx) >= Math.abs(ry)) return rx >= 0 ? "east" : "west";
+  return ry >= 0 ? "south" : "north";
+}
+const isSide = (s: unknown): s is Side => typeof s === "string" && SIDES.includes(s as Side);
+
+// Place a set of already-resolved component objects: ROTATE each about the
+// component's local origin by `deg` (clockwise, matching item yaw: 0=south,
+// 90=east), then translate by (dx, dy) and lift by dz. A rigid rotation, so every
+// object keeps its relationship to the others; box types re-derive their corner
+// from the rotated centre (dims swap at 90/270), rooms/openings remap their
+// cardinal sides/direction, and items add `deg` to their yaw. `wallThickness`
+// resolves a pillar's auto (unset) dimension before the box rotates. Strips
+// resolved `formulas` so nothing undoes the placement.
+function placeComponent(objs: Obj[], dx: number, dy: number, dz: number, deg: number, wallThickness: number): Obj[] {
+  const norm = ((deg % 360) + 360) % 360;
+  const rad = (norm * Math.PI) / 180;
+  const clean = (v: number) => Math.round(v * 1e12) / 1e12; // kill fp dust so 90° is exact
+  const cos = clean(Math.cos(rad));
+  const sin = clean(Math.sin(rad));
+  const swap = norm === 90 || norm === 270;
+  const rp = (x: number, y: number): [number, number] => [x * cos + y * sin, -x * sin + y * cos];
+
   return objs.map((o) => {
-    const n: Obj = { ...o };
-    if (typeof n.x === "number") n.x = n.x + dx;
-    if (typeof n.y === "number") n.y = n.y + dy;
-    if (typeof n.start_x === "number") n.start_x = n.start_x + dx;
-    if (typeof n.end_x === "number") n.end_x = n.end_x + dx;
-    if (typeof n.start_y === "number") n.start_y = n.start_y + dy;
-    if (typeof n.end_y === "number") n.end_y = n.end_y + dy;
-    if (Array.isArray(n.path)) {
-      n.path = (n.path as unknown[]).map((pt) =>
-        Array.isArray(pt) && pt.length >= 2
-          ? [(pt[0] as number) + dx, (pt[1] as number) + dy]
-          : pt,
-      );
+    const n = { ...o } as Obj & Record<string, unknown>;
+    if (norm !== 0) {
+      if (BOX_TYPES.has(n.type as string)) {
+        const w = typeof n.width === "number" ? n.width : wallThickness;
+        const l = typeof n.length === "number" ? n.length : wallThickness;
+        const [rcx, rcy] = rp((n.x as number) + w / 2, (n.y as number) + l / 2);
+        const w2 = swap ? l : w, l2 = swap ? w : l;
+        n.x = rcx - w2 / 2; n.y = rcy - l2 / 2; n.width = w2; n.length = l2;
+      } else if (typeof n.x === "number" && typeof n.y === "number") {
+        [n.x, n.y] = rp(n.x, n.y); // item centre, door/window anchor
+      }
+      if (typeof n.start_x === "number" && typeof n.start_y === "number") [n.start_x, n.start_y] = rp(n.start_x, n.start_y);
+      if (typeof n.end_x === "number" && typeof n.end_y === "number") [n.end_x, n.end_y] = rp(n.end_x, n.end_y);
+      if (Array.isArray(n.path)) n.path = (n.path as unknown[]).map((pt) => (Array.isArray(pt) && pt.length >= 2 ? rp(pt[0] as number, pt[1] as number) : pt));
+      if (isSide(n.direction)) n.direction = rotateSide(n.direction, cos, sin);
+      if (isSide(n.facing)) n.facing = rotateSide(n.facing, cos, sin);
+      if (Array.isArray(n.walls)) n.walls = (n.walls as unknown[]).map((s) => (isSide(s) ? rotateSide(s, cos, sin) : s));
+      if (n.wall_heights && typeof n.wall_heights === "object") {
+        const wh: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(n.wall_heights as Record<string, unknown>)) wh[isSide(k) ? rotateSide(k, cos, sin) : k] = v;
+        n.wall_heights = wh;
+      }
+      if (n.type === "item") n.rotation = (((typeof n.rotation === "number" ? n.rotation : 0) + norm) % 360 + 360) % 360;
     }
-    if (dz !== 0) {
-      n.z_offset = (typeof n.z_offset === "number" ? n.z_offset : 0) + dz;
-    }
+    // translate
+    if (typeof n.x === "number") n.x += dx;
+    if (typeof n.y === "number") n.y += dy;
+    if (typeof n.start_x === "number") n.start_x += dx;
+    if (typeof n.end_x === "number") n.end_x += dx;
+    if (typeof n.start_y === "number") n.start_y += dy;
+    if (typeof n.end_y === "number") n.end_y += dy;
+    if (Array.isArray(n.path)) n.path = (n.path as unknown[]).map((pt) => (Array.isArray(pt) && pt.length >= 2 ? [(pt[0] as number) + dx, (pt[1] as number) + dy] : pt));
+    if (dz !== 0) n.z_offset = (typeof n.z_offset === "number" ? n.z_offset : 0) + dz;
     if ("formulas" in n) delete n.formulas;
     return n;
   });
@@ -481,7 +530,23 @@ function expandComponent(
   const dx = typeof inst.x === "number" ? inst.x : 0;
   const dy = typeof inst.y === "number" ? inst.y : 0;
   const dz = typeof inst.z_offset === "number" ? inst.z_offset : 0;
-  return offsetObjects(bodyObjs, dx, dy, dz);
+  const deg = typeof inst.rotation === "number" ? inst.rotation : 0;
+
+  // A non-right angle only rotates points/segments exactly; a room / pillar /
+  // beam / slab / staircase / door / window can't tilt its axis-aligned footprint
+  // to an arbitrary angle. Reject it clearly rather than silently desync the
+  // furniture from its walls. (Arbitrary structural rotation is a future need.)
+  if (((deg % 90) + 90) % 90 !== 0) {
+    const bad = bodyObjs.find((b) => !ANY_ANGLE_TYPES.has(String(b.type)));
+    if (bad) {
+      throw new Error(
+        `component '${ref}' rotation ${deg}° is not a right angle — its ${String(bad.type)}` +
+          `${bad.name ? ` '${String(bad.name)}'` : ""} can't rotate to a non-right angle. ` +
+          `Use 0/90/180/270 for structural components; free angles are for furniture-only components.`,
+      );
+    }
+  }
+  return placeComponent(bodyObjs, dx, dy, dz, deg, wallThickness);
 }
 
 function expandObject(obj: Obj, wallThickness: number): [Obj, Obj[]] {

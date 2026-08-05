@@ -142,7 +142,9 @@ asymmetric — nothing else to set. Best on a single-segment gable
   param blen = 60 label "Bench length"
   beam name "Top" at (0,0) size (blen, 18) height 6
 }
-use Bench as "B1" at (x,y) with { blen = 80 }   // stamp it onto a floor
+use Bench as "B1" at (x,y) rotation 90 with { blen = 80 }   // stamp onto a floor
+// rotation is optional (yaw°): 0/90/180/270 for structural components,
+// any angle for furniture-only components.
 
 import "konkan/base" as kb            // reuse another .wdl's components
 use kb.Verandah as "V1" at (x,y)      // namespaced stamp from the imported module

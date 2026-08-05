@@ -366,7 +366,7 @@ component Bench {                 // a reusable mini-house in LOCAL coords (orig
   param blen = 60 label "Bench length"
   beam name "Top" at (0,0) size (blen, 18) height 6
 }
-use Bench as "B1" at (x,y) with { blen = 80 }   // stamp it onto a floor
+use Bench as "B1" at (x,y) [rotation <deg>] with { blen = 80 }   // stamp onto a floor
 
 layer "structure" "Structure" [color "#rrggbb"] [group "Frame"]   // per-house layer registry
 ```
@@ -397,6 +397,14 @@ house Home {
 `use ns.Comp` expands byte-identical to an inline `component`; keep module
 components flat (they don't `use` other components). Un-overridden `param`s fall
 back to their declared defaults.
+
+`rotation <deg>` (optional, yaw°: 0=south, 90=east) turns the whole stamped
+assembly about its origin. **Right angles (0/90/180/270) are exact for any
+component** (rooms/pillars/beams/slabs swap dims + remap wall sides; furniture
+turns with them). A **non-right angle** is allowed **only for a furniture-only
+component** (items/free walls rotate to any angle); a free angle on a component
+that contains a room/pillar/beam/slab/staircase is a compile error (arbitrary
+structural rotation is a future feature).
 
 ## The `raw` escape (rarely needed)
 

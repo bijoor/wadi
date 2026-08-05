@@ -60,6 +60,7 @@ export function ComponentForm({
         <div className="grid grid-cols-2 gap-x-2">
           <ObjectMeasureField object={o} field="x" label="X" patch={mpatch} hint="on the parent floor" />
           <ObjectMeasureField object={o} field="y" label="Y" patch={mpatch} />
+          <ObjectMeasureField object={o} field="rotation" label="Rotation°" patch={mpatch} allowEmpty hint="yaw; 0/90/180/270 for structural, any angle for furniture-only" />
           <ObjectMeasureField object={o} field="z_offset" label="Z offset" patch={mpatch} allowEmpty hint="lift above floor base" />
         </div>
       </Section>
