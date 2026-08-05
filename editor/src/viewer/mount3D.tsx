@@ -146,7 +146,7 @@ function ViewerScene() {
         frames={1}
       />
       <House3D config={config} />
-      <CaptureBridge />
+      <CaptureBridge fit={{ dist: camDist, targetY }} />
       <OrientationGizmo plot={plot} />
       {!interior && (
         <OrbitControls
@@ -185,7 +185,7 @@ function ViewerScene() {
 // Canvas so it can reach the live WebGLRenderer + camera + OrbitControls via
 // useThree(). preserveDrawingBuffer (on <Canvas gl>) is what makes reading the
 // composited frame back work.
-function CaptureBridge() {
+function CaptureBridge({ fit }: { fit: { dist: number; targetY: number } }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -203,8 +203,17 @@ function CaptureBridge() {
       // on-screen frame came from the EffectComposer's targets, not the default
       // buffer. This direct render (sans post-effects) guarantees pixels exist.
       try {
+        // The postprocessing EffectComposer sets renderer.autoClear = false and
+        // clears its targets itself. A bare render here would then composite the
+        // (possibly MOVED) camera's frame OVER the previous frame's stale depth
+        // buffer → fragmented geometry: floating roof pieces, missing walls, a
+        // smeared blob. Force a clean clear of colour+depth before the raw pass.
+        const prevAutoClear = gl.autoClear;
+        gl.autoClear = true;
         gl.setRenderTarget(null);
+        gl.clear();
         gl.render(scene, camera);
+        gl.autoClear = prevAutoClear;
       } catch {
         /* fall back to whatever is already in the buffer */
       }
@@ -268,21 +277,28 @@ function CaptureBridge() {
       back:  { azDeg: 0,   polarDeg: 80, radiusMult: 1.5 },
       left:  { azDeg: 90,  polarDeg: 80, radiusMult: 1.5 },
       right: { azDeg: 270, polarDeg: 80, radiusMult: 1.5 },
-      top:   { azDeg: 180, polarDeg: 1,  radiusMult: 1.5 },
+      // A steep-but-oblique "bird's eye" rather than a straight-down view:
+      // polar 0 makes the look-vector parallel to camera.up=(0,1,0), a
+      // degenerate lookAt that rolls the camera and catches the horizon.
+      top:   { azDeg: 180, polarDeg: 22, radiusMult: 1.6 },
     };
     window.wadiCaptureView = (preset, maxW = 720) => {
       const v = CAPTURE_VIEWS[preset];
       if (!v) return grab(maxW); // unknown preset → current framing
-      const t = controls ? controls.target : { x: 0, y: 0, z: 0 };
-      const dx = camera.position.x - t.x;
-      const dy = camera.position.y - t.y;
-      const dz = camera.position.z - t.z;
-      const dist = Math.hypot(dx, dy, dz) || 1;
-      const r = dist * (v.radiusMult / 1.5); // scale relative to the default framing
+      // Frame from the DETERMINISTIC parametric fit (model centre + fit
+      // distance), NOT the live OrbitControls target / camera position. With
+      // enableDamping the camera is still easing toward its rest pose for
+      // several frames after a config load, so reading the live distance here
+      // raced the settle and threw iso/top off-frame (empty sky / z-fight).
+      const t = { x: 0, y: fit.targetY, z: 0 };
+      const r = fit.dist * (v.radiusMult / 1.5); // scale relative to default framing
       const az = (v.azDeg * Math.PI) / 180;
       const el = ((90 - v.polarDeg) * Math.PI) / 180; // elevation above the horizon
       const savePos = camera.position.clone();
       const saveQuat = camera.quaternion.clone();
+      const wasEnabled = controls ? controls.enabled : false;
+      if (controls) controls.enabled = false; // don't let damping/auto-rotate fight us
+      camera.up.set(0, 1, 0);
       camera.position.set(
         t.x + r * Math.cos(el) * Math.sin(az),
         t.y + r * Math.sin(el),
@@ -294,6 +310,7 @@ function CaptureBridge() {
       camera.position.copy(savePos);
       camera.quaternion.copy(saveQuat);
       camera.updateMatrixWorld(true);
+      if (controls) controls.enabled = wasEnabled;
       return url;
     };
 
@@ -353,7 +370,7 @@ function CaptureBridge() {
       delete window.wadiCaptureInterior;
       delete window.wadiCaptureAngles;
     };
-  }, [gl, scene, camera, controls]);
+  }, [gl, scene, camera, controls, fit.dist, fit.targetY]);
   return null;
 }
 

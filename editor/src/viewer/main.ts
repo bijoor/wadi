@@ -142,10 +142,20 @@ async function bootViewer(): Promise<void> {
           // f1_structure + f2_structure, "walls" spans every floor's walls, etc.
           const resolveIds = (key: string): string[] => {
             const kl = key.toLowerCase();
-            const exact = availLayers.find((l) => l.id === key || l.label.toLowerCase() === kl);
-            if (exact) return [exact.id];
+            // An exact ID is unique → use it alone. Do NOT short-circuit on an
+            // exact LABEL: labels are shared across floors (every floor has a
+            // "Walls"/"Structure" layer), so matching the label must expand to
+            // ALL floors — otherwise "walls" would grab only the first (often an
+            // empty upper floor) and isolate to nothing.
+            const byId = availLayers.find((l) => l.id === key);
+            if (byId) return [byId.id];
             const subs = availLayers
-              .filter((l) => l.id.toLowerCase().includes(kl) || l.label.toLowerCase().includes(kl))
+              .filter(
+                (l) =>
+                  l.label.toLowerCase() === kl ||
+                  l.id.toLowerCase().includes(kl) ||
+                  l.label.toLowerCase().includes(kl),
+              )
               .map((l) => l.id);
             return subs.length ? subs : [key];
           };
