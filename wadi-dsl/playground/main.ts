@@ -226,13 +226,36 @@ function run(): void {
     setStatus("compiling…");
     void pushToViewer(config, findings);
   } else {
-    const first = diagnostics[0];
-    setStatus(first ? `⚠ ${first.startLineNumber}:${first.startColumn} ${trim(first.message)}` : "error", true);
-    statusEl.title = "";
+    // A house that imports a library the cache doesn't have fails with a generic
+    // "module not found" — surface exactly WHICH libraries are missing and how to
+    // get them, so the fix is obvious (rather than hunting the raw diagnostic).
+    const missing = unresolvedImports(editor.getValue());
+    if (missing.length) {
+      const list = missing.map((m) => `"${m}"`).join(", ");
+      setStatus(`⚠ missing librar${missing.length === 1 ? "y" : "ies"} ${list} — 📚 Library → Load library file…`, true);
+      statusEl.title = `Not in your cache or the bundled packs: ${list}. Load ${missing.length === 1 ? "it" : "them"} via the Library menu (or, in the desktop app, place the .wdl beside this file).`;
+    } else {
+      const first = diagnostics[0];
+      setStatus(first ? `⚠ ${first.startLineNumber}:${first.startColumn} ${trim(first.message)}` : "error", true);
+      statusEl.title = "";
+    }
   }
 }
 function trim(m: string): string {
   return m.length > 80 ? m.slice(0, 79) + "…" : m;
+}
+
+// The library refs the source `import`s that DON'T resolve (not in the cache, not
+// a bundled pack) — the actionable list behind a "module not found" compile error.
+function unresolvedImports(src: string): string[] {
+  const out: string[] = [];
+  const re = /^\s*import\s+"([^"]+)"/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src))) {
+    const ref = m[1];
+    if (resolveModule(ref) === undefined && !out.includes(ref)) out.push(ref);
+  }
+  return out;
 }
 
 // Resolve formulas + run the structural-conventions linter (C1/C2/C3). Pure and
@@ -633,17 +656,27 @@ function openLibraryInEditor(name: string): void {
   setStatus(`editing library "${name}" — "Save current as library" updates it`);
 }
 
-// Load a .wdl file INTO the cache (desktop → native dialog; browser → file
-// upload). The same uniform "cache of loaded libraries" both surfaces resolve from.
-async function loadLibraryFileNative(): Promise<void> {
+function reportLoaded(names: string[]): void {
+  if (!names.length) return;
+  const list = names.map((n) => `"${n}"`).join(", ");
+  setStatus(names.length === 1 ? `✓ loaded library ${list} into the cache` : `✓ loaded ${names.length} libraries into the cache: ${list}`);
+}
+
+// Load one or MORE .wdl files INTO the cache (desktop → native dialog; browser →
+// file upload). The same uniform "cache of loaded libraries" both surfaces resolve
+// from — multi-select so a whole set loads in one go, never one-by-one.
+async function loadLibraryFilesNative(): Promise<void> {
   const { open } = await import("@tauri-apps/plugin-dialog");
-  const picked = await open({ multiple: false, filters: [{ name: "Wadi library", extensions: ["wdl"] }] });
-  const path = typeof picked === "string" ? picked : null;
-  if (!path) return;
+  const picked = await open({ multiple: true, filters: [{ name: "Wadi library", extensions: ["wdl"] }] });
+  const paths = Array.isArray(picked) ? picked : typeof picked === "string" ? [picked] : [];
+  if (!paths.length) return;
   const { readTextFile } = await import("@tauri-apps/plugin-fs");
-  const name = baseName(path).replace(/\.wdl$/i, "");
-  loadLibrary(name, await readTextFile(path), "file");
-  setStatus(`✓ loaded library "${name}" into the cache`);
+  const names: string[] = [];
+  for (const p of paths) {
+    const name = baseName(p).replace(/\.wdl$/i, "");
+    try { loadLibrary(name, await readTextFile(p), "file"); names.push(name); } catch { /* skip unreadable */ }
+  }
+  reportLoaded(names);
   run();
 }
 
@@ -652,12 +685,16 @@ function wireLibraryMenu(): void {
   const menu = document.getElementById("library-menu")!;
   const libFile = document.getElementById("lib-file") as HTMLInputElement;
   libFile.addEventListener("change", async () => {
-    const f = libFile.files?.[0];
-    if (!f) return;
-    const name = f.name.replace(/\.wdl$/i, "");
-    loadLibrary(name, await f.text(), "file");
-    setStatus(`✓ loaded library "${name}" into the cache`);
+    const files = libFile.files ? [...libFile.files] : [];
+    if (!files.length) return;
+    const names: string[] = [];
+    for (const f of files) {
+      const name = f.name.replace(/\.wdl$/i, "");
+      loadLibrary(name, await f.text(), "file");
+      names.push(name);
+    }
     libFile.value = "";
+    reportLoaded(names);
     run();
   });
 
@@ -682,7 +719,7 @@ function wireLibraryMenu(): void {
     document.getElementById("lib-load")!.addEventListener("click", (e) => {
       e.stopPropagation();
       menu.hidden = true;
-      if (isTauri()) void loadLibraryFileNative();
+      if (isTauri()) void loadLibraryFilesNative();
       else libFile.click();
     });
     menu.querySelectorAll<HTMLElement>("[data-import]").forEach((el) =>
