@@ -333,23 +333,22 @@ Roof:
     'roof' ('name' name=STRING)? roof_type=('flat' | 'shed' | 'pitched')
         ('endpoint' default_endpoint=('open' | 'closed'))?
         (slope=Slope)?
-        (slope_left=SlopeLeft)?
-        (slope_right=SlopeRight)?
         ('overhang' min_overhang=Expr)?
         ('slab_thickness' slab_thickness=Expr)?
         ('parapet' parapet_height=Expr 'x' parapet_thickness=Expr)?
         ('gable_wall_thickness' gable_wall_thickness=Expr)?
         Common ('material' material=STRING)?
         '{' (segments+=Segment | trusses+=Truss)* '}';
+// Roof pitch. A single value is a symmetric gable/hip; an ANGLE PAIR (left, right)
+// is an asymmetric (saltbox) gable — the two eaves stay put and the ridge shifts
+// across the width so each side takes its angle. left/right are by the segment's
+// left normal (the same sides as overhang_left/right). `height` is single-value
+// only (both faces share ONE ridge line, so one rise).
 Slope:
-    'slope' by=('angle' | 'height') value=Expr;
-// Independent per-side pitch for an asymmetric (saltbox) gable. Set BOTH to
-// override `slope`; the ridge shifts across the width so each slope takes its
-// angle. left/right are by the segment's left normal (same as overhang_left/right).
-SlopeLeft:
-    'slope_left' by=('angle' | 'height') value=Expr;
-SlopeRight:
-    'slope_right' by=('angle' | 'height') value=Expr;
+    'slope' (
+        'angle' ('(' angle_left=Expr ',' angle_right=Expr ')' | angle_deg=Expr)
+      | 'height' ridge_h=Expr
+    );
 Segment:
     'segment' id=STRING
         'from' '(' sx=Expr ',' sy=Expr ')' 'to' '(' ex=Expr ',' ey=Expr ')'

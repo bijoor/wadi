@@ -93,6 +93,23 @@ describe("Wadi DSL round-trip", () => {
     expect(roofObj.enabled).toBe(1);
   });
 
+  it("roof slope: single value is symmetric, an angle pair is an asymmetric gable", () => {
+    const roof = (slopeLine: string) => {
+      const src = `house R { site { plot (300,300) } floor 1 "G" slab_thickness 0 {
+        room X at (20,20) size (200,150) { wall north south east west }
+        roof pitched endpoint open ${slopeLine} { segment "s0" from (120,20) to (120,170) width 200 }
+      } }`;
+      const cfg = compileDsl(src) as { floors: { objects: any[] }[] };
+      return cfg.floors[0].objects.find((o) => o.type === "roof");
+    };
+    expect(roof("slope angle 30").slope).toEqual({ by: "angle", angle_deg: 30 });
+    expect(roof("slope height 60").slope).toEqual({ by: "height", ridge_h: 60 });
+    const asym = roof("slope angle (45, 25)");
+    expect(asym.slope).toBeUndefined();
+    expect(asym.slope_left).toEqual({ by: "angle", angle_deg: 45 });
+    expect(asym.slope_right).toEqual({ by: "angle", angle_deg: 25 });
+  });
+
   it("compact wall syntax: `wall east west north` declares three plain walls in one statement", () => {
     const src = `house W {
       site { plot (200, 200) }

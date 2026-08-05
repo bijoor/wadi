@@ -280,8 +280,8 @@ The roof lives ALONE on its own top floor and you never set its Z (see
 ```wdl
 roof [name "N"] pitched|shed|flat
   [endpoint open|closed]
-  [slope angle <deg> | slope height <ridge_h>]     // symmetric pitch
-  [slope_left angle <deg>] [slope_right angle <deg>] // asymmetric gable (set BOTH)
+  [slope angle <deg> | slope height <ridge_h>]     // symmetric pitch (one value)
+  [slope angle (<left>, <right>)]                  // asymmetric (saltbox) gable — angle pair
   [overhang <o>] [slab_thickness <t>] [parapet <h> x <t>] [gable_wall_thickness <t>] {
     segment "id" from (x,y) to (x,y) width <w>
       [high_side left|right]                        // shed only
@@ -311,18 +311,19 @@ eave's edge along the same pitch, so the slope stays planar. (Per-eave on a *pit
 roof is single-segment only — on a multi-segment roof the eaves share one height so
 joints line up.)
 
-**Asymmetric gable (saltbox) — two independent slope angles.** A pitched roof's
-`slope` gives both faces the same pitch (a symmetric gable). To make the two sides
-different, set **both** `slope_left` and `slope_right` (angles) — they override
-`slope`. The two eaves stay put (footprint unchanged) and the ridge shifts across the
-width so each face takes its angle; the gable-end triangle and trusses follow. `left`/
-`right` are by the segment's left normal — the **same sides as** `overhang_left`/
-`overhang_right`. Angles are measured to the wall-top eave line. Setting only one side
-is ignored (falls back to symmetric). Intended for a single-segment gable (`endpoint
-open`); on a hip end the ridge shift skews the hip, so keep it to gables.
+**Asymmetric gable (saltbox) — an angle pair.** A pitched roof's `slope` gives both
+faces the same pitch (a symmetric gable). To make the two sides different, give
+`slope angle` a **pair** instead of one value — `slope angle (45, 25)`. A single value
+is symmetric; a pair is asymmetric, and that's the whole distinction (no separate
+keywords, nothing half-settable). The two eaves stay put (footprint unchanged) and the
+ridge shifts across the width so each face takes its angle; the gable-end triangle and
+trusses follow. The pair is `(left, right)` by the segment's left normal — the **same
+sides as** `overhang_left`/`overhang_right`. Angles are measured to the wall-top eave
+line. `height` is single-value only (both faces share one ridge line). Intended for a
+single-segment gable (`endpoint open`); on a hip end the ridge shift skews the hip.
 
 ```wdl
-roof pitched endpoint open slope_left angle 45 slope_right angle 25 {
+roof pitched endpoint open slope angle (45, 25) {
   segment "s0" from (House.W/2, 0) to (House.W/2, House.L) width House.W
 }
 ```

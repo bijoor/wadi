@@ -157,13 +157,15 @@ export interface RoofConfig {
   default_endpoint?: EndpointStyle;
 
   slope?: SlopeSpec;
-  // Independent per-side pitch for an ASYMMETRIC gable (saltbox). When BOTH are
-  // set they override `slope`: the two eaves stay put (footprint unchanged) and
-  // the ridge shifts across the width so the left/right slope planes take the
-  // requested angles. Measured to the wall-top eave line (not any dropped
-  // overhang tip). "left"/"right" are by the segment's left normal — the same
-  // sides as overhang_left / overhang_right. Intended for a single-segment gable
-  // (open endpoints); on a hip/closed end the ridge shift skews the hip.
+  // Per-side pitch for an ASYMMETRIC gable (saltbox). The DSL surfaces this as an
+  // angle PAIR — `slope angle (left, right)` — which desugars to these two fields;
+  // in a raw .wadi they're set directly. When BOTH are set they override `slope`:
+  // the two eaves stay put (footprint unchanged) and the ridge shifts across the
+  // width so the left/right slope planes take the requested angles. Measured to the
+  // wall-top eave line (not any dropped overhang tip). "left"/"right" are by the
+  // segment's left normal — the same sides as overhang_left / overhang_right.
+  // Intended for a single-segment gable (open endpoints); on a hip/closed end the
+  // ridge shift skews the hip.
   slope_left?: SlopeSpec;
   slope_right?: SlopeSpec;
   min_overhang?: number;      // default 20 (2 ft)

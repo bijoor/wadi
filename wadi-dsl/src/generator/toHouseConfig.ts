@@ -502,16 +502,16 @@ function roof(r: ast.Roof): Record<string, unknown> {
   if (r.name) o.name = unquote(r.name);
   if (r.default_endpoint) o.default_endpoint = r.default_endpoint;
   if (r.slope) {
-    const v = exprToValue(r.slope.value);
-    o.slope = r.slope.by === "angle" ? { by: "angle", angle_deg: v } : { by: "height", ridge_h: v };
-  }
-  if (r.slope_left) {
-    const v = exprToValue(r.slope_left.value);
-    o.slope_left = r.slope_left.by === "angle" ? { by: "angle", angle_deg: v } : { by: "height", ridge_h: v };
-  }
-  if (r.slope_right) {
-    const v = exprToValue(r.slope_right.value);
-    o.slope_right = r.slope_right.by === "angle" ? { by: "angle", angle_deg: v } : { by: "height", ridge_h: v };
+    const s = r.slope;
+    if (s.angle_left !== undefined && s.angle_right !== undefined) {
+      // Asymmetric pair `slope angle (L, R)` → the internal per-side fields.
+      o.slope_left = { by: "angle", angle_deg: exprToValue(s.angle_left) };
+      o.slope_right = { by: "angle", angle_deg: exprToValue(s.angle_right) };
+    } else if (s.angle_deg !== undefined) {
+      o.slope = { by: "angle", angle_deg: exprToValue(s.angle_deg) };
+    } else if (s.ridge_h !== undefined) {
+      o.slope = { by: "height", ridge_h: exprToValue(s.ridge_h) };
+    }
   }
   const mo = put("min_overhang", r.min_overhang);
   if (mo !== undefined) o.min_overhang = mo;
