@@ -1,0 +1,11 @@
+{
+  "projectName": "Mini",
+  "languages": [
+    {
+      "id": "mini",
+      "grammar": "src/mini.langium",
+      "fileExtensions": [".mini"]
+    }
+  ],
+  "out": "src/generated"
+}
