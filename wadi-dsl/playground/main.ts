@@ -11,6 +11,16 @@
 //     update (no reload).
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
+// editor.api is lean — it omits the editor UI contributions that render the
+// Langium LSP providers' results. Import exactly the ones we need (these are
+// editor features, NOT the 80 basic-languages, which the full "monaco-editor"
+// entry would drag in): suggest (completion widget), hover, rename, and
+// gotoSymbol + peekView (go-to-definition / find-references / peek).
+import "monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController.js";
+import "monaco-editor/esm/vs/editor/contrib/hover/browser/hoverContribution.js";
+import "monaco-editor/esm/vs/editor/contrib/rename/browser/rename.js";
+import "monaco-editor/esm/vs/editor/contrib/gotoSymbol/browser/goToCommands.js";
+import "monaco-editor/esm/vs/editor/contrib/peekView/browser/peekView.js";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { isTauri } from "@tauri-apps/api/core";
 import { registerWadiDsl, LANG_ID } from "./dsl-language";
@@ -24,7 +34,9 @@ import {
   getLibrarySource,
   isValidModuleName,
   listLibraries,
+  libraryCacheVersion,
 } from "./libraries";
+import { registerWadiLsp } from "./lsp";
 import { resolveParametric } from "../../editor/src/param/resolve";
 import {
   lintStructure,
@@ -56,6 +68,9 @@ let currentName = "minimal"; // base filename for Save / Download
 self.MonacoEnvironment = { getWorker: () => new editorWorker() };
 
 registerWadiDsl(monaco);
+// Langium-backed language features: completion / hover / go-to-definition /
+// find-references / rename, resolving `import`s through the editor's module cache.
+registerWadiLsp({ resolveModule, version: libraryCacheVersion, languageId: LANG_ID });
 
 const editor = monaco.editor.create(document.getElementById("editor")!, {
   value: minimalSrc,

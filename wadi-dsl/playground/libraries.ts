@@ -39,8 +39,15 @@ export function getCache(): Cache {
     return {};
   }
 }
+let cacheVersion = 0;
 function setCache(c: Cache): void {
   localStorage.setItem(CACHE_KEY, JSON.stringify(c));
+  cacheVersion++;
+}
+/** Bumps whenever the library cache changes — lets the LSP workspace know to
+ *  rebuild against the new set of importable modules. */
+export function libraryCacheVersion(): number {
+  return cacheVersion;
 }
 
 /** Put a library into the cache (last write wins by name). */

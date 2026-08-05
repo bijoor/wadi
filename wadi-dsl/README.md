@@ -160,9 +160,19 @@ How it loads the model into the app, using the app's OWN paths:
 
 `src/generator/toHouseConfig.ts` exposes `compileWithDiagnostics(text)` — a
 never-throws compile returning the `HouseConfig` plus Monaco-shaped error markers.
-`playground/dsl-language.ts` is a Monarch tokenizer for highlighting (Phase 2
-would swap it for the real Langium language server in a Web Worker, so
-highlighting + completion come from the grammar itself).
+`playground/dsl-language.ts` is a Monarch tokenizer for highlighting.
+
+### IDE features (Langium language server, in-process)
+
+The editor has full **IDE tooling for the DSL**, powered by the real Langium
+services running **in the same page** (no Web Worker / language client):
+**completion** (`use `/`item ` suggest in-scope components & furniture, in-file
+*and* from imported libraries), **hover** (a component's goal + params, an asset's
+dimensions), **go-to-definition** (into this file *or* an imported library, which
+opens read-only), **find-references**, and **rename** (in-file components). Wiring:
+`src/lsp/wadi-lsp.ts` builds a full-services workspace (entry + transitively
+imported modules) via `DocumentBuilder`; `playground/lsp.ts` bridges the Langium
+providers to Monaco, resolving `import`s through the editor's module cache.
 
 ## Desktop DSL editor (native, offline — the playground in the Wadi app)
 

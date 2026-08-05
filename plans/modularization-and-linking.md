@@ -10,9 +10,16 @@ self-contained ScopeProvider (reads imported ASTs straight from `LangiumDocument
 resolves references **lazily and synchronously** on `.ref` access, so **no async
 `DocumentBuilder.build` is needed** and `compileDsl` kept its signature — the async
 ripple the plan worried about (§7/§8) never materialised. Assets are cross-refs
-too. Still open: the **LSP editor layer** (go-to-def / rename / find-references in
-the WDL editor) — the linking substrate is in place, but wiring the Langium LSP
-into the Monaco playground is a separate increment.
+too.
+
+**LSP editor layer also SHIPPED.** The WDL editor now has full IDE features —
+**completion, hover, go-to-definition (in-file + into imported libraries),
+find-references, and rename** — powered by the same Langium services **in-process**
+(`wadi-dsl/src/lsp/wadi-lsp.ts` builds a full LSP-services workspace via
+`DocumentBuilder`; `playground/lsp.ts` bridges the Langium providers to Monaco).
+No worker / language-client: the providers run on the main thread where the module
+cache lives; imported libraries open as read-only models for cross-file
+navigation. The whole capability — resolution + editor tooling — is now complete.
 
 **History below** was the exploration/design (Path A vs B, the spike). Retained
 for the rationale.
