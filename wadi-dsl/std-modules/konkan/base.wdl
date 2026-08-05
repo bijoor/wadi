@@ -2,7 +2,7 @@
 //
 // A MODULE (no `house` body): import it and stamp its components onto a floor —
 //   import "konkan/base" as kb
-//   floor 1 "Ground" { use kb.Stairwell at (208, 64) with { rise: 116 } }
+//   floor 1 "Ground" { use kb.Stairwell at (208, 64) with { rise = 116 } }
 //
 // Each component is authored in LOCAL coordinates (origin 0,0) and is flat
 // (it does not `use` other components), so it stamps cleanly into any host.

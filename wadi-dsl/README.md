@@ -67,6 +67,39 @@ One `.wdl` file exercises every construct:
 Every valid sample is asserted through the real schema + geometry pipeline in
 `test/roundtrip.test.ts`.
 
+## Components & libraries — reuse
+
+Two layers of reuse, both first-class in the grammar:
+
+- **Component** — a named parametric *mini-house* (a stair, verandah, bench…) in
+  local coords, stamped onto a floor with `use`:
+
+  ```wdl
+  component Stairwell goal "climb to the next floor" {
+    param rise = 116
+    staircase name "Stair" at (0, 0) step (7, 11, 44) direction south total_height rise
+  }
+  floor 2 "First" { use Stairwell at (208, 64) with { rise = 116 } }   // overrides use `=`
+  ```
+
+- **Library** — a `.wdl` file of `component` / `asset` declarations (no `house`
+  needed) that another file `import`s:
+
+  ```wdl
+  import "konkan/base" as kb       // a module (bundled, or one of yours)
+  floor 1 "G" { use kb.Verandah at (20, 20) with { across = 240 } }
+  ```
+
+In the **WDL editor**, the **📚 Library** menu keeps a *cache of loaded libraries*
+that `import` resolves from — the same on web and desktop. Load one by **Save
+current as library**, **Load library file** (multi-select), or (desktop) by simply
+dropping a `.wdl` beside your open file (or in a `modules/` subfolder — importable
+by basename). Resolution order: **your cache → bundled packs**
+(`std-furniture`, `konkan/base`). If a house imports something uncached, the editor
+names exactly which libraries to load.
+
+**Full guide:** [`COMPONENTS-AND-LIBRARIES.md`](COMPONENTS-AND-LIBRARIES.md).
+
 ## Run it
 
 ```bash
