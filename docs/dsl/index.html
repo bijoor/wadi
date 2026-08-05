@@ -43,6 +43,17 @@
     }
     .popup-menu button:hover { background: #3a3a3a; }
     .popup-menu .desc { color: var(--muted); }
+    #library-menu { min-width: 280px; max-width: 360px; }
+    .lib-sep { height: 1px; background: #3a3a3a; margin: 4px 2px; }
+    .lib-empty { color: var(--muted); padding: 8px 10px; font-size: .78rem; line-height: 1.4; white-space: normal; }
+    .lib-empty code { background: #1e1e1e; padding: 0 3px; border-radius: 3px; }
+    .lib-row { display: flex; align-items: center; gap: 2px; }
+    .lib-row .lib-import { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+    .lib-tool {
+      flex: 0 0 auto; width: 26px; text-align: center !important; color: var(--muted);
+      font-size: .95rem; padding: 6px 0 !important; border-radius: 6px;
+    }
+    .lib-tool:hover { background: #4a3030 !important; color: #fff; }
     #filename {
       font-size: .8rem; color: var(--muted); white-space: nowrap; font-variant: tabular-nums;
     }
@@ -124,7 +135,7 @@
       header .brand { display: none; }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-FWE8ubVu.js"></script>
+  <script type="module" crossorigin src="./assets/index-ut98_ts4.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-DyX1CsEw.css">
 </head>
 <body>
@@ -143,6 +154,10 @@
     </div>
     <button id="open" class="tb-btn" title="Open a .wdl file (⌘O)">📂 Open</button>
     <button id="import" class="tb-btn" title="Import a .wadi house → decompile it to editable WDL code">↩ Import .wadi</button>
+    <div class="menu-wrap">
+      <button id="library" class="tb-btn" title="Save the current file as a reusable library, or insert an import" aria-haspopup="true">📚 Library ▾</button>
+      <div id="library-menu" class="popup-menu" hidden role="menu"></div>
+    </div>
     <button id="save" class="tb-btn" title="Save the .wdl (⌘S)">💾 Save</button>
     <button id="saveas" class="tb-btn" title="Save to a new file (⇧⌘S)">Save As…</button>
     <button id="download" class="tb-btn" title="Export the compiled .wadi">⬇ .wadi</button>

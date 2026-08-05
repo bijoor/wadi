@@ -16,7 +16,15 @@ import { isTauri } from "@tauri-apps/api/core";
 import { registerWadiDsl, LANG_ID } from "./dsl-language";
 import { compileWithDiagnostics } from "../src/generator/toHouseConfig";
 import { emitWdl } from "../src/generator/fromHouseConfig";
-import { stdResolveModule } from "./std-modules";
+import {
+  resolveModule,
+  reloadFileModules,
+  getShelf,
+  saveToShelf,
+  deleteFromShelf,
+  isValidModuleName,
+  listLibraries,
+} from "./libraries";
 import { resolveParametric } from "../../editor/src/param/resolve";
 import {
   lintStructure,
@@ -206,7 +214,7 @@ async function pushToViewer(config: Record<string, unknown>, findings: LintFindi
 
 // Compile the current source; mark errors; render a valid model.
 function run(): void {
-  const { config, diagnostics } = compileWithDiagnostics(editor.getValue(), { resolveModule: stdResolveModule });
+  const { config, diagnostics } = compileWithDiagnostics(editor.getValue(), { resolveModule });
   monaco.editor.setModelMarkers(
     model,
     "wadi-dsl",
@@ -273,6 +281,7 @@ async function attachFile(path: string): Promise<void> {
   currentName = (path.split(/[/\\]/).pop() ?? "house").replace(/\.(wdl|txt)$/i, "") || "house";
   const text = await readTextFile(path);
   lastDiskText = text;
+  await reloadFileModules(path);             // sibling *.wdl become importable before the first compile
   editor.setValue(text);                     // fires onDidChangeModelContent → recompile + render
   updateFileLabel();
   const stop = await watch(
@@ -509,7 +518,7 @@ function wireToolbar(): void {
   // the browser). Rarely needed — the app renders the .wdl directly — but handy
   // for sharing a resolved config.
   $("download").addEventListener("click", async () => {
-    const { config, diagnostics } = compileWithDiagnostics(editor.getValue(), { resolveModule: stdResolveModule });
+    const { config, diagnostics } = compileWithDiagnostics(editor.getValue(), { resolveModule });
     if (!config) {
       setStatus(`can't export — fix ${diagnostics.length} error${diagnostics.length === 1 ? "" : "s"}`, true);
       return;
@@ -538,6 +547,131 @@ function wireToolbar(): void {
   });
 }
 wireToolbar();
+
+// ---- Libraries: save the current .wdl as a reusable module + reuse saved ones.
+// A small promise-based prompt (window.prompt is unreliable in the Tauri webview).
+function promptName(message: string, initial = ""): Promise<string | null> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;";
+    const box = document.createElement("div");
+    box.style.cssText =
+      "background:#2a2a2a;color:#eee;padding:16px 18px;border-radius:8px;min-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.5);font:13px system-ui,sans-serif;";
+    const label = document.createElement("div");
+    label.textContent = message;
+    label.style.cssText = "margin-bottom:10px;";
+    const input = document.createElement("input");
+    input.value = initial;
+    input.style.cssText =
+      "width:100%;box-sizing:border-box;padding:6px 8px;background:#1e1e1e;color:#eee;border:1px solid #555;border-radius:4px;margin-bottom:12px;font:13px ui-monospace,monospace;";
+    const btns = document.createElement("div");
+    btns.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
+    const mk = (t: string, bg: string) => {
+      const b = document.createElement("button");
+      b.textContent = t;
+      b.style.cssText = `padding:5px 14px;background:${bg};color:#fff;border:none;border-radius:4px;cursor:pointer;font:13px system-ui;`;
+      return b;
+    };
+    const ok = mk("Save", "#2e7d46");
+    const cancel = mk("Cancel", "#555");
+    const done = (v: string | null) => { overlay.remove(); resolve(v); };
+    ok.addEventListener("click", () => done(input.value.trim() || null));
+    cancel.addEventListener("click", () => done(null));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") done(input.value.trim() || null);
+      else if (e.key === "Escape") done(null);
+    });
+    btns.append(cancel, ok);
+    box.append(label, input, btns);
+    overlay.append(box);
+    document.body.append(overlay);
+    input.focus();
+    input.select();
+  });
+}
+
+async function saveCurrentAsLibrary(): Promise<void> {
+  const src = editor.getValue();
+  const { diagnostics } = compileWithDiagnostics(src, { resolveModule });
+  if (diagnostics.length) {
+    setStatus(`can't save library — fix ${diagnostics.length} syntax error${diagnostics.length === 1 ? "" : "s"} first`, true);
+    return;
+  }
+  const suggested = isValidModuleName(currentName) ? currentName : "";
+  const name = await promptName('Library name — used in  import "…" :', suggested);
+  if (!name) return;
+  if (!isValidModuleName(name)) {
+    setStatus(`invalid library name "${name}" — use letters, digits, _ - / (no spaces)`, true);
+    return;
+  }
+  saveToShelf(name, src);
+  setStatus(`✓ saved library "${name}" — reuse with:  import "${name}" as ns`);
+}
+
+// Insert `import "name" as ns` just inside the `house … {` header (or at the top
+// for a module file). ns is a safe identifier derived from the last path segment.
+function insertImport(name: string): void {
+  const ns = (name.split("/").pop() || name).replace(/[^A-Za-z0-9_]/g, "_").replace(/^(?=\d)/, "_") || "lib";
+  const lines = editor.getValue().split("\n");
+  const hi = lines.findIndex((l) => /^\s*house\b.*\{\s*$/.test(l));
+  const insLine = hi >= 0 ? hi + 2 : 1;
+  const indent = hi >= 0 ? "  " : "";
+  editor.executeEdits("insert-import", [
+    { range: new monaco.Range(insLine, 1, insLine, 1), text: `${indent}import "${name}" as ${ns}\n`, forceMoveMarkers: true },
+  ]);
+  editor.focus();
+}
+
+function openLibraryInEditor(name: string): void {
+  const src = getShelf()[name];
+  if (src === undefined) return;
+  detachFile();
+  editor.setValue(src);
+  currentName = name;
+  updateFileLabel();
+  setStatus(`editing library "${name}" — "Save current as library" updates it`);
+}
+
+function wireLibraryMenu(): void {
+  const btn = document.getElementById("library")!;
+  const menu = document.getElementById("library-menu")!;
+  const render = () => {
+    const libs = listLibraries();
+    const rows = libs
+      .map((l) => {
+        const tools =
+          l.origin === "shelf"
+            ? `<button class="lib-tool" data-edit="${escHtml(l.name)}" title="Open in editor">✎</button>` +
+              `<button class="lib-tool" data-del="${escHtml(l.name)}" title="Delete">×</button>`
+            : "";
+        return (
+          `<div class="lib-row"><button class="lib-import" data-import="${escHtml(l.name)}" title="Insert import statement">` +
+          `${escHtml(l.name)} <span class="desc">— ${l.origin}</span></button>${tools}</div>`
+        );
+      })
+      .join("");
+    menu.innerHTML =
+      `<button id="lib-save">💾 Save current as library…</button>` +
+      (libs.length
+        ? `<div class="lib-sep"></div>${rows}`
+        : `<div class="lib-empty">No libraries yet. Save one — or, in the desktop app, drop a <code>.wdl</code> beside your file.</div>`);
+    document.getElementById("lib-save")!.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = true; void saveCurrentAsLibrary(); });
+    menu.querySelectorAll<HTMLElement>("[data-import]").forEach((el) =>
+      el.addEventListener("click", (e) => { e.stopPropagation(); insertImport(el.dataset.import!); menu.hidden = true; }));
+    menu.querySelectorAll<HTMLElement>("[data-edit]").forEach((el) =>
+      el.addEventListener("click", (e) => { e.stopPropagation(); openLibraryInEditor(el.dataset.edit!); menu.hidden = true; }));
+    menu.querySelectorAll<HTMLElement>("[data-del]").forEach((el) =>
+      el.addEventListener("click", (e) => { e.stopPropagation(); deleteFromShelf(el.dataset.del!); render(); run(); }));
+  };
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (menu.hidden) render();
+    menu.hidden = !menu.hidden;
+  });
+  document.addEventListener("click", () => { menu.hidden = true; });
+}
+wireLibraryMenu();
 
 // Expose the editor + monaco for scripting/automation of the demo.
 (window as unknown as { wadiEditor: typeof editor; monaco: typeof monaco }).wadiEditor = editor;
