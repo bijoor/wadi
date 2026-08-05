@@ -140,6 +140,7 @@
       </div>
     </div>
     <button id="open" class="tb-btn" title="Open a .wdl file (⌘O)">📂 Open</button>
+    <button id="import" class="tb-btn" title="Import a .wadi house → decompile it to editable WDL code">↩ Import .wadi</button>
     <button id="save" class="tb-btn" title="Save the .wdl (⌘S)">💾 Save</button>
     <button id="saveas" class="tb-btn" title="Save to a new file (⇧⌘S)">Save As…</button>
     <button id="download" class="tb-btn" title="Export the compiled .wadi">⬇ .wadi</button>
@@ -172,6 +173,7 @@
     </aside>
   </main>
   <input type="file" id="file" accept=".wdl,.txt" hidden />
+  <input type="file" id="wadi-file" accept=".wadi,.json" hidden />
   <script type="module" src="./main.ts"></script>
 </body>
 </html>

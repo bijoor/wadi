@@ -15,6 +15,7 @@ import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { isTauri } from "@tauri-apps/api/core";
 import { registerWadiDsl, LANG_ID } from "./dsl-language";
 import { compileWithDiagnostics } from "../src/generator/toHouseConfig";
+import { emitWdl } from "../src/generator/fromHouseConfig";
 import { stdResolveModule } from "./std-modules";
 import { resolveParametric } from "../../editor/src/param/resolve";
 import {
@@ -402,6 +403,48 @@ function downloadText(name: string, text: string, type: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
+// Turn a filename into a valid house identifier for the `house <Name> {` header
+// (letters/digits/underscore, must start with a letter). Falls back to "House".
+function toHouseName(fileBase: string): string {
+  const id = fileBase.replace(/[^A-Za-z0-9_]/g, "_").replace(/^(?=[0-9])/, "H_").replace(/^_+/, "");
+  return /^[A-Za-z_]/.test(id) ? id : "House";
+}
+
+// Decompile a .wadi (JSON house config) → editable .wdl, loaded as a FRESH,
+// unsaved document (the source is JSON, not a .wdl to co-edit). The compiled
+// preview then re-renders from the emitted code, so a bad round-trip is visible.
+function loadDecompiledWadi(jsonText: string, nameHint: string): void {
+  let cfg: unknown;
+  try {
+    cfg = JSON.parse(jsonText);
+  } catch (e) {
+    setStatus(`import failed — not valid JSON: ${(e as Error).message}`, true);
+    return;
+  }
+  let wdl: string;
+  try {
+    wdl = emitWdl(cfg as Record<string, unknown>, toHouseName(nameHint));
+  } catch (e) {
+    setStatus(`import failed — could not decompile: ${(e as Error).message}`, true);
+    return;
+  }
+  detachFile();            // decompiled code is a new unsaved doc (Save As to keep it)
+  editor.setValue(wdl);    // fires onDidChangeModelContent → recompile + render
+  currentName = nameHint || "house";
+  updateFileLabel();
+  setStatus(`↩ decompiled ${nameHint || "house"}.wadi → WDL (unsaved — Save As to keep)`);
+}
+
+async function importWadiNative(): Promise<void> {
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const picked = await open({ multiple: false, filters: [{ name: "Wadi house", extensions: ["wadi", "json"] }] });
+  const path = typeof picked === "string" ? picked : null;
+  if (!path) return;
+  const { readTextFile } = await import("@tauri-apps/plugin-fs");
+  const base = (path.split(/[/\\]/).pop() ?? "house").replace(/\.(wadi|json)$/i, "") || "house";
+  loadDecompiledWadi(await readTextFile(path), base);
+}
+
 function wireToolbar(): void {
   const $ = (id: string) => document.getElementById(id)!;
 
@@ -441,6 +484,20 @@ function wireToolbar(): void {
     editor.setValue(await f.text());
     currentName = f.name.replace(/\.(wdl|txt)$/i, "") || "house";
     file.value = "";
+  });
+
+  // Import a .wadi house and decompile it into editable WDL. Desktop → native
+  // dialog; browser → a one-shot file read.
+  const wadiFile = $("wadi-file") as HTMLInputElement;
+  $("import").addEventListener("click", () => {
+    if (isTauri()) void importWadiNative();
+    else wadiFile.click();
+  });
+  wadiFile.addEventListener("change", async () => {
+    const f = wadiFile.files?.[0];
+    if (!f) return;
+    loadDecompiledWadi(await f.text(), f.name.replace(/\.(wadi|json)$/i, "") || "house");
+    wadiFile.value = "";
   });
 
   // Save (desktop → to the watched file / Save-As dialog; browser → download).

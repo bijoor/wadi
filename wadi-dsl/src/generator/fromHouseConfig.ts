@@ -1,0 +1,448 @@
+// DECOMPILER — HouseConfig (.wadi JSON) → .wdl source text. The inverse of
+// toHouseConfig: it walks a canonical config and emits DSL that compiles back to
+// (a config deep-equal to) the input. Round-trip is exact for DSL-authored
+// configs (see reference-roundtrip test); form-authored configs may use a few
+// features the grammar can't express (formula-driven `defaults`, `site ref`,
+// configurator title/groups) — those emit their resolved literal value, so the
+// house stays geometrically identical but the parametric link on those specific
+// fields is dropped.
+//
+// Design mirror of toHouseConfig.ts: one emit* per object type, dispatched by
+// `type`. Every positional/measure field is emitted as `formula ?? literal`
+// (formulas live in each object's `formulas` map as "= <expr>" strings).
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Obj = Record<string, any>;
+
+// ---- primitives -----------------------------------------------------------
+
+// Number formatting, matching the compiler's numText (integers bare, floats
+// trimmed of trailing zeros).
+function num(n: number): string {
+  if (!Number.isFinite(n)) return "0";
+  if (Number.isInteger(n)) return String(n);
+  return String(Number(n.toFixed(6))).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+}
+
+// A config value that is either a literal number or a "= <expr>" formula string
+// (used for vars / point coords / grid `at`).
+function val(v: unknown): string {
+  if (typeof v === "string") return v.replace(/^=\s*/, "").trim();
+  if (typeof v === "number") return num(v);
+  return "0";
+}
+
+// A field on an object: prefer its formula (from `.formulas`), else the literal.
+function fld(o: Obj, key: string): string {
+  const f = o.formulas?.[key];
+  if (typeof f === "string") return f.replace(/^=\s*/, "").trim();
+  return num(Number(o[key] ?? 0));
+}
+const has = (o: Obj, key: string): boolean =>
+  o[key] !== undefined || o.formulas?.[key] !== undefined;
+
+// A double-quoted string literal.
+function str(s: string): string {
+  return JSON.stringify(String(s));
+}
+
+// A simple line writer with indentation.
+class W {
+  private lines: string[] = [];
+  line(indent: number, text: string) {
+    this.lines.push("  ".repeat(indent) + text);
+  }
+  blank() {
+    this.lines.push("");
+  }
+  toString() {
+    return this.lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
+  }
+}
+
+// The `Common` fragment (z_offset? enabled? layer?) + optional trailing material.
+function commonSuffix(o: Obj, withMaterial = true): string {
+  const parts: string[] = [];
+  if (has(o, "z_offset")) parts.push(`z_offset ${fld(o, "z_offset")}`);
+  if (has(o, "enabled")) parts.push(`enabled ${fld(o, "enabled")}`);
+  if (o.layer !== undefined) parts.push(`layer ${str(o.layer)}`);
+  if (withMaterial && o.material !== undefined) parts.push(`material ${str(o.material)}`);
+  return parts.length ? " " + parts.join(" ") : "";
+}
+
+const at = (o: Obj) => `at (${fld(o, "x")}, ${fld(o, "y")})`;
+const size = (o: Obj) => `size (${fld(o, "width")}, ${fld(o, "length")})`;
+
+// ---- objects --------------------------------------------------------------
+
+function emitOpening(op: Obj): string {
+  let s = `${op.kind} ${op.name} at ${fld(op, "offset")} size (${fld(op, "width")}, ${fld(op, "height")})`;
+  if (has(op, "sill_height")) s += ` sill ${fld(op, "sill_height")}`;
+  else if (has(op, "sill")) s += ` sill ${fld(op, "sill")}`;
+  if (op.open) s += " open";
+  return s;
+}
+
+function emitRoomItem(w: W, indent: number, it: Obj): void {
+  // Room-nested item (no x/y — anchored). asset inline, then anchor/gap/rotation/scale.
+  const head = it.name ? `item ${str(it.name)} ` : "item ";
+  w.line(indent, head + assetText(it) + roomItemTail(it));
+}
+function assetText(it: Obj): string {
+  const a = it.asset ?? {};
+  const d = a.dimensions ?? [0, 0, 0];
+  let s = `asset { id ${str(a.id)} src ${str(a.src)} dims (${num(d[0])}, ${num(d[1])}, ${num(d[2])})`;
+  if (a.name !== undefined) s += ` name ${str(a.name)}`;
+  if (a.category !== undefined) s += ` category ${str(a.category)}`;
+  return s + " }";
+}
+function roomItemTail(it: Obj): string {
+  let s = "";
+  if (it.anchor !== undefined) s += ` anchor ${it.anchor}`;
+  if (has(it, "gap_x") || has(it, "gap_y")) s += ` gap (${fld(it, "gap_x")}, ${fld(it, "gap_y")})`;
+  if (has(it, "rotation")) s += ` rotation ${fld(it, "rotation")}`;
+  if (has(it, "scale")) s += ` scale ${fld(it, "scale")}`;
+  return s + commonSuffix(it, false);
+}
+
+function emitRoom(w: W, indent: number, o: Obj): void {
+  let head = `room ${o.name} ${at(o)} ${size(o)}`;
+  if (has(o, "height")) head += ` height ${fld(o, "height")}`;
+  head += commonSuffix(o);
+  const walls = o.walls && !Array.isArray(o.walls) ? (o.walls as Record<string, Obj>) : {};
+  const items = Array.isArray(o.items) ? (o.items as Obj[]) : [];
+  const wallSides = Object.entries(walls);
+  const hasBody = wallSides.length > 0 || items.length > 0;
+  if (!hasBody) {
+    w.line(indent, head);
+    return;
+  }
+  w.line(indent, head + " {");
+  // Emit walls in their ORIGINAL order (so the side order round-trips). Collapse
+  // only a RUN of consecutive plain walls into one `wall a b c` line; a wall with
+  // openings or a per-side height gets its own statement.
+  let run: string[] = [];
+  const flush = () => { if (run.length) { w.line(indent + 1, `wall ${run.join(" ")}`); run = []; } };
+  for (const [sideName, wobj] of wallSides) {
+    const special = (Array.isArray(wobj?.openings) && wobj.openings.length > 0) || has(wobj, "height") || has(wobj, "height_end");
+    if (!special) { run.push(sideName); continue; }
+    flush();
+    let wl = `wall ${sideName}`;
+    if (has(wobj, "height")) wl += ` height ${fld(wobj, "height")}`;
+    if (has(wobj, "height_end")) wl += ` height_end ${fld(wobj, "height_end")}`;
+    const ops = Array.isArray(wobj.openings) ? (wobj.openings as Obj[]) : [];
+    if (!ops.length) { w.line(indent + 1, wl); continue; }
+    w.line(indent + 1, wl + " {");
+    for (const op of ops) w.line(indent + 2, emitOpening(op));
+    w.line(indent + 1, "}");
+  }
+  flush();
+  for (const it of items) emitRoomItem(w, indent + 1, it);
+  w.line(indent, "}");
+}
+
+function emitWall(w: W, indent: number, o: Obj): void {
+  let head = `wall ${o.name} from (${fld(o, "start_x")}, ${fld(o, "start_y")}) to (${fld(o, "end_x")}, ${fld(o, "end_y")})`;
+  if (has(o, "height")) head += ` height ${fld(o, "height")}`;
+  if (has(o, "height_end")) head += ` height_end ${fld(o, "height_end")}`;
+  if (o.facing !== undefined) head += ` facing ${o.facing}`;
+  head += commonSuffix(o);
+  const openings = Array.isArray(o.openings) ? (o.openings as Obj[]) : [];
+  if (!openings.length) {
+    w.line(indent, head);
+    return;
+  }
+  w.line(indent, head + " {");
+  for (const op of openings) w.line(indent + 1, emitOpening(op));
+  w.line(indent, "}");
+}
+
+function emitPillar(w: W, indent: number, o: Obj): void {
+  let s = `pillar ${o.name} ${at(o)} ${size(o)}`;
+  if (has(o, "height")) s += ` height ${fld(o, "height")}`;
+  w.line(indent, s + commonSuffix(o, false));
+}
+
+function emitNamedBox(w: W, indent: number, kw: string, o: Obj, opts: { height?: boolean; thickness?: boolean; material?: boolean } = {}): void {
+  let s = kw;
+  if (o.name !== undefined) s += ` name ${str(o.name)}`;
+  s += ` ${at(o)} ${size(o)}`;
+  if (opts.thickness && has(o, "thickness")) s += ` thickness ${fld(o, "thickness")}`;
+  if (opts.height && has(o, "height")) s += ` height ${fld(o, "height")}`;
+  w.line(indent, s + commonSuffix(o, opts.material ?? false));
+}
+
+function emitStaircase(w: W, indent: number, o: Obj): void {
+  let s = "staircase";
+  if (o.name !== undefined) s += ` name ${str(o.name)}`;
+  s += ` at (${fld(o, "start_x")}, ${fld(o, "start_y")}) step (${fld(o, "step_rise")}, ${fld(o, "step_tread")}, ${fld(o, "step_width")}) direction ${o.direction}`;
+  if (has(o, "rise_height")) s += ` total_height ${fld(o, "rise_height")}`;
+  if (has(o, "max_run")) s += ` max_run ${fld(o, "max_run")}`;
+  if (has(o, "landing_depth")) s += ` landing_depth ${fld(o, "landing_depth")}`;
+  if (has(o, "landing_thickness")) s += ` landing_thickness ${fld(o, "landing_thickness")}`;
+  if (o.turn !== undefined) s += ` turn ${o.turn}`;
+  if (has(o, "flight_gap")) s += ` flight_gap ${fld(o, "flight_gap")}`;
+  w.line(indent, s + commonSuffix(o));
+}
+
+function emitKitchen(w: W, indent: number, o: Obj): void {
+  let s = "kitchen";
+  if (o.name !== undefined) s += ` name ${str(o.name)}`;
+  const path = (o.path ?? []).map((p: number[]) => `(${num(p[0])}, ${num(p[1])})`).join(", ");
+  s += ` path (${path}) side ${o.side} depth ${fld(o, "depth")} height ${fld(o, "height")}`;
+  if (has(o, "base_z")) s += ` base_z ${fld(o, "base_z")}`;
+  w.line(indent, s + commonSuffix(o));
+}
+
+function emitItem(w: W, indent: number, o: Obj): void {
+  let s = "item";
+  if (o.name !== undefined) s += ` name ${str(o.name)}`;
+  s += " " + assetText(o) + ` ${at(o)}`;
+  if (has(o, "rotation")) s += ` rotation ${fld(o, "rotation")}`;
+  if (has(o, "scale")) s += ` scale ${fld(o, "scale")}`;
+  if (o.anchor_to !== undefined) s += ` anchor_to ${str(o.anchor_to)}`;
+  if (o.anchor !== undefined) s += ` anchor ${o.anchor}`;
+  if (has(o, "gap_x") || has(o, "gap_y")) s += ` gap (${fld(o, "gap_x")}, ${fld(o, "gap_y")})`;
+  w.line(indent, s + commonSuffix(o, false));
+}
+
+function emitComponentUse(w: W, indent: number, o: Obj): void {
+  // config: { type:"component", ref:"[ns.]Name", name?, params?, x, y, ... }.
+  // The config inlines imported components (keyed "ns.Name") and drops the import
+  // source, so we decompile to a SELF-CONTAINED file: strip the namespace and
+  // reference the (now-local) component by its base name.
+  let s = `use ${baseName(o.ref)}`;
+  if (o.name !== undefined) s += ` as ${str(o.name)}`;
+  s += ` ${at(o)}`;
+  const params = o.params ?? {};
+  const args = Object.entries(params);
+  if (args.length) s += ` with { ${args.map(([k, v]) => `${k} = ${val(v)}`).join(", ")} }`;
+  w.line(indent, s + commonSuffix(o, false));
+}
+
+function slopeText(o: Obj): string | null {
+  if (o.slope_left && o.slope_right) {
+    return `slope angle (${num(o.slope_left.angle_deg)}, ${num(o.slope_right.angle_deg)})`;
+  }
+  if (o.slope) {
+    return o.slope.by === "height" ? `slope height ${num(o.slope.ridge_h)}` : `slope angle ${num(o.slope.angle_deg)}`;
+  }
+  return null;
+}
+
+function emitSegment(w: W, indent: number, s: Obj): void {
+  const start = s.start ?? [0, 0], end = s.end ?? [0, 0];
+  let line = `segment ${str(s.id)} from (${fld2(s, "start", 0, start[0])}, ${fld2(s, "start", 1, start[1])}) to (${fld2(s, "end", 0, end[0])}, ${fld2(s, "end", 1, end[1])}) width ${fld(s, "width")}`;
+  if (s.shed_high_side !== undefined) line += ` high_side ${s.shed_high_side}`;
+  if (s.start_endpoint !== undefined) line += ` start_endpoint ${s.start_endpoint}`;
+  if (s.end_endpoint !== undefined) line += ` end_endpoint ${s.end_endpoint}`;
+  if (has(s, "hip_setback_start") || has(s, "hip_setback_end"))
+    line += ` hip_setback (${fld(s, "hip_setback_start")}, ${fld(s, "hip_setback_end")})`;
+  if (has(s, "gable_overhang_start") || has(s, "gable_overhang_end"))
+    line += ` gable_overhang (${fld(s, "gable_overhang_start")}, ${fld(s, "gable_overhang_end")})`;
+  if (has(s, "hip_ridge_extension_start") || has(s, "hip_ridge_extension_end"))
+    line += ` hip_ridge_extension (${fld(s, "hip_ridge_extension_start")}, ${fld(s, "hip_ridge_extension_end")})`;
+  for (const k of ["min_overhang", "overhang_start", "overhang_end", "overhang_low", "overhang_high", "overhang_left", "overhang_right"] as const) {
+    if (has(s, k)) line += ` ${k === "min_overhang" ? "overhang" : k} ${fld(s, k)}`;
+  }
+  if (has(s, "tie_beam_count")) line += ` tie_beams ${num(Number(s.tie_beam_count))}`;
+  w.line(indent, line);
+}
+// start/end are [x,y] arrays; formulas (if any) would be keyed e.g. "start_x".
+function fld2(s: Obj, base: "start" | "end", i: 0 | 1, literal: number): string {
+  const key = `${base}_${i === 0 ? "x" : "y"}`;
+  const f = s.formulas?.[key];
+  if (typeof f === "string") return f.replace(/^=\s*/, "").trim();
+  return num(Number(literal));
+}
+
+function emitRoof(w: W, indent: number, o: Obj): void {
+  let head = "roof";
+  if (o.name !== undefined) head += ` name ${str(o.name)}`;
+  head += ` ${o.roof_type}`;
+  if (o.default_endpoint !== undefined) head += ` endpoint ${o.default_endpoint}`;
+  const sl = slopeText(o);
+  if (sl) head += " " + sl;
+  if (has(o, "min_overhang")) head += ` overhang ${fld(o, "min_overhang")}`;
+  if (has(o, "slab_thickness")) head += ` slab_thickness ${fld(o, "slab_thickness")}`;
+  if (has(o, "parapet_height") || has(o, "parapet_thickness")) head += ` parapet ${fld(o, "parapet_height")} x ${fld(o, "parapet_thickness")}`;
+  if (has(o, "gable_wall_thickness")) head += ` gable_wall_thickness ${fld(o, "gable_wall_thickness")}`;
+  head += commonSuffix(o, false);
+  if (o.material !== undefined) head += ` material ${str(o.material)}`;
+  const segs = Array.isArray(o.segments) ? (o.segments as Obj[]) : [];
+  const trusses = Array.isArray(o.trusses) ? (o.trusses as Obj[]) : [];
+  w.line(indent, head + " {");
+  for (const s of segs) emitSegment(w, indent + 1, s);
+  for (const t of trusses) {
+    const pos = (t.positions_along ?? []).map((p: number) => num(p)).join(", ");
+    w.line(indent + 1, `truss ${str(t.segment_id)} ${t.type} at (${pos})`);
+  }
+  w.line(indent, "}");
+}
+
+function emitRaw(w: W, indent: number, o: Obj): void {
+  const { type, ...body } = o;
+  w.line(indent, `raw ${str(type)} ${JSON.stringify(body)}`);
+}
+
+function emitFloorObject(w: W, indent: number, o: Obj): void {
+  switch (o.type) {
+    case "room": return emitRoom(w, indent, o);
+    case "wall": return emitWall(w, indent, o);
+    case "pillar": return emitPillar(w, indent, o);
+    case "beam": return emitNamedBox(w, indent, "beam", o, { height: true });
+    case "floor_slab": return emitNamedBox(w, indent, "slab", o, { thickness: true });
+    case "plinth": return emitNamedBox(w, indent, "plinth", o, { height: true, material: true });
+    case "ground": return emitNamedBox(w, indent, "ground", o, { height: true, material: true });
+    case "staircase": return emitStaircase(w, indent, o);
+    case "kitchen_platform": return emitKitchen(w, indent, o);
+    case "item": return emitItem(w, indent, o);
+    case "component": return emitComponentUse(w, indent, o);
+    case "roof": return emitRoof(w, indent, o);
+    default: return emitRaw(w, indent, o);
+  }
+}
+
+// ---- header / parametric-core sections ------------------------------------
+
+function emitVars(w: W, indent: number, vars: Record<string, unknown>): void {
+  for (const [name, v] of Object.entries(vars)) w.line(indent, `var ${name} = ${val(v)}`);
+}
+function emitPoints(w: W, indent: number, points: Record<string, Obj>): void {
+  for (const [name, p] of Object.entries(points)) w.line(indent, `point ${name} { x = ${val(p.x)}, y = ${val(p.y)} }`);
+}
+function emitGrids(w: W, indent: number, grids: Record<string, Obj>): void {
+  const line = (l: Obj) => {
+    let s = `${l.name} @ ${val(l.at)}`;
+    if (l.thickness !== undefined) s += ` thick ${val(l.thickness)}`;
+    if (l.role !== undefined) s += ` role ${l.role}`;
+    return s;
+  };
+  for (const [name, g] of Object.entries(grids)) {
+    w.line(indent, `grid ${name} {`);
+    w.line(indent + 1, `x : ${(g.x ?? []).map(line).join(", ")}`);
+    w.line(indent + 1, `y : ${(g.y ?? []).map(line).join(", ")}`);
+    w.line(indent, `}`);
+  }
+}
+function emitConfigurator(w: W, indent: number, cfgr: Obj): void {
+  // The DSL configurator is a subset of the config's: it has no title/description/
+  // groups, its input `target` must be a plain identifier (a var name), and
+  // control is inferred by shape when absent (form-authored inputs omit it). Emit
+  // only DSL-expressible inputs; skip the rest (configurator is UI metadata, not
+  // geometry). If nothing is expressible, drop the block entirely.
+  const inputs = Array.isArray(cfgr.inputs) ? (cfgr.inputs as Obj[]) : [];
+  const control = (i: Obj): string =>
+    (i.control as string) ?? (Array.isArray(i.options) ? "select" : i.min !== undefined ? "slider" : "number");
+  const idTarget = (i: Obj): boolean => typeof i.target === "string" && /^[A-Za-z_]\w*$/.test(i.target);
+  const lines: string[] = [];
+  for (const i of inputs) {
+    if (!idTarget(i)) continue; // dotted point/field target — not DSL-expressible
+    const unit = i.unit ? ` ${i.unit}` : "";
+    switch (control(i)) {
+      case "slider":
+        if (i.min === undefined || i.max === undefined) break;
+        lines.push(`slider ${i.target} ${str(i.label)}${unit} [${num(i.min)}..${num(i.max)}${i.step !== undefined ? ` step ${num(i.step)}` : ""}]`);
+        break;
+      case "toggle":
+        lines.push(`toggle ${i.target} ${str(i.label)}`);
+        break;
+      case "select": {
+        // DSL SelectOption is `label=ID '=' value=NUMBER` — the option label must
+        // be a plain identifier. Form-authored options carry free-text display
+        // labels ("10 ft (standard)"), which can't be expressed; skip such selects.
+        const opts = (i.options ?? []) as Obj[];
+        if (!opts.length || !opts.every((o) => typeof o.label === "string" && /^[A-Za-z_]\w*$/.test(o.label))) break;
+        lines.push(`select ${i.target} ${str(i.label)} { ${opts.map((o) => `${o.label} = ${num(o.value)}`).join(", ")} }`);
+        break;
+      }
+      default:
+        lines.push(`number ${i.target} ${str(i.label)}${unit}`);
+    }
+  }
+  if (!lines.length) return;
+  w.line(indent, "configurator {");
+  for (const l of lines) w.line(indent + 1, l);
+  w.line(indent, "}");
+}
+function emitLayers(w: W, indent: number, layers: Obj[]): void {
+  for (const l of layers) {
+    let s = `layer ${str(l.id)} ${str(l.label ?? l.name ?? l.id)}`;
+    if (l.color !== undefined) s += ` color ${str(l.color)}`;
+    if (l.group !== undefined) s += ` group ${str(l.group)}`;
+    w.line(indent, s);
+  }
+}
+
+// "kb.Kitchen" → "Kitchen"; "Bench" → "Bench". Namespaces are flattened because a
+// decompiled file is self-contained (no imports).
+function baseName(ref: string): string {
+  return ref.includes(".") ? ref.slice(ref.lastIndexOf(".") + 1) : ref;
+}
+
+function emitComponentDef(w: W, indent: number, name: string, def: Obj): void {
+  let head = `component ${baseName(name)}`;
+  if (def.goal !== undefined) head += ` goal ${str(def.goal)}`;
+  w.line(indent, head + " {");
+  if (def.params) for (const p of def.params as Obj[]) {
+    let s = `param ${p.name}`;
+    if (p.default !== undefined) s += ` = ${num(p.default)}`;
+    if (p.label !== undefined) s += ` label ${str(p.label)}`;
+    w.line(indent + 1, s);
+  }
+  if (def.variables) emitVars(w, indent + 1, def.variables);
+  if (def.points) emitPoints(w, indent + 1, def.points);
+  for (const o of (def.objects ?? []) as Obj[]) emitFloorObject(w, indent + 1, o);
+  w.line(indent, "}");
+}
+
+// ---- top level ------------------------------------------------------------
+
+export function emitWdl(config: Obj, houseName = "House"): string {
+  const w = new W();
+  const name = (typeof config.name === "string" && /^[A-Za-z_]\w*$/.test(config.name)) ? config.name : houseName;
+
+  // Top-level component library (before `house`).
+  if (config.components && typeof config.components === "object") {
+    for (const [cname, def] of Object.entries(config.components as Record<string, Obj>)) emitComponentDef(w, 0, cname, def);
+    w.blank();
+  }
+
+  w.line(0, `house ${name} {`);
+  if (config.coord_convention === "center" || config.coord_convention === "outer")
+    w.line(1, `convention ${config.coord_convention}`);
+  if (config.units?.system)
+    w.line(1, `units ${config.units.system}${config.units.per_unit !== undefined ? ` per_unit ${num(config.units.per_unit)}` : ""}`);
+  if (config.site) {
+    const s = config.site;
+    let sl = `site { plot (${fld(s, "plot_width")}, ${fld(s, "plot_length")})`;
+    if (s.reference_x || s.reference_y) sl += ` ref (${num(s.reference_x ?? 0)}, ${num(s.reference_y ?? 0)})`;
+    w.line(1, sl + " }");
+  }
+  if (config.defaults) {
+    const d = config.defaults;
+    const parts: string[] = [];
+    for (const k of ["floor_height", "wall_height", "slab_thickness", "wall_thickness"] as const)
+      if (d[k] !== undefined) parts.push(`${k} ${num(d[k])}`);
+    if (parts.length) w.line(1, `defaults { ${parts.join(" ")} }`);
+  }
+  if (config.variables && Object.keys(config.variables).length) { w.blank(); emitVars(w, 1, config.variables); }
+  if (config.points && Object.keys(config.points).length) emitPoints(w, 1, config.points);
+  if (config.grids && Object.keys(config.grids).length) { w.blank(); emitGrids(w, 1, config.grids); }
+  if (config.configurator) { w.blank(); emitConfigurator(w, 1, config.configurator); }
+  if (Array.isArray(config.layers) && config.layers.length) { w.blank(); emitLayers(w, 1, config.layers); }
+
+  for (const floor of (config.floors ?? []) as Obj[]) {
+    w.blank();
+    let fh = `floor ${num(floor.floor_number)} ${str(floor.name)}`;
+    if (floor.height !== undefined) fh += ` height ${num(floor.height)}`;
+    if (floor.wall_height !== undefined) fh += ` wall_height ${num(floor.wall_height)}`;
+    if (floor.slab_thickness !== undefined) fh += ` slab_thickness ${num(floor.slab_thickness)}`;
+    w.line(1, fh + " {");
+    for (const o of (floor.objects ?? []) as Obj[]) emitFloorObject(w, 2, o);
+    w.line(1, "}");
+  }
+
+  w.line(0, "}");
+  return w.toString();
+}
