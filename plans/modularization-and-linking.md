@@ -1,7 +1,26 @@
 # Proper modularization & linking — a framework capability
 
-**Status:** exploration / design (not started). Keep the current one-level module
-system running; this is about the *right* long-term shape.
+**Status: SHIPPED ✅ (Path B, commit `1bb454a`).** The Wadi DSL compiler now
+resolves `use`/`item` as real Langium cross-references via a `WadiScopeProvider`
+over the imported-module documents (`wadi-dsl/src/language/wadi-scope.ts`), fed by
+a sync `linkProject` loader in `toHouseConfig.ts`. Nested + transitive + cross-
+library components work; output is **byte-identical** to the prior hand-rolled
+linker on every example (parity-gated). Key realisation vs the plan below: a
+self-contained ScopeProvider (reads imported ASTs straight from `LangiumDocuments`)
+resolves references **lazily and synchronously** on `.ref` access, so **no async
+`DocumentBuilder.build` is needed** and `compileDsl` kept its signature — the async
+ripple the plan worried about (§7/§8) never materialised. Assets are cross-refs
+too. Still open: the **LSP editor layer** (go-to-def / rename / find-references in
+the WDL editor) — the linking substrate is in place, but wiring the Langium LSP
+into the Monaco playground is a separate increment.
+
+**History below** was the exploration/design (Path A vs B, the spike). Retained
+for the rationale.
+
+---
+
+**Original status:** exploration / design (not started). Keep the current one-level
+module system running; this is about the *right* long-term shape.
 
 **Why this matters beyond Wadi.** The real product is a **framework for building
 domain DSLs** — a Langium grammar + a custom execution engine — that a domain
