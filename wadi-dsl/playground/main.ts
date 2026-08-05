@@ -18,10 +18,10 @@ import { compileWithDiagnostics } from "../src/generator/toHouseConfig";
 import { emitWdl } from "../src/generator/fromHouseConfig";
 import {
   resolveModule,
-  reloadFileModules,
-  getShelf,
-  saveToShelf,
-  deleteFromShelf,
+  loadFolderLibraries,
+  loadLibrary,
+  removeLibrary,
+  getLibrarySource,
   isValidModuleName,
   listLibraries,
 } from "./libraries";
@@ -281,7 +281,7 @@ async function attachFile(path: string): Promise<void> {
   currentName = (path.split(/[/\\]/).pop() ?? "house").replace(/\.(wdl|txt)$/i, "") || "house";
   const text = await readTextFile(path);
   lastDiskText = text;
-  await reloadFileModules(path);             // sibling *.wdl become importable before the first compile
+  await loadFolderLibraries(path);             // sibling *.wdl become importable before the first compile
   editor.setValue(text);                     // fires onDidChangeModelContent → recompile + render
   updateFileLabel();
   const stop = await watch(
@@ -605,7 +605,7 @@ async function saveCurrentAsLibrary(): Promise<void> {
     setStatus(`invalid library name "${name}" — use letters, digits, _ - / (no spaces)`, true);
     return;
   }
-  saveToShelf(name, src);
+  loadLibrary(name, src, "saved");
   setStatus(`✓ saved library "${name}" — reuse with:  import "${name}" as ns`);
 }
 
@@ -624,7 +624,7 @@ function insertImport(name: string): void {
 }
 
 function openLibraryInEditor(name: string): void {
-  const src = getShelf()[name];
+  const src = getLibrarySource(name);
   if (src === undefined) return;
   detachFile();
   editor.setValue(src);
@@ -633,36 +633,64 @@ function openLibraryInEditor(name: string): void {
   setStatus(`editing library "${name}" — "Save current as library" updates it`);
 }
 
+// Load a .wdl file INTO the cache (desktop → native dialog; browser → file
+// upload). The same uniform "cache of loaded libraries" both surfaces resolve from.
+async function loadLibraryFileNative(): Promise<void> {
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const picked = await open({ multiple: false, filters: [{ name: "Wadi library", extensions: ["wdl"] }] });
+  const path = typeof picked === "string" ? picked : null;
+  if (!path) return;
+  const { readTextFile } = await import("@tauri-apps/plugin-fs");
+  const name = baseName(path).replace(/\.wdl$/i, "");
+  loadLibrary(name, await readTextFile(path), "file");
+  setStatus(`✓ loaded library "${name}" into the cache`);
+  run();
+}
+
 function wireLibraryMenu(): void {
   const btn = document.getElementById("library")!;
   const menu = document.getElementById("library-menu")!;
+  const libFile = document.getElementById("lib-file") as HTMLInputElement;
+  libFile.addEventListener("change", async () => {
+    const f = libFile.files?.[0];
+    if (!f) return;
+    const name = f.name.replace(/\.wdl$/i, "");
+    loadLibrary(name, await f.text(), "file");
+    setStatus(`✓ loaded library "${name}" into the cache`);
+    libFile.value = "";
+    run();
+  });
+
   const render = () => {
     const libs = listLibraries();
     const rows = libs
-      .map((l) => {
-        const tools =
-          l.origin === "shelf"
-            ? `<button class="lib-tool" data-edit="${escHtml(l.name)}" title="Open in editor">✎</button>` +
-              `<button class="lib-tool" data-del="${escHtml(l.name)}" title="Delete">×</button>`
-            : "";
-        return (
+      .map(
+        (l) =>
           `<div class="lib-row"><button class="lib-import" data-import="${escHtml(l.name)}" title="Insert import statement">` +
-          `${escHtml(l.name)} <span class="desc">— ${l.origin}</span></button>${tools}</div>`
-        );
-      })
+          `${escHtml(l.name)} <span class="desc">— ${l.origin}</span></button>` +
+          `<button class="lib-tool" data-edit="${escHtml(l.name)}" title="Open in editor">✎</button>` +
+          `<button class="lib-tool" data-del="${escHtml(l.name)}" title="Remove from cache">×</button></div>`,
+      )
       .join("");
     menu.innerHTML =
       `<button id="lib-save">💾 Save current as library…</button>` +
+      `<button id="lib-load">📂 Load library file…</button>` +
       (libs.length
         ? `<div class="lib-sep"></div>${rows}`
-        : `<div class="lib-empty">No libraries yet. Save one — or, in the desktop app, drop a <code>.wdl</code> beside your file.</div>`);
+        : `<div class="lib-empty">No libraries cached yet. Save one, load a <code>.wdl</code> — or, in the desktop app, drop a <code>.wdl</code> beside your file.</div>`);
     document.getElementById("lib-save")!.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = true; void saveCurrentAsLibrary(); });
+    document.getElementById("lib-load")!.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menu.hidden = true;
+      if (isTauri()) void loadLibraryFileNative();
+      else libFile.click();
+    });
     menu.querySelectorAll<HTMLElement>("[data-import]").forEach((el) =>
       el.addEventListener("click", (e) => { e.stopPropagation(); insertImport(el.dataset.import!); menu.hidden = true; }));
     menu.querySelectorAll<HTMLElement>("[data-edit]").forEach((el) =>
       el.addEventListener("click", (e) => { e.stopPropagation(); openLibraryInEditor(el.dataset.edit!); menu.hidden = true; }));
     menu.querySelectorAll<HTMLElement>("[data-del]").forEach((el) =>
-      el.addEventListener("click", (e) => { e.stopPropagation(); deleteFromShelf(el.dataset.del!); render(); run(); }));
+      el.addEventListener("click", (e) => { e.stopPropagation(); removeLibrary(el.dataset.del!); render(); run(); }));
   };
   btn.addEventListener("click", (e) => {
     e.stopPropagation();

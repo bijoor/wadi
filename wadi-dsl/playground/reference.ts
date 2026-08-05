@@ -149,12 +149,13 @@ use kb.Verandah as "V1" at (x,y)      // namespaced stamp from the imported modu
 goal "A reusable Konkan bathroom"     // module intent (house-less .wdl = a component pack)</pre>
 <p class="ref-note"><b>Save &amp; reuse your own libraries.</b> A <code>.wdl</code>
 of <code>component</code>/<code>asset</code> decls is a module. The
-<b>📚 Library</b> toolbar button saves the current file as a named library and
-lists what you can <code>import</code> (click a library to insert its
-<code>import</code> line). In the desktop app, any <code>.wdl</code> beside your
-open file (or in a <code>modules/</code> subfolder) is also importable by its
-name. Resolution order: <b>project files → your saved libraries → bundled packs</b>
-(<code>std-furniture</code>, <code>konkan/base</code>).</p>
+<b>📚 Library</b> toolbar menu keeps a <b>cache of loaded libraries</b> that
+<code>import</code> resolves from — the same on web and desktop. Load one three
+ways: <i>Save current as library</i>, <i>Load library file</i>, or (desktop) just
+drop a <code>.wdl</code> beside your open file (or in a <code>modules/</code>
+subfolder). Click a cached library to insert its <code>import</code> line.
+Resolution order: <b>your cache → bundled packs</b> (<code>std-furniture</code>,
+<code>konkan/base</code>).</p>
 
 <h3>Layers &amp; the raw escape</h3>
 <pre>layer "id" "Label" [color "#rrggbb"] [group "Group"]   // per-house layer registry
