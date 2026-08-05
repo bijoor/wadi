@@ -319,7 +319,7 @@ Pt:
 // ---- Free-standing furniture (a GLB asset placed in plan) ----
 Item:
     'item' ('name' name=STRING)?
-        (assetRef=AssetRef | 'asset' asset=Asset)
+        (assetRef=[AssetDecl:AssetName] | 'asset' asset=Asset)
         'at' '(' x=Expr ',' y=Expr ')'
         ('rotation' rotation=Expr)?
         ('scale' scale=Expr)?
@@ -330,17 +330,19 @@ Item:
 // Furniture anchored inside a room (no x/y — placed relative to the room box).
 RoomItem:
     'item' ('name' name=STRING)?
-        (assetRef=AssetRef | 'asset' asset=Asset)
+        (assetRef=[AssetDecl:AssetName] | 'asset' asset=Asset)
         ('anchor' anchor=Anchor)?
         ('gap' '(' gap_x=Expr ',' gap_y=Expr ')')?
         ('rotation' rotation=Expr)?
         ('scale' scale=Expr)?
         Common;
-// Reference a named asset by id — bare (`"bed_double"`, same-file or a std module)
-// or namespaced (`f."bed_double"`, from `import "…" as f`). Resolved to a full
-// asset at compile time. The inline `asset { … }` block stays for one-off GLBs.
-AssetRef:
-    (ns=ID '.')? id=STRING;
+// An asset reference name: bare (`"bed_double"`, same-file or a std module) or
+// namespaced (`f."bed_double"`, from `import "…" as f`). Used as the cross-
+// reference name for `item assetRef=[AssetDecl:AssetName]`; the ScopeProvider
+// names asset entries in this exact quoted form so $refText matches. The inline
+// `asset { … }` block stays for one-off GLBs.
+AssetName returns string:
+    (ID '.')? STRING;
 Asset:
     '{' 'id' id=STRING 'src' src=STRING 'dims' '(' dx=NUMBER ',' dy=NUMBER ',' dz=NUMBER ')'
         ('name' name=STRING)? ('category' category=STRING)? '}';
@@ -349,10 +351,12 @@ Anchor returns string:
     | 'center-left' | 'center' | 'center-right'
     | 'bottom-left' | 'bottom-center' | 'bottom-right';
 
-// ---- Component INSTANCE — stamp a library component onto this floor. `ref`
-//      names an in-file component (bare) or an imported one (`use ns.Comp`). ----
+// ---- Component INSTANCE — stamp a library component onto this floor. `target`
+//      is a Langium CROSS-REFERENCE to a `component` definition: an in-file one
+//      (bare `Comp`) or an imported one (`ns.Comp`), resolved by the linker +
+//      the Wadi ScopeProvider across the imported-module documents. ----
 Component:
-    'use' (ns=ID '.')? ref=ID ('as' name=STRING)?
+    'use' target=[ComponentDef:QualifiedName] ('as' name=STRING)?
         'at' '(' x=Expr ',' y=Expr ')'
         // Standard placement: yaw° (0=south, 90=east). Right angles are exact for
         // any component; a free angle is allowed only for furniture-only ones.
@@ -361,6 +365,11 @@ Component:
         Common;
 ComponentArg:
     name=ID '=' value=Expr;
+
+// A component reference name: a bare name (same-file / bare-imported) or a
+// namespaced one (`ns.Comp`). The ScopeProvider maps both to the right node.
+QualifiedName returns string:
+    ID ('.' ID)*;
 
 // ---- Roof — one object covering flat / shed / gable / hip via roof_type +
 //      per-segment endpoints. Segments carry their own formula map (start_x,

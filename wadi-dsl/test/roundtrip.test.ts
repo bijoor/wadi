@@ -232,7 +232,7 @@ describe("Wadi DSL round-trip", () => {
       );
       // id absent from the imported module
       expect(() => compileDsl(free(`import "std-furniture" as f`, `f."nope"`), opts)).toThrow(
-        /module "f" declares no "nope"/,
+        /module "f" defines no "nope"/,
       );
       // imports present but no resolver supplied
       expect(() => compileDsl(free(`import "std-furniture" as f`, `f."bed_double"`))).toThrow(

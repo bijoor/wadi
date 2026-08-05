@@ -5,8 +5,9 @@
 // pipeline, and "the model is fully representable in the DSL" is proven by the
 // output passing validation + resolution, not by a parallel implementation.
 
-import { EmptyFileSystem } from "langium";
+import { AstUtils, DocumentState, EmptyFileSystem, URI, type AstNode, type LangiumDocument } from "langium";
 import { createWadiServices } from "../language/wadi-module.js";
+import { moduleUri } from "../language/wadi-scope.js";
 import type * as ast from "../language/generated/ast.js";
 import {
   isNum,
@@ -358,14 +359,6 @@ function asset(a: ast.Asset): Record<string, unknown> {
   return o;
 }
 
-// Named asset exports in scope for `item "id"` (bare) resolution: this file's own
-// `asset "id" …` decls plus any assets from a bare `import "…"` (no alias). Set once
-// per compile in modelToHouseConfig; same-file decls win over bare-imported ones.
-let ASSET_INDEX = new Map<string, ast.AssetDecl>();
-// Assets from aliased imports (`import "…" as ns`), keyed ns → id → decl, for
-// `item ns."id"` resolution.
-let NS_ASSET_INDEX = new Map<string, Map<string, ast.AssetDecl>>();
-
 function assetDeclToObj(a: ast.AssetDecl): Record<string, unknown> {
   const o: Record<string, unknown> = {
     id: unquote(a.id),
@@ -377,43 +370,43 @@ function assetDeclToObj(a: ast.AssetDecl): Record<string, unknown> {
   return o;
 }
 
-// Resolve an item's asset: the inline `asset { … }` block, or an `assetRef` — a
-// bare id (`"bed_double"`) looked up in this file's `asset` decls, or a namespaced
-// id (`f."bed_double"`) from an imported module (deferred).
+// Build a helpful message for a cross-reference the linker couldn't resolve. The
+// referring node's document tells us its imports, so we can distinguish the
+// failure modes (bad alias vs missing name vs unknown local) the way the old
+// hand-rolled resolver did. `kind` is "component" or "asset".
+function unresolvedRefMessage(refText: string, kind: "component" | "asset", node: AstNode): string {
+  const model = AstUtils.getDocument(node).parseResult.value as ast.Model;
+  const aliases = model.imports.filter((i) => i.ns).map((i) => i.ns as string);
+  const verb = kind === "component" ? "use" : "item asset";
+  const dot = refText.indexOf(".");
+  if (dot >= 0) {
+    const ns = refText.slice(0, dot);
+    const name = refText.slice(dot + 1);
+    if (!aliases.includes(ns)) {
+      return `${verb} ${refText}: no import is aliased "${ns}". Add \`import "…" as ${ns}\`` +
+        (aliases.length ? ` (imported aliases: ${aliases.join(", ")}).` : ".");
+    }
+    return `unknown ${kind} "${refText}" — module "${ns}" defines no "${name}".`;
+  }
+  const local = kind === "component"
+    ? model.components.map((c) => c.name)
+    : model.assets.map((a) => unquote(a.id));
+  return `unknown ${kind} "${refText}". Define it here, import a module that provides it ` +
+    `and use \`${ns_hint(kind)}\`, or check the name` +
+    (local.length ? ` (in scope: ${local.join(", ")}).` : ".");
+}
+const ns_hint = (kind: "component" | "asset") => (kind === "component" ? "use ns.Comp" : 'item ns."id"');
+
+// Resolve an item's asset: the inline `asset { … }` block, or the `assetRef`
+// cross-reference (`"bed_double"` same-file, or `f."bed_double"` from an import).
+// The Langium linker + WadiScopeProvider have already resolved the reference to
+// the AssetDecl node (across modules); a dangling ref surfaces as `.ref` undefined.
 function resolveItemAsset(it: ast.Item | ast.RoomItem): Record<string, unknown> {
   if (it.asset) return asset(it.asset);
   const ref = it.assetRef;
   if (!ref) throw new Error("item has no asset (expected `asset { … }` or an asset id)");
-  const id = unquote(ref.id);
-  if (ref.ns) {
-    const mod = NS_ASSET_INDEX.get(ref.ns);
-    if (!mod) {
-      const nss = [...NS_ASSET_INDEX.keys()];
-      throw new Error(
-        `item asset "${ref.ns}.${id}": no import is aliased "${ref.ns}". ` +
-          `Add \`import "…" as ${ref.ns}\`` +
-          (nss.length ? ` (imported aliases: ${nss.join(", ")}).` : "."),
-      );
-    }
-    const decl = mod.get(id);
-    if (!decl) {
-      const avail = [...mod.keys()];
-      throw new Error(
-        `unknown asset "${ref.ns}.${id}" — module "${ref.ns}" declares no "${id}"` +
-          (avail.length ? ` (it has: ${avail.join(", ")}).` : "."),
-      );
-    }
-    return assetDeclToObj(decl);
-  }
-  const decl = ASSET_INDEX.get(id);
-  if (!decl) {
-    const avail = [...ASSET_INDEX.keys()];
-    throw new Error(
-      `unknown asset "${id}". Declare it with a top-level \`asset "${id}" src … dims …\`, ` +
-        `bare-import a module that provides it, or use a namespaced \`item ns."${id}"\`` +
-        (avail.length ? ` (in scope: ${avail.join(", ")}).` : "."),
-    );
-  }
+  const decl = ref.ref;
+  if (!decl) throw new Error(unresolvedRefMessage(ref.$refText, "asset", it));
   return assetDeclToObj(decl);
 }
 
@@ -440,53 +433,35 @@ function item(it: ast.Item): Record<string, unknown> {
   return done(o, formulas);
 }
 
-// A namespace path (dotted alias chain from the host; "" = host) doubles as the
-// cfg.components key prefix. Alias/component segments are IDs (no dots), so the
-// dotted join is unambiguous. `flatKey` is the exact key a `use` resolves to and
-// that expandComponent looks up.
+// A namespace path (the dotted alias chain from the host; "" = host) doubles as
+// the cfg.components key prefix. Alias/component segments are IDs (no dots), so
+// the dotted join is unambiguous. `flatKey` is the exact key a `use` resolves to
+// and that expandComponent looks up.
 const joinPrefix = (prefix: string, ns: string): string => (prefix ? `${prefix}.${ns}` : ns);
 const flatKey = (prefix: string, name: string): string => (prefix ? `${prefix}.${name}` : name);
 
-// The CURRENT module scope, swapped by setScope while serializing objects: the
-// host floors use the host scope; each library component is serialized in ITS
-// OWN module's scope so its internal `use`/`item` refs resolve — and relocate to
-// flat keys — correctly. resolveComponentRef / resolveItemAsset read these.
-let CUR_PREFIX = ""; // dotted alias-path of the module being serialized ("" = host)
-let CUR_COMP_LOCAL = new Set<string>(); // own + bare-imported component names (`use Comp`)
-let CUR_COMP_NS = new Map<string, { prefix: string; names: Set<string> }>(); // alias → child prefix + names
+// documentURI → its namespace prefix in the flat cfg.components key space, built
+// by the loader from the import tree (host = ""). A component DEFINITION's key is
+// a property of the document it lives in, so `use` refs anywhere that resolve to
+// that node produce the same key — no per-referrer scope juggling.
+let DOC_PREFIX = new Map<string, string>();
 
-// Resolve a `use [ns.]Comp` to the flat key it looks up in cfg.components — the
-// component RELOCATED into the current module's namespace: `flatKey(prefix, Comp)`
-// for a same-module/bare-imported component, `flatKey(childPrefix, Comp)` for an
-// aliased import. Because this runs in the referrer's scope, a library component's
-// internal `use Leg` correctly points at that library's relocated `…Leg` key.
-// Errors, at compile time, on an unknown alias or component.
+// The flat cfg.components key for a resolved ComponentDef node: its own document's
+// prefix + its name. (A node in an un-prefixed document — the host or a bare
+// import — keeps a bare key.)
+function componentKey(def: ast.ComponentDef): string {
+  const uri = AstUtils.getDocument(def).uri.toString();
+  return flatKey(DOC_PREFIX.get(uri) ?? "", def.name);
+}
+
+// Resolve a `use` instance to its cfg.components key. The Langium linker + the
+// WadiScopeProvider have already resolved `c.target` to the ComponentDef node
+// (in this or an imported module); we just relocate it to its document's key. A
+// dangling reference (unknown alias/name) surfaces as `.ref` undefined.
 function resolveComponentRef(c: ast.Component): string {
-  if (c.ns) {
-    const mod = CUR_COMP_NS.get(c.ns);
-    if (!mod) {
-      const nss = [...CUR_COMP_NS.keys()];
-      throw new Error(
-        `use ${c.ns}.${c.ref}: no import is aliased "${c.ns}". Add \`import "…" as ${c.ns}\`` +
-          (nss.length ? ` (imported aliases: ${nss.join(", ")}).` : "."),
-      );
-    }
-    if (!mod.names.has(c.ref)) {
-      throw new Error(
-        `unknown component "${c.ns}.${c.ref}" — module "${c.ns}" defines no "${c.ref}"` +
-          (mod.names.size ? ` (it has: ${[...mod.names].join(", ")}).` : "."),
-      );
-    }
-    return flatKey(mod.prefix, c.ref);
-  }
-  if (CUR_COMP_LOCAL.size && !CUR_COMP_LOCAL.has(c.ref)) {
-    throw new Error(
-      `unknown component "${c.ref}". Define it with \`component ${c.ref} { … }\`, or import a ` +
-        `module that provides it and use \`use ns.${c.ref}\`` +
-        ` (in scope: ${[...CUR_COMP_LOCAL].join(", ")}).`,
-    );
-  }
-  return flatKey(CUR_PREFIX, c.ref);
+  const def = c.target.ref;
+  if (!def) throw new Error(unresolvedRefMessage(c.target.$refText, "component", c));
+  return componentKey(def);
 }
 
 function componentInstance(c: ast.Component): Record<string, unknown> {
@@ -670,59 +645,98 @@ function componentDef(d: ast.ComponentDef): Record<string, unknown> {
 // CLI/app read a modules folder). A design with no imports needs no resolver.
 export type ResolveModule = (ref: string) => string | undefined;
 
-// One module's resolution scope, as seen from inside that module — used both to
-// resolve its `item`/`use` refs and to relocate its component refs to flat keys.
-interface ModuleScope {
-  prefix: string; // dotted alias-path from the host ("" = host)
-  assetsBare: Map<string, ast.AssetDecl>; // own + bare-imported assets (own wins)
-  assetsByNs: Map<string, Map<string, ast.AssetDecl>>; // aliased-import assets
-  compLocal: Set<string>; // own + bare-imported component names (`use Comp`)
-  compByNs: Map<string, { prefix: string; names: Set<string> }>; // alias → child prefix + names
-}
-// A module ready to emit: its components (keyed flatKey(scope.prefix, name)),
-// serialized in `scope`. One per transitively-imported module instance.
+// One transitively-imported module in the linked project: its parsed model plus
+// its namespace prefix (the dotted alias chain from the host) for key relocation.
 interface LinkedModule {
-  scope: ModuleScope;
-  components: Map<string, ast.ComponentDef>;
+  uri: string;
+  prefix: string;
+  model: ast.Model;
 }
-// The whole linked import graph for one compile.
-interface ModuleGraph {
-  host: ModuleScope; // the entry model's scope (prefix "")
-  imported: LinkedModule[]; // every transitively-imported module, in discovery (post-)order
+// The whole linked project for one compile: the host model + every imported
+// module. `use`/`item` cross-references in any of these are already resolved (by
+// the Langium linker + WadiScopeProvider); DOC_PREFIX carries each doc's prefix.
+interface LinkedProject {
+  host: ast.Model;
+  modules: LinkedModule[]; // imported modules only, in discovery order
 }
 
-// The host scope for a model with NO imports resolved — the default when
-// modelToHouseConfig is called without a graph (only valid if the model imports
-// nothing; otherwise its `item`/`use` refs fail to resolve, as before).
-function hostScopeNoImports(model: ast.Model): ModuleScope {
-  return {
-    prefix: "",
-    assetsBare: new Map(model.assets.map((a) => [unquote(a.id), a])),
-    assetsByNs: new Map(),
-    compLocal: new Set(model.components.map((d) => d.name)),
-    compByNs: new Map(),
+// The entry (host) document's URI — a synthetic name; the host imports real refs.
+const ENTRY_URI = "memory:///__entry__.wdl";
+
+// Parse the entry text and, transitively, every module it imports; register all
+// as in-memory Langium documents so the WadiScopeProvider resolves cross-module
+// `use`/`item` references LAZILY on `.ref` access — no async DocumentBuilder.
+// Returns the host model + imported modules tagged with namespace prefixes; also
+// publishes DOC_PREFIX (docURI → prefix) used to key components. Cycle-guarded.
+function linkProject(
+  shared: ReturnType<typeof createWadiServices>["shared"],
+  text: string,
+  resolveModule?: ResolveModule,
+): LinkedProject {
+  const docs = shared.workspace.LangiumDocuments;
+  const factory = shared.workspace.LangiumDocumentFactory;
+  // The services may be reused across compiles — start from an empty doc set.
+  for (const d of [...docs.all]) docs.deleteDocument(d.uri);
+
+  const parse = (t: string, uri: URI, what: string): LangiumDocument<ast.Model> => {
+    const doc = factory.fromString<ast.Model>(t, uri);
+    const r = doc.parseResult;
+    if (r.lexerErrors.length || r.parserErrors.length) {
+      const msgs = [
+        ...r.lexerErrors.map((e) => `lex: ${e.message}`),
+        ...r.parserErrors.map((e) => `parse: ${e.message}`),
+      ];
+      throw new Error(`${what} parse failed:\n  ${msgs.join("\n  ")}`);
+    }
+    docs.addDocument(doc);
+    return doc;
   };
-}
-const EMPTY_GRAPH = (model: ast.Model): ModuleGraph => ({ host: hostScopeNoImports(model), imported: [] });
 
-// Point the serialization globals at `s` before emitting that module's objects.
-function setScope(s: ModuleScope): void {
-  ASSET_INDEX = s.assetsBare;
-  NS_ASSET_INDEX = s.assetsByNs;
-  CUR_PREFIX = s.prefix;
-  CUR_COMP_LOCAL = s.compLocal;
-  CUR_COMP_NS = s.compByNs;
+  const hostDoc = parse(text, URI.parse(ENTRY_URI), "DSL");
+  const modules: LinkedModule[] = [];
+  const prefixByUri = new Map<string, string>([[ENTRY_URI, ""]]);
+  const parsedByRef = new Map<string, LangiumDocument<ast.Model>>();
+
+  const walk = (model: ast.Model, prefix: string, path: string[]): void => {
+    for (const imp of model.imports) {
+      const ref = imp.ref; // STRING value is already unquoted by Langium
+      if (path.includes(ref)) throw new Error(`import cycle: ${[...path, ref].join(" → ")}`);
+      const childPrefix = imp.ns ? joinPrefix(prefix, imp.ns) : prefix;
+      const childUri = moduleUri(ref).toString();
+      let doc = parsedByRef.get(ref);
+      if (!doc) {
+        if (!resolveModule) {
+          throw new Error(
+            `import "${ref}": imports need a module resolver, but none is available in this context.`,
+          );
+        }
+        const src = resolveModule(ref);
+        if (src === undefined) throw new Error(`import "${ref}": module not found on the search path.`);
+        doc = parse(src, moduleUri(ref), `imported module "${ref}"`);
+        parsedByRef.set(ref, doc);
+        modules.push({ uri: childUri, prefix: childPrefix, model: doc.parseResult.value });
+      }
+      // First path to a module fixes its prefix (dedup on diamond imports).
+      if (!prefixByUri.has(childUri)) prefixByUri.set(childUri, childPrefix);
+      walk(doc.parseResult.value, childPrefix, [...path, ref]);
+    }
+  };
+  walk(hostDoc.parseResult.value, "", []);
+
+  // Our ScopeProvider reads ASTs directly, so scopes are already complete; mark
+  // documents accordingly so lazy resolution reports linking errors (and skips
+  // Langium's "resolution before ComputedScopes" warning) on dangling refs.
+  for (const d of [...docs.all]) d.state = DocumentState.ComputedScopes;
+
+  DOC_PREFIX = prefixByUri;
+  return { host: hostDoc.parseResult.value, modules };
 }
 
 export function modelToHouseConfig(
   model: ast.Model,
-  graph: ModuleGraph = EMPTY_GRAPH(model),
+  project: LinkedProject,
 ): Record<string, unknown> {
   const cfg: Record<string, unknown> = {};
-
-  // Serialize the house body (floors + host components) in the host scope; each
-  // imported library component is later re-scoped to its own module (setScope).
-  setScope(graph.host);
 
   if (model.convention) cfg.coord_convention = model.convention;
 
@@ -834,27 +848,23 @@ export function modelToHouseConfig(
     });
   }
 
-  // Component library — a flat dict keyed by relocated name. Order preserves the
-  // pre-nesting output for existing (flat) designs: bare-imported modules (merged
-  // into the host namespace, prefix "") first, then the host's own components
-  // (which win on a bare-name clash), then namespaced modules — with any deeper,
-  // transitively-imported modules appended. Each module's components serialize in
-  // ITS scope (setScope) so their inner `use`/`item` refs resolve and relocate.
+  // Component library — a flat dict keyed by relocated name (flatKey(prefix,name),
+  // prefix = the module's namespace path). Order preserves the pre-nesting output
+  // for existing (flat) designs: bare-imported modules (prefix "") first, then the
+  // host's own components (which win on a bare-name clash), then namespaced modules
+  // — deeper transitively-imported ones appended. Each component's inner use/item
+  // refs are already linked; componentKey relocates them to the same keys.
   {
     const comps: Record<string, unknown> = {};
     const emit = (m: LinkedModule) => {
-      setScope(m.scope);
-      for (const [name, d] of m.components) comps[flatKey(m.scope.prefix, name)] = componentDef(d);
+      for (const d of m.model.components) comps[flatKey(m.prefix, d.name)] = componentDef(d);
     };
-    for (const m of graph.imported) if (m.scope.prefix === "") emit(m); // bare (host namespace)
-    setScope(graph.host);
+    for (const m of project.modules) if (m.prefix === "") emit(m); // bare (host namespace)
     for (const d of model.components) comps[d.name] = componentDef(d); // host's own (bare keys)
-    for (const m of graph.imported) if (m.scope.prefix !== "") emit(m); // namespaced + deeper
+    for (const m of project.modules) if (m.prefix !== "") emit(m); // namespaced + deeper
     if (Object.keys(comps).length) cfg.components = comps;
   }
 
-  // Floors serialize in the host scope (the emit() loop above left it elsewhere).
-  setScope(graph.host);
   cfg.floors = model.floors.map((f) => {
     const floor: Record<string, unknown> = {
       floor_number: Math.round(f.number),
@@ -936,82 +946,15 @@ function parseModel(services: WadiServices, text: string, what = "DSL"): ast.Mod
   return result.value;
 }
 
-// Link a model's `import` graph, TRANSITIVELY. For each module (starting at the
-// host, prefix "") build its resolution scope and recurse into its own imports,
-// so a library may itself import libraries. Each imported module is relocated
-// into a namespace `prefix` (the dotted alias chain from the host) under which
-// its components are emitted and its inner `use`/`item` refs resolve — this is
-// what makes nested / cross-library components work. Cycle-guarded; modules are
-// parsed once per ref and shared.
-function linkModuleGraph(
-  model: ast.Model,
-  services: WadiServices,
-  resolveModule?: ResolveModule,
-): ModuleGraph {
-  const imported: LinkedModule[] = [];
-  const parsed = new Map<string, ast.Model>(); // memoize parse by module ref
-
-  const build = (m: ast.Model, prefix: string, path: string[]): ModuleScope => {
-    const scope: ModuleScope = {
-      prefix,
-      assetsBare: new Map(),
-      assetsByNs: new Map(),
-      compLocal: new Set(m.components.map((d) => d.name)),
-      compByNs: new Map(),
-    };
-    for (const imp of m.imports ?? []) {
-      const ref = unquote(imp.ref);
-      if (path.includes(ref)) {
-        throw new Error(`import cycle: ${[...path, ref].join(" → ")}`);
-      }
-      if (!resolveModule) {
-        throw new Error(
-          `import "${ref}": imports need a module resolver, but none is available in this context.`,
-        );
-      }
-      let sub = parsed.get(ref);
-      if (!sub) {
-        const src = resolveModule(ref);
-        if (src === undefined) {
-          throw new Error(`import "${ref}": module not found on the search path.`);
-        }
-        sub = parseModel(services, src, `imported module "${ref}"`);
-        parsed.set(ref, sub);
-      }
-      const childPrefix = imp.ns ? joinPrefix(prefix, imp.ns) : prefix;
-      const childScope = build(sub, childPrefix, [...path, ref]);
-      // Register the sub-module for emission (components keyed at childPrefix),
-      // serialized in its own scope. Post-order: deeper modules first.
-      imported.push({ scope: childScope, components: new Map(sub.components.map((d) => [d.name, d])) });
-      const subAssets = new Map(sub.assets.map((a) => [unquote(a.id), a]));
-      if (imp.ns) {
-        scope.compByNs.set(imp.ns, { prefix: childPrefix, names: new Set(sub.components.map((d) => d.name)) });
-        scope.assetsByNs.set(imp.ns, subAssets);
-      } else {
-        // Bare import merges into this module's own namespace (own decls win).
-        for (const d of sub.components) scope.compLocal.add(d.name);
-        for (const [id, a] of subAssets) if (!scope.assetsBare.has(id)) scope.assetsBare.set(id, a);
-      }
-    }
-    // Own assets win over bare-imported ones on a name clash.
-    for (const a of m.assets) scope.assetsBare.set(unquote(a.id), a);
-    return scope;
-  };
-
-  const host = build(model, "", []);
-  return { host, imported };
-}
-
 export interface CompileOptions {
   /** Resolve `import "<ref>"` to the module's .wdl text. Required if the design imports. */
   resolveModule?: ResolveModule;
 }
 
 export function compileDsl(text: string, opts: CompileOptions = {}): Record<string, unknown> {
-  const services = createWadiServices(EmptyFileSystem).Wadi;
-  const model = parseModel(services, text);
-  const graph = linkModuleGraph(model, services, opts.resolveModule);
-  return modelToHouseConfig(model, graph);
+  const { shared } = createWadiServices(EmptyFileSystem);
+  const project = linkProject(shared, text, opts.resolveModule);
+  return modelToHouseConfig(project.host, project);
 }
 
 /** A module's public surface (for discovery): its exported asset declarations
@@ -1059,7 +1002,7 @@ export interface DslDiagnostic {
 /** Browser-friendly compile: never throws — returns the config (when the source
  *  is valid) and a list of positioned diagnostics for a code editor's markers.
  *  Used by the DSL playground; keeps the parser services warm across calls. */
-let sharedServices: WadiServices | undefined;
+let sharedProject: ReturnType<typeof createWadiServices> | undefined;
 export function compileWithDiagnostics(
   text: string,
   opts: CompileOptions = {},
@@ -1067,8 +1010,10 @@ export function compileWithDiagnostics(
   config?: Record<string, unknown>;
   diagnostics: DslDiagnostic[];
 } {
-  sharedServices ??= createWadiServices(EmptyFileSystem).Wadi;
-  const result = sharedServices.parser.LangiumParser.parse<ast.Model>(text);
+  sharedProject ??= createWadiServices(EmptyFileSystem);
+  // Parse once for POSITIONED lex/parser diagnostics (editor squiggles); if clean,
+  // linkProject re-parses + links the module graph for the compile.
+  const result = sharedProject.Wadi.parser.LangiumParser.parse<ast.Model>(text);
   const diagnostics: DslDiagnostic[] = [];
   for (const e of result.lexerErrors) {
     const line = e.line ?? 1;
@@ -1095,8 +1040,8 @@ export function compileWithDiagnostics(
   }
   if (diagnostics.length) return { diagnostics };
   try {
-    const graph = linkModuleGraph(result.value, sharedServices, opts.resolveModule);
-    return { config: modelToHouseConfig(result.value, graph), diagnostics: [] };
+    const project = linkProject(sharedProject.shared, text, opts.resolveModule);
+    return { config: modelToHouseConfig(project.host, project), diagnostics: [] };
   } catch (e) {
     return {
       diagnostics: [

@@ -11,10 +11,17 @@ import {
   type PartialLangiumCoreServices,
 } from "langium";
 import { WadiGeneratedModule, WadiGeneratedSharedModule } from "./generated/module.js";
+import { WadiScopeProvider } from "./wadi-scope.js";
 
 export type WadiServices = LangiumCoreServices;
 
-export const WadiModule: Module<WadiServices, PartialLangiumCoreServices> = {};
+// Inject the module-aware ScopeProvider so `use`/`item` cross-references resolve
+// across imported-module documents (see wadi-scope.ts).
+export const WadiModule: Module<WadiServices, PartialLangiumCoreServices> = {
+  references: {
+    ScopeProvider: (services) => new WadiScopeProvider(services),
+  },
+};
 
 export function createWadiServices(context: DefaultSharedCoreModuleContext = EmptyFileSystem) {
   const shared = inject(createDefaultSharedCoreModule(context), WadiGeneratedSharedModule);
