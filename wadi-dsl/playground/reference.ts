@@ -94,7 +94,8 @@ item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
 <h3>Roof <span class="ref-dim">— one object; flat / shed / gable / hip</span></h3>
 <pre>roof [name "N"] pitched|shed|flat
   [endpoint open|closed]        // open = gable end-wall · closed = hip triangle
-  [slope angle &lt;deg&gt; | slope height &lt;ridge_h&gt;]
+  [slope angle &lt;deg&gt; | slope height &lt;ridge_h&gt;]        // symmetric pitch
+  [slope_left angle &lt;deg&gt;] [slope_right angle &lt;deg&gt;]   // asymmetric gable (set BOTH)
   [overhang &lt;o&gt;] [slab_thickness &lt;t&gt;] [parapet &lt;h&gt; x &lt;t&gt;] {
     segment "id" from (x,y) to (x,y) width &lt;w&gt;
       [high_side left|right] [start_endpoint …] [end_endpoint …]
@@ -110,6 +111,12 @@ item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
 centred on it — author them on the same grid as the walls and the roof auto-grows
 to the <b>outer wall face</b> (then <code>overhang</code> extends beyond). Don't add
 ½-wall fudge factors, or the roof lands half a wall thickness inside the walls.</p>
+<p class="ref-note"><b>Asymmetric (saltbox) gable.</b> Set <b>both</b>
+<code>slope_left</code> and <code>slope_right</code> (angles) to give the two faces
+different pitches — they override <code>slope</code>. The eaves stay put and the
+ridge shifts across the width so each side takes its angle; <code>left</code>/
+<code>right</code> are the same sides as <code>overhang_left</code>/<code>right</code>.
+Best on a single-segment gable (<code>endpoint open</code>).</p>
 
 <h3>Component library <span class="ref-dim">— reusable mini-house</span></h3>
 <pre>component Bench {              // define once (local coords, origin 0,0)
