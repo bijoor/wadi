@@ -248,9 +248,11 @@ exported components as `ns.Name` from the global index), and a **~25-line loader
   job, not ours. The only bespoke code is the visibility policy (the ScopeProvider),
   which is small and **domain-neutral** (parameterised by "the exportable decl
   type").
-- The services use `EmptyFileSystem` — the same config the browser uses and the
-  playground already bundles — so the browser path is the identical code (a full
-  in-browser confirmation remains a cheap follow-up, but the risk is low).
+- **Browser confirmed.** The identical services (on `EmptyFileSystem`) were
+  bundled by **Vite** — the playground's bundler — and run **client-side**: all
+  four cases resolved in ~23 ms in the browser (`spike/langium-linking/browser/`).
+  So there's no Node-only dependency in the linking path; it ships to the web app
+  unchanged.
 - Cost is negligible at this scale (~14 ms); measure on a real multi-module Wadi
   design during the port.
 
