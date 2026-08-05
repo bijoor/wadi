@@ -71,6 +71,10 @@ Architects can work three ways:
   Antigravity) and it writes the design in the **Wadi DSL** (a `.wdl` file) while the
   Wadi **DSL editor** renders it live. You and the agent co-edit the same `.wdl`.
 
+To **hand-write** the DSL yourself, the [**Wadi DSL Author's Guide**](wadi-dsl/AUTHORING.md)
+is a complete, task-oriented walkthrough — from your first room to grids, reusable
+components, libraries, and the owner-facing configurator.
+
 The desktop app and the AI skill need a one-time setup — see
 [Technical details](#technical-details).
 
@@ -311,6 +315,9 @@ python/  archive/          RETIRED Blender/Python pipeline — history only, do 
 
 ## References
 
+- **`wadi-dsl/AUTHORING.md`** — the **Author's Guide**: how to *use* the Wadi DSL to
+  design a house end-to-end (usage). **`PARAMETRIC-DSL-METHOD.md`** — the
+  generalizable method behind it: how to *build* a system like this for any domain.
 - **`wadi-skill/architect/`** — the AI skill: `SKILL.md` (the step-by-step authoring
   loop) + `reference/{dsl,data-model,coordinate-system,parametric-conventions,conventions,
   roof-v2-guide}.md` + validated `examples/`. The reference docs are the authoritative,

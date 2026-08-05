@@ -12,6 +12,11 @@ schema is already enough for coding agents. The point here is to prove that the
 can author reusable designs with a coding agent" — actually holds, using home
 architecture as the worked example.
 
+> **📖 New to authoring? Start with the [Author's Guide](AUTHORING.md)** — a
+> task-oriented, end-to-end walkthrough of writing `.wdl` (from your first room to
+> grids, components, libraries, and the configurator) and using the editor. This
+> README covers the grammar/architecture; the Author's Guide covers *usage*.
+
 ## The thesis: a two-tier grammar
 
 The grammar ([`src/language/wadi.langium`](src/language/wadi.langium)) is written
