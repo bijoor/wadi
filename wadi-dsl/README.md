@@ -90,6 +90,10 @@ Two layers of reuse, both first-class in the grammar:
   floor 1 "G" { use kb.Verandah at (20, 20) with { across = 240 } }
   ```
 
+  Components **nest**: a library component may `use` a sibling, `use` a component
+  from a library it itself `import`s, and place `item` furniture from its own
+  imports — imports resolve **transitively** (cycles are a compile error).
+
 In the **WDL editor**, the **📚 Library** menu keeps a *cache of loaded libraries*
 that `import` resolves from — the same on web and desktop. Load one by **Save
 current as library**, **Load library file** (multi-select), or (desktop) by simply

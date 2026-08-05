@@ -148,7 +148,9 @@ use Bench as "B1" at (x,y) rotation 90 with { blen = 80 }   // stamp onto a floo
 
 import "konkan/base" as kb            // reuse another .wdl's components
 use kb.Verandah as "V1" at (x,y)      // namespaced stamp from the imported module
-goal "A reusable Konkan bathroom"     // module intent (house-less .wdl = a component pack)</pre>
+goal "A reusable Konkan bathroom"     // module intent (house-less .wdl = a component pack)
+// Components nest: a library component may use a sibling / an imported component,
+// and place item ns."id" furniture from its own imports (transitive; cycles error).</pre>
 <p class="ref-note"><b>Save &amp; reuse your own libraries.</b> A <code>.wdl</code>
 of <code>component</code>/<code>asset</code> decls is a module. The
 <b>📚 Library</b> toolbar menu keeps a <b>cache of loaded libraries</b> that

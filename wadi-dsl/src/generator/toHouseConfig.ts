@@ -440,42 +440,53 @@ function item(it: ast.Item): Record<string, unknown> {
   return done(o, formulas);
 }
 
-// Component `use` refs in scope: same-file + bare-imported names, and the
-// per-namespace maps of imported components (for `use ns.Comp`). Set per compile
-// in modelToHouseConfig; symmetric with ASSET_INDEX / NS_ASSET_INDEX.
-let COMPONENT_NAMES = new Set<string>();
-let NS_COMPONENT_INDEX = new Map<string, Map<string, ast.ComponentDef>>();
+// A namespace path (dotted alias chain from the host; "" = host) doubles as the
+// cfg.components key prefix. Alias/component segments are IDs (no dots), so the
+// dotted join is unambiguous. `flatKey` is the exact key a `use` resolves to and
+// that expandComponent looks up.
+const joinPrefix = (prefix: string, ns: string): string => (prefix ? `${prefix}.${ns}` : ns);
+const flatKey = (prefix: string, name: string): string => (prefix ? `${prefix}.${name}` : name);
 
-// Resolve a `use [ns.]Comp` instance to the key it looks up in cfg.components:
-// a bare name for a same-file/bare-imported component, or `ns.Comp` for an
-// aliased import (which modelToHouseConfig links into cfg.components under the
-// same key). Errors, at compile time, on an unknown alias or component.
+// The CURRENT module scope, swapped by setScope while serializing objects: the
+// host floors use the host scope; each library component is serialized in ITS
+// OWN module's scope so its internal `use`/`item` refs resolve — and relocate to
+// flat keys — correctly. resolveComponentRef / resolveItemAsset read these.
+let CUR_PREFIX = ""; // dotted alias-path of the module being serialized ("" = host)
+let CUR_COMP_LOCAL = new Set<string>(); // own + bare-imported component names (`use Comp`)
+let CUR_COMP_NS = new Map<string, { prefix: string; names: Set<string> }>(); // alias → child prefix + names
+
+// Resolve a `use [ns.]Comp` to the flat key it looks up in cfg.components — the
+// component RELOCATED into the current module's namespace: `flatKey(prefix, Comp)`
+// for a same-module/bare-imported component, `flatKey(childPrefix, Comp)` for an
+// aliased import. Because this runs in the referrer's scope, a library component's
+// internal `use Leg` correctly points at that library's relocated `…Leg` key.
+// Errors, at compile time, on an unknown alias or component.
 function resolveComponentRef(c: ast.Component): string {
   if (c.ns) {
-    const mod = NS_COMPONENT_INDEX.get(c.ns);
+    const mod = CUR_COMP_NS.get(c.ns);
     if (!mod) {
-      const nss = [...NS_COMPONENT_INDEX.keys()];
+      const nss = [...CUR_COMP_NS.keys()];
       throw new Error(
         `use ${c.ns}.${c.ref}: no import is aliased "${c.ns}". Add \`import "…" as ${c.ns}\`` +
           (nss.length ? ` (imported aliases: ${nss.join(", ")}).` : "."),
       );
     }
-    if (!mod.has(c.ref)) {
+    if (!mod.names.has(c.ref)) {
       throw new Error(
         `unknown component "${c.ns}.${c.ref}" — module "${c.ns}" defines no "${c.ref}"` +
-          (mod.size ? ` (it has: ${[...mod.keys()].join(", ")}).` : "."),
+          (mod.names.size ? ` (it has: ${[...mod.names].join(", ")}).` : "."),
       );
     }
-    return `${c.ns}.${c.ref}`;
+    return flatKey(mod.prefix, c.ref);
   }
-  if (COMPONENT_NAMES.size && !COMPONENT_NAMES.has(c.ref)) {
+  if (CUR_COMP_LOCAL.size && !CUR_COMP_LOCAL.has(c.ref)) {
     throw new Error(
       `unknown component "${c.ref}". Define it with \`component ${c.ref} { … }\`, or import a ` +
         `module that provides it and use \`use ns.${c.ref}\`` +
-        ` (in scope: ${[...COMPONENT_NAMES].join(", ")}).`,
+        ` (in scope: ${[...CUR_COMP_LOCAL].join(", ")}).`,
     );
   }
-  return c.ref;
+  return flatKey(CUR_PREFIX, c.ref);
 }
 
 function componentInstance(c: ast.Component): Record<string, unknown> {
@@ -659,40 +670,59 @@ function componentDef(d: ast.ComponentDef): Record<string, unknown> {
 // CLI/app read a modules folder). A design with no imports needs no resolver.
 export type ResolveModule = (ref: string) => string | undefined;
 
-// A namespaced/bare scope of one kind of exported decl, produced by linking imports.
-interface LinkScope<T> {
-  bare: Map<string, T>; // from `import "…"` (no alias)
-  byNs: Map<string, Map<string, T>>; // from `import "…" as ns`
+// One module's resolution scope, as seen from inside that module — used both to
+// resolve its `item`/`use` refs and to relocate its component refs to flat keys.
+interface ModuleScope {
+  prefix: string; // dotted alias-path from the host ("" = host)
+  assetsBare: Map<string, ast.AssetDecl>; // own + bare-imported assets (own wins)
+  assetsByNs: Map<string, Map<string, ast.AssetDecl>>; // aliased-import assets
+  compLocal: Set<string>; // own + bare-imported component names (`use Comp`)
+  compByNs: Map<string, { prefix: string; names: Set<string> }>; // alias → child prefix + names
 }
-// Everything a model's imports contribute (assets for `item`, components for `use`).
-interface LinkedScope {
-  assets: LinkScope<ast.AssetDecl>;
-  components: LinkScope<ast.ComponentDef>;
+// A module ready to emit: its components (keyed flatKey(scope.prefix, name)),
+// serialized in `scope`. One per transitively-imported module instance.
+interface LinkedModule {
+  scope: ModuleScope;
+  components: Map<string, ast.ComponentDef>;
+}
+// The whole linked import graph for one compile.
+interface ModuleGraph {
+  host: ModuleScope; // the entry model's scope (prefix "")
+  imported: LinkedModule[]; // every transitively-imported module, in discovery (post-)order
 }
 
-const emptyScope = <T>(): LinkScope<T> => ({ bare: new Map(), byNs: new Map() });
-const EMPTY_LINK: LinkedScope = { assets: emptyScope(), components: emptyScope() };
+// The host scope for a model with NO imports resolved — the default when
+// modelToHouseConfig is called without a graph (only valid if the model imports
+// nothing; otherwise its `item`/`use` refs fail to resolve, as before).
+function hostScopeNoImports(model: ast.Model): ModuleScope {
+  return {
+    prefix: "",
+    assetsBare: new Map(model.assets.map((a) => [unquote(a.id), a])),
+    assetsByNs: new Map(),
+    compLocal: new Set(model.components.map((d) => d.name)),
+    compByNs: new Map(),
+  };
+}
+const EMPTY_GRAPH = (model: ast.Model): ModuleGraph => ({ host: hostScopeNoImports(model), imported: [] });
+
+// Point the serialization globals at `s` before emitting that module's objects.
+function setScope(s: ModuleScope): void {
+  ASSET_INDEX = s.assetsBare;
+  NS_ASSET_INDEX = s.assetsByNs;
+  CUR_PREFIX = s.prefix;
+  CUR_COMP_LOCAL = s.compLocal;
+  CUR_COMP_NS = s.compByNs;
+}
 
 export function modelToHouseConfig(
   model: ast.Model,
-  linked: LinkedScope = EMPTY_LINK,
+  graph: ModuleGraph = EMPTY_GRAPH(model),
 ): Record<string, unknown> {
   const cfg: Record<string, unknown> = {};
 
-  // Asset scope for `item "id"` / `item ns."id"`: this file's own `asset` decls,
-  // plus bare-imported assets (same-file decls win on a name clash), plus each
-  // aliased import under its namespace.
-  ASSET_INDEX = new Map(linked.assets.bare);
-  for (const a of model.assets) ASSET_INDEX.set(unquote(a.id), a);
-  NS_ASSET_INDEX = linked.assets.byNs;
-
-  // Component scope for `use Comp` / `use ns.Comp`: same-file + bare-imported
-  // names, and the aliased-import maps for cross-file `use ns.Comp` validation.
-  COMPONENT_NAMES = new Set<string>([
-    ...model.components.map((d) => d.name),
-    ...linked.components.bare.keys(),
-  ]);
-  NS_COMPONENT_INDEX = linked.components.byNs;
+  // Serialize the house body (floors + host components) in the host scope; each
+  // imported library component is later re-scoped to its own module (setScope).
+  setScope(graph.host);
 
   if (model.convention) cfg.coord_convention = model.convention;
 
@@ -804,19 +834,27 @@ export function modelToHouseConfig(
     });
   }
 
-  // Component library: bare-imported first (same-file wins on clash), then each
-  // aliased import under a `ns.Name` key — the exact key `use ns.Comp` resolves
-  // to (resolveComponentRef) and that expandComponent looks up unchanged.
+  // Component library — a flat dict keyed by relocated name. Order preserves the
+  // pre-nesting output for existing (flat) designs: bare-imported modules (merged
+  // into the host namespace, prefix "") first, then the host's own components
+  // (which win on a bare-name clash), then namespaced modules — with any deeper,
+  // transitively-imported modules appended. Each module's components serialize in
+  // ITS scope (setScope) so their inner `use`/`item` refs resolve and relocate.
   {
     const comps: Record<string, unknown> = {};
-    for (const [name, d] of linked.components.bare) comps[name] = componentDef(d);
-    for (const d of model.components) comps[d.name] = componentDef(d);
-    for (const [ns, mod] of linked.components.byNs) {
-      for (const [name, d] of mod) comps[`${ns}.${name}`] = componentDef(d);
-    }
+    const emit = (m: LinkedModule) => {
+      setScope(m.scope);
+      for (const [name, d] of m.components) comps[flatKey(m.scope.prefix, name)] = componentDef(d);
+    };
+    for (const m of graph.imported) if (m.scope.prefix === "") emit(m); // bare (host namespace)
+    setScope(graph.host);
+    for (const d of model.components) comps[d.name] = componentDef(d); // host's own (bare keys)
+    for (const m of graph.imported) if (m.scope.prefix !== "") emit(m); // namespaced + deeper
     if (Object.keys(comps).length) cfg.components = comps;
   }
 
+  // Floors serialize in the host scope (the emit() loop above left it elsewhere).
+  setScope(graph.host);
   cfg.floors = model.floors.map((f) => {
     const floor: Record<string, unknown> = {
       floor_number: Math.round(f.number),
@@ -898,41 +936,70 @@ function parseModel(services: WadiServices, text: string, what = "DSL"): ast.Mod
   return result.value;
 }
 
-// Link a model's `import` statements: resolve each ref to module text, parse it,
-// and collect its top-level exports (`asset` decls for `item`, `component` defs
-// for `use`) into namespaced (aliased) or bare (unaliased) scopes. One level:
-// an imported module's OWN imports are not followed (module→module chains are
-// Phase 3), so module components must be flat (no component-uses-component).
-function linkModules(
+// Link a model's `import` graph, TRANSITIVELY. For each module (starting at the
+// host, prefix "") build its resolution scope and recurse into its own imports,
+// so a library may itself import libraries. Each imported module is relocated
+// into a namespace `prefix` (the dotted alias chain from the host) under which
+// its components are emitted and its inner `use`/`item` refs resolve — this is
+// what makes nested / cross-library components work. Cycle-guarded; modules are
+// parsed once per ref and shared.
+function linkModuleGraph(
   model: ast.Model,
   services: WadiServices,
   resolveModule?: ResolveModule,
-): LinkedScope {
-  const assets = emptyScope<ast.AssetDecl>();
-  const components = emptyScope<ast.ComponentDef>();
-  for (const imp of model.imports ?? []) {
-    const ref = unquote(imp.ref);
-    if (!resolveModule) {
-      throw new Error(
-        `import "${ref}": imports need a module resolver, but none is available in this context.`,
-      );
+): ModuleGraph {
+  const imported: LinkedModule[] = [];
+  const parsed = new Map<string, ast.Model>(); // memoize parse by module ref
+
+  const build = (m: ast.Model, prefix: string, path: string[]): ModuleScope => {
+    const scope: ModuleScope = {
+      prefix,
+      assetsBare: new Map(),
+      assetsByNs: new Map(),
+      compLocal: new Set(m.components.map((d) => d.name)),
+      compByNs: new Map(),
+    };
+    for (const imp of m.imports ?? []) {
+      const ref = unquote(imp.ref);
+      if (path.includes(ref)) {
+        throw new Error(`import cycle: ${[...path, ref].join(" → ")}`);
+      }
+      if (!resolveModule) {
+        throw new Error(
+          `import "${ref}": imports need a module resolver, but none is available in this context.`,
+        );
+      }
+      let sub = parsed.get(ref);
+      if (!sub) {
+        const src = resolveModule(ref);
+        if (src === undefined) {
+          throw new Error(`import "${ref}": module not found on the search path.`);
+        }
+        sub = parseModel(services, src, `imported module "${ref}"`);
+        parsed.set(ref, sub);
+      }
+      const childPrefix = imp.ns ? joinPrefix(prefix, imp.ns) : prefix;
+      const childScope = build(sub, childPrefix, [...path, ref]);
+      // Register the sub-module for emission (components keyed at childPrefix),
+      // serialized in its own scope. Post-order: deeper modules first.
+      imported.push({ scope: childScope, components: new Map(sub.components.map((d) => [d.name, d])) });
+      const subAssets = new Map(sub.assets.map((a) => [unquote(a.id), a]));
+      if (imp.ns) {
+        scope.compByNs.set(imp.ns, { prefix: childPrefix, names: new Set(sub.components.map((d) => d.name)) });
+        scope.assetsByNs.set(imp.ns, subAssets);
+      } else {
+        // Bare import merges into this module's own namespace (own decls win).
+        for (const d of sub.components) scope.compLocal.add(d.name);
+        for (const [id, a] of subAssets) if (!scope.assetsBare.has(id)) scope.assetsBare.set(id, a);
+      }
     }
-    const src = resolveModule(ref);
-    if (src === undefined) {
-      throw new Error(`import "${ref}": module not found on the search path.`);
-    }
-    const sub = parseModel(services, src, `imported module "${ref}"`);
-    const modAssets = new Map(sub.assets.map((a) => [unquote(a.id), a]));
-    const modComponents = new Map(sub.components.map((d) => [d.name, d]));
-    if (imp.ns) {
-      assets.byNs.set(imp.ns, modAssets);
-      components.byNs.set(imp.ns, modComponents);
-    } else {
-      for (const [id, a] of modAssets) assets.bare.set(id, a);
-      for (const [name, d] of modComponents) components.bare.set(name, d);
-    }
-  }
-  return { assets, components };
+    // Own assets win over bare-imported ones on a name clash.
+    for (const a of m.assets) scope.assetsBare.set(unquote(a.id), a);
+    return scope;
+  };
+
+  const host = build(model, "", []);
+  return { host, imported };
 }
 
 export interface CompileOptions {
@@ -943,8 +1010,8 @@ export interface CompileOptions {
 export function compileDsl(text: string, opts: CompileOptions = {}): Record<string, unknown> {
   const services = createWadiServices(EmptyFileSystem).Wadi;
   const model = parseModel(services, text);
-  const linked = linkModules(model, services, opts.resolveModule);
-  return modelToHouseConfig(model, linked);
+  const graph = linkModuleGraph(model, services, opts.resolveModule);
+  return modelToHouseConfig(model, graph);
 }
 
 /** A module's public surface (for discovery): its exported asset declarations
@@ -1028,8 +1095,8 @@ export function compileWithDiagnostics(
   }
   if (diagnostics.length) return { diagnostics };
   try {
-    const linked = linkModules(result.value, sharedServices, opts.resolveModule);
-    return { config: modelToHouseConfig(result.value, linked), diagnostics: [] };
+    const graph = linkModuleGraph(result.value, sharedServices, opts.resolveModule);
+    return { config: modelToHouseConfig(result.value, graph), diagnostics: [] };
   } catch (e) {
     return {
       diagnostics: [

@@ -394,9 +394,11 @@ house Home {
 }
 ```
 
-`use ns.Comp` expands byte-identical to an inline `component`; keep module
-components flat (they don't `use` other components). Un-overridden `param`s fall
-back to their declared defaults.
+`use ns.Comp` expands byte-identical to an inline `component`. Components **nest
+freely**: a library component may `use` a sibling, `use` a component from a
+library it itself `import`s, and place `item ns."id"` furniture from its own
+imports — imports resolve **transitively** (cycles are a compile error).
+Un-overridden `param`s fall back to their declared defaults.
 
 `rotation <deg>` (optional, yaw°: 0=south, 90=east) turns the whole stamped
 assembly about its origin. **Right angles (0/90/180/270) are exact for any

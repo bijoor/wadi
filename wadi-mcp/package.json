@@ -1,6 +1,6 @@
 {
   "name": "wadi-mcp",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "MCP server for the Wadi house designer — check, preview, and reference the Wadi DSL (.wdl) without the repo.",
   "type": "module",
   "license": "MIT",

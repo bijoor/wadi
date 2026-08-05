@@ -66,9 +66,12 @@ floor 1 "Ground" {
 
 - **Local coords.** Author everything relative to `(0, 0)`; `use … at (x, y)` does
   the placement.
-- **Keep *library* components flat.** A component that lives in an imported library
-  must not `use` another component (intra-module chains aren't remapped yet).
-  In-file components may nest.
+- **Components nest freely.** A component — in-file *or* in an imported library —
+  may `use` another component and place `item` furniture. A library component can
+  `use` a sibling in the same library, `use` a component from a library it itself
+  `import`s, and `item ns."id"` from its own imports. Imports resolve
+  **transitively** (a library may import libraries), each relocated under its
+  namespace, with a clear error on an import cycle.
 - **Reserved param names.** A `param` name can't be a grammar keyword (`width`,
   `depth`, `height`, `size`, …) — use `across` / `deep` / `tall`, etc.
 - **Furniture too.** A component can place `item` furniture (see the furniture
