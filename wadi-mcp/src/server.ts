@@ -153,24 +153,41 @@ server.registerTool(
     title: "Capture a 3D image of a Wadi design",
     description:
       "Render a Wadi DSL house in the RUNNING Wadi desktop app and return a real 3D PNG — the actual " +
-      "textured model, not a 2D drawing. Requires the Wadi app to be open. Pass `room` (a room name from " +
-      "the .wdl, e.g. \"Bedroom\") to place the camera INSIDE that room for a first-person look — the best " +
-      "way to check FURNITURE PLACEMENT and ORIENTATION, which a plan can't show. Omit `room` for the " +
-      "outside orbit view. The PNG is BOTH returned inline AND written to a file whose path is in the text. " +
+      "textured model, not a 2D drawing. Requires the Wadi app to be open.\n" +
+      "CAMERA: pass `room` (a room name, e.g. \"Bedroom\") for a first-person INTERIOR look (best for checking " +
+      "furniture placement/orientation), OR `camera` for a named EXTERIOR angle (iso | front | back | left | " +
+      "right | top). Omit both for the current outside orbit.\n" +
+      "LAYERS: pass `isolate` (a list of layer ids/labels) to show ONLY those, or `layers` (a map of id/label → " +
+      "on/off) to toggle specific ones — e.g. isolate the structure to shoot the frame, or hide the roof to see " +
+      "the plan of walls. The response lists every available layer (id + label) so you can refine a follow-up " +
+      "shot. Layer changes are restored after the capture.\n" +
+      "The PNG is BOTH returned inline AND written to a file whose path is in the text. " +
       "(Headless 2D plans/elevations/roof: wadi_preview.)",
     inputSchema: {
       wdl: z.string().describe("The full .wdl source text."),
       room: z
         .string()
         .optional()
-        .describe("A room name (as written in the .wdl) to view from inside. Omit for the outside orbit view."),
+        .describe("A room name (as written in the .wdl) to view from INSIDE (first-person). Takes precedence over `camera`."),
+      camera: z
+        .enum(["iso", "front", "back", "left", "right", "top"])
+        .optional()
+        .describe("A named EXTERIOR camera angle. Ignored if `room` is given. Omit for the current outside orbit."),
+      isolate: z
+        .array(z.string())
+        .optional()
+        .describe("Show ONLY these layers (ids or labels, case-insensitive); hide all others. See the returned layer list."),
+      layers: z
+        .record(z.string(), z.boolean())
+        .optional()
+        .describe('Toggle specific layers by id or label, e.g. { "Roof": false, "Structure": true }.'),
       out_dir: z
         .string()
         .optional()
         .describe("Absolute directory to save the PNG to. Default: the OS temp dir. The saved path is returned in the text."),
     },
   },
-  async ({ wdl, room, out_dir }) => {
+  async ({ wdl, room, camera, isolate, layers, out_dir }) => {
     let config: unknown;
     try {
       config = compileConfig(wdl);
@@ -179,12 +196,29 @@ server.registerTool(
     }
     if (!(await appReachable())) return { content: [{ type: "text", text: APP_NOT_RUNNING }] };
     try {
-      const img = await appCapture(config, room ? { room } : undefined);
-      const file = savePng(Buffer.from(img.data, "base64"), out_dir, room ? `wadi_3d_${room.replace(/\W+/g, "_")}.png` : "wadi_3d.png");
-      const label = room ? `3D interior view of "${room}" (from the live app)` : "3D view (from the live app)";
+      const view = { room, camera, isolate, layers };
+      const hasView = room || camera || isolate?.length || (layers && Object.keys(layers).length);
+      const img = await appCapture(config, hasView ? view : undefined);
+      const slug = room
+        ? `wadi_3d_${room.replace(/\W+/g, "_")}`
+        : camera
+          ? `wadi_3d_${camera}`
+          : "wadi_3d";
+      const file = savePng(Buffer.from(img.data, "base64"), out_dir, `${slug}.png`);
+      const label = room
+        ? `3D interior view of "${room}"`
+        : camera
+          ? `3D exterior view (${camera})`
+          : "3D view (outside orbit)";
+      const shown = isolate?.length ? ` · showing only: ${isolate.join(", ")}` : "";
+      const layerList = img.layers?.length
+        ? "\nAvailable layers (id — label): " +
+          img.layers.map((l) => `${l.id} — ${l.label}`).join(" · ") +
+          "\nPass `isolate` or `layers` (id or label) to control what's visible."
+        : "";
       return {
         content: [
-          { type: "text", text: `— ${label} — saved to: ${file}` },
+          { type: "text", text: `— ${label}${shown} (from the live app) — saved to: ${file}${layerList}` },
           { type: "image", data: img.data, mimeType: img.mime },
         ],
       };

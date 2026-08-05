@@ -256,6 +256,47 @@ function CaptureBridge() {
       return url;
     };
 
+    // Exterior capture from a NAMED preset angle (the same presets as the app's
+    // "Change view" — iso / front / back / left / right / top). Seats the orbit
+    // camera on a sphere around the current orbit target, grabs, and restores.
+    // Same three.js azimuth convention as wadiCaptureAngles, so "front" here ==
+    // the toolbar's Front. Synchronous (grab forces its own render) → works even
+    // when the window is backgrounded, like the interior capture.
+    const CAPTURE_VIEWS: Record<string, { azDeg: number; polarDeg: number; radiusMult: number }> = {
+      iso:   { azDeg: 135, polarDeg: 55, radiusMult: 1.8 },
+      front: { azDeg: 180, polarDeg: 80, radiusMult: 1.5 },
+      back:  { azDeg: 0,   polarDeg: 80, radiusMult: 1.5 },
+      left:  { azDeg: 90,  polarDeg: 80, radiusMult: 1.5 },
+      right: { azDeg: 270, polarDeg: 80, radiusMult: 1.5 },
+      top:   { azDeg: 180, polarDeg: 1,  radiusMult: 1.5 },
+    };
+    window.wadiCaptureView = (preset, maxW = 720) => {
+      const v = CAPTURE_VIEWS[preset];
+      if (!v) return grab(maxW); // unknown preset → current framing
+      const t = controls ? controls.target : { x: 0, y: 0, z: 0 };
+      const dx = camera.position.x - t.x;
+      const dy = camera.position.y - t.y;
+      const dz = camera.position.z - t.z;
+      const dist = Math.hypot(dx, dy, dz) || 1;
+      const r = dist * (v.radiusMult / 1.5); // scale relative to the default framing
+      const az = (v.azDeg * Math.PI) / 180;
+      const el = ((90 - v.polarDeg) * Math.PI) / 180; // elevation above the horizon
+      const savePos = camera.position.clone();
+      const saveQuat = camera.quaternion.clone();
+      camera.position.set(
+        t.x + r * Math.cos(el) * Math.sin(az),
+        t.y + r * Math.sin(el),
+        t.z + r * Math.cos(el) * Math.cos(az),
+      );
+      camera.lookAt(t.x, t.y, t.z);
+      camera.updateMatrixWorld(true);
+      const url = grab(maxW);
+      camera.position.copy(savePos);
+      camera.quaternion.copy(saveQuat);
+      camera.updateMatrixWorld(true);
+      return url;
+    };
+
     // Auto-capture: orbit the camera to a few oblique 3/4 angles (relative to
     // wherever it currently points, so it respects any orientation the
     // architect framed) and grab each. Distinct, feature-revealing views —
@@ -308,6 +349,7 @@ function CaptureBridge() {
 
     return () => {
       delete window.wadiCapture3D;
+      delete window.wadiCaptureView;
       delete window.wadiCaptureInterior;
       delete window.wadiCaptureAngles;
     };
@@ -320,6 +362,10 @@ declare global {
     /** Capture the CURRENT 3D frame as a downscaled JPEG data URL (manual
      *  "take a shot"). Returns null if the canvas isn't ready. */
     wadiCapture3D?: (maxW?: number) => string | null;
+    /** Capture the exterior from a named preset angle (iso | front | back |
+     *  left | right | top) — seats the camera on a sphere around the orbit
+     *  target, grabs, and restores. Synchronous → works backgrounded. */
+    wadiCaptureView?: (preset: string, maxW?: number) => string | null;
     /** Capture a first-person frame from `eye` (Three world coords) looking
      *  north — positions the camera DIRECTLY in the call (no React re-render),
      *  so it works even when the window is backgrounded (e.g. an MCP interior

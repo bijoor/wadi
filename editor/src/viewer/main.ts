@@ -122,24 +122,54 @@ async function bootViewer(): Promise<void> {
     // MCP bridge (Phase 2): the wadi-mcp server POSTs to the app's localhost
     // bridge; Rust emits the request here. Load the config into the live 3D
     // view and, for a capture, read back a 3D image after the scene settles.
-    void listen<{ id: string; action: string; config: unknown; view?: { room?: string } }>(
+    void listen<{
+      id: string;
+      action: string;
+      config: unknown;
+      view?: { room?: string; camera?: string; layers?: Record<string, boolean>; isolate?: string[] };
+    }>(
       "wadi://bridge-request",
       async (e) => {
       const { id, action, config, view } = e.payload;
       try {
         window.wadi?.load(config);
         if (action === "capture") {
-          // Let React reconcile the new config into the R3F scene, then capture.
-          // Use setTimeout, not requestAnimationFrame — RAF is paused when the
+          // The full layer list (id + label) for the caller to discover ids from.
+          const availLayers = window.wadi?.listLayers?.() ?? [];
+          // Resolve a requested key (id OR label, case-insensitive) → ALL matching
+          // layer ids. An exact id/label hit is used alone; otherwise every layer
+          // whose id/label CONTAINS the key matches — so "structure" spans
+          // f1_structure + f2_structure, "walls" spans every floor's walls, etc.
+          const resolveIds = (key: string): string[] => {
+            const kl = key.toLowerCase();
+            const exact = availLayers.find((l) => l.id === key || l.label.toLowerCase() === kl);
+            if (exact) return [exact.id];
+            const subs = availLayers
+              .filter((l) => l.id.toLowerCase().includes(kl) || l.label.toLowerCase().includes(kl))
+              .map((l) => l.id);
+            return subs.length ? subs : [key];
+          };
+          // Apply requested visibility BEFORE the settle wait, so React reconciles
+          // it into the R3F scene graph before we grab. Restored after capture.
+          let layersChanged = false;
+          if (view?.isolate?.length && window.wadi?.showOnlyLayers) {
+            window.wadi.showOnlyLayers(view.isolate.flatMap(resolveIds));
+            layersChanged = true;
+          } else if (view?.layers && Object.keys(view.layers).length && window.wadi?.setLayers) {
+            const rec: Record<string, boolean> = {};
+            for (const [k, v] of Object.entries(view.layers)) for (const id of resolveIds(k)) rec[id] = v;
+            window.wadi.setLayers(rec);
+            layersChanged = true;
+          }
+          // Let React reconcile the new config (+ any layer change) into the R3F
+          // scene, then capture. setTimeout, not RAF — RAF is paused when the
           // window is backgrounded, but the capture bridges force their own
           // gl.render(), so a plain timer is enough and never hangs.
           await new Promise((r) => setTimeout(r, 800));
-          // Optional interior view: seat the camera INSIDE a named room so the
-          // model can inspect furniture placement/orientation. Resolve the room's
-          // eye position from the config and capture directly — no enterRoom /
-          // React re-render, so it works with the window backgrounded (an MCP
-          // capture never has focus). Falls back to the outside orbit if the
-          // room isn't found.
+          // Camera choice, in priority order: interior room → named exterior
+          // preset → the current outside orbit. All position the camera directly
+          // (no React re-render) so they work with the window backgrounded (an MCP
+          // capture never has focus).
           let url: string | null = null;
           const roomQuery = view?.room?.trim();
           if (roomQuery && window.wadiCaptureInterior) {
@@ -152,7 +182,11 @@ async function bootViewer(): Promise<void> {
               rooms.find((r) => `${r.floorName}: ${r.name}`.toLowerCase().includes(q));
             if (match) url = window.wadiCaptureInterior(match.eye, 1200);
           }
+          if (url === null && view?.camera && window.wadiCaptureView) {
+            url = window.wadiCaptureView(view.camera, 1200);
+          }
           if (url === null) url = window.wadiCapture3D?.(1200) ?? null;
+          if (layersChanged) window.wadi?.showAllLayers?.(); // restore the live view
           if (!url) {
             await invoke("bridge_response", { id, ok: false, error: "capture returned null" });
             return;
@@ -160,7 +194,13 @@ async function bootViewer(): Promise<void> {
           const comma = url.indexOf(",");
           const data = comma >= 0 ? url.slice(comma + 1) : url;
           const mime = /^data:(.*?);/.exec(url)?.[1] ?? "image/jpeg";
-          await invoke("bridge_response", { id, ok: true, png: data, mime });
+          await invoke("bridge_response", {
+            id,
+            ok: true,
+            png: data,
+            mime,
+            layers: availLayers.map((l) => ({ id: l.id, label: l.label, group: l.group })),
+          });
         } else {
           await invoke("bridge_response", { id, ok: true });
         }

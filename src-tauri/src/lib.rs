@@ -26,6 +26,9 @@ struct BridgeReply {
   png: Option<String>,
   mime: Option<String>,
   error: Option<String>,
+  // The house's layer registry (id/label/group), so a capture caller can learn
+  // which layers exist and toggle/isolate them on a follow-up shot.
+  layers: Option<serde_json::Value>,
 }
 struct BridgeState(Mutex<HashMap<String, Sender<BridgeReply>>>);
 
@@ -37,9 +40,10 @@ fn bridge_response(
   png: Option<String>,
   mime: Option<String>,
   error: Option<String>,
+  layers: Option<serde_json::Value>,
 ) {
   if let Some(tx) = state.0.lock().unwrap().remove(&id) {
-    let _ = tx.send(BridgeReply { ok, png, mime, error });
+    let _ = tx.send(BridgeReply { ok, png, mime, error, layers });
   }
 }
 
@@ -113,7 +117,7 @@ fn start_bridge(app: AppHandle) {
             respond_json(
               req,
               200,
-              serde_json::json!({ "ok": true, "png": reply.png, "mime": reply.mime }),
+              serde_json::json!({ "ok": true, "png": reply.png, "mime": reply.mime, "layers": reply.layers }),
             );
           } else {
             respond_json(req, 200, serde_json::json!({ "ok": true }));

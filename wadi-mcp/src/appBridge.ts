@@ -33,13 +33,33 @@ export async function appLoad(config: unknown): Promise<void> {
   if (!r.ok) throw new Error(`app /load returned ${r.status}`);
 }
 
+export interface CaptureLayer {
+  id: string;
+  label: string;
+  group?: string;
+}
+export interface CaptureView {
+  /** Seat the first-person camera inside this room (by name/key). */
+  room?: string;
+  /** Exterior preset angle: iso | front | back | left | right | top. */
+  camera?: string;
+  /** Show/hide layers by id or label, e.g. { Structure: false }. */
+  layers?: Record<string, boolean>;
+  /** Show ONLY these layers (by id or label), hide the rest. */
+  isolate?: string[];
+}
+export interface CaptureResult {
+  data: string;
+  mime: string;
+  /** The house's layer registry, so the caller can refine a follow-up shot. */
+  layers?: CaptureLayer[];
+}
+
 /** Load a config and capture a 3D image (base64 + mime) from the app's renderer.
- *  With `view.room` the app seats the first-person camera inside that room before
- *  capturing (interior view), then restores the outside orbit. */
-export async function appCapture(
-  config: unknown,
-  view?: { room?: string },
-): Promise<{ data: string; mime: string }> {
+ *  `view.room` → interior; `view.camera` → a named exterior angle; `view.layers`/
+ *  `view.isolate` → toggle/isolate layers before the shot (restored after). The
+ *  house's layer list is returned so a caller can discover ids and refine. */
+export async function appCapture(config: unknown, view?: CaptureView): Promise<CaptureResult> {
   const r = await fetch(`${BASE}/capture`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -47,9 +67,15 @@ export async function appCapture(
     signal: AbortSignal.timeout(25000),
   });
   if (!r.ok) throw new Error(`app /capture returned ${r.status}`);
-  const j = (await r.json()) as { ok?: boolean; png?: string; mime?: string; error?: string };
+  const j = (await r.json()) as {
+    ok?: boolean;
+    png?: string;
+    mime?: string;
+    error?: string;
+    layers?: CaptureLayer[];
+  };
   if (!j.ok || !j.png) throw new Error(j.error || "capture failed");
-  return { data: j.png, mime: j.mime || "image/jpeg" };
+  return { data: j.png, mime: j.mime || "image/jpeg", layers: j.layers };
 }
 
 /** The message used when a 3D tool is called but the app isn't open. */

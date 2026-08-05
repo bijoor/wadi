@@ -20,7 +20,7 @@ repo; this server replaces them for agents that speak MCP.)
 | `wadi_examples` | List, or fetch the full source of, a validated example `.wdl` (`minimal` / `two_room` / `two_story` / `coastal` / `complete`). Copy from these. |
 | `wadi_reference` | The authoring docs, embedded: `guide`, `dsl`, `conventions`, `coordinate-system`, `parametric-conventions`, `roof-v2-guide`, `data-model`. |
 | `wadi_view_3d` | Load a `.wdl` into the **running Wadi desktop app's** live 3D view (so you + the user see the same model). Needs the app open. |
-| `wadi_capture_3d` | Render a `.wdl` in the running app and return a **real 3D image** (the textured model). Needs the app open. |
+| `wadi_capture_3d` | Render a `.wdl` in the running app and return a **real 3D image** (the textured model). Choose the shot with `camera` (a named exterior angle: `iso`/`front`/`back`/`left`/`right`/`top`) or `room` (first-person interior); `isolate`/`layers` show-only or toggle layers before the shot (by id or label). The response lists the house's layers so you can refine. Needs the app open. |
 
 The last two reach the desktop app over a localhost bridge (`127.0.0.1:8765`, override
 `WADI_APP_PORT`); when the app isn't running they return a "open the Wadi app" message and
