@@ -505,6 +505,14 @@ function roof(r: ast.Roof): Record<string, unknown> {
     const v = exprToValue(r.slope.value);
     o.slope = r.slope.by === "angle" ? { by: "angle", angle_deg: v } : { by: "height", ridge_h: v };
   }
+  if (r.slope_left) {
+    const v = exprToValue(r.slope_left.value);
+    o.slope_left = r.slope_left.by === "angle" ? { by: "angle", angle_deg: v } : { by: "height", ridge_h: v };
+  }
+  if (r.slope_right) {
+    const v = exprToValue(r.slope_right.value);
+    o.slope_right = r.slope_right.by === "angle" ? { by: "angle", angle_deg: v } : { by: "height", ridge_h: v };
+  }
   const mo = put("min_overhang", r.min_overhang);
   if (mo !== undefined) o.min_overhang = mo;
   const st = put("slab_thickness", r.slab_thickness);

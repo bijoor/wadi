@@ -63,6 +63,46 @@ function resolveRise(slope: SlopeSpec | undefined, crossHalf: number): number {
   return crossHalf * Math.tan((slope.angle_deg * Math.PI) / 180);
 }
 
+// Pitch angle (radians) of a slope spec. A per-side spec given by HEIGHT is read
+// as a symmetric ridge over crossHalf (angle = atan(ridge_h / crossHalf)) — the
+// only sensible reading, since the two sides share ONE ridge line.
+function slopeAngleRad(spec: SlopeSpec, crossHalf: number): number {
+  if (spec.by === "angle") return (spec.angle_deg * Math.PI) / 180;
+  return Math.atan(spec.ridge_h / crossHalf);
+}
+
+// Resolve a segment's pitch. When BOTH per-side slopes are set (asymmetric
+// gable), the two eaves stay put and the ridge shifts across the width: given
+// target angles αL, αR over the full width w, ridge height H = w·tanL·tanR /
+// (tanL+tanR) and the left run = H/tanL, so the ridge sits `crossHalf − leftRun`
+// off the centreline toward the left eave. Otherwise fall back to the symmetric
+// `slope`. Returns the ridge rise, the cross-shift (+ = toward the left eave, by
+// the segment's left normal), and each side's pitch tangent (for planar eaves).
+function resolvePitch(
+  seg: RoofSegment,
+  cfg: RoofConfig,
+  crossHalf: number,
+): { ridgeH: number; ridgeShift: number; leftPitchTan: number; rightPitchTan: number } {
+  const left = seg.slope_left_override ?? cfg.slope_left;
+  const right = seg.slope_right_override ?? cfg.slope_right;
+  if (left && right) {
+    const tanL = Math.tan(slopeAngleRad(left, crossHalf));
+    const tanR = Math.tan(slopeAngleRad(right, crossHalf));
+    // A half-configured pair (blank angle from the form → NaN) or a degenerate
+    // angle (≤0° / ≥90°) falls back to the symmetric slope rather than breaking
+    // the whole roof.
+    if (tanL > 0 && tanR > 0) {
+      const width = 2 * crossHalf;
+      const ridgeH = (width * tanL * tanR) / (tanL + tanR);
+      const leftRun = ridgeH / tanL;
+      return { ridgeH, ridgeShift: crossHalf - leftRun, leftPitchTan: tanL, rightPitchTan: tanR };
+    }
+  }
+  const ridgeH = resolveRise(seg.slope_override ?? cfg.slope, crossHalf);
+  const t = ridgeH / crossHalf;
+  return { ridgeH, ridgeShift: 0, leftPitchTan: t, rightPitchTan: t };
+}
+
 function to3D(pt: Point2D, z: number): Point3D {
   return [pt[0], pt[1], z];
 }
@@ -130,8 +170,10 @@ export function derivePitchedRoof(
     if (alongLen === 0) continue;
 
     const crossHalf = seg.width / 2;
-    const slope = seg.slope_override ?? cfg.slope;
-    const ridgeH = resolveRise(slope, crossHalf);
+    // Pitch — symmetric `slope`, or an asymmetric per-side pair that shifts the
+    // ridge across the width (ridgeShift, applied via leftN below).
+    const { ridgeH, ridgeShift, leftPitchTan, rightPitchTan } = resolvePitch(seg, cfg, crossHalf);
+    const asym = ridgeShift !== 0;
     if (!(ridgeH > 0)) {
       throw new Error(`pitched segment ${seg.id}: rise must be > 0`);
     }
@@ -191,10 +233,17 @@ export function derivePitchedRoof(
     // pitch, keeping the slope planar. (Single-segment roofs only — see model.ts.)
     const ohLeft = seg.overhang_left ?? minOverhang;
     const ohRight = seg.overhang_right ?? minOverhang;
-    const eaveZLeft = opts.wallTopZ - (ohLeft * ridgeH) / dCrit;
-    const eaveZRight = opts.wallTopZ - (ohRight * ridgeH) / dCrit;
-    const oCrossLeft = (ohLeft * crossHalf) / dCrit;
-    const oCrossRight = (ohRight * crossHalf) / dCrit;
+    // Asymmetric: each eave extends horizontally by its overhang and drops along
+    // THAT side's pitch (keeps the plane planar with the shifted ridge). Symmetric:
+    // the legacy multi-segment formula (dCrit is the shared global constraint).
+    const eaveZLeft = asym
+      ? opts.wallTopZ - ohLeft * leftPitchTan
+      : opts.wallTopZ - (ohLeft * ridgeH) / dCrit;
+    const eaveZRight = asym
+      ? opts.wallTopZ - ohRight * rightPitchTan
+      : opts.wallTopZ - (ohRight * ridgeH) / dCrit;
+    const oCrossLeft = asym ? ohLeft : (ohLeft * crossHalf) / dCrit;
+    const oCrossRight = asym ? ohRight : (ohRight * crossHalf) / dCrit;
     // Along overhang: closed hips derive it from the hip pitch,
     // open gables use gable_overhang, joints get 0 (the neighbour
     // provides the roof coverage past this endpoint).
@@ -227,18 +276,25 @@ export function derivePitchedRoof(
     //   closed → trim inward by hip_setback
     //   open   → extend past by gable_overhang
     //   joint  → run to the segment endpoint (no trim, no extension)
-    const ridgeStart2D: Point2D =
+    // The ridge cross-position: centreline + ridgeShift·leftN (ridgeShift=0 unless
+    // an asymmetric per-side pitch moved it). Applied to both ends so the ridge
+    // line runs parallel to the segment axis, just off-centre.
+    const ridgeStart2D: Point2D = shift(
       startRes === "closed"
         ? shift(seg.start, unit, +hipSetbackStart)
         : startRes === "open"
           ? shift(seg.start, unit, -gableOverhangStart)
-          : seg.start;
-    const ridgeEnd2D: Point2D =
+          : seg.start,
+      leftN, ridgeShift,
+    );
+    const ridgeEnd2D: Point2D = shift(
       endRes === "closed"
         ? shift(seg.end, unit, -hipSetbackEnd)
         : endRes === "open"
           ? shift(seg.end, unit, +gableOverhangEnd)
-          : seg.end;
+          : seg.end,
+      leftN, ridgeShift,
+    );
     const ridgeStart3D = to3D(ridgeStart2D, ridgeZ);
     const ridgeEnd3D = to3D(ridgeEnd2D, ridgeZ);
 
@@ -407,7 +463,8 @@ export function derivePitchedRoof(
         // by overhang — the wall itself sits at the wall line).
         const wallLeft = shift(seg.start, leftN, crossHalf);
         const wallRight = shift(seg.start, rightN, crossHalf);
-        const apexAtWall: Point3D = [seg.start[0], seg.start[1], ridgeZ];
+        const apexCross = shift(seg.start, leftN, ridgeShift);
+        const apexAtWall: Point3D = [apexCross[0], apexCross[1], ridgeZ];
         planes.push({
           id: `${seg.id}.gable_wall.start`,
           vertices: [
@@ -472,7 +529,8 @@ export function derivePitchedRoof(
       if (endRes === "open") {
         const wallLeft = shift(seg.end, leftN, crossHalf);
         const wallRight = shift(seg.end, rightN, crossHalf);
-        const apexAtWall: Point3D = [seg.end[0], seg.end[1], ridgeZ];
+        const apexCross = shift(seg.end, leftN, ridgeShift);
+        const apexAtWall: Point3D = [apexCross[0], apexCross[1], ridgeZ];
         planes.push({
           id: `${seg.id}.gable_wall.end`,
           vertices: [
@@ -544,9 +602,13 @@ export function derivePitchedRoof(
     if (segTrussEntry) {
       for (let ti = 0; ti < segTrussEntry.positions_along.length; ti++) {
         const along = segTrussEntry.positions_along[ti];
-        const apex2D = interpolatePoint(seg, along);
-        const leftBase = shift(apex2D, leftN, crossHalf);
-        const rightBase = shift(apex2D, rightN, crossHalf);
+        const centre2D = interpolatePoint(seg, along);
+        // Bottom chord spans the full width (eave to eave); the apex sits over
+        // the ridge (shifted off-centre for an asymmetric pitch) so the two top
+        // chords take the left/right angles.
+        const leftBase = shift(centre2D, leftN, crossHalf);
+        const rightBase = shift(centre2D, rightN, crossHalf);
+        const apex2D = shift(centre2D, leftN, ridgeShift);
         trusses.push({
           id: `${seg.id}.truss.${ti}`,
           bottom_left: to3D(leftBase, opts.wallTopZ),

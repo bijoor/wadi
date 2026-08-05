@@ -91,6 +91,17 @@ export function RoofV2Form({
     const slope = (get<Bag>(bag, ["slope"]) ?? {}) as Record<string, unknown>;
     setAt(["slope"], { ...slope, ...p });
   };
+  // Per-side (asymmetric gable) slope patches. Exposed as ANGLE only. Clearing
+  // the field removes the whole side (so a half-set pair falls back to symmetric).
+  const patchSlopeSide = (side: "slope_left" | "slope_right") =>
+    (p: Record<string, unknown>) => {
+      const cur = (get<Bag>(bag, [side]) ?? {}) as Record<string, unknown>;
+      const next = { ...cur, by: "angle", ...p } as Record<string, unknown>;
+      const hasVal = next.angle_deg !== undefined && next.angle_deg !== null;
+      const fm = next.formulas as Record<string, unknown> | undefined;
+      const hasFormula = !!fm && Object.keys(fm).length > 0;
+      setAt([side], hasVal || hasFormula ? next : undefined);
+    };
 
   const roofType = (get<string>(bag, ["roof_type"]) as
     | "flat" | "shed" | "pitched" | undefined) ?? "pitched";
@@ -186,6 +197,26 @@ export function RoofV2Form({
               { value: "closed", label: "closed (hip)" },
               { value: "open", label: "open (gable)" },
             ]}
+          />
+          {/* Asymmetric (saltbox) gable: set BOTH to override the uniform Slope.
+              The eaves stay put and the ridge shifts so each side takes its
+              angle. left/right by the segment's left normal (as overhang_left/
+              right). Best on a single-segment gable (open ends). */}
+          <ObjectMeasureField
+            object={(get<Bag>(bag, ["slope_left"]) ?? {}) as Record<string, unknown>}
+            field="angle_deg"
+            label="Left slope angle"
+            hint="Asymmetric gable: set BOTH left & right to override Slope. Blank = symmetric."
+            patch={patchSlopeSide("slope_left")}
+            min={1} max={89} suffix="°" allowEmpty
+          />
+          <ObjectMeasureField
+            object={(get<Bag>(bag, ["slope_right"]) ?? {}) as Record<string, unknown>}
+            field="angle_deg"
+            label="Right slope angle"
+            hint="Blank = symmetric. Both required for an asymmetric ridge."
+            patch={patchSlopeSide("slope_right")}
+            min={1} max={89} suffix="°" allowEmpty
           />
         </Section>
       )}

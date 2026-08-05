@@ -19,6 +19,11 @@ export interface RoofSegment {
 
   // Per-segment overrides — fall back to roof-level values.
   slope_override?: SlopeSpec;
+  // Per-side asymmetric pitch override (see RoofConfig.slope_left/right). Both
+  // must be set to take effect; falls back to the roof-level per-side pair, then
+  // to the symmetric `slope`.
+  slope_left_override?: SlopeSpec;
+  slope_right_override?: SlopeSpec;
   framing_override?: RoofFramingConfig;
 
   // Shed-only: which side of the segment is the high edge.
@@ -152,6 +157,15 @@ export interface RoofConfig {
   default_endpoint?: EndpointStyle;
 
   slope?: SlopeSpec;
+  // Independent per-side pitch for an ASYMMETRIC gable (saltbox). When BOTH are
+  // set they override `slope`: the two eaves stay put (footprint unchanged) and
+  // the ridge shifts across the width so the left/right slope planes take the
+  // requested angles. Measured to the wall-top eave line (not any dropped
+  // overhang tip). "left"/"right" are by the segment's left normal — the same
+  // sides as overhang_left / overhang_right. Intended for a single-segment gable
+  // (open endpoints); on a hip/closed end the ridge shift skews the hip.
+  slope_left?: SlopeSpec;
+  slope_right?: SlopeSpec;
   min_overhang?: number;      // default 20 (2 ft)
   framing?: RoofFramingConfig;
   material?: string;

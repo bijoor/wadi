@@ -468,3 +468,59 @@ describe("derivePitchedRoof — per-eave overhang (left/right) + unified end key
     expect(viaAlias.end[1]).toBeCloseTo(570); // 500 + 70
   });
 });
+
+describe("derivePitchedRoof — asymmetric per-side slopes (saltbox gable)", () => {
+  // yAxis segment runs +Y; its LEFT normal points −X (west), so slope_left is the
+  // WEST slope (eave at x=0), slope_right the EAST slope (eave at x=300).
+  it("two angles → an offset ridge, each side taking its own pitch", () => {
+    const cfg = yAxisCfg({
+      default_endpoint: "open",
+      slope: undefined,
+      slope_left: { by: "angle", angle_deg: 45 },
+      slope_right: { by: "angle", angle_deg: 30 },
+      min_overhang: 0.001,
+    });
+    const ridge = pitchedRidge(derivePitchedRoof(cfg, { wallTopZ: 100 }))!;
+    const H = ridge.start[2] - 100;
+    expect(H).toBeCloseTo(109.8, 0);
+    // Ridge shifts toward the steeper (left/west) eave: from centre x=150 to ~109.8.
+    expect(ridge.start[0]).toBeCloseTo(109.8, 0);
+    const leftRun = ridge.start[0] - 0;      // ridge → west eave
+    const rightRun = 300 - ridge.start[0];   // ridge → east eave
+    expect((Math.atan(H / leftRun) * 180) / Math.PI).toBeCloseTo(45, 0);
+    expect((Math.atan(H / rightRun) * 180) / Math.PI).toBeCloseTo(30, 0);
+    // The truss apex sits over the offset ridge (asymmetric truss).
+    const truss = derivePitchedRoof(
+      { ...cfg, trusses: [{ segment_id: "s0", positions_along: [250] }] },
+      { wallTopZ: 100 },
+    ).trusses[0];
+    expect(truss.apex[0]).toBeCloseTo(109.8, 0);
+    expect(truss.bottom_left[0]).toBeCloseTo(0);   // eaves stay at the walls
+    expect(truss.bottom_right[0]).toBeCloseTo(300);
+  });
+
+  it("equal left/right angles == the symmetric slope (ridge stays centred)", () => {
+    const asym = derivePitchedRoof(
+      yAxisCfg({ default_endpoint: "open", slope: undefined,
+        slope_left: { by: "angle", angle_deg: 40 }, slope_right: { by: "angle", angle_deg: 40 } }),
+      { wallTopZ: 100 },
+    );
+    const sym = derivePitchedRoof(
+      yAxisCfg({ default_endpoint: "open", slope: { by: "angle", angle_deg: 40 } }),
+      { wallTopZ: 100 },
+    );
+    expect(pitchedRidge(asym)!.start[0]).toBeCloseTo(150); // centred
+    // Same footprint (the two pitch formulas agree to fp precision).
+    const a = pitchedSlopeFootprint(asym)!, s = pitchedSlopeFootprint(sym)!;
+    for (const k of Object.keys(s) as (keyof typeof s)[]) expect(a[k]).toBeCloseTo(s[k]);
+  });
+
+  it("only ONE side set → ignored, falls back to symmetric slope", () => {
+    const oneSide = pitchedSlopeFootprint(derivePitchedRoof(
+      yAxisCfg({ default_endpoint: "open", slope_left: { by: "angle", angle_deg: 60 } }),
+      { wallTopZ: 100 }))!;
+    const plain = pitchedSlopeFootprint(derivePitchedRoof(
+      yAxisCfg({ default_endpoint: "open" }), { wallTopZ: 100 }))!;
+    expect(oneSide).toEqual(plain);
+  });
+});
