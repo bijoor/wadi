@@ -346,3 +346,33 @@ describe("resolveJoints — shed-shed L-shape joints", () => {
     }
   });
 });
+
+describe("ridgeZFromConfig — per-side (asymmetric) pitch, no `slope`", () => {
+  // A pitched roof authored as `slope angle (L, R)` sets slope_left/slope_right
+  // and leaves `slope` undefined. This used to throw at joint resolution and the
+  // whole (multi-segment) roof vanished. It must now resolve a ridge Z.
+  it("resolves a finite ridge Z from slope_left + slope_right (was: throw)", () => {
+    const cfg: RoofConfig = {
+      type: "roof",
+      roof_type: "pitched",
+      segments: [{ id: "s", start: [100, 0], end: [100, 300], width: 200 }],
+      slope_left: { by: "angle", angle_deg: 45 },
+      slope_right: { by: "angle", angle_deg: 25 },
+      min_overhang: 25,
+    };
+    const z = ridgeZFromConfig(cfg, 100);
+    expect(Number.isFinite(z)).toBe(true);
+    // H = width·tanL·tanR/(tanL+tanR), width 200, 45°/25° → ≈ 63.6 above wallTop.
+    expect(z).toBeCloseTo(100 + (200 * Math.tan(Math.PI / 4) * Math.tan((25 * Math.PI) / 180)) /
+      (Math.tan(Math.PI / 4) + Math.tan((25 * Math.PI) / 180)), 1);
+  });
+
+  it("still throws when there is no slope at all", () => {
+    const cfg: RoofConfig = {
+      type: "roof", roof_type: "pitched",
+      segments: [{ id: "s", start: [100, 0], end: [100, 300], width: 200 }],
+      min_overhang: 25,
+    };
+    expect(() => ridgeZFromConfig(cfg, 100)).toThrow(/slope/);
+  });
+});

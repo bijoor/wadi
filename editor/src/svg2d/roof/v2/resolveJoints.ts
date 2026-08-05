@@ -500,12 +500,23 @@ export function ridgeZFromConfig(
   cfg: RoofConfig,
   wallTopZ: number,
 ): number {
-  if (!cfg.slope) throw new Error("ridgeZFromConfig: cfg.slope required");
-  if (cfg.slope.by === "height") return wallTopZ + cfg.slope.ridge_h;
   // Angle-based: pick average width across segments as reference.
   const widths = cfg.segments.map((s) => s.width);
-  const meanHalf = (widths.reduce((a, b) => a + b, 0) / widths.length) / 2;
-  return wallTopZ + meanHalf * Math.tan((cfg.slope.angle_deg * Math.PI) / 180);
+  const meanHalf = widths.length ? (widths.reduce((a, b) => a + b, 0) / widths.length) / 2 : 0;
+  // Tangent of a slope spec at the reference half-width (height → atan(h/half)).
+  const tanOf = (s: { by: string; angle_deg?: number; ridge_h?: number }): number =>
+    s.by === "height" ? (s.ridge_h ?? 0) / (meanHalf || 1) : Math.tan(((s.angle_deg ?? 0) * Math.PI) / 180);
+  if (cfg.slope) {
+    if (cfg.slope.by === "height") return wallTopZ + cfg.slope.ridge_h;
+    return wallTopZ + meanHalf * Math.tan((cfg.slope.angle_deg * Math.PI) / 180);
+  }
+  // Per-side (asymmetric) pitch: no `slope`, but slope_left+slope_right. Same
+  // ridge rise as derivePitched: H = width·tanL·tanR/(tanL+tanR), width = 2·half.
+  if (cfg.slope_left && cfg.slope_right && meanHalf > 0) {
+    const tL = tanOf(cfg.slope_left), tR = tanOf(cfg.slope_right);
+    if (tL > 0 && tR > 0) return wallTopZ + (2 * meanHalf * tL * tR) / (tL + tR);
+  }
+  throw new Error("ridgeZFromConfig: cfg.slope (or slope_left + slope_right) required");
 }
 
 // Test helper — return members added by resolveJoints. Filtered by

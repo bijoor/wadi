@@ -108,6 +108,13 @@ describe("Wadi DSL round-trip", () => {
     expect(asym.slope).toBeUndefined();
     expect(asym.slope_left).toEqual({ by: "angle", angle_deg: 45 });
     expect(asym.slope_right).toEqual({ by: "angle", angle_deg: 25 });
+    // An EQUAL pair collapses to a plain symmetric slope (no per-side fields), so
+    // it never engages the asymmetric machinery (which else broke multi-segment
+    // roofs — cfg.slope was undefined at joint resolution).
+    const eq = roof("slope angle (20, 20)");
+    expect(eq.slope).toEqual({ by: "angle", angle_deg: 20 });
+    expect(eq.slope_left).toBeUndefined();
+    expect(eq.slope_right).toBeUndefined();
   });
 
   it("compact wall syntax: `wall east west north` declares three plain walls in one statement", () => {

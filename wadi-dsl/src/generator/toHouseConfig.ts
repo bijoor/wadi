@@ -504,9 +504,18 @@ function roof(r: ast.Roof): Record<string, unknown> {
   if (r.slope) {
     const s = r.slope;
     if (s.angle_left !== undefined && s.angle_right !== undefined) {
-      // Asymmetric pair `slope angle (L, R)` → the internal per-side fields.
-      o.slope_left = { by: "angle", angle_deg: exprToValue(s.angle_left) };
-      o.slope_right = { by: "angle", angle_deg: exprToValue(s.angle_right) };
+      const l = exprToValue(s.angle_left);
+      const rr = exprToValue(s.angle_right);
+      if (l === rr) {
+        // An EQUAL pair is just symmetric — emit a plain `slope` so it never
+        // engages the per-side (asymmetric) machinery. `slope angle (20,20)`
+        // is byte-identical to `slope angle 20`.
+        o.slope = { by: "angle", angle_deg: l };
+      } else {
+        // Asymmetric pair `slope angle (L, R)` → the internal per-side fields.
+        o.slope_left = { by: "angle", angle_deg: l };
+        o.slope_right = { by: "angle", angle_deg: rr };
+      }
     } else if (s.angle_deg !== undefined) {
       o.slope = { by: "angle", angle_deg: exprToValue(s.angle_deg) };
     } else if (s.ridge_h !== undefined) {
