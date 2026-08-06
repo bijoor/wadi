@@ -65,10 +65,22 @@ export function checkWdl(wdl: string): CheckResult {
     };
   }
 
+  let roofWarnings: string[] = [];
   try {
-    computeMergedV2Spec(res.data); // throws on wall-opening / roof geometry errors
+    // Throws on fatal wall-opening / expansion errors; per-roof derivation
+    // failures are collected on `.warnings` (a skipped roof renders as nothing,
+    // so treat it as an ERROR the author must fix — not a silent drop).
+    const spec = computeMergedV2Spec(res.data);
+    roofWarnings = spec.warnings ?? [];
   } catch (e) {
     return { ok: false, errors: [{ level: "error", message: "geometry: " + (e as Error).message }], warnings: [] };
+  }
+  if (roofWarnings.length) {
+    return {
+      ok: false,
+      errors: roofWarnings.map((message) => ({ level: "error" as const, message: "roof: " + message })),
+      warnings: [],
+    };
   }
 
   const { errors, warnings } = partitionFindings(lintStructure(res.data));

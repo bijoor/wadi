@@ -285,6 +285,11 @@ export interface RoofSpec {
   members: StraightMember[];
   planes: RoofPlane[];
   trusses: TrussTriangle[];
+  // Per-roof derivation failures that were skipped (one bad roof must not take
+  // out the whole pipeline). Populated by computeMergedV2Spec so callers — the
+  // viewer banner, wadi_check — can surface them instead of the old silent
+  // console.warn. Absent/empty ⇒ every roof derived cleanly.
+  warnings?: string[];
 }
 
 // Endpoint resolution — one entry per unique (x, y) point across

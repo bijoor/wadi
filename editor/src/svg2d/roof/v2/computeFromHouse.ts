@@ -34,6 +34,7 @@ export function computeMergedV2Spec(
 ): RoofSpec {
   void opts;
   const merged: RoofSpec = { members: [], planes: [], trusses: [] };
+  const warnings: string[] = [];
   const hc = expandRoomWalls(config);
   const houseDefaults = (hc as {
     defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number };
@@ -68,10 +69,19 @@ export function computeMergedV2Spec(
         merged.planes.push(...spec.planes);
         merged.trusses.push(...spec.trusses);
       } catch (e) {
-        console.warn(`[v2roof] roof on floor ${fi} skipped:`, e);
+        const name = (obj as { name?: string }).name;
+        const label = name ? `roof "${name}"` : "roof";
+        // The author's floor_number (not the 0-based array index fi).
+        const floorNum = (floor as { floor_number?: number }).floor_number ?? fi;
+        const msg = e instanceof Error ? e.message : String(e);
+        // Collect (don't just console.warn) so the caller can surface it — a
+        // skipped roof otherwise renders as NOTHING with no error anywhere.
+        warnings.push(`${label} on floor ${floorNum} skipped: ${msg}`);
+        console.warn(`[v2roof] roof on floor ${floorNum} skipped:`, e);
       }
     }
   }
+  if (warnings.length) merged.warnings = warnings;
   return merged;
 }
 

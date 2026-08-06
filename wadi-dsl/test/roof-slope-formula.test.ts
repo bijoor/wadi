@@ -66,6 +66,21 @@ describe("roof slope from a variable", () => {
     expect(spec.planes.length).toBeGreaterThan(0);
   });
 
+  it("SURFACES a swallowed roof-derivation failure as a warning, not silence", () => {
+    // A rise-0 roof throws inside derivePitched; computeMergedV2Spec used to only
+    // console.warn it → invisible roof, no error. Now it collects onto .warnings.
+    const { spec } = build(`${HEAD}
+  floor 2 "Roof" {
+    roof pitched endpoint closed slope height 0 overhang 25 {
+      segment "s0" from (0,200) to (400,200) width 392
+    }
+  }
+}`);
+    expect(spec.planes.length).toBe(0);
+    expect(spec.warnings ?? []).toHaveLength(1);
+    expect(spec.warnings![0]).toMatch(/floor 2 skipped.*rise must be > 0/);
+  });
+
   it("a literal slope still emits no formulas map (byte-parity)", () => {
     const { roof } = build(`${HEAD}
   floor 2 "Roof" {

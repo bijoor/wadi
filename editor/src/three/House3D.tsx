@@ -9,7 +9,7 @@
 // Bathroom_2_Entry_N — which sits on Bedroom_3's south wall but faces
 // north — resolve to the right wall).
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { pillarRects, trimSpans, type PillarRect } from "../svg2d/wallTrim";
 import { BoxWithHoles } from "./slabCSG";
@@ -33,6 +33,8 @@ import { getNode } from "../registry/registry";
 import { WallWithOpenings, type WallOpening } from "./wallCSG";
 import { OpeningPane } from "./openings";
 import { defaultLayerFor, effectiveLayers, useLayerStore } from "./layers";
+import { setExpansionWarnings, setRoofWarnings } from "./geometryWarnings";
+import { computeMergedV2Spec } from "./v2RoofFromHouse";
 import { useLayerDefaultsStore } from "../state/layerDefaults";
 import {
   buildRoomRects,
@@ -57,34 +59,28 @@ function objHash(o: unknown): string {
   return (h >>> 0).toString(36);
 }
 
-// Publish geometry warnings (invalid openings dropped during expansion) so
-// the viewer shell can show a banner. Deduped against the last set so React
-// re-renders with the same problems don't re-fire the banner. Stored on
-// window.__geometryWarnings and announced via a CustomEvent that main.ts
-// listens for (keeps the DOM side-effect out of React's render pass).
-let lastWarningKey = "";
-function reportGeometryWarnings(warnings: string[]): void {
-  if (typeof window === "undefined") return;
-  const key = warnings.join("\n");
-  if (key === lastWarningKey) return;
-  lastWarningKey = key;
-  const w = window as unknown as {
-    __geometryWarnings?: string[];
-    __expandError?: unknown;
-  };
-  w.__geometryWarnings = warnings;
-  // Back-compat: keep __expandError populated (existing debug badge reads it).
-  w.__expandError = warnings.length ? warnings[0] : null;
-  window.dispatchEvent(
-    new CustomEvent("wadi-geometry-warnings", { detail: warnings }),
-  );
-}
-
 export function House3D({ config }: { config: HouseConfig }) {
   const visible = useLayerStore((s) => s.visible);
   // Global default-layer-role prefs (localStorage). Subscribed so a change re-groups
   // the scene live; also fed into the grouping + menu below.
   const layerDefaults = useLayerDefaultsStore((s) => s.overrides);
+
+  // Roof-derivation failures. The real roof renders through the V2Roof*
+  // components, which each derive-and-swallow independently — so a roof that
+  // fails to build (e.g. an unresolved slope → rise 0) renders as NOTHING with
+  // no error. Re-derive once here via the canonical path (same source of truth
+  // as wadi_check) purely to collect + surface those warnings to the banner.
+  const roofWarnings = useMemo(() => {
+    try {
+      return computeMergedV2Spec(config).warnings ?? [];
+    } catch {
+      return [] as string[];
+    }
+  }, [config]);
+  useEffect(() => {
+    setRoofWarnings(roofWarnings);
+    return () => setRoofWarnings([]);
+  }, [roofWarnings]);
 
   const byLayer = useMemo(() => {
     // Lenient expansion: a wall/room whose openings are invalid (out-of-range,
@@ -103,10 +99,10 @@ export function House3D({ config }: { config: HouseConfig }) {
     } catch (e) {
       console.warn("[house3d] expandRoomWalls failed, skipping scene:", e);
       warnings.push(e instanceof Error ? e.message : String(e));
-      reportGeometryWarnings(warnings);
+      setExpansionWarnings(warnings);
       return {} as Record<string, React.ReactNode[]>;
     }
-    reportGeometryWarnings(warnings);
+    setExpansionWarnings(warnings);
     // House-level defaults (defaults.floor_height / slab_thickness) win
     // over the code globals; per-floor overrides win over both.
     const houseDefaults = (config as { defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number } }).defaults;
