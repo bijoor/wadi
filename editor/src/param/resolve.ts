@@ -158,7 +158,7 @@ function hasRoofNestedFormulas(obj: unknown): boolean {
   if (Array.isArray(segs) && segs.some(hasFormulas)) return true;
   const trusses = o.trusses;
   if (Array.isArray(trusses) && trusses.some(hasFormulas)) return true;
-  return hasFormulas(o.slope);
+  return hasFormulas(o.slope) || hasFormulas(o.slope_left) || hasFormulas(o.slope_right);
 }
 
 // A segment's `start`/`end` are [x,y] arrays; their coordinates are driven by
@@ -264,9 +264,13 @@ function resolveRoofNested(
     });
     if (tChanged) { patch.trusses = next; changed = true; }
   }
-  if (o.slope && typeof o.slope === "object") {
-    const r = applyContainerFormulas(o.slope, scope, warnings, `${where}/slope`);
-    if (r.changed) { patch.slope = r.value; changed = true; }
+  // Symmetric `slope`, plus the asymmetric per-side `slope_left`/`slope_right`
+  // (saltbox) — each is a container carrying its own angle_deg/ridge_h formula.
+  for (const key of ["slope", "slope_left", "slope_right"] as const) {
+    if (o[key] && typeof o[key] === "object") {
+      const r = applyContainerFormulas(o[key], scope, warnings, `${where}/${key}`);
+      if (r.changed) { patch[key] = r.value; changed = true; }
+    }
   }
   return changed ? { value: { ...o, ...patch }, changed: true } : { value: obj, changed: false };
 }

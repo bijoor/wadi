@@ -486,6 +486,23 @@ function componentInstance(c: ast.Component): Record<string, unknown> {
 
 // ---- Roof (segments carry their own formula map; trusses use pos0/pos1/…) ----
 
+// A `slope` sub-object carries its OWN `formulas` map (angle_deg / ridge_h), so a
+// VARIABLE slope — `slope angle roofAngle` — resolves like every other geometry
+// field. Inlining `exprToValue` here instead would leave the raw "= roofAngle"
+// string on angle_deg; the resolver never touches it, tan(NaN) → rise 0, and the
+// roof silently derives to nothing ("rise must be > 0"). A LITERAL slope emits no
+// formulas map, so byte-for-byte identical to before for numeric slopes.
+function slopeSpec(
+  by: "angle" | "height",
+  key: "angle_deg" | "ridge_h",
+  e: ast.Expr,
+): Record<string, unknown> {
+  const { value, formula } = fieldAndFormula(e, 0);
+  const slope: Record<string, unknown> = { by, [key]: value };
+  if (formula) slope.formulas = { [key]: formula };
+  return slope;
+}
+
 function roof(r: ast.Roof): Record<string, unknown> {
   const { formulas, put } = geom();
   const o: Record<string, unknown> = { type: "roof", roof_type: r.roof_type };
@@ -500,16 +517,16 @@ function roof(r: ast.Roof): Record<string, unknown> {
         // An EQUAL pair is just symmetric — emit a plain `slope` so it never
         // engages the per-side (asymmetric) machinery. `slope angle (20,20)`
         // is byte-identical to `slope angle 20`.
-        o.slope = { by: "angle", angle_deg: l };
+        o.slope = slopeSpec("angle", "angle_deg", s.angle_left);
       } else {
         // Asymmetric pair `slope angle (L, R)` → the internal per-side fields.
-        o.slope_left = { by: "angle", angle_deg: l };
-        o.slope_right = { by: "angle", angle_deg: rr };
+        o.slope_left = slopeSpec("angle", "angle_deg", s.angle_left);
+        o.slope_right = slopeSpec("angle", "angle_deg", s.angle_right);
       }
     } else if (s.angle_deg !== undefined) {
-      o.slope = { by: "angle", angle_deg: exprToValue(s.angle_deg) };
+      o.slope = slopeSpec("angle", "angle_deg", s.angle_deg);
     } else if (s.ridge_h !== undefined) {
-      o.slope = { by: "height", ridge_h: exprToValue(s.ridge_h) };
+      o.slope = slopeSpec("height", "ridge_h", s.ridge_h);
     }
   }
   const mo = put("min_overhang", r.min_overhang);
