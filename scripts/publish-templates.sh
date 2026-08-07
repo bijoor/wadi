@@ -50,7 +50,10 @@ fi
 # floors/parametric; preserves editorial fields). So "drop a .wadi in the folder
 # + run this" is all it takes to publish a new template.
 echo "Regenerating catalog index…"
-node "$(dirname "$0")/gen-catalog-index.mjs"
+# Runs via the editor's installed tsx (the derivation lives in editor/src, shared
+# with the in-app Publish panel). ROOT is the repo root (scripts/..).
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+"$ROOT/editor/node_modules/.bin/tsx" "$ROOT/scripts/gen-catalog-index.ts"
 echo
 
 echo "Publishing $SRC -> r2://$BUCKET"
