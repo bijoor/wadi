@@ -1,7 +1,7 @@
 // The node registry — a map of object `type` → NodeDefinition, plus the builtin
 // registrations. Dispatchers import `getNode` / `allNodes` and consult it first.
 
-import type { NodeDefinition } from "./types";
+import type { NodeDefinition, NodeFacets } from "./types";
 import { registerObjectSchema } from "../schema/houseConfig";
 import { registerBuiltinRole } from "../state/layerDefaults";
 import { itemNode } from "./nodes/item";
@@ -23,6 +23,15 @@ export function getNode(type: string): NodeDefinition | undefined {
 
 export function allNodes(): NodeDefinition[] {
   return [...REGISTRY.values()];
+}
+
+/** The geometry facets a primitive exposes to compositor stages. `planFootprint`
+ *  back-fills the `footprint` facet so existing footprint-only nodes participate
+ *  without change; explicit `facets` override. */
+export function facetsFor(type: string): NodeFacets {
+  const def = getNode(type);
+  if (!def) return {};
+  return { footprint: def.planFootprint, ...def.facets };
 }
 
 /** Types offered in the "+ Add object" menu, in registration order. */

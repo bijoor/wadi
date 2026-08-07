@@ -61,6 +61,26 @@ export interface NodeElevationCtx {
   direction: "north" | "south" | "east" | "west";
 }
 
+/** Plan-space axis-aligned bounding box, in PROJECT UNITS. */
+export interface PlanAABB {
+  x: number;
+  y: number;
+  w: number;
+  d: number;
+}
+
+// Typed geometry FACETS a primitive exposes for the compositor's STAGES to consume
+// (plans/primitive-componentization.md §2.5c). A stage reads only the facet it
+// needs — dimensioning → bbox/edges, layout → footprint — so a primitive never
+// knows its neighbours and a cross-object stage never reaches into a primitive's
+// internals. The set grows as new stages need new facets.
+export interface NodeFacets {
+  /** Plan-space AABB (layout, perimeter dimensioning). */
+  bbox?: (obj: Record<string, unknown>) => PlanAABB | null;
+  /** Plan footprint (also surfaced via `planFootprint` for back-compat). */
+  footprint?: (obj: Record<string, unknown>) => NodePlanFootprint | null;
+}
+
 // The descriptor a primitive registers — one file owns its whole surface. Named
 // NodeDefinition for now; the plan (plans/primitive-componentization.md) renames it
 // PrimitiveDefinition at kernel-extraction (P4). The render3D / drawPlan /
@@ -90,6 +110,8 @@ export interface NodeDefinition {
   render3D?: (obj: Record<string, unknown>, ctx: NodeRender3DCtx) => Node3DOutput | null;
   /** 2D plan footprint (project units) for bounds + drawing. Return null to skip. */
   planFootprint?: (obj: Record<string, unknown>) => NodePlanFootprint | null;
+  /** Geometry facets this primitive exposes to compositor stages (§2.5c). */
+  facets?: NodeFacets;
   /** CAPABILITY — 2D plan: a full SVG fragment (project coords), richer than a
    *  footprint box. Consumed by the "plan" view (wired in P1d). */
   drawPlan?: (obj: Record<string, unknown>, ctx: NodePlanCtx) => string | null;
