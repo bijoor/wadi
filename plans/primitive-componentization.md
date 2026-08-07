@@ -342,10 +342,13 @@ framework — build the ~150-line runner.
     PROVED: `runStages([expand, resolve])` reproduces the real resolve→expand
     output byte-for-byte on house_config (388 tests, parity 6/6). No renderer is
     routed through it yet.
-  - **P1½b (next):** route the shared prefix + the view leaves (plan / elevation /
-    3D as terminal stages) through `runStages` one stage at a time, parity-gated;
-    stand up the typed Stage registry (needs the concrete compose-Ctx). The
-    invasive half — incremental.
+  - **P1½b STARTED (eca2a52):** `pipeline/compose.ts` = the DOMAIN compose layer
+    over the neutral runner — `ComposeCtx`, canonical `resolveStage`/`expandStage`,
+    the TYPED Stage registry (`composeStages`), + drop-in helpers `composeResolve`
+    / `composeExpanded`. First PRODUCTION consumer routed: the store's resolve seam
+    (`configStore`) now resolves THROUGH the runner, byte-identical (391 tests,
+    parity 6/6). Remaining: route the view leaves (plan / elevation / 3D as terminal
+    stages) + the per-view internal expand — one stage at a time, parity-gated.
 
 **P2 — Field-schema projections.** Build `fields → {zod, form, docs}` generators;
 migrate `item` (already registry-driven) + one simple INDEPENDENT type to fully
