@@ -634,10 +634,31 @@ async function doPublish(pkg: TemplatePackage): Promise<PublishResult> {
   };
 }
 
-// Desktop R2 push. Filled in by P4d; a browser build never reaches this.
+// Desktop R2 push: write the package into a chosen templates folder (persisted)
+// and run the repo's publish-templates.sh to push the catalog to R2. The Rust
+// `publish_template` command owns the file write + index splice + script run.
+const TEMPLATES_DIR_KEY = "wadi.templatesDir";
 async function publishTemplateDesktop(pkg: TemplatePackage): Promise<PublishResult> {
-  void pkg;
-  return { ok: false, message: "Desktop publish is not wired yet." };
+  let dir = localStorage.getItem(TEMPLATES_DIR_KEY) || "";
+  if (!dir) {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const picked = await open({
+      directory: true,
+      title: "Pick your templates folder (editor/public/templates)",
+    });
+    if (typeof picked !== "string") return { ok: false, message: "Publish cancelled — no templates folder chosen." };
+    dir = picked;
+    localStorage.setItem(TEMPLATES_DIR_KEY, dir);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const message = await invoke<string>("publish_template", {
+    templatesDir: dir,
+    file: pkg.file,
+    wadi: pkg.wadi,
+    entry: pkg.entry,
+    push: true,
+  });
+  return { ok: true, message };
 }
 
 // ---- Libraries: save the current .wdl as a reusable module + reuse saved ones.
