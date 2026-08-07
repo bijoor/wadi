@@ -49,9 +49,10 @@ fi
 # Regenerate index.json from the .wadi files first (derives bedrooms/bathrooms/
 # floors/parametric; preserves editorial fields). So "drop a .wadi in the folder
 # + run this" is all it takes to publish a new template.
-echo "Regenerating catalog index…"
-# Runs via the editor's installed tsx (the derivation lives in editor/src, shared
-# with the in-app Publish panel). ROOT is the repo root (scripts/..).
+echo "Writing the catalog listing (manifest.json)…"
+# A static host can't list its own folder, so we ship a filenames manifest.json.
+# The templates are self-describing (each `.wadi`'s `template` block carries the
+# editorial), so there is no metadata index to maintain. Runs via the editor's tsx.
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 "$ROOT/editor/node_modules/.bin/tsx" "$ROOT/scripts/gen-catalog-index.ts"
 echo

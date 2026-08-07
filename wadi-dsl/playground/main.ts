@@ -621,22 +621,23 @@ function wireToolbar(): void {
 }
 wireToolbar();
 
-// Publish an assembled template package. Desktop → the real R2 push (Tauri
-// command; see publishTemplateDesktop). Browser → download the `.wadi` so the dev
-// can drop it into editor/public/templates and run scripts/publish-templates.sh.
+// Publish a template = save the self-describing `.wadi` into a managed templates
+// FOLDER, which the app auto-indexes (no index file, no upload step). Desktop
+// writes it into the chosen local folder; the browser downloads it to drop into
+// an online folder (e.g. a shared Google Drive) using that platform's own UI.
 async function doPublish(pkg: TemplatePackage): Promise<PublishResult> {
   const shots = (pkg.wadi.thumbnails as string[] | undefined)?.length ?? 0;
   if (isTauri()) return publishTemplateDesktop(pkg);
   downloadText(pkg.file, JSON.stringify(pkg.wadi, null, 2), "application/json");
   return {
     ok: true,
-    message: `Downloaded ${pkg.file} (${shots} cover shot${shots === 1 ? "" : "s"}). Drop it into editor/public/templates and run scripts/publish-templates.sh.`,
+    message: `Downloaded ${pkg.file} (${shots} cover shot${shots === 1 ? "" : "s"}). Drop it into your templates folder (e.g. a shared Google Drive) — the app indexes it.`,
   };
 }
 
-// Desktop R2 push: write the package into a chosen templates folder (persisted)
-// and run the repo's publish-templates.sh to push the catalog to R2. The Rust
-// `publish_template` command owns the file write + index splice + script run.
+// Desktop: save the file into the managed templates folder — the SAME folder the
+// app auto-indexes FROM (localStorage `wadi.templatesDir`), so a saved template
+// shows up in the gallery straight away. The browser build never reaches this.
 const TEMPLATES_DIR_KEY = "wadi.templatesDir";
 async function publishTemplateDesktop(pkg: TemplatePackage): Promise<PublishResult> {
   let dir = localStorage.getItem(TEMPLATES_DIR_KEY) || "";
@@ -644,19 +645,17 @@ async function publishTemplateDesktop(pkg: TemplatePackage): Promise<PublishResu
     const { open } = await import("@tauri-apps/plugin-dialog");
     const picked = await open({
       directory: true,
-      title: "Pick your templates folder (editor/public/templates)",
+      title: "Pick your templates folder (the app will index every .wadi in it)",
     });
-    if (typeof picked !== "string") return { ok: false, message: "Publish cancelled — no templates folder chosen." };
+    if (typeof picked !== "string") return { ok: false, message: "Save cancelled — no templates folder chosen." };
     dir = picked;
     localStorage.setItem(TEMPLATES_DIR_KEY, dir);
   }
   const { invoke } = await import("@tauri-apps/api/core");
-  const message = await invoke<string>("publish_template", {
+  const message = await invoke<string>("save_template", {
     templatesDir: dir,
     file: pkg.file,
     wadi: pkg.wadi,
-    entry: pkg.entry,
-    push: true,
   });
   return { ok: true, message };
 }

@@ -129,7 +129,7 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
 
   async function open(): Promise<void> {
     overlay.hidden = false;
-    primaryEl.textContent = deps.isTauri() ? "Publish to gallery" : "Download package";
+    primaryEl.textContent = deps.isTauri() ? "Save to templates folder" : "Download .wadi";
     if (!idEl.value) {
       const id = normalizeId(deps.suggestId());
       idEl.value = id;

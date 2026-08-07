@@ -170,20 +170,15 @@ fn show_dsl_editor(app: tauri::AppHandle) {
   open_dsl_editor(&app);
 }
 
-// ---- Publish a template package to the catalog (desktop only) ---------------
-// The WDL editor's Publish panel assembles a package (the .wadi config with cover
-// thumbnails + the catalog index entry). This writes it into a local templates
-// directory (splicing index.json) and, when `push` is set, runs the repo's
-// scripts/publish-templates.sh to push the catalog to R2 — reusing the existing
-// wrangler + .env.r2 pipeline rather than teaching the app to talk to R2 itself.
+// ---- Save a template into a managed folder (desktop only) -------------------
+// The WDL editor's Publish panel saves a SELF-DESCRIBING `.wadi` (its `template`
+// metadata block + cover thumbnails) into the author's templates folder. That is
+// the whole "publish" — the app auto-indexes the folder, so the template appears
+// in the gallery immediately with no index file to maintain and no upload step.
+// (An online folder like Google Drive is managed with that platform's own UI; the
+// browser build downloads the file to drop in.)
 #[tauri::command]
-fn publish_template(
-  templates_dir: String,
-  file: String,
-  wadi: serde_json::Value,
-  entry: serde_json::Value,
-  push: bool,
-) -> Result<String, String> {
+fn save_template(templates_dir: String, file: String, wadi: serde_json::Value) -> Result<String, String> {
   use std::path::Path;
   let dir = Path::new(&templates_dir);
   if !dir.is_dir() {
@@ -191,63 +186,12 @@ fn publish_template(
   }
   // Guard the filename: a plain "<id>.wadi", no path separators.
   if file.is_empty() || file.contains('/') || file.contains('\\') || !file.ends_with(".wadi") {
-    return Err(format!("Unexpected package filename: {file}"));
+    return Err(format!("Unexpected template filename: {file}"));
   }
-
-  // 1. Write the <id>.wadi config.
   let wadi_txt =
     serde_json::to_string_pretty(&wadi).map_err(|e| format!("serialize .wadi: {e}"))?;
   std::fs::write(dir.join(&file), wadi_txt + "\n").map_err(|e| format!("write {file}: {e}"))?;
-
-  // 2. Splice the entry into index.json (replace by id, else append).
-  let index_path = dir.join("index.json");
-  let mut index: serde_json::Value = match std::fs::read_to_string(&index_path) {
-    Ok(txt) => serde_json::from_str(&txt).map_err(|e| format!("parse index.json: {e}"))?,
-    Err(_) => serde_json::json!({ "templates": [] }),
-  };
-  let id = entry.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-  if id.is_empty() {
-    return Err("Package entry has no id.".into());
-  }
-  let list = index
-    .get_mut("templates")
-    .and_then(|v| v.as_array_mut())
-    .ok_or("index.json has no templates array")?;
-  match list.iter().position(|t| t.get("id").and_then(|v| v.as_str()) == Some(id.as_str())) {
-    Some(i) => list[i] = entry,
-    None => list.push(entry),
-  }
-  let index_txt =
-    serde_json::to_string_pretty(&index).map_err(|e| format!("serialize index.json: {e}"))?;
-  std::fs::write(&index_path, index_txt + "\n").map_err(|e| format!("write index.json: {e}"))?;
-
-  let local = format!("Wrote {file} + index.json to {templates_dir}");
-  if !push {
-    return Ok(format!("{local}. Run scripts/publish-templates.sh to push to R2."));
-  }
-
-  // 3. Push to R2 via the repo script (templates_dir = <repo>/editor/public/templates).
-  let repo = dir.ancestors().nth(3);
-  let script = repo.map(|r| r.join("scripts/publish-templates.sh"));
-  match script {
-    Some(s) if s.is_file() => {
-      let out = std::process::Command::new("bash")
-        .arg(&s)
-        .current_dir(repo.unwrap())
-        .output();
-      match out {
-        Ok(o) if o.status.success() => Ok(format!("Published '{id}' to R2. {local}.")),
-        Ok(o) => Err(format!(
-          "{local}, but the R2 push failed: {}",
-          String::from_utf8_lossy(&o.stderr).trim()
-        )),
-        Err(e) => Err(format!("{local}, but could not run publish-templates.sh: {e}")),
-      }
-    }
-    _ => Ok(format!(
-      "{local}. (No scripts/publish-templates.sh found beside it — run the publish script manually to push to R2.)"
-    )),
-  }
+  Ok(format!("Saved {file} to your templates folder — it's in your gallery now."))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -266,7 +210,7 @@ pub fn run() {
     .plugin(tauri_plugin_clipboard_manager::init())
     .manage(PendingOpen(Mutex::new(initial)))
     .manage(BridgeState(Mutex::new(HashMap::new())))
-    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response, show_dsl_editor, publish_template])
+    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response, show_dsl_editor, save_template])
     // Custom menu on macOS: the default Edit menu claims Cmd+Z / Shift+Cmd+Z
     // for native undo/redo, which would shadow the app's model-level
     // undo/redo (handled in the webview via the standard keyboard shortcuts).
