@@ -2,6 +2,12 @@
 
 ### A reference method, derived from Wadi (parametric house design), for reproducing the same system in any domain
 
+> **Companion:** [`DSL-SOFTWARE-FRAMEWORK.md`](DSL-SOFTWARE-FRAMEWORK.md) explains
+> the *componentization framework* — how a concept is declared once (as `fields`)
+> and projected onto the schema, forms, docs, and DSL, and how the domain-neutral
+> engine was extracted into a reusable kernel. This document is the *parametric
+> layer* underneath it (variables, formulas, the resolver, the configurator).
+
 ---
 
 ## 0. What this document is
