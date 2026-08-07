@@ -262,6 +262,45 @@ winding a central pole inside a room, and the editor's completion widget lists
 `radius / total_height / turns / steps / tread_thickness / pole_radius / z_offset`.
 Two files, with every projection and capability derived from them.
 
+### 4.1 The steps, end to end
+
+The two files above are the fields declaration and the capabilities node. In practice
+you also register each in a manifest and run the schema codegen. A new type today lives
+in the repository, so adding one is a branch and a pull request. The full sequence:
+
+1. **Declare the fields.** Create `editor/src/schema/fields/<type>.ts` exporting a
+   `FieldSpec[]`, one entry per property (`name`, `kind`, `doc`, optional `unit`,
+   `required`). This is the whole shape of the type.
+2. **Add it to the fields manifest.** One line in `PRIMITIVE_FIELD_DECLS`, in
+   `editor/src/schema/fields/index.ts`.
+3. **Run the schema codegen.** `npm --prefix editor run gen-primitives`. It reads the
+   manifest and rewrites `editor/src/schema/generated/objects.generated.ts` (a
+   generated file, not hand-edited). `gen-primitives:check` fails CI if it is stale.
+4. **Add the type to the schema union.** In `editor/src/schema/houseConfig.ts`, import
+   the generated const and add it to the `z.discriminatedUnion("type", [ … ])`. This is
+   the one hand-edit to a shared file.
+5. **Write the capabilities node.** Create `editor/src/registry/nodes/<type>.tsx`
+   exporting a `NodeDefinition`: `type`, `label`, `addable`, `layerRole`, `fields`
+   (reuse the declaration from step 1, so the property-panel form is generated),
+   `makeDefault` (the add-menu default), and the render capabilities the type needs
+   (`render3D`, `planFootprint`, and optionally `expand`, `drawPlan`, `drawElevation`).
+6. **Register the node.** Add `registerNode(<type>Node)` to the list in
+   `editor/src/registry/registry.ts`.
+7. **Add the 3D component, if any.** If `render3D` draws geometry, add the React-Three
+   component it imports (for example `editor/src/three/<Type>.tsx`).
+8. **The DSL needs nothing for the generic form.** `<type> "name" { field value … }`
+   parses and compiles with no grammar change. Bespoke sugar (`<type> "name" at (x, y)
+   …`) is optional; it needs a grammar rule plus a compile function in `wadi-dsl`,
+   followed by `npm --prefix wadi-dsl run langium:generate`.
+
+Verify with the parity gate and the tests: `npm --prefix editor run parity-render`
+(must stay 6/6) and `npm --prefix editor test`.
+
+So it is two files of real content (steps 1 and 5) plus three build-time registration
+and codegen touches (steps 2, 3, 4, 6). All of it is base-code, edited and shipped in a
+build. Removing that constraint, so a type can be added without touching the base code,
+is the job of a plugin loader, which is not built yet.
+
 ---
 
 ## 5. Build discipline
