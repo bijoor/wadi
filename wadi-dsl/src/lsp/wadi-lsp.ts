@@ -16,6 +16,7 @@ import {
 import { WadiGeneratedModule, WadiGeneratedSharedModule } from "../language/generated/module.js";
 import { WadiScopeProvider, moduleUri } from "../language/wadi-scope.js";
 import { registerWadiValidationChecks } from "../language/wadi-validator.js";
+import { WadiTokenBuilder } from "../language/wadi-token-builder.js";
 import type { Model } from "../language/generated/ast.js";
 import type { ResolveModule } from "../generator/toHouseConfig.js";
 
@@ -28,6 +29,7 @@ export function createWadiLspServices(context: DefaultSharedModuleContext = Empt
   const shared = inject(createDefaultSharedModule(context), WadiGeneratedSharedModule);
   const Wadi = inject(createDefaultModule({ shared }), WadiGeneratedModule, {
     references: { ScopeProvider: (services) => new WadiScopeProvider(services) },
+    parser: { TokenBuilder: () => new WadiTokenBuilder() },
   });
   shared.ServiceRegistry.register(Wadi);
   registerWadiValidationChecks(Wadi);

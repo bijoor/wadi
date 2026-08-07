@@ -65,15 +65,33 @@ describe("DSL — generic ObjectDecl (P3, §2.6)", () => {
     expect(floor0Objects(compileDsl(wdl2))).toEqual(floor0Objects(cfg));
   });
 
-  it("a still-reserved keyword field survives via a quoted key", () => {
-    // `rotation` is a grammar keyword NOT in FieldKey's bare set → must be quoted.
-    // (Common dimension/placement keywords like `height`/`total_height`/`material`
-    // ARE bare-allowed — see the named-parameters test in generic-descriptor.)
-    const cfg = compileDsl(wrap(`gizmo { "rotation" 5 finish "matte" }`));
-    expect(floor0Objects(cfg)[0]).toEqual({ type: "gizmo", rotation: 5, finish: "matte" });
+  it("SOFT keywords: bespoke clause names work bare as generic field keys", () => {
+    // radius/turns/total_height/direction/material/height are all reserved keywords
+    // (they head bespoke clauses), yet the token builder makes them soft (also ID),
+    // so a generic primitive uses them as bare field names — no FieldKey edit.
+    const cfg = compileDsl(
+      wrap(`gizmo { radius 5 turns 2 total_height 30 direction "up" material "teak" height 9 }`),
+    );
+    expect(floor0Objects(cfg)[0]).toEqual({
+      type: "gizmo",
+      radius: 5,
+      turns: 2,
+      total_height: 30,
+      direction: "up",
+      material: "teak",
+      height: 9,
+    });
+  });
+
+  it("a HARD leader keyword field survives via a quoted key", () => {
+    // `size` is a HARD structural keyword (soft-keywords.ts) → NOT soft, must be
+    // quoted as a field key. (Field-marker keywords like `rotation`/`height`/
+    // `total_height` are SOFT — usable bare — thanks to the token builder.)
+    const cfg = compileDsl(wrap(`gizmo { "size" 5 finish "matte" }`));
+    expect(floor0Objects(cfg)[0]).toEqual({ type: "gizmo", size: 5, finish: "matte" });
     // …and the emitter quotes the reserved key back.
     const wdl2 = emitWdl(cfg);
-    expect(wdl2).toContain('"rotation" 5');
+    expect(wdl2).toContain('"size" 5');
     expect(floor0Objects(compileDsl(wdl2))).toEqual(floor0Objects(cfg));
   });
 

@@ -231,15 +231,13 @@ ObjectDecl:
     Common;
 FieldAssign:
     key=FieldKey value=Value;
-// A generic field key: a bare id, a quoted string, or one of the grammar keywords
-// that are ALSO plausible field names (dimension/placement/material words already
-// reserved by bespoke rules) — so a generic primitive can write `total_height 110`
-// or `material "teak"` bare instead of quoting. These are already keywords, so
-// listing them here adds none; it just lets them be field keys too.
+// A generic field key: a bare id, the `x`/`y` coordinate keywords, or a quoted
+// string. Field-marker keywords (`total_height`, `radius`, `direction`, …) are made
+// SOFT by the token builder (wadi-token-builder.ts) — lexed as `ID` too — so they
+// match `ID` here without being listed. Only a key that collides with a HARD leader
+// keyword (`at`, `size`, an object type) needs quoting.
 FieldKey returns string:
-    ID | 'x' | 'y' | STRING
-    | 'total_height' | 'height' | 'width' | 'thickness' | 'depth' | 'direction' | 'material'
-    | 'radius' | 'turns' | 'steps';
+    ID | 'x' | 'y' | STRING;
 Value infers Value:
     {infer StrVal} str=STRING | Expr;
 

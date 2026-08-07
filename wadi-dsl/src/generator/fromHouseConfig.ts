@@ -1,4 +1,5 @@
 // DECOMPILER — HouseConfig (.wadi JSON) → .wdl source text. The inverse of
+import { HARD_KEYWORDS } from "../language/soft-keywords.js";
 // toHouseConfig: it walks a canonical config and emits DSL that compiles back to
 // (a config deep-equal to) the input. Round-trip is exact for DSL-authored
 // configs (see reference-roundtrip test); form-authored configs may use a few
@@ -298,26 +299,12 @@ function emitRaw(w: W, indent: number, o: Obj): void {
   w.line(indent, `raw ${str(type)} ${JSON.stringify(body)}`);
 }
 
-// Grammar keywords that could also be a generic field's name — emitted as a quoted
-// key (parses as FieldKey STRING) since a bare one would hit the reserved keyword.
-const DSL_KEYWORDS = new Set([
-  "material", "height", "total_height", "width", "length", "thickness", "size", "at",
-  "from", "to", "direction", "side", "depth", "name", "step", "path", "rotation",
-  "scale", "sill", "open", "asset", "target", "with", "turn", "floor", "room", "wall",
-  "pillar", "beam", "slab", "plinth", "ground", "staircase", "kitchen", "item", "use",
-  "roof", "raw", "z_offset", "enabled", "layer", "north", "south", "east", "west",
-  "true", "false", "radius", "turns", "steps", "tread_thickness", "pole_radius",
-  "spiral_staircase",
-]);
-// …but the dimension/placement/material keywords are accepted BARE by FieldKey (see
-// the grammar), so emit them bare for readable named output (`total_height 110`,
-// `material "teak"`) rather than quoting. `x`/`y` are plain ids here and stay bare.
-const FIELDKEY_BARE = new Set([
-  "total_height", "height", "width", "thickness", "depth", "direction", "material",
-  "radius", "turns", "steps",
-]);
+// A generic field key emits BARE unless it collides with a HARD leader keyword
+// (`at`, `size`, an object type) — those must be quoted (FieldKey STRING). Field-
+// marker keywords (`total_height`, `radius`, `direction`, …) are SOFT (lexed as ID),
+// so they read bare. x/y are bare-allowed by FieldKey too.
 const keyTok = (k: string): string =>
-  /^[A-Za-z_]\w*$/.test(k) && (!DSL_KEYWORDS.has(k) || FIELDKEY_BARE.has(k)) ? k : str(k);
+  /^[A-Za-z_]\w*$/.test(k) && !HARD_KEYWORDS.has(k) ? k : str(k);
 
 // A generic field's value: its formula (unwrapped) if any, else a quoted string
 // or a number. Distinct from `fld`, which coerces every value to a number.

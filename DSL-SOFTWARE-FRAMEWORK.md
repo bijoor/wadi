@@ -228,9 +228,14 @@ spiral_staircase "Stair" at (120, 120) radius 45 total_height 110 turns 1.75
 ```
 
 Both compile to the same object; its `fields` still drive the schema/form/docs, so
-only the surface syntax changed. Promotion claims the keyword — the generic form for
-this type yields to the bespoke one (existing files, of which there are none for a
-brand-new type, would keep working; the sugar is strictly nicer).
+only the surface syntax changed. Promotion claims the *type* keyword — the generic
+form for this type yields to the bespoke one (no brand-new type has existing files;
+the sugar is strictly nicer). Its *clause* keywords (`radius`, `turns`, …) do **not**
+break the generic path: a **soft-keyword** token builder (`wadi-token-builder.ts`)
+makes every field-marker keyword also lex as an identifier, so those words stay
+usable as bare field keys on any generic primitive — no per-promotion grammar edit.
+The soft set is derived from the grammar (field markers minus a small, stable set of
+object/statement leaders), so adding a primitive is still ~2 files.
 
 **File 2 — the capabilities** (`editor/src/registry/nodes/spiralStaircase.tsx`):
 

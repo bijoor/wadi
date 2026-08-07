@@ -13,6 +13,7 @@ import {
 import { WadiGeneratedModule, WadiGeneratedSharedModule } from "./generated/module.js";
 import { WadiScopeProvider } from "./wadi-scope.js";
 import { registerWadiValidationChecks } from "./wadi-validator.js";
+import { WadiTokenBuilder } from "./wadi-token-builder.js";
 
 export type WadiServices = LangiumCoreServices;
 
@@ -21,6 +22,10 @@ export type WadiServices = LangiumCoreServices;
 export const WadiModule: Module<WadiServices, PartialLangiumCoreServices> = {
   references: {
     ScopeProvider: (services) => new WadiScopeProvider(services),
+  },
+  parser: {
+    // Soft (contextual) keywords: field-marker keywords are also lexed as ID.
+    TokenBuilder: () => new WadiTokenBuilder(),
   },
 };
 
