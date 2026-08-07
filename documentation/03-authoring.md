@@ -34,8 +34,9 @@ the architect (or coding agent) who describes the building.
 14. [Layers & the raw escape](#14-layers--the-raw-escape)
 15. [Using the editor](#15-using-the-editor): completion, hover, go-to-def, rename, live preview
 16. [Sharing & exporting](#16-sharing--exporting)
-17. [Good practice & gotchas](#17-good-practice--gotchas)
-18. [Quick reference](#18-quick-reference)
+17. [Publishing a template](#17-publishing-a-template): cover shots, configurator test, publish
+18. [Good practice & gotchas](#18-good-practice--gotchas)
+19. [Quick reference](#19-quick-reference)
 
 ---
 
@@ -677,7 +678,33 @@ squiggles and in a Problems panel with line numbers.
 
 ---
 
-## 17. Good practice & gotchas
+## 17. Publishing a template
+
+A parametric `.wdl` becomes a home an owner can pick from the gallery and adjust.
+The WDL editor's **📦 Publish template** button runs the whole workflow in one
+panel:
+
+1. **Capture cover images.** Opening the panel switches the live preview to the
+   design view, which shows the capture toolbar. **📸 Shot** grabs the current 3D
+   frame; **✨ Auto** grabs several angles plus a floor plan; **🗂 Shots** manages
+   the set and picks the cover. The first shot is the card cover.
+2. **Test the configurator.** Use **Preview as owner** in the preview to open the
+   owner configurator and exercise each knob, so you ship a template whose
+   adjustments you have actually tried.
+3. **Fill in the details.** Give the template an id, title, description, and style
+   / roof tags. Bedrooms, bathrooms, floor count, and the adjustable badge are
+   derived from the model. The panel shows a live gallery-card preview.
+4. **Publish.** In the desktop app this writes the package (the compiled `.wadi`
+   with the cover images, plus the catalog entry) into your templates folder and
+   pushes the catalog to R2. In the browser it downloads the package so you can
+   drop it into `editor/public/templates/` and run `scripts/publish-templates.sh`.
+
+The published `.wadi` keeps its full parametric layer (variables, points, grids,
+formulas, configurator), so the owner gets the same adjustable model you authored.
+
+---
+
+## 18. Good practice & gotchas
 
 - **Use `convention center`.** It removes all wall-offset arithmetic.
 - **Author on a grid.** Define a `grid` from your plot `point`, then place rooms/
@@ -700,7 +727,7 @@ squiggles and in a Problems panel with line numbers.
 
 ---
 
-## 18. Quick reference
+## 19. Quick reference
 
 ```wdl
 // ── skeleton ─────────────────────────────────────────────────────────
