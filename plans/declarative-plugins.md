@@ -211,22 +211,18 @@ Two publish targets share this mechanism:
 - **plugin** to the plugins catalog (the P3 distribution above): the same compile,
   capture, push, and index step, pointed at the plugins path.
 
-Surfaces:
+Surface: the desktop app only. A "Publish as template" (or "Publish as plugin") action
+on the current design. The desktop app performs the R2 upload from its Tauri backend,
+using credentials stored in the app (or a `.env.r2` on that machine), and reuses the
+existing index-generation and capture logic. Publishing is outward-facing and
+side-effectful, so the action confirms before it uploads.
 
-- Desktop app and DSL editor: a "Publish as template" action on the current design.
-- CLI: `publish-template <file.wdl>` and `publish-plugin <file.wdl>`, on an architect
-  machine with `.env.r2`.
-- MCP: `wadi_publish_template` and `wadi_publish_plugin` tools, so an assistant can
-  publish. Publishing is outward-facing and side-effectful, so it requires explicit user
-  confirmation before the upload and uses the user's local R2 credentials; the assistant
-  never sees the token.
-
-Constraint: R2 writes need credentials, which live on the architect's machine
-(`.env.r2`). The desktop app, CLI, and MCP run there and can publish. A pure-browser
-architect has no credentials, so browser publishing is deferred, or later routed through
-a small authenticated upload endpoint. Reads stay public with CORS `*`, as today. This
-capability is self-contained and can ship independently of the plugin work; the template
-half closes the gap on its own.
+Deliberately desktop-only: the browser app, the CLI, and the MCP server do not push to
+R2. An AI assistant and a browser architect author and preview a design or a plugin, but
+a human publishes it from the desktop app. This keeps the R2 credentials in one place and
+keeps the outward-facing publish step a human action. Reads stay public with CORS `*`, as
+today. This capability is self-contained and can ship independently of the plugin work;
+the template half closes the gap on its own.
 
 ## Phasing
 
@@ -244,10 +240,10 @@ half closes the gap on its own.
 - **P3. MCP authoring tools and distribution.** `wadi_plugins`/`wadi_plugin`, the
   plugin-aware `check`/`preview`, the embedded reference, cross-surface loading, and
   optional R2 hosting.
-- **P4. Publishing from the WDL workflow.** The publish action (compile, capture,
-  index, push to R2) for templates and plugins, exposed on the desktop app, the CLI, and
-  MCP. The template half is independent of P0 to P3 and can be built first to close the
-  architect gap early; the plugin half reuses the P3 plugin catalog.
+- **P4. Publishing from the WDL workflow.** The desktop-app publish action (compile,
+  capture, index, push to R2) for templates and plugins. The template half is independent
+  of P0 to P3 and can be built first to close the architect gap early; the plugin half
+  reuses the P3 plugin catalog.
 - **Optional. Generic solid primitives.** If composition needs shapes the core lacks (a
   cylinder for a tank), consider adding small parametric solids (`box`, `cylinder`,
   `prism`) as core primitives so more can be built without a GLB. Alternatively rely on
