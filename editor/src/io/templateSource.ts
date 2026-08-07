@@ -25,6 +25,7 @@
 // download, not code execution.
 
 import { isTauri } from "@tauri-apps/api/core";
+import { entryFromConfig, type TemplateEntry } from "../templatePackage/catalogMeta";
 
 // Baked-in remote catalog: the Cloudflare R2 bucket on our custom domain. Serves
 // index.json + the template .wadi files with CORS `*`, so the web app, the
@@ -35,7 +36,31 @@ export const REMOTE_TEMPLATES_URL = "https://templates.wadi.house";
 const BUNDLED_BASE = "/templates";
 const OVERRIDE_KEY = "wadi.templatesUrl";
 const DRIVE_KEY_KEY = "wadi.driveApiKey";
+const LOCAL_DIR_KEY = "wadi.templatesDir";
 const CACHE_DIR = "templates-cache";
+
+const isTemplateFile = (name: string) =>
+  /\.(wadi|json)$/i.test(name) && name !== "index.json" && name !== "manifest.json";
+
+/** A local templates FOLDER (desktop only): the author manages `.wadi` files in
+ *  it with Finder, and the app lists + indexes it — no publish, no index file.
+ *  This is the same folder the Publish panel saves into. Empty string → unset. */
+export function localTemplatesDir(): string {
+  if (!isTauri()) return "";
+  try {
+    return localStorage.getItem(LOCAL_DIR_KEY)?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+export function setLocalTemplatesDir(dir: string | null): void {
+  try {
+    if (dir && dir.trim()) localStorage.setItem(LOCAL_DIR_KEY, dir.trim());
+    else localStorage.removeItem(LOCAL_DIR_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 const stripTrailingSlash = (u: string) => u.replace(/\/+$/, "");
 
@@ -84,7 +109,7 @@ export function isRemoteCatalog(): boolean {
 
 // --- source detection --------------------------------------------------------
 
-export type SourceKind = "generic" | "gdrive";
+export type SourceKind = "generic" | "gdrive" | "local";
 
 /** Pull a Drive folder id out of the common URL/spec shapes, else null. */
 function driveFolderId(url: string): string | null {
@@ -101,6 +126,7 @@ function driveFolderId(url: string): string | null {
 }
 
 export function sourceKind(url = templatesBaseUrl()): SourceKind {
+  if (localTemplatesDir()) return "local";
   return driveFolderId(url) ? "gdrive" : "generic";
 }
 
@@ -132,6 +158,27 @@ async function cacheRead(relPath: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+// --- local folder adapter (desktop) ------------------------------------------
+// The author drops `.wadi` files into a local folder; we list + read it with the
+// filesystem. `join` avoids assuming a path separator.
+
+function joinPath(dir: string, name: string): string {
+  return dir.replace(/[/\\]+$/, "") + (dir.includes("\\") ? "\\" : "/") + name;
+}
+
+async function localListFiles(dir: string): Promise<string[]> {
+  const { readDir } = await import("@tauri-apps/plugin-fs");
+  const entries = await readDir(dir);
+  return entries
+    .filter((e) => e.isFile && isTemplateFile(e.name))
+    .map((e) => e.name);
+}
+
+async function localReadFile(dir: string, relPath: string): Promise<string> {
+  const { readTextFile } = await import("@tauri-apps/plugin-fs");
+  return readTextFile(joinPath(dir, relPath));
 }
 
 // --- Google Drive adapter ----------------------------------------------------
@@ -204,6 +251,10 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
  *  `relPath` is the file name relative to the catalog (e.g. "index.json",
  *  "single_story_cottage.wadi"). */
 export async function fetchCatalogText(relPath: string): Promise<string> {
+  // A configured local folder (desktop) wins: read straight off disk.
+  const localDir = localTemplatesDir();
+  if (localDir) return localReadFile(localDir, relPath);
+
   const base = templatesBaseUrl();
   const folderId = driveFolderId(base);
   const remote = base !== BUNDLED_BASE;
@@ -236,6 +287,56 @@ export async function fetchCatalogText(relPath: string): Promise<string> {
     }
     throw err;
   }
+}
+
+// --- auto-indexing: the folder IS the catalog --------------------------------
+// Instead of a hand-maintained index.json, the app LISTS the templates folder and
+// builds each entry from the self-describing `.wadi` (its `template` block +
+// derived counts). Listing is native where the platform supports it:
+//   • local folder → filesystem readDir
+//   • Google Drive → Drive files.list
+//   • generic static host (bundled / R2) → a filenames-only manifest.json; falls
+//     back to a legacy index.json's file list so existing catalogs keep working.
+
+/** List the template config filenames in the active source. */
+export async function listCatalogFiles(): Promise<string[]> {
+  const localDir = localTemplatesDir();
+  if (localDir) return localListFiles(localDir);
+
+  const base = templatesBaseUrl();
+  const folderId = driveFolderId(base);
+  if (folderId) {
+    const map = await driveFolderMap(folderId, driveApiKey());
+    return [...map.keys()].filter(isTemplateFile);
+  }
+
+  // Generic static host: try the filenames manifest, then a legacy index.json.
+  try {
+    const manifest = JSON.parse(await fetchCatalogText("manifest.json")) as unknown;
+    if (Array.isArray(manifest)) return manifest.filter((f): f is string => typeof f === "string" && isTemplateFile(f));
+  } catch {
+    /* no manifest — fall back to a legacy index */
+  }
+  const legacy = JSON.parse(await fetchCatalogText("index.json")) as { templates?: { file?: string }[] };
+  return (legacy.templates ?? []).map((t) => t.file).filter((f): f is string => typeof f === "string");
+}
+
+/** Build the whole catalog by listing the folder and indexing each file. A file
+ *  that fails to parse is skipped (it never blanks the gallery). */
+export async function loadCatalog(): Promise<TemplateEntry[]> {
+  const files = await listCatalogFiles();
+  const entries: TemplateEntry[] = [];
+  for (const file of files) {
+    try {
+      const cfg = JSON.parse(await fetchCatalogText(file)) as Record<string, unknown>;
+      const id = file.replace(/\.(wadi|json)$/i, "");
+      entries.push(entryFromConfig(id, cfg, file));
+    } catch {
+      /* skip an unreadable/invalid file */
+    }
+  }
+  // Stable, friendly order: by title.
+  return entries.sort((a, b) => a.title.localeCompare(b.title));
 }
 
 /** Drop any in-memory source state (Drive folder listing). Call on source change. */

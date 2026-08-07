@@ -65,6 +65,7 @@ import { isTauri, invoke } from "@tauri-apps/api/core";
 import { getPersona, isOwner, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona } from "./persona";
 import {
   fetchCatalogText,
+  loadCatalog,
   templatesBaseUrl,
   setTemplatesBaseUrl,
   isRemoteCatalog,
@@ -1904,10 +1905,7 @@ function wireLeftToggle(): void {
 // called before the modal is ever shown.
 async function ensureCatalog(): Promise<void> {
   if (galleryTemplates.length) return;
-  const parsed = JSON.parse(await fetchCatalogText("index.json")) as {
-    templates: TemplateEntry[];
-  };
-  galleryTemplates = parsed.templates;
+  galleryTemplates = await loadCatalog();
 }
 
 // window.wadi — the programmatic control surface. Every method funnels through
@@ -2380,14 +2378,12 @@ async function openNewHouseModal(): Promise<void> {
   // Reset filters each open so a fresh visit starts unfiltered.
   tplFilters = emptyFilters();
 
-  // Always refetch on open — the manifest is small, and caching it
-  // meant users saw a stale template list until they hard-reloaded. The
-  // catalog source (bundled or a cloud bucket) is resolved by templateSource.
+  // Always re-index on open — the folder listing is cheap, and caching it meant
+  // users saw a stale template list until they hard-reloaded. The catalog source
+  // (local folder / Drive / bundled / a cloud bucket) is resolved by
+  // templateSource, which lists the folder and indexes each self-describing file.
   try {
-    const parsed = JSON.parse(await fetchCatalogText("index.json")) as {
-      templates: TemplateEntry[];
-    };
-    galleryTemplates = parsed.templates;
+    galleryTemplates = await loadCatalog();
   } catch (e) {
     grid.innerHTML =
       `<div class="new-house-modal-empty" style="color:#b00">
