@@ -56,8 +56,12 @@ fields, capabilities, and views generically; it knows nothing about "houses" or
   • generic parse/emit (text ↔ node) driven by field-schema
   • parametric engine (formulas/variables/points) + resolve/expand driver
   • capability + view registry (generic dispatch; no central switch)
+  • composition: Stage registry + topological-fold runner (the compositor DAG)
   • LSP glue (completion/hover/def/refs/rename from field-schema + registry)
   • editor shell hooks (property panel, add-menu, tree — data-driven)
+
+@wadi/stages          (Wadi domain — the compositor's ordered pass DAG)
+  resolve · expand · edges · perimeter · dimensions · wall-trim · roof-derive · draw
 
 @wadi/primitives      (Wadi domain — one folder per primitive)
   room/ wall/ roof/ pillar/ staircase/ spiral-staircase/ item/ …
@@ -183,6 +187,72 @@ migration target** — it belongs to the compositor. The framework proof becomes
 "**add an INDEPENDENT primitive with zero central edits**" (P5), not "migrate a
 compositor-coupled legacy type."
 
+### 2.5c Composition as a stage DAG — TWO registries; build, don't adopt (DECIDED)
+
+The compositor from §2.5b is not an ad-hoc pile of passes — it is a **pure,
+deterministic DAG of stages**: `entities → resolve → expand → extract edges →
+classify perimeter → trim walls at pillars → assign dimension levels → draw`. Each
+stage is a pure function of the accumulated context; order is a dependency
+topology (dimension-level assignment reads the perimeter classification, etc.).
+The right mental model is a **compiler pass pipeline** or a **scene-render
+pipeline** — NOT a control-flow flowchart and NOT a stateful workflow engine.
+
+This yields the framework's spine: **TWO registries, not one.**
+
+- **Primitive registry** — entity types + their **facets** (bbox, footprint,
+  edges, silhouette, 3D mesh) + per-object **map** capabilities (render3D, an
+  independent drawPlan/drawElevation). Encapsulated, one folder each.
+- **Stage registry** — the compositor's **aggregate/relate** steps, ordered by
+  declared dependencies. Cross-object concerns (dimensioning, wall-trim,
+  occlusion sort, roof derivation, parametric resolve, expand) are stages here,
+  not primitive code.
+
+**Views are not a third concept — they are the leaf stages of the DAG.** The 3D,
+plan, and elevation views are terminal stages that consume the shared derived
+context (expanded objects, edges, dimensions) and emit an artifact; shared
+upstream stages (resolve/expand/roof-derive) fan out to multiple view leaves.
+
+**How primitives feed stages without breaking encapsulation (ECS-flavoured):** a
+stage never reaches *into* a primitive; a primitive exposes typed **facets** and
+each stage is polymorphic over the facet it needs (the dimension stage reads
+`edges`; the trim stage reads `footprint`; the 3D stage reads `mesh`). A
+primitive's public interface *is* its facet set; no primitive knows its
+neighbours. This is entities-components-systems / visitor, not a god-object.
+
+**Build the runner; do NOT adopt a DAG/orchestration framework.** Airflow /
+Temporal / Prefect / Dagster / Luigi solve the *opposite* problem — distributed,
+scheduled, stateful, retryable, side-effecting task orchestration — and importing
+them drags in async schedulers, persistence assumptions, and bundle weight that
+fight our constraints (sub-ms, deterministic byte-parity order, headless-pure
+`svg2d`, ships to browser + MCP). The dataflow *core* we need is ~150 lines:
+
+```ts
+interface Stage<Ctx> {
+  id: string;
+  dependsOn?: string[];               // stage ids / facet names it reads
+  run(ctx: Readonly<Ctx>): Partial<Ctx>;   // PURE — reads accumulated ctx, returns additions
+}
+// runPipeline = toposort(stages by dependsOn) → fold each stage's output into a
+// shared blackboard ctx. Views are the leaf stages that emit artifacts.
+```
+
+We already own this machinery: `resolveParametric` does exactly toposort +
+cycle-detection over the variable/formula graph — the Stage runner GENERALISES it
+from "variables" to "stages." The parity gate keeps guarding determinism.
+
+**Deliberately deferred, not dismissed — incremental recompute.** Re-running only
+the stages whose inputs changed on each edit is the one genuinely hard problem a
+real library (salsa / rust-analyzer's query system; signals-style reactive graphs)
+solves well. We do NOT need it yet (full recompute is fast). The move is to keep
+every stage **pure and facet-declaring** so memoization/incrementality can be
+bolted onto the same `Stage` interface later, with no redesign. Build the seam,
+not its contents.
+
+**Orchestration stays OUT of the kernel by design.** Multi-step *workflow* (branches,
+retries, human steps, external calls) is not a DSL concern and not a compositor
+concern; if a domain needs it, it is coded explicitly in the app or expressed in
+the DSL's own logic — the kernel's composition layer stays a pure pass pipeline.
+
 ### 2.6 The DSL grammar decision (the one genuinely hard part)
 
 Langium generates a *static* parser, so we cannot register a bespoke grammar rule
@@ -232,6 +302,7 @@ existing `.wdl` never breaks on promotion.
 | generic parse/emit; generic core grammar rule | the *views* (three-3d, svg-plan, svg-elevation) |
 | parametric engine + resolve/expand driver | units (`per_unit`, feet/inches), coordinate convention (Inkscape Y-down, center) |
 | capability + view registry + generic dispatch | grid/convention conventions, layer taxonomy |
+| Stage runner (toposort-fold) + Stage registry + facet contract | the compositor STAGES (edges/perimeter/dimensions/wall-trim/roof-derive/draw) + facet vocabulary |
 | LSP glue; editor-shell data-driven hooks | the `.wadi`/`.wdl` file identity, MCP server, personas |
 
 Guardrail: a **lint/CI check** that the kernel package has no import that reaches
@@ -250,13 +321,27 @@ Wadi domain code (dependency-direction test), so the boundary can't silently rot
   (`House3D`, `floorPlan`, `elevationView`) + `expand.ts` to generic dispatch,
   **legacy-fallback-first** (exactly the pattern already used for `item`) so nothing
   breaks mid-migration.
-- Derive the Zod union, layer roles, add-menu/order from the registry.
-- **Parity gate:** byte-identical 2D SVGs + unchanged 3D for every repo config +
-  all templates before/after (the existing dump-svgs / snapshot harness).
+- Derive the Zod union, layer roles, add-menu/order from the registry (P1e).
+- **Parity gate:** `npm run parity-render` (golden snapshot of expand + plans +
+  elevations + roof-spec across 6 repo configs) stays 6/6 after every increment.
+- **STATUS:** P1a (descriptor + capability/view seam), P1b (3D — already
+  registry-first), P1c (expand seam), P1d (plan drawPlan seam) landed +
+  parity-green. Finding folded in (§2.5b): pillar dropped as a migration target;
+  drawElevation ctx deferred to P5.
+
+**P1½ — Compositor as a Stage DAG (§2.5c).** Introduce `Stage` + Stage registry +
+the toposort-fold runner (generalise `resolveParametric`'s toposort). Wrap the
+existing compositor passes (resolve → expand → edges → perimeter → dimensions →
+wall-trim → roof-derive → draw) as named, ordered stages **behind the same output**
+— pure refactor, parity-gated (6/6). Define the primitive **facet** contract
+(bbox / footprint / edges / silhouette / mesh) that stages consume. NO external DAG
+framework — build the ~150-line runner.
 
 **P2 — Field-schema projections.** Build `fields → {zod, form, docs}` generators;
-migrate `item` + one simple legacy type (`pillar`) to fully declarative `fields`.
-Delete their bespoke schema/form once generated versions are byte-identical.
+migrate `item` (already registry-driven) + one simple INDEPENDENT type to fully
+declarative `fields`. Delete their bespoke schema/form once generated versions are
+byte-identical. (Compositor-coupled types — wall/room/pillar — are NOT migrated;
+they stay engine-owned per §2.5b/§2.5c.)
 
 **P3 — Generic DSL core.** Generic `ObjectDecl` rule + descriptor-driven
 compile/decompile + LSP completion from `fields`. Keep bespoke rules as generated
