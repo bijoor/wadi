@@ -37,6 +37,8 @@ import {
   libraryCacheVersion,
 } from "./libraries";
 import { registerWadiLsp } from "./lsp";
+import { initPublishPanel, type PublishResult } from "./publishPanel";
+import type { TemplatePackage } from "../../editor/src/templatePackage/assemble";
 import { resolveParametric } from "../../editor/src/param/resolve";
 import {
   lintStructure,
@@ -179,6 +181,25 @@ function whenWadiReady(timeoutMs = 15000): Promise<Wadi> {
 let wadiPromise: Promise<Wadi> | null = null;
 let booted = false;
 
+// The preview iframe boots in one of two personas: "owner" (Gharkul — the default
+// clean preview, shows the live configurator) or "studio" (Nakasha — reveals the
+// capture toolbar + "Preview as owner" toggle, for assembling a template package).
+// The Publish panel flips this. `lastConfig` is the most recent compiled config,
+// re-pushed after a persona reboot.
+let previewMode: "owner" | "studio" = "owner";
+let lastConfig: Record<string, unknown> | null = null;
+
+// Switch the preview persona: reboot the iframe under the new mode and re-push the
+// current design (the shots the author captured live in the iframe, so a reboot
+// clears them — acceptable when deliberately toggling persona to test/capture).
+async function setPreviewMode(mode: "owner" | "studio"): Promise<void> {
+  if (mode === previewMode) return;
+  previewMode = mode;
+  booted = false;
+  wadiPromise = null;
+  if (lastConfig) await pushToViewer(lastConfig);
+}
+
 // The 3D scene renders on demand; after a load, the async geometry (CSG
 // openings, roof) settles a frame or two later, so nudge a re-render at the
 // (already correctly framed) camera. A plain resize invalidates the R3F loop —
@@ -209,7 +230,8 @@ async function pushToViewer(config: Record<string, unknown>, findings: LintFindi
       const blobUrl = URL.createObjectURL(
         new Blob([JSON.stringify(config)], { type: "application/json" }),
       );
-      frame.src = `/app/?panels=off&load=${encodeURIComponent(blobUrl)}`;
+      const modeParam = previewMode === "studio" ? "mode=studio&" : "";
+      frame.src = `/app/?${modeParam}panels=off&load=${encodeURIComponent(blobUrl)}`;
       wadiPromise = whenWadiReady();
       await wadiPromise;
       booted = true;
@@ -238,6 +260,7 @@ function run(): void {
   const findings = config ? lintCurrent(config) : [];
   renderProblems(diagnostics, findings);
   if (config) {
+    lastConfig = config;
     setStatus("compiling…");
     void pushToViewer(config, findings);
   } else {
@@ -583,8 +606,39 @@ function wireToolbar(): void {
   $("ref-close").addEventListener("click", () => {
     panel.hidden = true;
   });
+
+  // Publish-template panel: capture cover shots + test the configurator in the
+  // studio preview, then ship a complete package. Desktop pushes to R2; browser
+  // downloads the package for the dev-machine publish flow.
+  initPublishPanel({
+    frame,
+    setPreviewMode,
+    getLastConfig: () => lastConfig,
+    suggestId: () => currentName || "house",
+    isTauri,
+    doPublish,
+  });
 }
 wireToolbar();
+
+// Publish an assembled template package. Desktop → the real R2 push (Tauri
+// command; see publishTemplateDesktop). Browser → download the `.wadi` so the dev
+// can drop it into editor/public/templates and run scripts/publish-templates.sh.
+async function doPublish(pkg: TemplatePackage): Promise<PublishResult> {
+  const shots = (pkg.wadi.thumbnails as string[] | undefined)?.length ?? 0;
+  if (isTauri()) return publishTemplateDesktop(pkg);
+  downloadText(pkg.file, JSON.stringify(pkg.wadi, null, 2), "application/json");
+  return {
+    ok: true,
+    message: `Downloaded ${pkg.file} (${shots} cover shot${shots === 1 ? "" : "s"}). Drop it into editor/public/templates and run scripts/publish-templates.sh.`,
+  };
+}
+
+// Desktop R2 push. Filled in by P4d; a browser build never reaches this.
+async function publishTemplateDesktop(pkg: TemplatePackage): Promise<PublishResult> {
+  void pkg;
+  return { ok: false, message: "Desktop publish is not wired yet." };
+}
 
 // ---- Libraries: save the current .wdl as a reusable module + reuse saved ones.
 // A small promise-based prompt (window.prompt is unreliable in the Tauri webview).
