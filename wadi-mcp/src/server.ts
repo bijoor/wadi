@@ -442,10 +442,76 @@ server.registerTool(
   },
 );
 
+// ---- wadi_glb_inspect --------------------------------------------------------
+// Rigs target GLB nodes BY NAME (`translate "nodeName" (…)`), so an author must
+// know the names inside a .glb before writing a `model { … }` rig. This reads
+// the GLB's glTF JSON and lists its named nodes, meshes, and materials.
+server.registerTool(
+  "wadi_glb_inspect",
+  {
+    title: "List the named nodes of a GLB",
+    description:
+      "Inspect a .glb (binary glTF) and list the NAMED nodes, meshes, and materials it contains. Use this " +
+      "before writing a `model { … }` rig: the rig manipulates the GLB by node name (translate/rotate/scale/" +
+      'visible/material "nodeName"). Give a `url` (http/https, fetched) or a local `path`. Returns the names ' +
+      "to target plus the scene roots.",
+    inputSchema: {
+      url: z.string().optional().describe("http(s) URL of the .glb to fetch and inspect."),
+      path: z.string().optional().describe("Local filesystem path of a .glb (alternative to url)."),
+    },
+  },
+  async ({ url, path }) => {
+    let bytes: Uint8Array;
+    try {
+      if (url && url.trim()) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`fetch ${url} → HTTP ${res.status}`);
+        bytes = new Uint8Array(await res.arrayBuffer());
+      } else if (path && path.trim()) {
+        const { readFileSync } = await import("node:fs");
+        bytes = readFileSync(path);
+      } else {
+        return { content: [{ type: "text", text: "Provide a `url` or a `path` to a .glb." }], isError: true };
+      }
+    } catch (e) {
+      return { content: [{ type: "text", text: `Could not load the GLB: ${(e as Error).message}` }], isError: true };
+    }
+
+    let info;
+    try {
+      const { inspectGlb } = await import("./glb");
+      info = inspectGlb(bytes);
+    } catch (e) {
+      return { content: [{ type: "text", text: `Not a readable GLB: ${(e as Error).message}` }], isError: true };
+    }
+
+    const lines: string[] = [];
+    lines.push(
+      `GLB has ${info.nodeCount} node(s): ${info.nodes.length} named, ${info.unnamedNodeCount} unnamed (unnamed nodes cannot be rig-targeted).`,
+    );
+    if (info.nodes.length) {
+      lines.push("", "Named nodes (rig target these):");
+      for (const n of info.nodes) {
+        const kids = n.children.length ? ` [${n.children.length} child node(s)]` : "";
+        const mesh = n.mesh ? ` · mesh "${n.mesh}"` : "";
+        lines.push(`  "${n.name}"${mesh}${kids}`);
+      }
+    }
+    if (info.meshes.length) lines.push("", `Meshes: ${info.meshes.map((m) => `"${m}"`).join(", ")}`);
+    if (info.materials.length)
+      lines.push("", `Materials (recolor with \`material "node" color "#…"\`): ${info.materials.map((m) => `"${m}"`).join(", ")}`);
+    lines.push(
+      "",
+      'Example rig — `model asset { … } at (x,y) { rotate "' + (info.nodes[0]?.name ?? "nodeName") + '" (0, 45, 0) }`',
+    );
+    return { content: [{ type: "text", text: lines.join("\n") }], structuredContent: info };
+  },
+);
+
 // ---- boot --------------------------------------------------------------------
 const transport = new StdioServerTransport();
 await server.connect(transport);
 console.error(
   "[wadi-mcp] ready — tools: wadi_check, wadi_preview, wadi_examples, wadi_reference, " +
-    "wadi_modules, wadi_module, wadi_view_3d, wadi_capture_3d",
+    "wadi_modules, wadi_module, wadi_view_3d, wadi_capture_3d, wadi_glb_inspect",
 );

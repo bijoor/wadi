@@ -57,5 +57,11 @@ ok(impChk.ok, `import design checks: ok=${impChk.ok}${impChk.ok ? "" : " — " +
 const impSvgs = renderSvgs(withFurniture, ["plans"]);
 ok(impSvgs.length === 1 && impSvgs[0].svg.length > 1000, "import design renders a floor plan");
 
+console.error("glb-inspect — a bundled furniture GLB lists its named nodes:");
+const { inspectGlb } = await import("../src/glb.ts");
+const { readFileSync: readGlb } = await import("node:fs");
+const bed = inspectGlb(readGlb(new URL("../../editor/public/furniture/bed_double.glb", import.meta.url)));
+ok(bed.nodes.length >= 2 && bed.nodes.some((n) => n.name === "cover"), `bed_double: ${bed.nodes.map((n) => n.name).join(", ")}`);
+
 console.error(failures ? `\n✗ ${failures} smoke failure(s)` : "\n✓ all smoke checks passed");
 process.exit(failures ? 1 : 0);
