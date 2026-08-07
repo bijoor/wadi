@@ -110,10 +110,32 @@ wadi-skill/architect/scripts/check.sh   <ABS_PATH_TO.wdl>
 wadi-skill/architect/scripts/preview.sh <ABS_PATH_TO.wdl>
 ```
 
-Without a repo, over MCP. Run `wadi-mcp`, an MCP server that bundles the whole
-pipeline (DSL compiler, schema, geometry, conventions, 2D renderers) and the examples
-and reference docs into one self-contained file. Register it with any MCP client
-(`npx -y wadi-mcp`). It exposes these tools:
+Without a repo, over MCP. `wadi-mcp` is an MCP server that bundles the whole pipeline
+(DSL compiler, schema, geometry, conventions, 2D renderers) and the examples and
+reference docs into one self-contained file. It is published to npm, so there is
+nothing to build or clone; `npx` fetches it on first run.
+
+Install it in Claude Code:
+
+```bash
+claude mcp add wadi -- npx -y wadi-mcp
+```
+
+For any other MCP client (Cursor, Windsurf, Claude Desktop), add the same command and
+args to the client's MCP config:
+
+```json
+{ "mcpServers": { "wadi": { "command": "npx", "args": ["-y", "wadi-mcp"] } } }
+```
+
+To run a local build instead of the npm package, build it once (`cd wadi-mcp && npm
+install && npm run build`) and point the client at the bundle by path:
+
+```json
+{ "mcpServers": { "wadi": { "command": "node", "args": ["/abs/path/to/wadi-mcp/dist/server.mjs"] } } }
+```
+
+Once registered, the server exposes these tools:
 
 | Tool | Does |
 |---|---|
