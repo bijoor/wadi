@@ -115,16 +115,50 @@ interface FieldKind<T> {
 }
 ```
 
-Built-in kinds (cover ~all current Wadi fields):
-`measure` (formula-able number; the `Expr`/`put()` path), `int`, `enum(values)`,
-`text`, `bool`, `point{x,y}`, `list<kind>`, `nested<fields>` (walls, segments),
-`ref<type>` (Langium cross-ref — reuses Path B scoping for `use`/`item`).
+**FieldKind is TWO-TIER (closed atoms, open presets) — so "new kind" is data, not a
+release.** A flat list of kinds would mean every new field type patches the engine.
+Instead split it like every real schema/type system (Zod, JSON Schema, protobuf):
 
-**Payoff:** the Zod schema, the editor form, the DSL syntax, the LSP completion, and
-the docs for a primitive are all *generated from `fields`* — not hand-written four
-times and kept in sync by discipline. (Precedent: `data-model.md` is already
-generated from the Zod schema via `gen-schema-doc.mjs`; we invert the source to
-`fields` and fan out.)
+- **Tier 1 — atoms + combinators + constraints (CLOSED, engine code, ~stable):**
+  atoms `number` / `string` / `boolean` / `literal`; combinators `optional` /
+  `list` / `object`(nested) / `union` / `record`; constraints `positive` / `nonneg`
+  / `int` / `min` / `max` / `pattern`. This is the whole type vocabulary and covers
+  essentially every `houseConfig` schema. It changes *rarely* — the framework's
+  built-in types.
+- **Tier 2 — presets/aliases (OPEN, DATA):** `coord = number`, `extent = number +
+  positive`, `measure = number + positive + formula-aware`, `angle = number + [0,360]`,
+  `enum(values) = literal-union`, `point = object{x,y}`, `ref<type>` (Langium cross-ref,
+  reuses Path B scoping). A preset is DATA composed from Tier 1, so adding one needs
+  **no engine release** — and it inherits every projection for free (Tier 1 already
+  knows how to project each atom). You only touch Tier 1 for a genuinely novel atom
+  (rare — a real type-system extension) or a new *projection target* (a new view —
+  correctly framework-level, and it's the view's job to render each atom, not the
+  kind's). Extensibility always bottoms out in *some* closed engine; we place that
+  boundary where it's crossed almost never.
+
+**No "core vs contributed" primitive split — a CODEGEN step compiles every primitive
+into the typed core.** The type erosion (a runtime `FieldSpec[]` → loose Zod that
+can't join the `discriminatedUnion`) is dissolved by generating *source*: a build-time
+`gen-primitives` step reads every primitive's `fields` and EMITS a typed Zod schema
+per primitive (`z.object({ width: z.number().positive(), … }).strict()`) plus the
+assembled union — real source, so `z.infer` yields precise types and each schema is a
+first-class union member. After codegen there is no dynamic tier: **every primitive is
+uniformly core, fully typed, validated identically.** `fieldsToZod` (runtime, P2a) and
+`fieldsToZodSource` (the emitter) share the Tier-1/preset resolution and are kept in
+lock-step by the `fieldsToZod ≡ generated` parity test.
+
+The trade — adding/changing a primitive is a **compile-time** op (regen + rebuild +
+release), exactly like a Langium grammar change today — is the *correct* model for a
+typed framework, and it's what buys the types. Runtime hot-loading is the only way to
+avoid a rebuild, and that path is precisely what forces dynamic typing; so the P1e
+`registeredFallback` + runtime `fieldsToZod` stay as an *optional* escape hatch for a
+genuinely runtime-loaded primitive (dynamically typed, by choice), never the default.
+
+**Payoff:** the Zod schema (+ its TS type), the editor form, the DSL syntax, the LSP
+completion, and the docs for a primitive are all *generated from `fields`* — one
+declaration, not four hand-synced copies. (Precedent everywhere: `langium generate`,
+`gen-schema-doc.mjs`, `gen-assets`, std-furniture generation — Wadi already lives on
+codegen.)
 
 ### 2.4 Capability + View registry (generic dispatch, no switches)
 
@@ -358,11 +392,23 @@ framework — build the ~150-line runner.
     expand + routing the editor's own SVG callers (Layout / dump-svgs) through
     composeSheet are polish.
 
-**P2 — Field-schema projections.** Build `fields → {zod, form, docs}` generators;
-migrate `item` (already registry-driven) + one simple INDEPENDENT type to fully
-declarative `fields`. Delete their bespoke schema/form once generated versions are
-byte-identical. (Compositor-coupled types — wall/room/pillar — are NOT migrated;
-they stay engine-owned per §2.5b/§2.5c.)
+**P2 — Field-schema projections + codegen-to-core (§2.3).**
+- **P2a DONE (4268f51):** the runtime FieldKind engine — `fieldsToZod` + `fieldsToDocRows`,
+  proven behaviourally == the hand-written `beam` schema.
+- **P2b — two-tier + emitter + gen-primitives:** refactor `fieldSchema.ts` to Tier-1
+  atoms/combinators/constraints + Tier-2 presets (so a new kind is data, not a
+  release); add `fieldsToZodSource` (emits typed Zod source, sharing the resolution
+  with `fieldsToZod`); a `gen-primitives` codegen that reads every primitive's
+  `fields` and emits the typed schemas + assembled union. Migrate `beam` first: its
+  `fields` → GENERATED typed schema replaces the hand-written one in the union.
+  Gate: `fieldsToZod ≡ generated` (behavioural) + tsc (types) + `parity-render` 6/6.
+  Then `fields → form` (`AutoForm`) + migrate `BeamForm`; then invert
+  `data-model.md` (`gen-schema-doc`) to read `fields`.
+- Migrate primitives to `fields` incrementally (regen + rebuild each). The
+  compositor-coupled types (wall/room/pillar) migrate their SCHEMA/form/docs to
+  `fields` too, but keep their 2D render in the compositor (§2.5b). A primitive whose
+  schema needs a Tier-1 atom that doesn't exist yet keeps a hand-written schema as an
+  escape hatch until the atom lands.
 
 **P3 — Generic DSL core.** Generic `ObjectDecl` rule + descriptor-driven
 compile/decompile + LSP completion from `fields`. Keep bespoke rules as generated
