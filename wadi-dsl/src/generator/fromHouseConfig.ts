@@ -218,6 +218,50 @@ function emitItem(w: W, indent: number, o: Obj): void {
   w.line(indent, s + commonSuffix(o, false));
 }
 
+function emitRigOp(o: Obj): string {
+  const n = str(o.node);
+  const v3 = (a: unknown) => {
+    const t = (a as number[]) ?? [0, 0, 0];
+    return `(${num(t[0])}, ${num(t[1])}, ${num(t[2])})`;
+  };
+  switch (o.op) {
+    case "translate":
+    case "rotate":
+    case "scale":
+      return `${o.op} ${n} ${v3(o.by)}`;
+    case "visible":
+      return `visible ${n} ${num(o.value)}`;
+    case "material":
+      return `material ${n} color ${str(o.color)}`;
+    case "array": {
+      let s = `array ${n} count ${num(o.count)}`;
+      const steps: string[] = [];
+      for (const k of ["translate", "rotate", "scale", "about"]) if (o[k]) steps.push(`${k} ${v3(o[k])}`);
+      if (steps.length) s += ` step { ${steps.join(" ")} }`;
+      return s;
+    }
+    default:
+      return `visible ${n} 1`;
+  }
+}
+
+function emitModel(w: W, indent: number, o: Obj): void {
+  let s = "model";
+  if (o.name !== undefined) s += ` name ${str(o.name)}`;
+  s += " " + assetText(o) + ` ${at(o)}`;
+  if (has(o, "rotation")) s += ` rotation ${fld(o, "rotation")}`;
+  if (has(o, "scale")) s += ` scale ${fld(o, "scale")}`;
+  s += commonSuffix(o, false);
+  const rig = (o.rig as Obj[] | undefined) ?? [];
+  if (!rig.length) {
+    w.line(indent, s);
+    return;
+  }
+  w.line(indent, s + " {");
+  for (const op of rig) w.line(indent + 1, emitRigOp(op));
+  w.line(indent, "}");
+}
+
 function emitComponentUse(w: W, indent: number, o: Obj): void {
   // config: { type:"component", ref:"[ns.]Name", name?, params?, x, y, ... }.
   // The config inlines imported components (keyed "ns.Name") and drops the import
@@ -364,6 +408,7 @@ function emitFloorObject(w: W, indent: number, o: Obj): void {
     case "spiral_staircase": return emitSpiralStaircase(w, indent, o);
     case "kitchen_platform": return emitKitchen(w, indent, o);
     case "item": return emitItem(w, indent, o);
+    case "model": return emitModel(w, indent, o);
     case "component": return emitComponentUse(w, indent, o);
     case "roof": return emitRoof(w, indent, o);
     // Any other (contributed) type decompiles through the generic ObjectDecl path,

@@ -23,6 +23,9 @@ import {
   isJsonBool,
   isJsonNull,
   isStrVal,
+  isRigVec3,
+  isRigVisible,
+  isRigMaterial,
 } from "../language/generated/ast.js";
 
 // ---- Formula expressions -------------------------------------------------
@@ -403,7 +406,7 @@ const ns_hint = (kind: "component" | "asset") => (kind === "component" ? "use ns
 // cross-reference (`"bed_double"` same-file, or `f."bed_double"` from an import).
 // The Langium linker + WadiScopeProvider have already resolved the reference to
 // the AssetDecl node (across modules); a dangling ref surfaces as `.ref` undefined.
-function resolveItemAsset(it: ast.Item | ast.RoomItem): Record<string, unknown> {
+function resolveItemAsset(it: ast.Item | ast.RoomItem | ast.GlbModel): Record<string, unknown> {
   if (it.asset) return asset(it.asset);
   const ref = it.assetRef;
   if (!ref) throw new Error("item has no asset (expected `asset { … }` or an asset id)");
@@ -432,6 +435,62 @@ function item(it: ast.Item): Record<string, unknown> {
   const gy = put("gap_y", it.gap_y);
   if (gy !== undefined) o.gap_y = gy;
   applyCommon(o, formulas, it);
+  return done(o, formulas);
+}
+
+// A GLB `model` with a node rig (P1). Rig values must be CONSTANT for now (a variable
+// reference is the deferred parametric-rig feature), so fold each to a number.
+function evalConstExpr(e: ast.Expr): number | null {
+  if (isNum(e)) return e.value;
+  if (isNeg(e)) { const v = evalConstExpr(e.operand); return v === null ? null : -v; }
+  if (isBinary(e)) {
+    const l = evalConstExpr(e.left), r = evalConstExpr(e.right);
+    if (l === null || r === null) return null;
+    switch (e.op) {
+      case "+": return l + r;
+      case "-": return l - r;
+      case "*": return l * r;
+      case "/": return r === 0 ? null : l / r;
+    }
+  }
+  return null; // a Ref / Call is not a constant
+}
+function rigNum(e: ast.Expr): number {
+  const v = evalConstExpr(e);
+  if (v === null) {
+    throw new Error("rig values must be constant numbers for now (a variable reference is a parametric-rig feature, not yet supported)");
+  }
+  return v;
+}
+function rigVec(a: ast.Expr, b: ast.Expr, c: ast.Expr): [number, number, number] {
+  return [rigNum(a), rigNum(b), rigNum(c)];
+}
+function rigOp(op: ast.RigOp): Record<string, unknown> {
+  if (isRigVec3(op)) return { op: op.op, node: unquote(op.node), by: rigVec(op.x, op.y, op.z) };
+  if (isRigVisible(op)) return { op: "visible", node: unquote(op.node), value: rigNum(op.value) };
+  if (isRigMaterial(op)) return { op: "material", node: unquote(op.node), color: unquote(op.color) };
+  // RigArray
+  const out: Record<string, unknown> = { op: "array", node: unquote(op.node), count: rigNum(op.count) };
+  for (const s of op.steps) out[s.op] = rigVec(s.x, s.y, s.z);
+  return out;
+}
+
+function glbModel(m: ast.GlbModel): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "model",
+    asset: resolveItemAsset(m),
+    x: put("x", m.x, 0),
+    y: put("y", m.y, 0),
+  };
+  if (m.name) o.name = unquote(m.name);
+  const rot = put("rotation", m.rotation);
+  if (rot !== undefined) o.rotation = rot;
+  const sc = put("scale", m.scale, 1);
+  if (sc !== undefined) o.scale = sc;
+  const rig = m.rig.map(rigOp);
+  if (rig.length) o.rig = rig;
+  applyCommon(o, formulas, m);
   return done(o, formulas);
 }
 
@@ -622,6 +681,8 @@ function floorObject(o: ast.FloorObject): Record<string, unknown> {
       return kitchen(o);
     case "Item":
       return item(o);
+    case "GlbModel":
+      return glbModel(o);
     case "Component":
       return componentInstance(o);
     case "Roof":

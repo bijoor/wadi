@@ -221,8 +221,36 @@ Floor:
 // through to it). Bespoke rules above are ergonomic *sugar* over this generic core.
 FloorObject:
       Room | Wall | Pillar | Beam | FloorSlab | Plinth | Ground
-    | Staircase | SpiralStaircase | KitchenPlatform | Item | Component | Roof | Raw
+    | Staircase | SpiralStaircase | KitchenPlatform | Item | GlbModel | Component | Roof | Raw
     | ObjectDecl;
+
+// ---- Model — a GLB placed at scale and manipulated by a node RIG (P1). Like `item`
+//      but structural: each `node "name"` op moves/hides/recolours/arrays a named part
+//      of the GLB. Rig values are constant expressions for now (negatives + arithmetic
+//      fold to numbers; a var reference is a parametric-rig feature, not yet). ----
+GlbModel:
+    'model' ('name' name=STRING)?
+        (assetRef=[AssetDecl:AssetName] | 'asset' asset=Asset)
+        'at' '(' x=Expr ',' y=Expr ')'
+        ('rotation' rotation=Expr)?
+        ('scale' scale=Expr)?
+        Common
+        ('{' rig+=RigOp* '}')?;
+// Each op leads with a distinct keyword then names the node: `rotate "lid" (0, 45, 0)`,
+// `array "rung" count 6 step {…}`. translate/rotate/scale share a shape, so they are one
+// rule discriminated by `op` (three identical rules would be merged by type inference).
+RigOp:
+    RigVec3 | RigVisible | RigMaterial | RigArray;
+RigVec3:
+    op=('translate' | 'rotate' | 'scale') node=STRING '(' x=Expr ',' y=Expr ',' z=Expr ')';
+RigVisible:
+    'visible' node=STRING value=Expr;
+RigMaterial:
+    'material' node=STRING 'color' color=STRING;
+RigArray:
+    'array' node=STRING 'count' count=Expr ('step' '{' steps+=RigStep* '}')?;
+RigStep:
+    op=('translate' | 'rotate' | 'scale' | 'about') '(' x=Expr ',' y=Expr ',' z=Expr ')';
 
 // ---- Generic primitive (the framework's real grammar; §2.6). Parses any object
 //      type by name, semantics driven by the primitive's descriptor `fields`. A

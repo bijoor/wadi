@@ -110,6 +110,14 @@ kitchen [name "N"] path ((x,y), (x,y), …) side left|right depth &lt;d&gt; heig
 item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
   at (x,y) [rotation &lt;deg&gt;] [scale &lt;s&gt;] [anchor_to "Room" anchor center gap (gx,gy)]</pre>
 
+<h3>Model + node rig <span class="ref-dim">— manipulate a GLB by its named nodes</span></h3>
+<pre>model [name "N"] asset { id "…" src "…glb" dims (w,h,d) } at (x,y) [rotation &lt;deg&gt;] [scale &lt;s&gt;] {
+  translate|rotate|scale "nodeName" (x, y, z)   // move/turn/resize one named node
+  visible "nodeName" &lt;0|1&gt;                       // hide (0) or show (1) a node
+  material "nodeName" color "#rrggbb"            // recolor a node
+  array "nodeName" count &lt;n&gt; step { translate (…) rotate (…) about (…) }  // clone n times, each stepped
+}                                               // rig values are constants (parametric rig deferred)</pre>
+
 <h3>Roof <span class="ref-dim">— one object; flat / shed / gable / hip</span></h3>
 <pre>roof [name "N"] pitched|shed|flat
   [endpoint open|closed]        // open = gable end-wall · closed = hip triangle
