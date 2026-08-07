@@ -336,6 +336,16 @@ wall-trim → roof-derive → draw) as named, ordered stages **behind the same o
 — pure refactor, parity-gated (6/6). Define the primitive **facet** contract
 (bbox / footprint / edges / silhouette / mesh) that stages consume. NO external DAG
 framework — build the ~150-line runner.
+  - **P1½a DONE (919500c):** `pipeline/stageRunner.ts` (Stage + orderStages
+    toposort + runStages fold; cycle / duplicate / unknown-dep guards) + the
+    `NodeFacets` contract (`facetsFor`; planFootprint back-fills footprint).
+    PROVED: `runStages([expand, resolve])` reproduces the real resolve→expand
+    output byte-for-byte on house_config (388 tests, parity 6/6). No renderer is
+    routed through it yet.
+  - **P1½b (next):** route the shared prefix + the view leaves (plan / elevation /
+    3D as terminal stages) through `runStages` one stage at a time, parity-gated;
+    stand up the typed Stage registry (needs the concrete compose-Ctx). The
+    invasive half — incremental.
 
 **P2 — Field-schema projections.** Build `fields → {zod, form, docs}` generators;
 migrate `item` (already registry-driven) + one simple INDEPENDENT type to fully
