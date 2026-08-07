@@ -487,7 +487,7 @@ function placeComponent(objs: Obj[], dx: number, dy: number, dz: number, deg: nu
         for (const [k, v] of Object.entries(n.wall_heights as Record<string, unknown>)) wh[isSide(k) ? rotateSide(k, cos, sin) : k] = v;
         n.wall_heights = wh;
       }
-      if (n.type === "item") n.rotation = (((typeof n.rotation === "number" ? n.rotation : 0) + norm) % 360 + 360) % 360;
+      if (n.type === "item" || n.type === "model") n.rotation = (((typeof n.rotation === "number" ? n.rotation : 0) + norm) % 360 + 360) % 360;
     }
     // translate
     if (typeof n.x === "number") n.x += dx;
