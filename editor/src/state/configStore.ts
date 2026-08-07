@@ -173,7 +173,14 @@ export const useConfigStore = create<ConfigState>()(
       loadConfig: (config, filename, filePath) => {
         // Register any components this config exposes as typed primitives, BEFORE
         // it is validated, expanded, or rendered (plans/declarative-plugins.md P0).
-        registerExposedComponents(config);
+        // A bad plugin (un-namespaced / colliding) must not crash the load: surface
+        // it as a validation error and skip registration.
+        let pluginError: string | null = null;
+        try {
+          registerExposedComponents(config);
+        } catch (e) {
+          pluginError = e instanceof Error ? e.message : String(e);
+        }
         set({
           config,
           filename: filename ?? null,
@@ -181,7 +188,7 @@ export const useConfigStore = create<ConfigState>()(
           selection: null,
           siteEditorOpen: false,
           floorEditorIdx: null,
-          validationErrors: [],
+          validationErrors: pluginError ? [{ path: "components", message: pluginError }] : [],
           dirty: false,
         });
         // Fresh load ⇒ clear undo history so Cmd+Z can't undo past

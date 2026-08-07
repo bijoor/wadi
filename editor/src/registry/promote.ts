@@ -110,17 +110,49 @@ export function promoteComponentToNode(def: ExposedComponentDef, meta: ExposeMet
 // Ignore keys that are placement/common, not params, when reading a config's params.
 export const nonParamFields = PLACEMENT_NAMES;
 
+// Built-in object type discriminators. A promoted type must not reuse one of these
+// (it would shadow a core type in the registry-consult path). Kept in sync with the
+// `object` discriminatedUnion in schema/houseConfig.ts; a guard test asserts it.
+export const CORE_OBJECT_TYPES = new Set<string>([
+  "plinth", "ground", "component", "item", "floor_slab", "pillar", "beam", "room",
+  "wall", "staircase", "spiral_staircase", "door", "window", "kitchen_platform", "roof",
+]);
+
 /** Scan a config's `components` for `expose`d definitions and register each as a
  *  typed primitive. Idempotent; call it when a config is loaded (before it is
- *  validated, expanded, or rendered). Returns the list of registered type names. */
+ *  validated, expanded, or rendered). Returns the list of registered type names.
+ *
+ *  Guards (fail-closed: if ANY exposed type is invalid, nothing is registered and it
+ *  throws with all the reasons):
+ *   - the type must be NAMESPACED (contain a dot), e.g. `pack.water_tank`, so it can't
+ *     collide with a core single-word type and reads as a plugin type;
+ *   - it must not collide with a built-in object type;
+ *   - two components in one config must not expose the same type. */
 export function registerExposedComponents(config: HouseConfig | null | undefined): string[] {
   const comps = (config?.components ?? {}) as Record<string, ExposedComponentDef>;
-  const registered: string[] = [];
-  for (const def of Object.values(comps)) {
-    if (def && def.expose && typeof def.expose.type === "string") {
-      registerNode(promoteComponentToNode(def, def.expose));
-      registered.push(def.expose.type);
+  const errors: string[] = [];
+  const seen = new Set<string>();
+  const pending: Array<[ExposedComponentDef, ExposeMeta]> = [];
+  for (const [name, def] of Object.entries(comps)) {
+    const ex = def?.expose;
+    if (!ex || typeof ex.type !== "string") continue;
+    const type = ex.type;
+    if (CORE_OBJECT_TYPES.has(type)) {
+      errors.push(`component "${name}": exposed type "${type}" collides with a built-in object type`);
+    } else if (!type.includes(".")) {
+      errors.push(`component "${name}": exposed type "${type}" must be namespaced (contain a dot), e.g. "pack.${type}"`);
+    } else if (seen.has(type)) {
+      errors.push(`exposed type "${type}" is exposed by more than one component`);
+    } else {
+      seen.add(type);
+      pending.push([def, ex]);
     }
+  }
+  if (errors.length) throw new Error(`invalid exposed primitive(s): ${errors.join("; ")}`);
+  const registered: string[] = [];
+  for (const [def, ex] of pending) {
+    registerNode(promoteComponentToNode(def, ex));
+    registered.push(ex.type);
   }
   return registered;
 }

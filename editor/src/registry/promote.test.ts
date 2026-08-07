@@ -1,9 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { paramsToFields, promoteComponentToNode, registerExposedComponents } from "./promote";
+import {
+  paramsToFields,
+  promoteComponentToNode,
+  registerExposedComponents,
+  CORE_OBJECT_TYPES,
+} from "./promote";
 import { getNode } from "./registry";
 import { resolveParametric } from "../param/resolve";
 import { expandRoomWalls } from "../svg2d/expand";
-import type { HouseConfig } from "../schema/houseConfig";
+import { object as coreObjectUnion, type HouseConfig } from "../schema/houseConfig";
 
 // P0 (plans/declarative-plugins.md): a component `expose`d as a typed primitive is
 // registered at runtime, gets fields from its params, and expands to core objects.
@@ -66,5 +71,38 @@ describe("declarative plugins — component promotion (P0)", () => {
     const slab = objs.find((o) => o.type === "floor_slab");
     expect(slab).toBeTruthy();
     expect(slab).toMatchObject({ type: "floor_slab", x: 200, y: 150, width: 100, length: 60 });
+  });
+
+  const withExpose = (type: string, second?: string) => ({
+    components: {
+      A: { params: [], objects: [], expose: { type } },
+      ...(second ? { B: { params: [], objects: [], expose: { type: second } } } : {}),
+    },
+  }) as unknown as HouseConfig;
+
+  it("guard: rejects an un-namespaced type (no dot)", () => {
+    expect(() => registerExposedComponents(withExpose("deck"))).toThrow(/must be namespaced/);
+  });
+
+  it("guard: rejects collision with a built-in object type", () => {
+    expect(() => registerExposedComponents(withExpose("room"))).toThrow(/built-in object type/);
+  });
+
+  it("guard: rejects two components exposing the same type", () => {
+    expect(() => registerExposedComponents(withExpose("pack.same", "pack.same"))).toThrow(/more than one component/);
+  });
+
+  it("guard: fail-closed — nothing registers when any exposed type is invalid", () => {
+    expect(getNode("pack.ok_one")).toBeFalsy();
+    expect(() =>
+      registerExposedComponents(withExpose("pack.ok_one", "bad_no_dot")),
+    ).toThrow(/must be namespaced/);
+    expect(getNode("pack.ok_one")).toBeFalsy(); // the valid one was NOT registered
+  });
+
+  it("CORE_OBJECT_TYPES stays in sync with the schema union (drift guard)", () => {
+    const opts = (coreObjectUnion as unknown as { options: Array<{ shape: { type: { value: string } } }> }).options;
+    const unionTypes = new Set(opts.map((o) => o.shape.type.value));
+    expect(unionTypes).toEqual(CORE_OBJECT_TYPES);
   });
 });
