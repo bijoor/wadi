@@ -11,6 +11,8 @@
     "preview": "vite preview --config vite.viewer.config.ts",
     "smoke-validate": "tsx scripts/smoke-validate.ts",
     "dump-svgs": "tsx scripts/dump-svgs.mjs",
+    "gen-primitives": "tsx scripts/gen-primitives.mjs",
+    "gen-primitives:check": "tsx scripts/gen-primitives.mjs --check",
     "parity-primitives": "tsx scripts/parity-primitives.mjs",
     "parity-render": "tsx scripts/parity-render.mjs",
     "parity-all": "npm run parity-render",

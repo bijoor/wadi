@@ -1,19 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { fieldsToZod, fieldsToZodSource, fieldsToDocRows, type FieldSpec } from "./fieldSchema";
+import { fieldsToZod, fieldsToZodSource, fieldsToDocRows } from "./fieldSchema";
 import { object } from "../schema/houseConfig";
-
-// `beam` expressed ONCE as declarative fields. P2b will swap the hand-written
-// schema/houseConfig `beam` for this; P2a proves they validate identically first.
-const beamFields: FieldSpec[] = [
-  { name: "name", kind: "text", required: false, doc: "Label" },
-  { name: "x", kind: "coord", doc: "Top-left X", unit: "project units" },
-  { name: "y", kind: "coord", doc: "Top-left Y", unit: "project units" },
-  { name: "width", kind: "extent", doc: "X extent", unit: "project units" },
-  { name: "length", kind: "extent", doc: "Y extent", unit: "project units" },
-  { name: "height", kind: "extent", required: false, doc: "Vertical thickness" },
-  { name: "z_offset", kind: "coord", required: false, doc: "Lift above floor base" },
-];
+// The SINGLE source of truth for beam's shape (drives the generated schema too).
+import { beamFields } from "../schema/fields/beam";
 
 const generated = fieldsToZod("beam", beamFields);
 

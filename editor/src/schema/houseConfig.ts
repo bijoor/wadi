@@ -1,4 +1,7 @@
 import { z } from "zod";
+// Primitives migrated to the codegen-to-core model: their typed Zod schema is
+// GENERATED from `fields` (schema/fields/*) → objects.generated.ts. (P2b)
+import { beam } from "./generated/objects.generated";
 
 // Zod mirror of schema/house_config.schema.json. The JSON Schema on the
 // Python side is the "wire format" reference; this file is the runtime
@@ -185,29 +188,11 @@ const pillar = z
   })
   .strict();
 
-const beam = z
-  .object({
-    type: z.literal("beam"),
-    formulas: formulaMap.optional(),
-    enabled: enabledField.optional(),
-    layer: z.string().optional(),
-    name: z.string().optional(),
-    x: z.number(),
-    y: z.number(),
-    width: positive(),
-    length: positive(),
-    // Vertical thickness of the beam, in PROJECT UNITS. Optional —
-    // defaults to the floor's slab_thickness. The 3D viewer + BeamForm
-    // read this as `height`; note the Python builder currently reads a
-    // `thickness` key instead (wadi_config.py) — see the known
-    // field-name mismatch.
-    height: positive().optional(),
-    // Lift above the FLOOR BASE (slabZ), in PROJECT UNITS (10 units = 1 ft).
-    // Default 0 — the beam's bottom sits at the floor base. Same convention
-    // as `floor_slab`. (Was previously z_offset_ft in feet.)
-    z_offset: z.number().optional(),
-  })
-  .strict();
+// `beam` is GENERATED from its declarative `fields` (schema/fields/beam.ts) via
+// gen-primitives → schema/generated/objects.generated.ts. First primitive migrated
+// to the codegen-to-core model (P2b): one `fields` source drives schema + type +
+// docs. Regenerate with `npm run gen-primitives`. (height = vertical thickness,
+// defaults to the floor's slab_thickness; z_offset lifts above the floor base.)
 
 const wallHeightsEntry = z.union([
   z.number(),
