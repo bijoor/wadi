@@ -306,13 +306,15 @@ const DSL_KEYWORDS = new Set([
   "scale", "sill", "open", "asset", "target", "with", "turn", "floor", "room", "wall",
   "pillar", "beam", "slab", "plinth", "ground", "staircase", "kitchen", "item", "use",
   "roof", "raw", "z_offset", "enabled", "layer", "north", "south", "east", "west",
-  "true", "false",
+  "true", "false", "radius", "turns", "steps", "tread_thickness", "pole_radius",
+  "spiral_staircase",
 ]);
 // …but the dimension/placement/material keywords are accepted BARE by FieldKey (see
 // the grammar), so emit them bare for readable named output (`total_height 110`,
 // `material "teak"`) rather than quoting. `x`/`y` are plain ids here and stay bare.
 const FIELDKEY_BARE = new Set([
   "total_height", "height", "width", "thickness", "depth", "direction", "material",
+  "radius", "turns", "steps",
 ]);
 const keyTok = (k: string): string =>
   /^[A-Za-z_]\w*$/.test(k) && (!DSL_KEYWORDS.has(k) || FIELDKEY_BARE.has(k)) ? k : str(k);
@@ -350,6 +352,18 @@ function emitObjectDecl(w: W, indent: number, o: Obj): void {
   w.line(indent, "}" + suffix);
 }
 
+// Bespoke `spiral_staircase` emit (a PROMOTED primitive): `at (x, y)` placement +
+// named clauses, no braces — the inverse of the SpiralStaircase grammar rule.
+function emitSpiralStaircase(w: W, indent: number, o: Obj): void {
+  let s = "spiral_staircase";
+  if (o.name !== undefined) s += ` ${nameTok(o.name)}`;
+  s += ` ${at(o)} radius ${fld(o, "radius")} total_height ${fld(o, "total_height")}`;
+  for (const f of ["turns", "steps", "tread_thickness", "pole_radius"]) {
+    if (has(o, f)) s += ` ${f} ${fld(o, f)}`;
+  }
+  w.line(indent, s + commonSuffix(o, false));
+}
+
 function emitFloorObject(w: W, indent: number, o: Obj): void {
   switch (o.type) {
     case "room": return emitRoom(w, indent, o);
@@ -360,6 +374,7 @@ function emitFloorObject(w: W, indent: number, o: Obj): void {
     case "plinth": return emitNamedBox(w, indent, "plinth", o, { height: true, material: true });
     case "ground": return emitNamedBox(w, indent, "ground", o, { height: true, material: true });
     case "staircase": return emitStaircase(w, indent, o);
+    case "spiral_staircase": return emitSpiralStaircase(w, indent, o);
     case "kitchen_platform": return emitKitchen(w, indent, o);
     case "item": return emitItem(w, indent, o);
     case "component": return emitComponentUse(w, indent, o);

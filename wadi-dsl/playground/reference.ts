@@ -103,6 +103,9 @@ fill the corner. Room walls handle their own corners.</p>
   direction north|south|east|west
   [total_height &lt;h&gt;] [max_run &lt;r&gt;] [landing_depth …] [landing_thickness …] [flight_gap …] [turn clockwise|anticlockwise]
                                 //  max_run ⇒ auto switchback flights (landing_thickness / flight_gap tune it)
+spiral_staircase [name "N"] at (x, y) radius &lt;r&gt; total_height &lt;h&gt;
+  [turns &lt;t&gt;] [steps &lt;n&gt;] [tread_thickness &lt;tt&gt;] [pole_radius &lt;pr&gt;]
+                                //  helix of treads winding a central pole (a PROMOTED generic primitive)
 kitchen [name "N"] path ((x,y), (x,y), …) side left|right depth &lt;d&gt; height &lt;h&gt; [base_z …]
 item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
   at (x,y) [rotation &lt;deg&gt;] [scale &lt;s&gt;] [anchor_to "Room" anchor center gap (gx,gy)]</pre>

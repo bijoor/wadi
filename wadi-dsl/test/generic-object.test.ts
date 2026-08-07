@@ -4,7 +4,7 @@ import { emitWdl } from "../src/generator/fromHouseConfig.js";
 
 // P3 (§2.6): the generic `ObjectDecl` grammar path — any primitive expressible by
 // name with no bespoke grammar rule (the framework path a contributed primitive
-// like spiral_staircase rides). Proves parse→compile, formula/string handling,
+// like gizmo rides). Proves parse→compile, formula/string handling,
 // the shared common tail, and compile→emit→recompile round-trip.
 
 type Obj = Record<string, unknown>;
@@ -18,10 +18,10 @@ const wrap = (body: string, head = "") =>
 describe("DSL — generic ObjectDecl (P3, §2.6)", () => {
   it("compiles `type name { key value } common` to a flat object", () => {
     const cfg = compileDsl(
-      wrap(`spiral_staircase "S1" { turns 3 radius 12 spin 1 } z_offset 5 enabled 1 layer "Stairs"`),
+      wrap(`gizmo "S1" { turns 3 radius 12 spin 1 } z_offset 5 enabled 1 layer "Stairs"`),
     );
     expect(floor0Objects(cfg)[0]).toEqual({
-      type: "spiral_staircase",
+      type: "gizmo",
       name: "S1",
       turns: 3,
       radius: 12,
@@ -38,9 +38,9 @@ describe("DSL — generic ObjectDecl (P3, §2.6)", () => {
   });
 
   it("non-literal field values become a placeholder + a formula entry", () => {
-    const cfg = compileDsl(wrap(`spiral_staircase "S" { radius r * 2 treads 8 }`, "var r = 5\n"));
+    const cfg = compileDsl(wrap(`gizmo "S" { radius r * 2 treads 8 }`, "var r = 5\n"));
     expect(floor0Objects(cfg)[0]).toEqual({
-      type: "spiral_staircase",
+      type: "gizmo",
       name: "S",
       radius: 0,
       treads: 8,
@@ -50,17 +50,17 @@ describe("DSL — generic ObjectDecl (P3, §2.6)", () => {
 
   it("round-trips: compile → emit → recompile is identical", () => {
     const cfg = compileDsl(
-      wrap(`spiral_staircase "S1" { turns 3 radius 12 } z_offset 2 enabled 0`),
+      wrap(`gizmo "S1" { turns 3 radius 12 } z_offset 2 enabled 0`),
     );
     const wdl2 = emitWdl(cfg);
     // The generic path, not the raw JSON escape.
-    expect(wdl2).toContain("spiral_staircase");
+    expect(wdl2).toContain("gizmo");
     expect(wdl2).not.toContain("raw ");
     expect(floor0Objects(compileDsl(wdl2))).toEqual(floor0Objects(cfg));
   });
 
   it("a formula field round-trips through the generic emit", () => {
-    const cfg = compileDsl(wrap(`spiral_staircase "S" { radius r * 2 }`, "var r = 5\n"));
+    const cfg = compileDsl(wrap(`gizmo "S" { radius r * 2 }`, "var r = 5\n"));
     const wdl2 = emitWdl(cfg);
     expect(floor0Objects(compileDsl(wdl2))).toEqual(floor0Objects(cfg));
   });

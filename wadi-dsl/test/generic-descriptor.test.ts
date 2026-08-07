@@ -9,18 +9,18 @@ import {
 } from "../src/generator/descriptors.js";
 
 // P3b (§2.6): the descriptor-driven half of the generic path — positional args map
-// to the primitive's field ORDER, and unknown fields / arg-count are validated,
-// all from the `fields` descriptor (the kernel seam, src/generator/descriptors).
-// Production descriptors are all keyword-sugared types that never reach the generic
-// rule, so we inject a SYNTHETIC non-keyword primitive (as a real contributed one,
-// e.g. spiral_staircase P5, will register) to exercise the machinery.
+// to the primitive's field ORDER, and unknown fields / arg-count are validated, all
+// from the `fields` descriptor (the kernel seam, src/generator/descriptors). Every
+// production primitive is keyword-sugared (so it never reaches the generic rule), so
+// we inject a SYNTHETIC non-keyword primitive `widget` to exercise the machinery —
+// the exact path a freshly-contributed primitive rides before any promotion.
 
 type Obj = Record<string, unknown>;
 const floor0Objects = (cfg: Obj): Obj[] => ((cfg.floors as Obj[])[0].objects as Obj[]) ?? [];
 const wrap = (body: string) => `house Generic {\nfloor 0 "G" {\n${body}\n}\n}\n`;
 
-const SPIRAL = makeDescriptor("spiral_staircase", ["x", "y", "radius", "height", "turns"]);
-const withSpiral = () => __setDescriptors(new Map([[SPIRAL.type, SPIRAL]]));
+const WIDGET = makeDescriptor("widget", ["x", "y", "radius", "height", "turns"]);
+const withWidget = () => __setDescriptors(new Map([[WIDGET.type, WIDGET]]));
 
 afterEach(() => __resetDescriptors());
 
@@ -35,35 +35,23 @@ async function diagnostics(text: string) {
 
 describe("DSL — descriptor-driven generic path (P3b)", () => {
   it("positional args map to the descriptor's field order", () => {
-    withSpiral();
-    const cfg = compileDsl(wrap(`spiral_staircase "S" (100, 120, 30)`));
-    expect(floor0Objects(cfg)[0]).toEqual({
-      type: "spiral_staircase",
-      name: "S",
-      x: 100,
-      y: 120,
-      radius: 30,
-    });
+    withWidget();
+    const cfg = compileDsl(wrap(`widget "W" (100, 120, 30)`));
+    expect(floor0Objects(cfg)[0]).toEqual({ type: "widget", name: "W", x: 100, y: 120, radius: 30 });
   });
 
   it("positional args + named assigns combine", () => {
-    withSpiral();
-    const cfg = compileDsl(wrap(`spiral_staircase "S" (100, 120) { turns 3 }`));
-    expect(floor0Objects(cfg)[0]).toEqual({
-      type: "spiral_staircase",
-      name: "S",
-      x: 100,
-      y: 120,
-      turns: 3,
-    });
+    withWidget();
+    const cfg = compileDsl(wrap(`widget "W" (100, 120) { turns 3 }`));
+    expect(floor0Objects(cfg)[0]).toEqual({ type: "widget", name: "W", x: 100, y: 120, turns: 3 });
   });
 
   it("a positional arg can be a formula", () => {
-    withSpiral();
-    const cfg = compileDsl(`house G {\nvar r = 5\nfloor 0 "G" {\nspiral_staircase "S" (10, 20, r * 2)\n}\n}\n`);
+    withWidget();
+    const cfg = compileDsl(`house G {\nvar r = 5\nfloor 0 "G" {\nwidget "W" (10, 20, r * 2)\n}\n}\n`);
     expect(floor0Objects(cfg)[0]).toEqual({
-      type: "spiral_staircase",
-      name: "S",
+      type: "widget",
+      name: "W",
       x: 10,
       y: 20,
       radius: 0,
@@ -71,57 +59,39 @@ describe("DSL — descriptor-driven generic path (P3b)", () => {
     });
   });
 
+  it("named parameters — each value labelled (the generic block form)", () => {
+    withWidget();
+    const cfg = compileDsl(wrap(`widget "W" { x 120 y 120 radius 45 height 110 turns 1.75 }`));
+    expect(floor0Objects(cfg)[0]).toEqual({
+      type: "widget",
+      name: "W",
+      x: 120,
+      y: 120,
+      radius: 45,
+      height: 110,
+      turns: 1.75,
+    });
+  });
+
   it("validates: too many positional args → error", async () => {
-    withSpiral();
-    const diags = await diagnostics(wrap(`spiral_staircase "S" (1, 2, 3, 4, 5, 6)`));
+    withWidget();
+    const diags = await diagnostics(wrap(`widget "W" (1, 2, 3, 4, 5, 6)`));
     const arg = diags.find((d) => /positional argument/.test(d.message));
     expect(arg?.severity).toBe(1); // 1 = Error
     expect(arg?.message).toContain("at most 5");
   });
 
   it("validates: an unknown field → warning", async () => {
-    withSpiral();
-    const diags = await diagnostics(wrap(`spiral_staircase "S" { bogus 3 }`));
+    withWidget();
+    const diags = await diagnostics(wrap(`widget "W" { bogus 3 }`));
     const unknown = diags.find((d) => /Unknown field 'bogus'/.test(d.message));
     expect(unknown?.severity).toBe(2); // 2 = Warning
   });
 
   it("a declared field is accepted (no unknown-field diagnostic)", async () => {
-    withSpiral();
-    const diags = await diagnostics(wrap(`spiral_staircase "S" { turns 3 }`));
+    withWidget();
+    const diags = await diagnostics(wrap(`widget "W" { turns 3 }`));
     expect(diags.some((d) => /Unknown field/.test(d.message))).toBe(false);
-  });
-
-  it("the REAL spiral_staircase descriptor drives positional args (no synthetic inject)", () => {
-    // No __setDescriptors — this uses the production manifest (PRIMITIVE_FIELD_DECLS),
-    // which now includes spiral_staircase (P5). Proves the generic path lights up for
-    // a real contributed primitive end-to-end.
-    const cfg = compileDsl(wrap(`spiral_staircase "S" (100, 120, 40, 108, 1.5)`));
-    expect(floor0Objects(cfg)[0]).toEqual({
-      type: "spiral_staircase",
-      name: "S",
-      x: 100,
-      y: 120,
-      radius: 40,
-      total_height: 108,
-      turns: 1.5,
-    });
-  });
-
-  it("spiral_staircase reads with NAMED parameters (the idiomatic form)", () => {
-    // Named `{ key value }` — each value labelled, no cryptic positional list.
-    const cfg = compileDsl(
-      wrap(`spiral_staircase "Stair" { x 120 y 120 radius 45 total_height 110 turns 1.75 }`),
-    );
-    expect(floor0Objects(cfg)[0]).toEqual({
-      type: "spiral_staircase",
-      name: "Stair",
-      x: 120,
-      y: 120,
-      radius: 45,
-      total_height: 110,
-      turns: 1.75,
-    });
   });
 
   it("an UNKNOWN type is left alone (no descriptor → no generic diagnostics)", async () => {

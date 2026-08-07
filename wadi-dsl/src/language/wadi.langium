@@ -213,7 +213,7 @@ Floor:
 // through to it). Bespoke rules above are ergonomic *sugar* over this generic core.
 FloorObject:
       Room | Wall | Pillar | Beam | FloorSlab | Plinth | Ground
-    | Staircase | KitchenPlatform | Item | Component | Roof | Raw
+    | Staircase | SpiralStaircase | KitchenPlatform | Item | Component | Roof | Raw
     | ObjectDecl;
 
 // ---- Generic primitive (the framework's real grammar; §2.6). Parses any object
@@ -238,7 +238,8 @@ FieldAssign:
 // listing them here adds none; it just lets them be field keys too.
 FieldKey returns string:
     ID | 'x' | 'y' | STRING
-    | 'total_height' | 'height' | 'width' | 'thickness' | 'depth' | 'direction' | 'material';
+    | 'total_height' | 'height' | 'width' | 'thickness' | 'depth' | 'direction' | 'material'
+    | 'radius' | 'turns' | 'steps';
 Value infers Value:
     {infer StrVal} str=STRING | Expr;
 
@@ -335,6 +336,21 @@ Staircase:
         ('turn' turn=('clockwise' | 'anticlockwise'))?
         ('flight_gap' flight_gap=Expr)?
         Common ('material' material=STRING)?;
+
+// A PROMOTED primitive (plans/primitive-componentization.md §2.6): spiral_staircase
+// started life on the generic `ObjectDecl` path, then graduated to this bespoke sugar
+// so it reads like every other primitive — `at (x, y)` placement + named clauses, no
+// braces. Its `fields` still drive schema/form/docs; only the DSL surface is sugared.
+SpiralStaircase:
+    'spiral_staircase' name=NameRef?
+        'at' '(' x=Expr ',' y=Expr ')'
+        'radius' radius=Expr
+        'total_height' total_height=Expr
+        ('turns' turns=Expr)?
+        ('steps' steps=Expr)?
+        ('tread_thickness' tread_thickness=Expr)?
+        ('pole_radius' pole_radius=Expr)?
+        Common;
 
 KitchenPlatform:
     'kitchen' ('name' name=STRING)?

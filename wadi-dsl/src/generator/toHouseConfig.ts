@@ -616,6 +616,8 @@ function floorObject(o: ast.FloorObject): Record<string, unknown> {
       return ground(o);
     case "Staircase":
       return staircase(o);
+    case "SpiralStaircase":
+      return spiralStaircase(o);
     case "KitchenPlatform":
       return kitchen(o);
     case "Item":
@@ -654,6 +656,27 @@ function assignGeneric(
     out[key] = value;
     if (formula) formulas[key] = formula;
   }
+}
+
+// Bespoke `spiral_staircase` (a PROMOTED primitive) → the same config shape the
+// generic path would produce; only the surface syntax is sugared (at (x,y) + named
+// clauses). Field names match the descriptor, so schema/form/docs are unaffected.
+function spiralStaircase(o: ast.SpiralStaircase): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const out: Record<string, unknown> = {
+    type: "spiral_staircase",
+    x: put("x", o.x, 0),
+    y: put("y", o.y, 0),
+    radius: put("radius", o.radius, 0),
+    total_height: put("total_height", o.total_height, 0),
+  };
+  if (o.name) out.name = unquote(o.name);
+  for (const f of ["turns", "steps", "tread_thickness", "pole_radius"] as const) {
+    const v = put(f, o[f]);
+    if (v !== undefined) out[f] = v;
+  }
+  applyCommon(out, formulas, o);
+  return done(out, formulas);
 }
 
 function objectDecl(o: ast.ObjectDecl): Record<string, unknown> {
