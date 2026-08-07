@@ -12,6 +12,7 @@ import {
 } from "langium";
 import { WadiGeneratedModule, WadiGeneratedSharedModule } from "./generated/module.js";
 import { WadiScopeProvider } from "./wadi-scope.js";
+import { registerWadiValidationChecks } from "./wadi-validator.js";
 
 export type WadiServices = LangiumCoreServices;
 
@@ -27,5 +28,6 @@ export function createWadiServices(context: DefaultSharedCoreModuleContext = Emp
   const shared = inject(createDefaultSharedCoreModule(context), WadiGeneratedSharedModule);
   const Wadi = inject(createDefaultCoreModule({ shared }), WadiGeneratedModule, WadiModule);
   shared.ServiceRegistry.register(Wadi);
+  registerWadiValidationChecks(Wadi);
   return { shared, Wadi };
 }

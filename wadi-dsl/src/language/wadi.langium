@@ -226,6 +226,7 @@ FloorObject:
 //      … — is still expressible, `"height" 8`). ----
 ObjectDecl:
     type=ID name=NameRef?
+    ('(' args+=Value (',' args+=Value)* ')')?
     ('{' fields+=FieldAssign* '}')?
     Common;
 FieldAssign:

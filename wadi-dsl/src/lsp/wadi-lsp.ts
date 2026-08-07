@@ -15,6 +15,7 @@ import {
 } from "langium/lsp";
 import { WadiGeneratedModule, WadiGeneratedSharedModule } from "../language/generated/module.js";
 import { WadiScopeProvider, moduleUri } from "../language/wadi-scope.js";
+import { registerWadiValidationChecks } from "../language/wadi-validator.js";
 import type { Model } from "../language/generated/ast.js";
 import type { ResolveModule } from "../generator/toHouseConfig.js";
 
@@ -29,6 +30,7 @@ export function createWadiLspServices(context: DefaultSharedModuleContext = Empt
     references: { ScopeProvider: (services) => new WadiScopeProvider(services) },
   });
   shared.ServiceRegistry.register(Wadi);
+  registerWadiValidationChecks(Wadi);
   return { shared, Wadi };
 }
 

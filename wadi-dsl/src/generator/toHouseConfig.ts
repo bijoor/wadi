@@ -9,6 +9,7 @@ import { AstUtils, DocumentState, EmptyFileSystem, URI, type AstNode, type Langi
 import { createWadiServices } from "../language/wadi-module.js";
 import { moduleUri } from "../language/wadi-scope.js";
 import type * as ast from "../language/generated/ast.js";
+import { getDescriptor } from "./descriptors.js";
 import {
   isNum,
   isNeg,
@@ -637,22 +638,38 @@ function floorObject(o: ast.FloorObject): Record<string, unknown> {
 //      any contributed primitive rides. Named-assignment form: each `key value`
 //      becomes a config field (string values direct; numeric/formula values go
 //      through the same placeholder+formulas split as bespoke geometry fields).
+// Assign one generic field: a string literal goes in directly, a numeric/formula
+// Expr splits into a placeholder + a `formulas` entry (as bespoke geometry does).
+function assignGeneric(
+  out: Record<string, unknown>,
+  formulas: Record<string, string>,
+  key: string,
+  v: ast.Value,
+): void {
+  if (key === "type" || key === "name") return; // reserved / set from the header
+  if (isStrVal(v)) {
+    out[key] = unquote(v.str);
+  } else {
+    const { value, formula } = fieldAndFormula(v, 0);
+    out[key] = value;
+    if (formula) formulas[key] = formula;
+  }
+}
+
 function objectDecl(o: ast.ObjectDecl): Record<string, unknown> {
   const formulas: Record<string, string> = {};
   const out: Record<string, unknown> = { type: o.type };
   if (o.name) out.name = unquote(o.name);
-  for (const fa of o.fields) {
-    const key = unquote(fa.key);
-    if (key === "type" || key === "name") continue; // set above / reserved
-    const v = fa.value;
-    if (isStrVal(v)) {
-      out[key] = unquote(v.str);
-    } else {
-      const { value, formula } = fieldAndFormula(v, 0);
-      out[key] = value;
-      if (formula) formulas[key] = formula;
-    }
-  }
+  // Positional args (P3b) map to the descriptor's field order (first-N); named
+  // assigns follow and may override. Without a descriptor, positional args can't
+  // be named — the validator reports it and they're dropped (the schema then flags
+  // the missing fields).
+  const desc = getDescriptor(o.type);
+  o.args.forEach((v, i) => {
+    const key = desc?.positional[i];
+    if (key) assignGeneric(out, formulas, key, v);
+  });
+  for (const fa of o.fields) assignGeneric(out, formulas, unquote(fa.key), fa.value);
   applyCommon(out, formulas, o);
   return done(out, formulas);
 }
