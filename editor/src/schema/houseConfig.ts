@@ -1,7 +1,14 @@
 import { z } from "zod";
 // Primitives migrated to the codegen-to-core model: their typed Zod schema is
-// GENERATED from `fields` (schema/fields/*) → objects.generated.ts. (P2b)
-import { beam } from "./generated/objects.generated";
+// GENERATED from `fields` (schema/fields/*) → objects.generated.ts. Aliased to the
+// union's existing member names. (P2b)
+import {
+  beam,
+  floor_slab as floorSlab,
+  pillar,
+  plinth as plinthObject,
+  ground as groundObject,
+} from "./generated/objects.generated";
 
 // Zod mirror of schema/house_config.schema.json. The JSON Schema on the
 // Python side is the "wire format" reference; this file is the runtime
@@ -76,42 +83,8 @@ const site = z
 // floor, number 0), not a top-level config key. Its footprint + height match
 // the old top-level plinth; the plinth floor's `height` drives the rise to the
 // floor above (replacing the old hardcoded plinth_height seed).
-const plinthObject = z
-  .object({
-    type: z.literal("plinth"),
-    formulas: formulaMap.optional(),
-    enabled: enabledField.optional(),
-    layer: z.string().optional(),
-    name: z.string().optional(),
-    material: z.string().optional(),
-    x: z.number(),
-    y: z.number(),
-    width: positive(),
-    length: positive(),
-    height: positive(),
-    z_offset: z.number().optional(),
-  })
-  .strict();
-
-// The ground plane, also on the Plinth floor. Extent defaults to the site plot
-// when authored by the migration. `height` is an optional thickness (0 = a flat
-// plane); slope fields are a later phase.
-const groundObject = z
-  .object({
-    type: z.literal("ground"),
-    formulas: formulaMap.optional(),
-    enabled: enabledField.optional(),
-    layer: z.string().optional(),
-    name: z.string().optional(),
-    material: z.string().optional(),
-    x: z.number(),
-    y: z.number(),
-    width: positive(),
-    length: positive(),
-    height: z.number().nonnegative().optional(),
-    z_offset: z.number().optional(),
-  })
-  .strict();
+// `plinth` + `ground` are GENERATED from fields (schema/fields/{plinth,ground}.ts),
+// imported above as plinthObject / groundObject. (P2b)
 
 const opening = z
   .object({
@@ -142,57 +115,14 @@ const roomWallSide = z
   })
   .strict();
 
-const floorSlab = z
-  .object({
-    type: z.literal("floor_slab"),
-    formulas: formulaMap.optional(),
-    enabled: enabledField.optional(),
-    layer: z.string().optional(),
-    name: z.string().optional(),
-    x: z.number(),
-    y: z.number(),
-    width: positive(),
-    length: positive(),
-    // Optional per-slab thickness override. Defaults to the floor's
-    // slab_thickness (which itself defaults to house.defaults or the
-    // code global). In project units.
-    thickness: z.number().nonnegative().optional(),
-    // Vertical position, as a lift above the FLOOR BASE (slabZ = plinth top
-    // for floor 0, else the floor below's top; project units, 10 = 1 ft).
-    // Default 0 → the slab's bottom sits at the floor base. Raise it to
-    // place a slab at an intermediate height (e.g. a stair landing). See
-    // the unified z_offset convention on `room`.
-    z_offset: z.number().optional(),
-  })
-  .strict();
+// `floor_slab` + `pillar` are GENERATED from fields (schema/fields/{floorSlab,
+// pillar}.ts), imported above as floorSlab / pillar. (pillar x,y = TOP-LEFT corner;
+// name required; width/length may be absent. floor_slab thickness defaults to the
+// floor's slab_thickness.)
 
-const pillar = z
-  .object({
-    type: z.literal("pillar"),
-    formulas: formulaMap.optional(),
-    enabled: enabledField.optional(),
-    layer: z.string().optional(),
-    name: z.string(),
-    // TOP-LEFT CORNER (Inkscape frame), consistent with room / floor_slab /
-    // beam. (Historically this was the pillar CENTER; changed for consistency.)
-    x: z.number(),
-    y: z.number(),
-    // width or length may be absent — see create_pillar.
-    width: positive().optional(),
-    length: positive().optional(),
-    height: positive(),
-    // Lift above the FLOOR BASE (slabZ), project units. Default 0 — a pillar
-    // rises from the floor base (plinth top on floor 0) through the slab to
-    // the ring beam. Same convention as `beam`/`floor_slab`.
-    z_offset: z.number().optional(),
-  })
-  .strict();
-
-// `beam` is GENERATED from its declarative `fields` (schema/fields/beam.ts) via
-// gen-primitives → schema/generated/objects.generated.ts. First primitive migrated
-// to the codegen-to-core model (P2b): one `fields` source drives schema + type +
-// docs. Regenerate with `npm run gen-primitives`. (height = vertical thickness,
-// defaults to the floor's slab_thickness; z_offset lifts above the floor base.)
+// `beam` + the box primitives above are all GENERATED from one `fields` source each
+// (schema/fields/*) via gen-primitives → objects.generated.ts — the codegen-to-core
+// model (P2b): fields drive schema + type + docs. Regenerate: `npm run gen-primitives`.
 
 const wallHeightsEntry = z.union([
   z.number(),

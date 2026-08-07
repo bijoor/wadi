@@ -17,3 +17,61 @@ export const beam = z.object({
   height: z.number().positive().optional(),
   z_offset: z.number().optional(),
 }).strict();
+
+export const floor_slab = z.object({
+  type: z.literal("floor_slab"),
+  formulas: z.record(z.string(), z.string()).optional(),
+  enabled: z.union([z.boolean(), z.number()]).optional(),
+  layer: z.string().optional(),
+  name: z.string().optional(),
+  x: z.number(),
+  y: z.number(),
+  width: z.number().positive(),
+  length: z.number().positive(),
+  thickness: z.number().nonnegative().optional(),
+  z_offset: z.number().optional(),
+}).strict();
+
+export const pillar = z.object({
+  type: z.literal("pillar"),
+  formulas: z.record(z.string(), z.string()).optional(),
+  enabled: z.union([z.boolean(), z.number()]).optional(),
+  layer: z.string().optional(),
+  name: z.string(),
+  x: z.number(),
+  y: z.number(),
+  width: z.number().positive().optional(),
+  length: z.number().positive().optional(),
+  height: z.number().positive(),
+  z_offset: z.number().optional(),
+}).strict();
+
+export const plinth = z.object({
+  type: z.literal("plinth"),
+  formulas: z.record(z.string(), z.string()).optional(),
+  enabled: z.union([z.boolean(), z.number()]).optional(),
+  layer: z.string().optional(),
+  name: z.string().optional(),
+  material: z.string().optional(),
+  x: z.number(),
+  y: z.number(),
+  width: z.number().positive(),
+  length: z.number().positive(),
+  height: z.number().positive(),
+  z_offset: z.number().optional(),
+}).strict();
+
+export const ground = z.object({
+  type: z.literal("ground"),
+  formulas: z.record(z.string(), z.string()).optional(),
+  enabled: z.union([z.boolean(), z.number()]).optional(),
+  layer: z.string().optional(),
+  name: z.string().optional(),
+  material: z.string().optional(),
+  x: z.number(),
+  y: z.number(),
+  width: z.number().positive(),
+  length: z.number().positive(),
+  height: z.number().nonnegative().optional(),
+  z_offset: z.number().optional(),
+}).strict();

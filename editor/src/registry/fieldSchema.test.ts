@@ -61,6 +61,28 @@ describe("fieldSchema — fields→zod SOURCE emitter (gen-primitives)", () => {
   }
 });
 
+describe("generated box primitives — key constraints hold via the object union", () => {
+  // Guards a MORE-permissive drift (parity-render only exercises valid configs).
+  const rejects: Record<string, unknown>[] = [
+    { type: "pillar", x: 0, y: 0, height: 10 }, // missing REQUIRED name
+    { type: "floor_slab", x: 0, y: 0, width: -1, length: 10 }, // width not positive
+    { type: "plinth", name: "P", x: 0, y: 0, width: 10, length: 10, height: 10, bogus: 1 }, // unknown key
+    { type: "ground", name: "G", x: 0, y: 0, width: 10, length: 10, height: -1 }, // height not ≥ 0
+  ];
+  const accepts: Record<string, unknown>[] = [
+    { type: "pillar", name: "P", x: 0, y: 0, height: 10 }, // width/length both optional
+    { type: "floor_slab", x: 0, y: 0, width: 10, length: 10 },
+    { type: "plinth", x: 0, y: 0, width: 10, length: 10, height: 10, material: "brick" },
+    { type: "ground", x: 0, y: 0, width: 10, length: 10 }, // height optional
+  ];
+  for (const o of rejects) {
+    it(`rejects invalid ${o.type}`, () => expect(object.safeParse(o).success).toBe(false));
+  }
+  for (const o of accepts) {
+    it(`accepts valid ${o.type}`, () => expect(object.safeParse(o).success).toBe(true));
+  }
+});
+
 describe("fieldSchema — fields→docs", () => {
   it("projects rows with type + required + doc", () => {
     const rows = fieldsToDocRows(beamFields);

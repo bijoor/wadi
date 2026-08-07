@@ -4,6 +4,10 @@
 // here (+ its *.fields.ts) and regenerate — no hand-written schema. (P2b)
 import type { FieldSpec } from "../../registry/fieldSchema";
 import { beamType, beamFields } from "./beam";
+import { floorSlabType, floorSlabFields } from "./floorSlab";
+import { pillarType, pillarFields } from "./pillar";
+import { plinthType, plinthFields } from "./plinth";
+import { groundType, groundFields } from "./ground";
 
 export interface PrimitiveFieldDecl {
   /** The object `type` discriminator + generated const name. */
@@ -13,4 +17,8 @@ export interface PrimitiveFieldDecl {
 
 export const PRIMITIVE_FIELD_DECLS: PrimitiveFieldDecl[] = [
   { type: beamType, fields: beamFields },
+  { type: floorSlabType, fields: floorSlabFields },
+  { type: pillarType, fields: pillarFields },
+  { type: plinthType, fields: plinthFields },
+  { type: groundType, fields: groundFields },
 ];
