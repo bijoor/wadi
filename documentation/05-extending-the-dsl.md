@@ -264,31 +264,21 @@ Two files, with every projection and capability derived from them.
 
 ---
 
-## 5. The build process
+## 5. Build discipline
 
-The framework was not built as a single rewrite. It was phased, parity-gated, and
-reversible, so the app kept working at every step.
+Two disciplines keep the framework correct as it changes, and let a change stay
+additive and reversible rather than a rewrite.
 
-| Phase | What it delivered |
-|---|---|
-| Parity harness first | A self-referential golden snapshot: expand plus combined plans plus elevations plus merged roof spec, hashed per config over 6 real configs. `npm run parity-render` must stay 6/6 byte-identical after every increment. This is the safety net that made the rest safe. |
-| P1, Registry, in place | Extend the node descriptor; stand up the capability/view registry; convert the central 3D/2D/expand dispatchers to consult-registry-first, fall-back-to-legacy (the pattern already proven by the `item` furniture type). Derive the schema union, layer roles, and add-menu from the registry. |
-| P1½, Compositor as a Stage DAG | Introduce `Stage` plus the toposort-fold runner; wrap the existing passes as named, ordered stages behind byte-identical output. Two registries now: primitives and stages. |
-| P2, Field projections | The two-tier field engine; `fields → typed schema source` (codegen-to-core, so no core/contributed split); `fields → form` (AutoForm); invert the data-model doc generator to read `fields`. All four projections now flow from one source. |
-| P3, Generic DSL | The generic `ObjectDecl` grammar plus descriptor-driven compile, decompile, positional-args, validation, completion. Bespoke rules stay as sugar. |
-| P4, Kernel extraction | Lift the domain-neutral engine into `kernel/`, guarded by the dependency-direction test. |
-| P5, The proof | `spiral_staircase`, the first new primitive, added in about 2 files, rendered live. |
+- A parity gate. A self-referential golden snapshot (expand plus combined plans plus
+  elevations plus the merged roof spec, hashed per config over 6 real configs) must
+  stay 6/6 byte-identical. `npm run parity-render` is the gate. A refactor that must
+  not change output is checked mechanically rather than by eye.
+- Consult-first, fall-back dispatch. Every dispatcher (3D, 2D, expand, add-menu,
+  layers) asks the registry first and falls back to the legacy per-type switch, so a
+  partially-migrated system is still a working system.
 
-Two practices made the increments trustworthy:
-
-- Consult-first, fall-back. Every dispatcher tried the new path and fell back to
-  the old one, so a half-migrated system was always a working system.
-- A parity gate on every commit. Refactors that must not change output are
-  proven not to, mechanically rather than by eyeball.
-
-(The two originally-deferred finishing threads, LSP completion-from-fields and
-the physical kernel extraction, were later completed the same way: green tests,
-live verification, parity 6/6, committed.)
+Together they mean a new primitive, a new stage, or a moved module is added without a
+rewrite, and the gate confirms nothing else moved.
 
 ---
 
@@ -313,17 +303,18 @@ as-is. The engine is the constant; the domain is the variable.
 
 ---
 
-## 7. What is proven, and what is next
+## 7. Capabilities and open directions
 
-Proven, live, and parity-gated:
+What the framework provides:
 
-- One `fields` declaration → schema + form + docs + DSL, all four, non-drifting.
-- A new primitive in about 2 files, rendered live (`spiral_staircase`).
+- One `fields` declaration projects to the schema, form, docs, and DSL, all four,
+  non-drifting.
+- A new primitive is about 2 files and renders live (`spiral_staircase`).
 - A domain-neutral kernel with an enforced dependency-direction boundary.
-- A two-track grammar where any primitive parses generically and the schema gates.
-- The compositor as a pure, ordered, byte-parity-preserving stage DAG.
+- A two-track grammar where any primitive parses generically and the schema gates it.
+- The compositor is a pure, ordered, byte-parity-preserving stage DAG.
 
-Open:
+Open, by choice:
 
 - Promoting the kernel from a guarded boundary to a separately-published npm
   package (needs workspace hoisting to keep a single zod instance).
