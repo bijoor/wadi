@@ -240,10 +240,14 @@ the template half closes the gap on its own.
 - **P3. MCP authoring tools and distribution.** `wadi_plugins`/`wadi_plugin`, the
   plugin-aware `check`/`preview`, the embedded reference, cross-surface loading, and
   optional R2 hosting.
-- **P4. Publishing from the WDL workflow.** The desktop-app publish action (compile,
-  capture, index, push to R2) for templates and plugins. The template half is independent
-  of P0 to P3 and can be built first to close the architect gap early; the plugin half
-  reuses the P3 plugin catalog.
+- **P4. Publishing from the WDL workflow. TEMPLATE HALF DONE** (edd3e06/8c5ff58/7febe84).
+  A "📦 Publish template" button in the WDL editor: flips the preview iframe to the
+  architect persona to reuse the studio capture toolbar + configurator test, assembles a
+  package (compiled config + captured thumbnails + editorial), previews the gallery card,
+  and publishes — desktop `publish_template` writes the package + runs publish-templates.sh
+  to R2; browser downloads it. Shared derivation in editor/src/templatePackage/. The PLUGIN
+  half (publish a promoted-primitive .wdl to the plugins catalog) reuses the same mechanism
+  and is pending with P3.
 - **Optional. Generic solid primitives.** If composition needs shapes the core lacks (a
   cylinder for a tank), consider adding small parametric solids (`box`, `cylinder`,
   `prism`) as core primitives so more can be built without a GLB. Alternatively rely on
