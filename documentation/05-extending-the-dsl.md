@@ -194,8 +194,8 @@ design: the front-end parses any name; the schema registers the real ones.
 
 ## 4. Adding a primitive in ~2 files: the `spiral_staircase` case
 
-A new object type, a helical staircase, was added the way the framework
-describes.
+A helical staircase, `spiral_staircase`, is a new object type defined in about two
+files.
 
 File 1, the declaration (`editor/src/schema/fields/spiralStaircase.ts`):
 
@@ -212,32 +212,32 @@ export const spiralStaircaseFields: FieldSpec[] = [
 ];
 ```
 
-Register it in the manifest, run the codegen, and with no other edits the
-type is in the typed schema union, has a property-panel form, appears in the
-data-model docs, and is a first-class DSL citizen. On the generic path it reads
-with named parameters in a block:
+With the declaration registered in the manifest and the codegen run, the type is in
+the typed schema union, has a property-panel form, appears in the data-model docs, and
+is a DSL citizen, with no other edits. It reads in two forms.
+
+The generic form uses named parameters in a block:
 
 ```
 spiral_staircase "Stair" { radius 45 total_height 110 turns 1.75 }
 ```
 
-It was then promoted (§3.3) to bespoke sugar, a second file (a grammar
-rule plus a compile/emit pair), so it reads like every built-in primitive,
-with `at (x, y)` placement and named clauses, no braces:
+A primitive can also carry bespoke sugar (§3.3): a second file, a grammar rule plus a
+compile/emit pair, that lets it read like the built-in primitives, with `at (x, y)`
+placement and named clauses and no braces:
 
 ```
 spiral_staircase "Stair" at (120, 120) radius 45 total_height 110 turns 1.75
 ```
 
-Both compile to the same object; its `fields` still drive the schema/form/docs, so
-only the surface syntax changed. Promotion claims the type keyword: the generic
-form for this type yields to the bespoke one (a new type has no existing files, so
-the sugar does not break anything). Its clause keywords (`radius`, `turns`, …) do not
-break the generic path: a soft-keyword token builder (`wadi-token-builder.ts`)
-makes every field-marker keyword also lex as an identifier, so those words stay
-usable as bare field keys on any generic primitive, with no per-promotion grammar edit.
-The soft set is derived from the grammar (field markers minus a small, stable set of
-object/statement leaders), so adding a primitive is still about 2 files.
+Both forms compile to the same object, and the `fields` declaration drives the schema,
+form, and docs either way; only the surface syntax differs. A bespoke rule claims the
+type keyword, so for a type that has one the generic form yields to it. The clause
+keywords (`radius`, `turns`, …) stay usable as bare field keys on any generic
+primitive: a soft-keyword token builder (`wadi-token-builder.ts`) makes every
+field-marker keyword also lex as an identifier. The soft set is derived from the
+grammar (field markers minus a small, stable set of object and statement leaders), so
+no grammar edit is needed per primitive, and a primitive is still about two files.
 
 File 2, the capabilities (`editor/src/registry/nodes/spiralStaircase.tsx`):
 
