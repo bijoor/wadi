@@ -74,6 +74,61 @@
     .preview { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #0d0d0d; }
     .preview iframe { width: 100%; height: 100%; border: 0; display: block; background: #cfe3d8; }
 
+    /* Publish-template panel — a NON-modal drawer docked over the editor (left),
+       so the preview (right) stays fully clickable: the author captures shots and
+       toggles "Preview as owner" in the live preview while the panel is open. The
+       overlay is a positioning layer that lets clicks pass through (pointer-events
+       none); only the panel itself is interactive. */
+    #publish-overlay { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+    #publish-overlay[hidden] { display: none; }
+    #publish-panel { pointer-events: auto; position: absolute; left: 10px; top: 46px;
+      width: min(600px, 48vw); max-height: calc(100vh - 58px); overflow: auto;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+      box-shadow: 0 16px 48px rgba(0,0,0,.6); display: flex; flex-direction: column; }
+    .pub-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+      border-bottom: 1px solid var(--border); }
+    .pub-head strong { font-size: .98rem; }
+    .pub-head #pub-close { margin-left: auto; }
+    .pub-hint { padding: 10px 14px; color: var(--muted); font-size: .8rem; line-height: 1.5;
+      background: #202020; border-bottom: 1px solid var(--border); }
+    .pub-hint b { color: var(--text); }
+    .pub-body { display: grid; grid-template-columns: 1fr 300px; gap: 16px; padding: 14px; }
+    @media (max-width: 640px) { .pub-body { grid-template-columns: 1fr; } }
+    .pub-form { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .pub-form label { display: flex; flex-direction: column; gap: 4px; font-size: .78rem; color: var(--muted); }
+    .pub-form input, .pub-form textarea { background: #1e1e1e; color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; font-size: .84rem;
+      font-family: inherit; }
+    .pub-form textarea { resize: vertical; }
+    .pub-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pub-derived { font-size: .78rem; color: var(--muted); background: #1e1e1e;
+      border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; line-height: 1.5; }
+    #pub-refresh { align-self: flex-start; }
+    .pub-preview { display: flex; flex-direction: column; gap: 8px; }
+    .pub-card-label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .pub-card { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #1b1b1b; }
+    .pub-card .pc-cover { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block;
+      background: #0d0d0d; }
+    .pub-card .pc-cover.empty { display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: .78rem; }
+    .pub-card .pc-body { padding: 10px 12px; }
+    .pub-card .pc-title { font-size: .9rem; font-weight: 600; margin-bottom: 3px; }
+    .pub-card .pc-desc { font-size: .76rem; color: var(--muted); line-height: 1.45;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .pub-card .pc-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .pub-card .pc-chip { font-size: .68rem; background: #2a2a2a; color: #cfcfcf;
+      border-radius: 999px; padding: 2px 8px; }
+    .pub-card .pc-chip.param { background: #2d4a3e; color: #8fe3bf; }
+    .pub-actions { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+      border-top: 1px solid var(--border); }
+    .pub-actions .spacer { flex: 1; }
+    .pub-status { font-size: .78rem; color: var(--muted); }
+    .pub-status.err { color: #f0a3a3; }
+    .pub-status.ok { color: #8fe3bf; }
+    .tb-btn.primary { background: #2d4a3e; border-color: #3a6b56; color: #d6ffe9; font-weight: 600; }
+    .tb-btn.primary:hover { background: #356e56; }
+    .tb-btn.primary:disabled { opacity: .5; cursor: default; }
+
     /* Problems panel — the detailed, readable list of errors + warnings. */
     #problems { flex: 0 0 auto; max-height: 45%; display: flex; flex-direction: column;
       border-top: 1px solid var(--border); background: #1b1b1b; }
@@ -135,7 +190,7 @@
       header .brand { display: none; }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-NIbZT7X9.js"></script>
+  <script type="module" crossorigin src="./assets/index-By2KhbZW.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-D8UQ_xkR.css">
 </head>
 <body>
@@ -161,6 +216,7 @@
     <button id="save" class="tb-btn" title="Save the .wdl (⌘S)">💾 Save</button>
     <button id="saveas" class="tb-btn" title="Save to a new file (⇧⌘S)">Save As…</button>
     <button id="download" class="tb-btn" title="Export the compiled .wadi">⬇ .wadi</button>
+    <button id="publish" class="tb-btn" title="Assemble a template package (cover shots + details) and publish it to the owner gallery">📦 Publish template</button>
     <button id="reference" class="tb-btn" title="WDL reference">📖 Reference</button>
     <span class="spacer"></span>
     <span id="filename" title="Current file">untitled.wdl</span>
@@ -192,5 +248,41 @@
   <input type="file" id="file" accept=".wdl,.txt" hidden />
   <input type="file" id="wadi-file" accept=".wadi,.json" hidden />
   <input type="file" id="lib-file" accept=".wdl" multiple hidden />
+
+  <!-- Publish-template panel. main.ts/publishPanel.ts fills + wires it. -->
+  <div id="publish-overlay" hidden>
+    <div id="publish-panel" role="dialog" aria-label="Publish template">
+      <div class="pub-head">
+        <strong>Publish template</strong>
+        <button id="pub-close" class="tb-btn" title="Close">✕</button>
+      </div>
+      <div class="pub-hint">
+        In the preview, use <b>📸 Shot</b> / <b>✨ Auto</b> to capture cover images, and
+        <b>Preview as owner</b> to test the configurator. Then fill in the details and publish.
+      </div>
+      <div class="pub-body">
+        <div class="pub-form">
+          <label>Template id <input id="pub-id" type="text" placeholder="my_home" spellcheck="false" /></label>
+          <label>Title <input id="pub-title" type="text" placeholder="My home" /></label>
+          <label>Description <textarea id="pub-desc" rows="3" placeholder="One or two sentences owners will read."></textarea></label>
+          <div class="pub-row">
+            <label>Style <input id="pub-style" type="text" placeholder="Konkan" /></label>
+            <label>Roof <input id="pub-roof" type="text" placeholder="Hip" /></label>
+          </div>
+          <div class="pub-derived" id="pub-derived">—</div>
+          <button id="pub-refresh" class="tb-btn" title="Re-read the current design + captured shots from the preview">↻ Refresh from preview</button>
+        </div>
+        <div class="pub-preview">
+          <div class="pub-card-label">Gallery card preview</div>
+          <div id="pub-card" class="pub-card"></div>
+        </div>
+      </div>
+      <div class="pub-actions">
+        <span id="pub-status" class="pub-status"></span>
+        <span class="spacer"></span>
+        <button id="pub-primary" class="tb-btn primary">Publish to gallery</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
