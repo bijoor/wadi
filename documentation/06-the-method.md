@@ -9,7 +9,7 @@
 > Companion: [extending the DSL](05-extending-the-dsl.md) explains the
 > componentization framework: how a concept is declared once (as `fields`) and
 > projected onto the schema, forms, docs, and DSL, and how the domain-neutral engine
-> was extracted into a reusable kernel. This document is the parametric layer
+> is extracted into a reusable kernel. This document is the parametric layer
 > underneath it (variables, formulas, the resolver, the configurator).
 
 ---
