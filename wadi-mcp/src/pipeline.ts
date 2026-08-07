@@ -6,6 +6,7 @@
 import { compileDsl } from "../../wadi-dsl/src/generator/toHouseConfig";
 import { resolveParametric } from "../../editor/src/param/resolve";
 import { validate } from "../../editor/src/schema/houseConfig";
+import { registerExposedComponents } from "../../editor/src/registry/promote";
 import { computeMergedV2Spec } from "../../editor/src/svg2d/roof/v2/computeFromHouse";
 import { lintStructure, partitionFindings } from "../../editor/src/lint/structural";
 import { composeSheet } from "../../editor/src/pipeline/composeSheet";
@@ -39,6 +40,8 @@ type Cfg = Record<string, unknown>;
 /** Compile .wdl → resolved HouseConfig (formulas folded to numbers). Throws on parse error. */
 export function compileConfig(wdl: string): Cfg {
   const compiled = compileDsl(wdl, { resolveModule: stdResolveModule }); // throws on syntax/import error
+  // Register any exposed components as typed primitives before validate/expand.
+  registerExposedComponents(compiled as never);
   const { config } = resolveParametric(compiled as never);
   return config as Cfg;
 }

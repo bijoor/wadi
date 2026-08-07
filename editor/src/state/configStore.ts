@@ -4,6 +4,7 @@ import type { HouseConfig, HouseObject } from "../schema/houseConfig";
 import { makeDefault, makeDefaultFloor, type AddableObjectType } from "./defaultFactory";
 import { composeResolve } from "../pipeline/compose";
 import { reportFormulaWarnings } from "../param/warnings";
+import { registerExposedComponents } from "../registry/promote";
 
 // Identity of the currently-selected object in the sidebar tree. `floor`
 // is the index into HOUSE_CONFIG.floors; `object` is the index into that
@@ -170,6 +171,9 @@ export const useConfigStore = create<ConfigState>()(
       dirty: false,
 
       loadConfig: (config, filename, filePath) => {
+        // Register any components this config exposes as typed primitives, BEFORE
+        // it is validated, expanded, or rendered (plans/declarative-plugins.md P0).
+        registerExposedComponents(config);
         set({
           config,
           filename: filename ?? null,

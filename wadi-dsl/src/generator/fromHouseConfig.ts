@@ -523,11 +523,20 @@ function baseName(ref: string): string {
 function emitComponentDef(w: W, indent: number, name: string, def: Obj): void {
   let head = `component ${baseName(name)}`;
   if (def.goal !== undefined) head += ` goal ${str(def.goal)}`;
+  // `expose as <ns.type>` promotes this component to a typed primitive (P0).
+  const ex = def.expose as Obj | undefined;
+  if (ex && typeof ex.type === "string") {
+    head += ` expose as ${ex.type}`;
+    if (ex.layer !== undefined) head += ` layer ${str(ex.layer)}`;
+    if (ex.label !== undefined) head += ` label ${str(ex.label)}`;
+  }
   w.line(indent, head + " {");
   if (def.params) for (const p of def.params as Obj[]) {
     let s = `param ${p.name}`;
     if (p.default !== undefined) s += ` = ${num(p.default)}`;
     if (p.label !== undefined) s += ` label ${str(p.label)}`;
+    if (p.kind !== undefined) s += ` kind ${p.kind}`;
+    if (p.unit !== undefined) s += ` unit ${str(p.unit)}`;
     w.line(indent + 1, s);
   }
   if (def.variables) emitVars(w, indent + 1, def.variables);

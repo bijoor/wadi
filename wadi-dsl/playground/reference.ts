@@ -149,6 +149,14 @@ use Bench as "B1" at (x,y) rotation 90 with { blen = 80 }   // stamp onto a floo
 // rotation is optional (yaw°): 0/90/180/270 for structural components,
 // any angle for furniture-only components.
 
+// Promote a component to a typed primitive (usable like a core object type):
+component CarPorch expose as pack.car_porch layer "structure" label "Car porch" {
+  param across = 240 kind extent unit "project units"   // params → fields
+  param deep   = 200
+  slab at (0,0) size (across, deep)
+}
+pack.car_porch "P1" { x 220 y 0 across 200 }   // then use the namespaced type
+
 import "konkan/base" as kb            // reuse another .wdl's components
 use kb.Verandah as "V1" at (x,y)      // namespaced stamp from the imported module
 goal "A reusable Konkan bathroom"     // module intent (house-less .wdl = a component pack)

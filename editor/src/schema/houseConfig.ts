@@ -525,6 +525,12 @@ const componentParam = z
     label: z.string().optional(),
     description: z.string().optional(),
     default: z.number().optional(),
+    // Field-projection annotations, used only when the component is `expose`d as a
+    // typed primitive (plans/declarative-plugins.md). `kind` is a FieldKind preset
+    // (coord/extent/nonneg/int/text/flag/enum); when absent the kind is inferred
+    // from the default's type. `unit` is a doc-only unit hint.
+    kind: z.string().optional(),
+    unit: z.string().optional(),
   })
   .strict();
 
@@ -541,6 +547,18 @@ const componentDef = z
       .record(z.string(), z.object({ x: numOrFormula, y: numOrFormula }).strict())
       .optional(),
     objects: z.array(objectSchema),
+    // Promote this component to a typed primitive at load time
+    // (plans/declarative-plugins.md P0). When present, the component registers a
+    // NodeDefinition of type `expose.type` whose fields come from `params`; it can
+    // then be used like any core object type. `type` is namespaced (`pack.thing`).
+    expose: z
+      .object({
+        type: z.string(),
+        label: z.string().optional(),
+        layer: z.string().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export type ComponentDef = z.infer<typeof componentDef>;

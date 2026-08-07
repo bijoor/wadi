@@ -50,6 +50,15 @@ export interface NodeExpandCtx {
   floorBelowHeight: number;
   lenient?: boolean;
   onWarning?: (msg: string) => void;
+  // A composition primitive (a promoted component) expands by stamping its body;
+  // that needs the host config (to resolve param formulas against the host scope
+  // and look up nested components), the house wall thickness, and the current
+  // recursion depth (for the nesting-depth guard). Populated by expandRoomWalls.
+  // Typed `unknown` because expandRoomWalls carries its own loose HouseConfig shape,
+  // not the strict schema one; the consumer (registry/promote.ts) casts it.
+  houseConfig?: unknown;
+  wallThickness?: number;
+  depth?: number;
 }
 
 // Context for the 2D-plan / elevation draw hooks. These are placeholders that get

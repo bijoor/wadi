@@ -191,13 +191,21 @@ LayerDecl:
 // ---- In-file component library: a reusable mini-house authored in LOCAL
 //      coordinates (origin 0,0), stamped into a floor with `use … at (…)`. ----
 ComponentDef:
-    'component' name=ID ('goal' goal=STRING)? '{'
+    'component' name=ID ('goal' goal=STRING)?
+        // Promote this component to a typed primitive at load time (P0): it can
+        // then be used like any core object type, named `exposeType` (namespaced,
+        // e.g. `pack.water_tank`).
+        ('expose' 'as' exposeType=QualifiedName
+            ('layer' exposeLayer=STRING)? ('label' exposeLabel=STRING)?)? '{'
         (params+=ComponentParam)*
         ( vars+=Var | points+=Point )*
         (objects+=FloorObject)*
     '}';
 ComponentParam:
-    'param' name=ID ('=' default=NUMBER)? ('label' label=STRING)?;
+    'param' name=ID ('=' default=NUMBER)? ('label' label=STRING)?
+        // Field-projection annotations for a promoted primitive (optional; the kind
+        // is otherwise inferred). `kind` is a FieldKind preset (extent/int/…).
+        ('kind' kind=ID)? ('unit' unit=STRING)?;
 
 Floor:
     'floor' number=NUMBER name=STRING
@@ -225,7 +233,7 @@ FloorObject:
 //      a field whose name collides with a grammar keyword — `height`, `direction`,
 //      … — is still expressible, `"height" 8`). ----
 ObjectDecl:
-    type=ID name=NameRef?
+    type=QualifiedName name=NameRef?
     ('(' args+=Value (',' args+=Value)* ')')?
     ('{' fields+=FieldAssign* '}')?
     Common;

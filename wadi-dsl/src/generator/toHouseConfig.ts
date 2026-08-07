@@ -707,8 +707,17 @@ function componentDef(d: ast.ComponentDef): Record<string, unknown> {
       const pp: Record<string, unknown> = { name: p.name };
       if (p.default !== undefined) pp.default = p.default;
       if (p.label) pp.label = unquote(p.label);
+      if (p.kind) pp.kind = p.kind;
+      if (p.unit) pp.unit = unquote(p.unit);
       return pp;
     });
+  }
+  // `expose as <ns.type>` promotes this component to a typed primitive (P0).
+  if (d.exposeType) {
+    const ex: Record<string, unknown> = { type: d.exposeType };
+    if (d.exposeLayer) ex.layer = unquote(d.exposeLayer);
+    if (d.exposeLabel) ex.label = unquote(d.exposeLabel);
+    def.expose = ex;
   }
   if (d.vars.length) {
     const v: Record<string, number | string> = {};

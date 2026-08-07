@@ -287,6 +287,11 @@ export function expandRoomWalls(
               floorBelowHeight,
               lenient: opts?.lenient,
               onWarning: opts?.onWarning,
+              // A promoted composition primitive stamps its body: give its expand
+              // hook the host config, wall thickness, and recursion depth.
+              houseConfig,
+              wallThickness: t,
+              depth: _depth,
             }) as Obj[] | null) ?? [obj];
         } catch (e) {
           if (!opts?.lenient) throw e;
@@ -414,7 +419,7 @@ function stripOpenings(obj: Obj): Obj {
 
 const MAX_COMPONENT_DEPTH = 8;
 
-type ComponentDefLoose = {
+export type ComponentDefLoose = {
   objects: Obj[];
   params?: Array<{ name?: string; default?: number }>;
   variables?: Record<string, number | string>;
@@ -498,27 +503,40 @@ function placeComponent(objs: Obj[], dx: number, dy: number, dz: number, deg: nu
   });
 }
 
-// Expand a `component` instance into concrete, placed primitives:
-//  1. look up hostConfig.components[ref];
-//  2. resolve the component's own sub-config with its input variables overridden
-//     by the instance `params` (a "= …" param is evaluated in the HOST scope, so
-//     it can reference the host's variables/points);
-//  3. recursively expandRoomWalls the body (rooms→walls, nested components…);
-//  4. offset every result by the instance (x, y, z_offset).
-function expandComponent(
-  inst: Obj,
+// The normalized instance a component stamp needs: the public param overrides and
+// the placement. A `component` instance and a promoted composition primitive both
+// reduce to this.
+export interface ComponentInstance {
+  params?: Record<string, number | string>;
+  x?: number;
+  y?: number;
+  z_offset?: number;
+  rotation?: number;
+  ref?: string; // for error messages
+}
+
+// Expand a resolved component DEFINITION into concrete, placed primitives, given an
+// instance's param + placement overrides:
+//  1. resolve the def's sub-config with its input variables overridden by the
+//     instance `params` (a "= …" param is evaluated in the HOST scope, so it can
+//     reference the host's variables/points);
+//  2. recursively expandRoomWalls the body (rooms→walls, nested components…);
+//  3. offset/rotate every result by the instance (x, y, z_offset, rotation).
+// The def need not live in hostConfig.components: a promoted plugin primitive passes
+// its own captured def. Shared by expandComponent (below) and a promoted composition
+// primitive's registry `expand` hook (registry/promote.ts).
+export function expandComponentDef(
+  def: ComponentDefLoose,
+  inst: ComponentInstance,
   hostConfig: HouseConfig,
   wallThickness: number,
   opts: ExpandOptions | undefined,
   depth: number,
 ): Obj[] {
-  if (depth >= MAX_COMPONENT_DEPTH) {
-    throw new Error(`component nesting too deep (ref '${String(inst.ref)}')`);
-  }
-  const library = (hostConfig.components ?? {}) as Record<string, ComponentDefLoose>;
   const ref = String(inst.ref ?? "");
-  const def = library[ref];
-  if (!def) throw new Error(`unknown component '${ref}'`);
+  if (depth >= MAX_COMPONENT_DEPTH) {
+    throw new Error(`component nesting too deep (ref '${ref}')`);
+  }
 
   // Resolve param overrides against the HOST scope (a "= …" param may reference
   // the host's variables/points; a number is used directly).
@@ -570,13 +588,43 @@ function expandComponent(
     const bad = bodyObjs.find((b) => !ANY_ANGLE_TYPES.has(String(b.type)));
     if (bad) {
       throw new Error(
-        `component '${ref}' rotation ${deg}° is not a right angle — its ${String(bad.type)}` +
+        `component '${ref}' rotation ${deg}° is not a right angle; its ${String(bad.type)}` +
           `${bad.name ? ` '${String(bad.name)}'` : ""} can't rotate to a non-right angle. ` +
           `Use 0/90/180/270 for structural components; free angles are for furniture-only components.`,
       );
     }
   }
   return placeComponent(bodyObjs, dx, dy, dz, deg, wallThickness);
+}
+
+// Expand a `component` instance: look up its def in hostConfig.components, then
+// stamp it via expandComponentDef.
+function expandComponent(
+  inst: Obj,
+  hostConfig: HouseConfig,
+  wallThickness: number,
+  opts: ExpandOptions | undefined,
+  depth: number,
+): Obj[] {
+  const library = (hostConfig.components ?? {}) as Record<string, ComponentDefLoose>;
+  const ref = String(inst.ref ?? "");
+  const def = library[ref];
+  if (!def) throw new Error(`unknown component '${ref}'`);
+  return expandComponentDef(
+    def,
+    {
+      params: inst.params as Record<string, number | string> | undefined,
+      x: inst.x as number | undefined,
+      y: inst.y as number | undefined,
+      z_offset: inst.z_offset as number | undefined,
+      rotation: inst.rotation as number | undefined,
+      ref,
+    },
+    hostConfig,
+    wallThickness,
+    opts,
+    depth,
+  );
 }
 
 function expandObject(obj: Obj, wallThickness: number): [Obj, Obj[]] {
