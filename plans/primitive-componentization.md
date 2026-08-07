@@ -347,8 +347,16 @@ framework — build the ~150-line runner.
     the TYPED Stage registry (`composeStages`), + drop-in helpers `composeResolve`
     / `composeExpanded`. First PRODUCTION consumer routed: the store's resolve seam
     (`configStore`) now resolves THROUGH the runner, byte-identical (391 tests,
-    parity 6/6). Remaining: route the view leaves (plan / elevation / 3D as terminal
-    stages) + the per-view internal expand — one stage at a time, parity-gated.
+    parity 6/6).
+  - **P1½b SVG leaves DONE (13b9f84):** `pipeline/composeSheet.ts` = the view-leaf
+    stages (`units` → `plan`/`elevation`/`roofTop`) + `composeSheet(config, views?)`.
+    Production consumer routed: the MCP headless renderer (`wadi-mcp` renderSvgs)
+    now renders through the DAG, byte-identical (MCP smoke green; composeSheet ===
+    direct proven). Both registries now exist AND have production consumers.
+  - **Optional refinements (not blocking):** the app's live 3D is React (House3D),
+    a live renderer not a fold stage — stays as-is; deduping the per-view internal
+    expand + routing the editor's own SVG callers (Layout / dump-svgs) through
+    composeSheet are polish.
 
 **P2 — Field-schema projections.** Build `fields → {zod, form, docs}` generators;
 migrate `item` (already registry-driven) + one simple INDEPENDENT type to fully
