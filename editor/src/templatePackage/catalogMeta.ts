@@ -41,6 +41,7 @@ type LooseConfig = {
   floors?: Array<{ name?: unknown; objects?: Array<{ type?: unknown; name?: unknown }> }>;
   variables?: Record<string, unknown>;
   site?: { plot_width?: unknown; plot_length?: unknown };
+  template?: EditorialFields;
 };
 
 export const titleCase = (id: string): string =>
@@ -111,4 +112,12 @@ export function deriveTemplateEntry(
       parametric: isParametric(cfg),
     },
   };
+}
+
+/** Build a catalog entry from a SELF-DESCRIBING config: the editorial fields come
+ *  from the config's own `template` block (see schema/houseConfig.ts), the counts
+ *  are derived. This is what auto-indexing a folder uses — one `.wadi` in, one
+ *  catalog entry out, with no external index. */
+export function entryFromConfig(id: string, cfg: LooseConfig, file: string): TemplateEntry {
+  return deriveTemplateEntry(id, cfg, file, cfg.template);
 }

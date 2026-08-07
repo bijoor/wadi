@@ -5,6 +5,7 @@ import {
   isParametric,
   defaultPlotFt,
   deriveTemplateEntry,
+  entryFromConfig,
   titleCase,
 } from "./catalogMeta";
 
@@ -90,5 +91,23 @@ describe("catalogMeta — template catalog derivation", () => {
     expect(entry.meta.style).toBe("—");
     expect(entry.meta.roof).toBe("—");
     expect(entry.meta.minWidthFt).toBe(30); // from plot
+  });
+
+  it("entryFromConfig: reads editorial from a self-describing `template` block", () => {
+    const selfDescribing = {
+      ...cfg,
+      template: { title: "Coastal", description: "Breezy.", style: "Konkan", roof: "Gable", minWidthFt: 22 },
+    };
+    const entry = entryFromConfig("coastal", selfDescribing, "coastal.wadi");
+    expect(entry.title).toBe("Coastal");
+    expect(entry.description).toBe("Breezy.");
+    expect(entry.meta).toMatchObject({
+      style: "Konkan",
+      roof: "Gable",
+      minWidthFt: 22,
+      minLengthFt: 46, // not in template → derived from plot
+      bedrooms: 2,
+      parametric: true,
+    });
   });
 });

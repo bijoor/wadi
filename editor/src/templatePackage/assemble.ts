@@ -3,7 +3,7 @@
 // cover thumbnails captured in the preview, plus the editorial fields the author
 // typed. Pure, so both the Publish panel and a test can call it.
 
-import { deriveTemplateEntry, type TemplateEntry, type EditorialFields } from "./catalogMeta";
+import { entryFromConfig, type TemplateEntry, type EditorialFields } from "./catalogMeta";
 
 export interface PublishForm extends EditorialFields {
   id: string;
@@ -46,14 +46,22 @@ export function assembleTemplatePackage(
   // The legacy singular is never what a fresh package should carry.
   delete wadi.thumbnail;
 
+  // Make the config SELF-DESCRIBING: fold the editorial fields into a `template`
+  // block on the .wadi, so a folder of these files can be auto-indexed with no
+  // external index. Only keep the fields the author actually provided.
+  const template: EditorialFields = {};
+  if (form.title) template.title = form.title;
+  if (form.description) template.description = form.description;
+  if (form.style) template.style = form.style;
+  if (form.roof) template.roof = form.roof;
+  if (form.minWidthFt !== undefined) template.minWidthFt = form.minWidthFt;
+  if (form.minLengthFt !== undefined) template.minLengthFt = form.minLengthFt;
+  if (Object.keys(template).length) wadi.template = template;
+  else delete wadi.template;
+
   const file = `${id}.wadi`;
-  const entry = deriveTemplateEntry(id, wadi, file, {
-    title: form.title,
-    description: form.description,
-    style: form.style,
-    roof: form.roof,
-    minWidthFt: form.minWidthFt,
-    minLengthFt: form.minLengthFt,
-  });
+  // Derive the catalog entry from the now-self-describing config, so the entry
+  // and the file can never disagree.
+  const entry = entryFromConfig(id, wadi, file);
   return { entry, wadi, file };
 }

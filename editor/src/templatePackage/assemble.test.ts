@@ -26,6 +26,13 @@ describe("assembleTemplatePackage", () => {
     });
     expect(pkg.file).toBe("coastal_home.wadi");
     expect(pkg.wadi.thumbnails).toEqual(["data:img/a", "data:img/b"]);
+    // the config is now self-describing: editorial folded into a `template` block
+    expect(pkg.wadi.template).toEqual({
+      title: "Coastal Home",
+      description: "A breezy home.",
+      style: "Konkan",
+      roof: "Gable",
+    });
     // the parametric layer survives so owners can adjust the published template
     expect(pkg.wadi.variables).toEqual({ plot_w: 220 });
     expect(pkg.wadi.configurator).toBeTruthy();

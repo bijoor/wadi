@@ -741,6 +741,22 @@ export const HouseConfig = z
     // still read as a fallback so old template files keep working.
     thumbnails: z.array(z.string()).optional(),
     thumbnail: z.string().optional(),
+    // Catalog metadata that makes a `.wadi` SELF-DESCRIBING: the editorial fields
+    // a gallery card needs that can't be derived from geometry (title, blurb,
+    // style/roof tags, min plot). With this block + `thumbnails[]`, a folder of
+    // `.wadi` files IS the catalog — the app lists the folder and indexes each
+    // file, with no separate index.json to maintain (see io/templateSource.ts).
+    // Non-strict so newer editorial fields don't break an older build.
+    template: z
+      .object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        style: z.string().optional(),
+        roof: z.string().optional(),
+        minWidthFt: z.number().optional(),
+        minLengthFt: z.number().optional(),
+      })
+      .optional(),
     floors: z.array(floor).min(1),
     _walls_expanded: z.boolean().optional(),
   })

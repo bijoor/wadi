@@ -353,6 +353,14 @@
       ]
     }
   },
+  "template": {
+    "title": "Single-story cottage (parametric)",
+    "description": "Fully-parametric Konkan cottage: front verandah, bedroom, central hall (Majghar), living, kitchen, bathroom, and a rear Padvi — hip roof. Resize the plot and the rooms re-flow. Default 30 × 46 ft.",
+    "style": "Konkan",
+    "roof": "Hip",
+    "minWidthFt": 22,
+    "minLengthFt": 34
+  },
   "floors": [
     {
       "floor_number": 0,
