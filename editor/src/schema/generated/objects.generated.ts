@@ -114,3 +114,31 @@ export const ground = z.object({
   // Lift above origin (project units)
   z_offset: z.number().optional(),
 }).strict();
+
+// A helical staircase: `steps` treads winding `turns` revolutions around a central pole, from the floor to `total_height`, within `radius`. Placed by its CENTRE (x, y). Optional fields fall back to sensible defaults at render time.
+export const spiral_staircase = z.object({
+  type: z.literal("spiral_staircase"),
+  formulas: z.record(z.string(), z.string()).optional(),
+  enabled: z.union([z.boolean(), z.number()]).optional(),
+  layer: z.string().optional(),
+  // Label
+  name: z.string().optional(),
+  // Centre X (project units)
+  x: z.number(),
+  // Centre Y (project units)
+  y: z.number(),
+  // Outer radius (project units)
+  radius: z.number().positive(),
+  // Total rise (floor to top step) (project units)
+  total_height: z.number().positive(),
+  // Revolutions (default 1)
+  turns: z.number().positive().optional(),
+  // Number of treads (default ~12 per turn)
+  steps: z.number().int().optional(),
+  // Tread slab thickness (project units)
+  tread_thickness: z.number().positive().optional(),
+  // Central pole radius (project units)
+  pole_radius: z.number().positive().optional(),
+  // Lift above floor base (project units)
+  z_offset: z.number().optional(),
+}).strict();

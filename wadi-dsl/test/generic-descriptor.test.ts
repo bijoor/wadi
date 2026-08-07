@@ -92,6 +92,22 @@ describe("DSL — descriptor-driven generic path (P3b)", () => {
     expect(diags.some((d) => /Unknown field/.test(d.message))).toBe(false);
   });
 
+  it("the REAL spiral_staircase descriptor drives positional args (no synthetic inject)", () => {
+    // No __setDescriptors — this uses the production manifest (PRIMITIVE_FIELD_DECLS),
+    // which now includes spiral_staircase (P5). Proves the generic path lights up for
+    // a real contributed primitive end-to-end.
+    const cfg = compileDsl(wrap(`spiral_staircase "S" (100, 120, 40, 108, 1.5)`));
+    expect(floor0Objects(cfg)[0]).toEqual({
+      type: "spiral_staircase",
+      name: "S",
+      x: 100,
+      y: 120,
+      radius: 40,
+      total_height: 108,
+      turns: 1.5,
+    });
+  });
+
   it("an UNKNOWN type is left alone (no descriptor → no generic diagnostics)", async () => {
     // No synthetic descriptor set → getDescriptor returns undefined.
     const diags = await diagnostics(wrap(`mystery "M" { anything 1 }`));

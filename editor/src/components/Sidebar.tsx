@@ -50,6 +50,7 @@ const TYPE_LABEL: Record<HouseObject["type"], string> = {
   room: "Rooms",
   wall: "Walls",
   staircase: "Staircases",
+  spiral_staircase: "Spiral staircases",
   door: "Doors (flat)",
   window: "Windows (flat)",
   kitchen_platform: "Kitchen platforms",

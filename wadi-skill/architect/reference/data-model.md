@@ -268,6 +268,28 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `material` | string |  |  |
 
 
+### `spiral_staircase`
+
+A helical staircase: `steps` treads winding `turns` revolutions around a central pole, from the floor to `total_height`, within `radius`. Placed by its CENTRE (x, y). Optional fields fall back to sensible defaults at render time.
+
+| field | type | req | notes |
+|---|---|---|---|
+| `type` | literal `spiral_staircase` | **yes** |  |
+| `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
+| `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
+| `layer` | string |  | *(shared — see top)* |
+| `name` | string |  | Label |
+| `x` | number | **yes** | Centre X (project units) |
+| `y` | number | **yes** | Centre Y (project units) |
+| `radius` | number > 0 | **yes** | Outer radius (project units) |
+| `total_height` | number > 0 | **yes** | Total rise (floor to top step) (project units) |
+| `turns` | number > 0 |  | Revolutions (default 1) |
+| `steps` | integer |  | Number of treads (default ~12 per turn) |
+| `tread_thickness` | number > 0 |  | Tread slab thickness (project units) |
+| `pole_radius` | number > 0 |  | Central pole radius (project units) |
+| `z_offset` | number |  | Lift above floor base (project units) |
+
+
 ### `door`
 
 Flat door/window remain valid as a legacy schema — new configs nest them inside room.walls[side].openings or wall.openings.

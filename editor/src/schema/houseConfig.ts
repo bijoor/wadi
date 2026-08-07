@@ -8,6 +8,7 @@ import {
   pillar,
   plinth as plinthObject,
   ground as groundObject,
+  spiral_staircase as spiralStaircase,
 } from "./generated/objects.generated";
 
 // Zod mirror of schema/house_config.schema.json. The JSON Schema on the
@@ -463,6 +464,7 @@ export const object = z.discriminatedUnion("type", [
   room,
   wall,
   staircase,
+  spiralStaircase,
   door,
   windowObj,
   kitchenPlatform,

@@ -8,6 +8,7 @@ import { floorSlabType, floorSlabFields } from "./floorSlab";
 import { pillarType, pillarFields } from "./pillar";
 import { plinthType, plinthFields, plinthDoc } from "./plinth";
 import { groundType, groundFields, groundDoc } from "./ground";
+import { spiralStaircaseType, spiralStaircaseFields, spiralStaircaseDoc } from "./spiralStaircase";
 
 export interface PrimitiveFieldDecl {
   /** The object `type` discriminator + generated const name. */
@@ -24,4 +25,5 @@ export const PRIMITIVE_FIELD_DECLS: PrimitiveFieldDecl[] = [
   { type: pillarType, fields: pillarFields },
   { type: plinthType, fields: plinthFields, doc: plinthDoc },
   { type: groundType, fields: groundFields, doc: groundDoc },
+  { type: spiralStaircaseType, fields: spiralStaircaseFields, doc: spiralStaircaseDoc },
 ];
