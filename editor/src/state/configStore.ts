@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { temporal } from "zundo";
 import type { HouseConfig, HouseObject } from "../schema/houseConfig";
 import { makeDefault, makeDefaultFloor, type AddableObjectType } from "./defaultFactory";
-import { resolveParametric } from "../param/resolve";
+import { composeResolve } from "../pipeline/compose";
 import { reportFormulaWarnings } from "../param/warnings";
 
 // Identity of the currently-selected object in the sidebar tree. `floor`
@@ -138,7 +138,10 @@ export const useConfigStore = create<ConfigState>()(
             "config" in patch &&
             (patch as { config?: unknown }).config
           ) {
-            const { config, warnings } = resolveParametric(
+            // Resolve THROUGH the compose Stage DAG (P1½b) — a byte-identical
+            // drop-in for resolveParametric, so the app's canonical resolve now
+            // flows through the runner. See pipeline/compose.ts.
+            const { config, warnings } = composeResolve(
               (patch as { config: HouseConfig }).config,
             );
             reportFormulaWarnings(warnings);
