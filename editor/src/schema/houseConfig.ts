@@ -555,6 +555,26 @@ export const object = z.discriminatedUnion("type", [
 ]);
 export type HouseObject = z.infer<typeof object>;
 
+// Registry-extensible object schema. A registered primitive (registry/nodes/*)
+// PUSHES its Zod schema here via registerObjectSchema at registration time —
+// "registration-push", so this LOW-LEVEL module never imports the registry (which
+// would be a cycle: registry → nodes → schema). Floor/component object arrays
+// validate against the built-in discriminated union OR any registered schema.
+// No registered schema exists today ⇒ the fallback never fires ⇒ byte-identical
+// validation for every existing config. (P1e; plans/primitive-componentization.md)
+const REGISTERED_OBJECT_SCHEMAS: Record<string, z.ZodTypeAny> = {};
+export function registerObjectSchema(type: string, schema: z.ZodTypeAny): void {
+  REGISTERED_OBJECT_SCHEMAS[type] = schema;
+}
+const registeredObjectFallback = z.custom<HouseObject>((val) => {
+  const t = (val as { type?: unknown } | null | undefined)?.type;
+  if (typeof t !== "string") return false;
+  const s = REGISTERED_OBJECT_SCHEMAS[t];
+  return s ? s.safeParse(val).success : false;
+});
+/** Floor/component object schema: the built-in union, extended by the registry. */
+export const objectSchema = z.union([object, registeredObjectFallback]);
+
 const floor = z
   .object({
     floor_number: z.number().int().nonnegative(),
@@ -571,7 +591,7 @@ const floor = z
     slab_thickness: z.number().nonnegative().optional(),
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
-    objects: z.array(object),
+    objects: z.array(objectSchema),
   })
   .strict();
 export type Floor = z.infer<typeof floor>;
@@ -603,7 +623,7 @@ const componentDef = z
     points: z
       .record(z.string(), z.object({ x: numOrFormula, y: numOrFormula }).strict())
       .optional(),
-    objects: z.array(object),
+    objects: z.array(objectSchema),
   })
   .strict();
 export type ComponentDef = z.infer<typeof componentDef>;
@@ -755,6 +775,31 @@ export type HouseConfig = z.infer<typeof HouseConfig>;
 // minus the options this build can't render — instead of being hard-rejected.
 // Only unrecognized-key issues are stripped; any other error is left intact for
 // the caller. Returns the cleaned clone + the dot-paths of every dropped key.
+// Collect every `unrecognized_keys` issue, RECURSING into `invalid_union` errors.
+// Object schemas now live behind a z.union (`objectSchema` — built-in union OR a
+// registered primitive's schema), and z.union wraps its branch errors in an
+// `invalid_union` issue, hiding the nested `unrecognized_keys` the stripper keys
+// off. Descend into `unionErrors`, prefixing the union's own path, so unknown keys
+// INSIDE objects are still found. Plain top-level unrecognized_keys are unchanged.
+function collectUnrecognized(
+  issues: readonly z.core.$ZodIssue[],
+  base: PropertyKey[] = [],
+): { path: PropertyKey[]; keys: string[] }[] {
+  const out: { path: PropertyKey[]; keys: string[] }[] = [];
+  for (const i of issues) {
+    const p = [...base, ...i.path];
+    if (i.code === "unrecognized_keys") {
+      out.push({ path: p, keys: [...(i as { keys: readonly string[] }).keys] });
+    } else if (i.code === "invalid_union") {
+      // Zod v4: `errors` = one issue-array per union branch (paths RELATIVE to the
+      // union's own position). Recurse each, prefixing the union path.
+      const branches = (i as unknown as { errors?: (readonly z.core.$ZodIssue[])[] }).errors;
+      if (Array.isArray(branches)) for (const br of branches) out.push(...collectUnrecognized(br, p));
+    }
+  }
+  return out;
+}
+
 function stripUnknownKeys(data: unknown): { data: unknown; stripped: string[] } {
   if (!data || typeof data !== "object") return { data, stripped: [] };
   const cur = JSON.parse(JSON.stringify(data)); // config is JSON — safe deep clone
@@ -762,7 +807,7 @@ function stripUnknownKeys(data: unknown): { data: unknown; stripped: string[] } 
   for (let pass = 0; pass < 12; pass++) {
     const res = HouseConfig.safeParse(cur);
     if (res.success) break;
-    const unknown = res.error.issues.filter((i) => i.code === "unrecognized_keys");
+    const unknown = collectUnrecognized(res.error.issues);
     if (unknown.length === 0) break; // remaining errors aren't unknown keys — stop
     for (const issue of unknown) {
       const parent = issue.path.reduce<unknown>(
@@ -770,7 +815,7 @@ function stripUnknownKeys(data: unknown): { data: unknown; stripped: string[] } 
         cur,
       );
       if (parent && typeof parent === "object") {
-        for (const k of (issue as unknown as { keys: string[] }).keys) {
+        for (const k of issue.keys) {
           if (k in (parent as Record<string, unknown>)) {
             delete (parent as Record<string, unknown>)[k];
             stripped.push([...issue.path, k].join("/"));

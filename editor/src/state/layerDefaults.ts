@@ -77,7 +77,16 @@ export function layerRoleOverrides(): Record<string, LayerRole> {
   return useLayerDefaultsStore.getState().overrides;
 }
 
-/** Effective role for an object type (override → built-in → "structure"). */
+// Roles PUSHED by registered primitives (registration-push, same cycle-avoidance
+// as the object schema: the registry writes here rather than this low-level module
+// importing the registry). Consulted after the built-in map, so a registered
+// primitive gets its role from its own node file without a central edit. (P1e)
+const REGISTERED_ROLES: Record<string, LayerRole> = {};
+export function registerBuiltinRole(objType: string, role: LayerRole): void {
+  REGISTERED_ROLES[objType] = role;
+}
+
+/** Effective role for an object type (override → built-in → registered → "structure"). */
 export function roleForType(objType: string, overrides?: Record<string, LayerRole>): LayerRole {
-  return overrides?.[objType] ?? BUILTIN_ROLE[objType] ?? "structure";
+  return overrides?.[objType] ?? BUILTIN_ROLE[objType] ?? REGISTERED_ROLES[objType] ?? "structure";
 }
