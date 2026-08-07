@@ -15,6 +15,7 @@
 import { Component, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useGLTF } from "@react-three/drei";
 import { Box3, MathUtils, Vector3, type Object3D } from "three";
+import { applyRig, type RigOp } from "./rig";
 
 export interface FurnitureItemProps {
   src: string;
@@ -24,6 +25,9 @@ export interface FurnitureItemProps {
   offset?: [number, number, number];
   corrRotation?: [number, number, number]; // degrees
   corrScale?: [number, number, number];
+  /** Named-node rig ops (a `model` object's `rig`), applied to the loaded GLB before
+   *  it is measured/normalised. Undefined for a plain `item`. */
+  rig?: readonly RigOp[];
   /** Three-world placement: (cx, cz) = recentred plan centre, baseY = floor-top Z. */
   cx: number;
   cz: number;
@@ -39,7 +43,7 @@ export interface FurnitureItemProps {
 // Loads + seats the GLB. Suspends while loading; throws on load failure (both caught
 // by the wrapper below).
 function ItemGLB(props: FurnitureItemProps) {
-  const { src, dimensions, offset, corrRotation, corrScale, cx, cz, baseY, yawDeg, userScale, unitsScale } = props;
+  const { src, dimensions, offset, corrRotation, corrScale, rig, cx, cz, baseY, yawDeg, userScale, unitsScale } = props;
   const gltf = useGLTF(src);
 
   // Clone so instances don't share one Object3D; bake the corrective transform; then
@@ -60,6 +64,9 @@ function ItemGLB(props: FurnitureItemProps) {
       );
     }
     if (corrScale) clone.scale.set(corrScale[0], corrScale[1], corrScale[2]);
+    // Apply the node rig (move/hide/recolour/array named parts) before measuring, so
+    // arrayed instances are included in the bbox and the whole rigged model normalises.
+    if (rig?.length) applyRig(clone, rig);
     clone.updateMatrixWorld(true);
     const box = new Box3().setFromObject(clone);
     const size = box.getSize(new Vector3());
@@ -73,7 +80,7 @@ function ItemGLB(props: FurnitureItemProps) {
       seatZ: -center.z,
       norm: targetHorizUnits / nativeHoriz,
     };
-  }, [gltf.scene, offset, corrRotation, corrScale, dimensions, unitsScale]);
+  }, [gltf.scene, offset, corrRotation, corrScale, rig, dimensions, unitsScale]);
 
   return (
     <group position={[cx, baseY, cz]} rotation={[0, MathUtils.degToRad(yawDeg ?? 0), 0]}>

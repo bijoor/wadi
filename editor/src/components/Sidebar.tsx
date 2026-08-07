@@ -25,6 +25,7 @@ function addMenuOptions(): { value: string; label: string }[] {
 const TYPE_ORDER: HouseObject["type"][] = [
   "component",
   "item",
+  "model",
   "ground",
   "plinth",
   "floor_slab",
@@ -42,6 +43,7 @@ const TYPE_ORDER: HouseObject["type"][] = [
 const TYPE_LABEL: Record<HouseObject["type"], string> = {
   component: "Components",
   item: "Furniture",
+  model: "Models",
   ground: "Ground",
   plinth: "Plinth",
   floor_slab: "Floor slabs",

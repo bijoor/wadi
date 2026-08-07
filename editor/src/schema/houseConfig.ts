@@ -453,11 +453,55 @@ const itemObject = z
   })
   .strict();
 
+// A rig op manipulates one NAMED node of a `model`'s GLB (plans/declarative-plugins.md
+// P1). Values are in the GLB's own space: translate/scale are node offsets/factors,
+// rotate is Euler degrees, `about` is a pivot (so an array can be circular / spiral).
+const vec3 = z.tuple([z.number(), z.number(), z.number()]);
+const rigOp = z.discriminatedUnion("op", [
+  z.object({ op: z.literal("translate"), node: z.string(), by: vec3 }).strict(),
+  z.object({ op: z.literal("rotate"), node: z.string(), by: vec3 }).strict(),
+  z.object({ op: z.literal("scale"), node: z.string(), by: vec3 }).strict(),
+  z.object({ op: z.literal("visible"), node: z.string(), value: z.union([z.boolean(), z.number()]) }).strict(),
+  z.object({ op: z.literal("material"), node: z.string(), color: z.string() }).strict(),
+  z
+    .object({
+      op: z.literal("array"),
+      node: z.string(),
+      count: z.number().int().positive(),
+      translate: vec3.optional(),
+      rotate: vec3.optional(),
+      scale: vec3.optional(),
+      about: vec3.optional(),
+    })
+    .strict(),
+]);
+
+// A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinct
+// from `item` (furniture, catalog + anchoring): `model` is a rigged structural asset.
+// `asset.dimensions` is the real metre size, used for the 2D footprint and the scale.
+const modelObject = z
+  .object({
+    type: z.literal("model"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    name: z.string().optional(),
+    asset: itemAsset,
+    x: z.number(),
+    y: z.number(),
+    rotation: z.number().optional(), // yaw, degrees
+    scale: positive().optional(), // uniform user resize
+    z_offset: z.number().optional(),
+    rig: z.array(rigOp).optional(),
+  })
+  .strict();
+
 export const object = z.discriminatedUnion("type", [
   plinthObject,
   groundObject,
   componentObject,
   itemObject,
+  modelObject,
   floorSlab,
   pillar,
   beam,

@@ -5,6 +5,7 @@ import type { NodeDefinition, NodeFacets } from "./types";
 import { registerObjectSchema } from "../schema/houseConfig";
 import { registerBuiltinRole } from "../state/layerDefaults";
 import { itemNode } from "./nodes/item";
+import { modelNode } from "./nodes/model";
 import { spiralStaircaseNode } from "./nodes/spiralStaircase";
 
 const REGISTRY = new Map<string, NodeDefinition>();
@@ -45,6 +46,8 @@ export function addableNodeTypes(): string[] {
 // switches in the renderers; migrate them here opportunistically. `item` (GLB
 // furniture) is fully registry-driven — the reference for future ports.
 registerNode(itemNode);
+// Rigged GLB model (P1): shares the item renderer but manipulates named nodes via `rig`.
+registerNode(modelNode);
 // First primitive contributed end-to-end through the framework (P5). Its schema is
 // already in the codegen union (schema/fields/spiralStaircase → objects.generated),
 // so the node contributes capabilities + layer role + add-menu, not a schema.
