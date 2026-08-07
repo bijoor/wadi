@@ -4,6 +4,11 @@ import type { FieldSpec } from "../../registry/fieldSchema";
 
 export const plinthType = "plinth";
 
+// Primitive-level prose — emitted as the generated schema's leading comment, so the
+// data-model doc (which reads those comments) keeps this description. (P2b)
+export const plinthDoc =
+  'The plinth is now a normal object placed on the "Plinth" floor (the first floor, number 0), not a top-level config key. Its footprint + height match the old top-level plinth; the plinth floor\'s `height` drives the rise to the floor above (replacing the old hardcoded plinth_height seed).';
+
 export const plinthFields: FieldSpec[] = [
   { name: "name", kind: "text", required: false, doc: "Label" },
   { name: "material", kind: "text", required: false, doc: "Material key" },

@@ -53,6 +53,13 @@ describe("fieldSchema — fields→zod SOURCE emitter (gen-primitives)", () => {
     expect(src).toContain('type: z.literal("beam"),');
   });
 
+  it("carries each field's doc as a LEADING // comment (feeds the data-model doc)", () => {
+    // The line above the field, so gen-schema-doc reads it as the field's comment.
+    expect(src).toContain("// X extent (project units)\n  width: z.number().positive(),");
+    // Comments don't break evaluation.
+    expect(() => new Function("z", `return (${src});`)(z)).not.toThrow();
+  });
+
   for (const c of cases) {
     it(`${c.name}: emitted-source schema agrees with runtime + hand-written`, () => {
       expect(evaledSchema.safeParse(c.o).success).toBe(object.safeParse(c.o).success);

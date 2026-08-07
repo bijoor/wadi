@@ -23,9 +23,12 @@ export function renderGenerated() {
 // schema, its TS type (z.infer), and the docs share one source.
 import { z } from "zod";
 `;
-  const body = PRIMITIVE_FIELD_DECLS.map(
-    (d) => `\nexport const ${d.type} = ${fieldsToZodSource(d.type, d.fields)};\n`,
-  ).join("");
+  const body = PRIMITIVE_FIELD_DECLS.map((d) => {
+    // Primitive-level prose becomes the const's leading comment; the data-model doc
+    // generator reads it as the object's description (keeps docs sourced from fields).
+    const lead = d.doc ? `// ${d.doc}\n` : "";
+    return `\n${lead}export const ${d.type} = ${fieldsToZodSource(d.type, d.fields)};\n`;
+  }).join("");
   return header + body;
 }
 

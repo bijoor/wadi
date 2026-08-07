@@ -173,7 +173,15 @@ export function fieldsToZodSource(typeLiteral: string, fields: readonly FieldSpe
   const lines = [
     `type: z.literal(${JSON.stringify(typeLiteral)}),`,
     ...COMMON_SOURCE_LINES,
-    ...fields.map((f) => `${f.name}: ${fieldTypeToSource(resolveFieldType(f))},`),
+    // A LEADING `// doc (unit)` comment (matching houseConfig's field style)
+    // carries each field's semantics INTO the generated file, so the data-model
+    // docs — parsed from these comments by gen-schema-doc — derive from `fields`
+    // too: one source for schema, type, form AND docs.
+    ...fields.flatMap((f) => {
+      const line = `${f.name}: ${fieldTypeToSource(resolveFieldType(f))},`;
+      const doc = fieldDoc(f);
+      return doc ? [`// ${doc}`, line] : [line];
+    }),
   ];
   return `z.object({\n${lines.map((l) => `  ${l}`).join("\n")}\n}).strict()`;
 }
@@ -201,13 +209,19 @@ export interface DocRow {
   doc: string;
 }
 
+/** A field's human doc string: `doc (unit)`. Shared by the doc-row projection and
+ *  the source emitter (which writes it as a `//` comment the doc generator reads). */
+export function fieldDoc(f: FieldSpec): string {
+  return [f.doc, f.unit ? `(${f.unit})` : ""].filter(Boolean).join(" ");
+}
+
 /** Project a primitive's `fields` to documentation rows (→ data-model docs). */
 export function fieldsToDocRows(fields: readonly FieldSpec[]): DocRow[] {
   return fields.map((f) => ({
     field: f.name,
     type: docType(resolveFieldType({ ...f, required: true })),
     required: f.required !== false,
-    doc: [f.doc, f.unit ? `(${f.unit})` : ""].filter(Boolean).join(" "),
+    doc: fieldDoc(f),
   }));
 }
 

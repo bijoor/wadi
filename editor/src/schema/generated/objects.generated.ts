@@ -9,12 +9,19 @@ export const beam = z.object({
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  // Label
   name: z.string().optional(),
+  // Top-left X (project units)
   x: z.number(),
+  // Top-left Y (project units)
   y: z.number(),
+  // X extent (project units)
   width: z.number().positive(),
+  // Y extent (project units)
   length: z.number().positive(),
+  // Vertical thickness (project units)
   height: z.number().positive().optional(),
+  // Lift above floor base (project units)
   z_offset: z.number().optional(),
 }).strict();
 
@@ -23,12 +30,19 @@ export const floor_slab = z.object({
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  // Label
   name: z.string().optional(),
+  // Top-left X (project units)
   x: z.number(),
+  // Top-left Y (project units)
   y: z.number(),
+  // X extent (project units)
   width: z.number().positive(),
+  // Y extent (project units)
   length: z.number().positive(),
+  // Slab thickness (defaults to floor's) (project units)
   thickness: z.number().nonnegative().optional(),
+  // Lift above floor base (project units)
   z_offset: z.number().optional(),
 }).strict();
 
@@ -37,41 +51,66 @@ export const pillar = z.object({
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  // Label
   name: z.string(),
+  // Top-left corner X (project units)
   x: z.number(),
+  // Top-left corner Y (project units)
   y: z.number(),
+  // X extent (project units)
   width: z.number().positive().optional(),
+  // Y extent (project units)
   length: z.number().positive().optional(),
+  // Column height (project units)
   height: z.number().positive(),
+  // Lift above floor base (project units)
   z_offset: z.number().optional(),
 }).strict();
 
+// The plinth is now a normal object placed on the "Plinth" floor (the first floor, number 0), not a top-level config key. Its footprint + height match the old top-level plinth; the plinth floor's `height` drives the rise to the floor above (replacing the old hardcoded plinth_height seed).
 export const plinth = z.object({
   type: z.literal("plinth"),
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  // Label
   name: z.string().optional(),
+  // Material key
   material: z.string().optional(),
+  // Top-left X (project units)
   x: z.number(),
+  // Top-left Y (project units)
   y: z.number(),
+  // X extent (project units)
   width: z.number().positive(),
+  // Y extent (project units)
   length: z.number().positive(),
+  // Plinth height (project units)
   height: z.number().positive(),
+  // Lift above ground (project units)
   z_offset: z.number().optional(),
 }).strict();
 
+// The ground plane, also on the Plinth floor. Extent defaults to the site plot when authored by the migration. `height` is an optional thickness (0 = a flat plane); slope fields are a later phase.
 export const ground = z.object({
   type: z.literal("ground"),
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  // Label
   name: z.string().optional(),
+  // Material key
   material: z.string().optional(),
+  // Top-left X (project units)
   x: z.number(),
+  // Top-left Y (project units)
   y: z.number(),
+  // X extent (project units)
   width: z.number().positive(),
+  // Y extent (project units)
   length: z.number().positive(),
+  // Thickness (0 = flat) (project units)
   height: z.number().nonnegative().optional(),
+  // Lift above origin (project units)
   z_offset: z.number().optional(),
 }).strict();

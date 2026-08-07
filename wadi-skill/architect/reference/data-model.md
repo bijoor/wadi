@@ -2,6 +2,9 @@
 
 > **Generated from `editor/src/schema/houseConfig.ts` — do not edit by hand.**
 > Regenerate: `node scripts/gen-schema-doc.mjs <path/to/houseConfig.ts> reference/data-model.md`
+> Some primitives (beam, floor_slab, pillar, plinth, ground) are generated from their
+> `fields` (schema/fields/\*) into generated/objects.generated.ts — run `npm run gen-primitives`
+> in editor/ first if you changed those, so the generated schemas (which this doc reads) are current.
 > The Zod schema is the single source of truth; this file mirrors it (structure + the
 > semantics carried in its comments) so it can't drift.
 
@@ -81,14 +84,14 @@ The plinth is now a normal object placed on the "Plinth" floor (the first floor,
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `name` | string |  |  |
-| `material` | string |  |  |
-| `x` | number | **yes** |  |
-| `y` | number | **yes** |  |
-| `width` | number > 0 | **yes** |  |
-| `length` | number > 0 | **yes** |  |
-| `height` | number > 0 | **yes** |  |
-| `z_offset` | number |  |  |
+| `name` | string |  | Label |
+| `material` | string |  | Material key |
+| `x` | number | **yes** | Top-left X (project units) |
+| `y` | number | **yes** | Top-left Y (project units) |
+| `width` | number > 0 | **yes** | X extent (project units) |
+| `length` | number > 0 | **yes** | Y extent (project units) |
+| `height` | number > 0 | **yes** | Plinth height (project units) |
+| `z_offset` | number |  | Lift above ground (project units) |
 
 
 ### `ground`
@@ -101,14 +104,14 @@ The ground plane, also on the Plinth floor. Extent defaults to the site plot whe
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `name` | string |  |  |
-| `material` | string |  |  |
-| `x` | number | **yes** |  |
-| `y` | number | **yes** |  |
-| `width` | number > 0 | **yes** |  |
-| `length` | number > 0 | **yes** |  |
-| `height` | number ≥ 0 |  |  |
-| `z_offset` | number |  |  |
+| `name` | string |  | Label |
+| `material` | string |  | Material key |
+| `x` | number | **yes** | Top-left X (project units) |
+| `y` | number | **yes** | Top-left Y (project units) |
+| `width` | number > 0 | **yes** | X extent (project units) |
+| `length` | number > 0 | **yes** | Y extent (project units) |
+| `height` | number ≥ 0 |  | Thickness (0 = flat) (project units) |
+| `z_offset` | number |  | Lift above origin (project units) |
 
 
 ### `component`
@@ -126,6 +129,7 @@ An INSTANCE of a reusable component from the in-file `components` library. It re
 | `params` | map: string → union — see notes |  | Overrides for the component's declared input variables. A string starting with "=" is a formula evaluated in the HOST scope (so it can reference the host's variables/points); a number is used directly. |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
+| `rotation` | number |  | Standard placement: yaw° about the instance origin (clockwise, same sense as item rotation: 0=south, 90=east). Right angles (0/90/180/270) are exact for any component; a non-right angle is allowed only for furniture-only ones. |
 | `z_offset` | number |  |  |
 
 
@@ -159,13 +163,13 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `name` | string |  |  |
-| `x` | number | **yes** |  |
-| `y` | number | **yes** |  |
-| `width` | number > 0 | **yes** |  |
-| `length` | number > 0 | **yes** |  |
-| `thickness` | number ≥ 0 |  | Optional per-slab thickness override. Defaults to the floor's slab_thickness (which itself defaults to house.defaults or the code global). In project units. |
-| `z_offset` | number |  | Vertical position, as a lift above the FLOOR BASE (slabZ = plinth top for floor 0, else the floor below's top; project units, 10 = 1 ft). Default 0 → the slab's bottom sits at the floor base. Raise it to place a slab at an intermediate height (e.g. a stair landing). See the unified z_offset convention on `room`. |
+| `name` | string |  | Label |
+| `x` | number | **yes** | Top-left X (project units) |
+| `y` | number | **yes** | Top-left Y (project units) |
+| `width` | number > 0 | **yes** | X extent (project units) |
+| `length` | number > 0 | **yes** | Y extent (project units) |
+| `thickness` | number ≥ 0 |  | Slab thickness (defaults to floor's) (project units) |
+| `z_offset` | number |  | Lift above floor base (project units) |
 
 
 ### `pillar`
@@ -175,13 +179,13 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `name` | string | **yes** |  |
-| `x` | number | **yes** | TOP-LEFT CORNER (Inkscape frame), consistent with room / floor_slab / beam. (Historically this was the pillar CENTER; changed for consistency.) |
-| `y` | number | **yes** |  |
-| `width` | number > 0 |  | width or length may be absent — see create_pillar. |
-| `length` | number > 0 |  |  |
-| `height` | number > 0 | **yes** |  |
-| `z_offset` | number |  | Lift above the FLOOR BASE (slabZ), project units. Default 0 — a pillar rises from the floor base (plinth top on floor 0) through the slab to the ring beam. Same convention as `beam`/`floor_slab`. |
+| `name` | string | **yes** | Label |
+| `x` | number | **yes** | Top-left corner X (project units) |
+| `y` | number | **yes** | Top-left corner Y (project units) |
+| `width` | number > 0 |  | X extent (project units) |
+| `length` | number > 0 |  | Y extent (project units) |
+| `height` | number > 0 | **yes** | Column height (project units) |
+| `z_offset` | number |  | Lift above floor base (project units) |
 
 
 ### `beam`
@@ -191,13 +195,13 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
-| `name` | string |  |  |
-| `x` | number | **yes** |  |
-| `y` | number | **yes** |  |
-| `width` | number > 0 | **yes** |  |
-| `length` | number > 0 | **yes** |  |
-| `height` | number > 0 |  | Vertical thickness of the beam, in PROJECT UNITS. Optional — defaults to the floor's slab_thickness. The 3D viewer + BeamForm read this as `height`; note the Python builder currently reads a `thickness` key instead (wadi_config.py) — see the known field-name mismatch. |
-| `z_offset` | number |  | Lift above the FLOOR BASE (slabZ), in PROJECT UNITS (10 units = 1 ft). Default 0 — the beam's bottom sits at the floor base. Same convention as `floor_slab`. (Was previously z_offset_ft in feet.) |
+| `name` | string |  | Label |
+| `x` | number | **yes** | Top-left X (project units) |
+| `y` | number | **yes** | Top-left Y (project units) |
+| `width` | number > 0 | **yes** | X extent (project units) |
+| `length` | number > 0 | **yes** | Y extent (project units) |
+| `height` | number > 0 |  | Vertical thickness (project units) |
+| `z_offset` | number |  | Lift above floor base (project units) |
 
 
 ### `room`
@@ -380,6 +384,9 @@ How dimensions are LABELLED on the drawings. Display-only — geometry always st
 
 
 ### Opening
+
+The plinth is now a normal object placed on the "Plinth" floor (the first floor, number 0), not a top-level config key. Its footprint + height match the old top-level plinth; the plinth floor's `height` drives the rise to the floor above (replacing the old hardcoded plinth_height seed). `plinth` + `ground` are GENERATED from fields (schema/fields/{plinth,ground}.ts), imported above as plinthObject / groundObject. (P2b)
+
 | field | type | req | notes |
 |---|---|---|---|
 | `kind` | enum: `door` `window` | **yes** |  |
@@ -444,6 +451,7 @@ Furniture (GLB `item`) — shared schema pieces Defined BEFORE `room` so a room 
 | field | type | req | notes |
 |---|---|---|---|
 | `name` | string |  |  |
+| `goal` | string |  | A short natural-language description of what this component accomplishes (the discovery key for goal-based module lookup, e.g. "climb to the next floor"). Purely metadata — renderers ignore it. |
 | `params` | array of [ComponentParam](#componentparam) |  |  |
 | `variables` | map: string → number, or `"= formula"` string |  |  |
 | `points` | map: string → inline object |  |  |

@@ -37,14 +37,45 @@ function loadTS() {
 const ts = loadTS();
 const src = readFileSync(SCHEMA, "utf8");
 const sf = ts.createSourceFile(SCHEMA, src, ts.ScriptTarget.Latest, true);
-const full = sf.getFullText();
+
+// Some object schemas are GENERATED from `fields` (schema/fields/*) into
+// generated/objects.generated.ts, then imported into houseConfig's union under an
+// alias (e.g. `floor_slab as floorSlab`). That generated file carries each field's
+// doc as a leading `//` comment (emitted by fieldsToZodSource) — the SAME comment
+// style as hand-written fields — so we parse it with the identical machinery and
+// merge. This keeps a single markdown-format path while the docs still derive from
+// `fields`. Resolve the import to find the file + the alias→export name mapping.
+function parseGeneratedImport() {
+  for (const st of sf.statements) {
+    if (!ts.isImportDeclaration(st)) continue;
+    const spec = st.moduleSpecifier;
+    if (!ts.isStringLiteral(spec) || !/generated\/objects\.generated/.test(spec.text)) continue;
+    const clause = st.importClause?.namedBindings;
+    if (!clause || !ts.isNamedImports(clause)) continue;
+    // localName (used in the union) → exported name (defined in the generated file)
+    const aliasToExport = new Map();
+    for (const el of clause.elements) {
+      aliasToExport.set(el.name.text, (el.propertyName ?? el.name).text);
+    }
+    const path = resolve(dirname(SCHEMA), spec.text.replace(/\.js$/, "") + ".ts");
+    return { path, aliasToExport };
+  }
+  return null;
+}
+const genImport = parseGeneratedImport();
+const genSf = genImport
+  ? ts.createSourceFile(genImport.path, readFileSync(genImport.path, "utf8"), ts.ScriptTarget.Latest, true)
+  : null;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const isZ = (n) => n && ts.isIdentifier(n) && n.text === "z";
-const txt = (n) => n.getText(sf);
+// Text / comments are read from each node's OWN source file, so nodes from both the
+// schema file and the generated file resolve correctly.
+const txt = (n) => n.getText(n.getSourceFile());
 
 // Leading // and /** */ comments immediately above a node, joined to one paragraph.
 function leadingComment(node) {
+  const full = node.getSourceFile().getFullText();
   const ranges = ts.getLeadingCommentRanges(full, node.getFullStart()) || [];
   if (!ranges.length) return "";
   const lines = [];
@@ -115,37 +146,48 @@ function literalValue(expr) {
 // ── collect top-level schema declarations ───────────────────────────────────
 // name -> { kind, node, objLiteral?, catchall?, enum?, members?, discriminator?, typeLiteral? }
 const decls = new Map();
-for (const st of sf.statements) {
-  if (!ts.isVariableStatement(st)) continue;
-  for (const d of st.declarationList.declarations) {
-    if (!ts.isIdentifier(d.name) || !d.initializer) continue;
-    const name = d.name.text;
-    const init = d.initializer;
-    const t = txt(init);
-    // discriminated union
-    const duMatch = /z\.discriminatedUnion\(/.test(t);
-    if (duMatch && ts.isCallExpression(init)) {
-      const arr = init.arguments[1];
-      const members = arr && ts.isArrayLiteralExpression(arr)
-        ? arr.elements.filter(ts.isIdentifier).map((i) => i.text) : [];
-      decls.set(name, { kind: "union", members });
-      continue;
+function collectDecls(sourceFile) {
+  for (const st of sourceFile.statements) {
+    if (!ts.isVariableStatement(st)) continue;
+    for (const d of st.declarationList.declarations) {
+      if (!ts.isIdentifier(d.name) || !d.initializer) continue;
+      const name = d.name.text;
+      const init = d.initializer;
+      const t = txt(init);
+      // discriminated union
+      const duMatch = /z\.discriminatedUnion\(/.test(t);
+      if (duMatch && ts.isCallExpression(init)) {
+        const arr = init.arguments[1];
+        const members = arr && ts.isArrayLiteralExpression(arr)
+          ? arr.elements.filter(ts.isIdentifier).map((i) => i.text) : [];
+        decls.set(name, { kind: "union", members });
+        continue;
+      }
+      const obj = baseObjectLiteral(init);
+      if (obj) {
+        decls.set(name, {
+          kind: "object", objLiteral: obj, catchall: hasCatchall(init),
+          typeLiteral: null, comment: leadingComment(st),
+        });
+        continue;
+      }
+      const ev = enumValues(init);
+      if (ev && /^z\.enum\(/.test(t)) {
+        decls.set(name, { kind: "enum", values: ev, comment: leadingComment(st) });
+        continue;
+      }
+      // simple alias (numOrFormula / formulaMap / enabledField / positive / …)
+      decls.set(name, { kind: "alias", text: t.replace(/\s+/g, " ").trim() });
     }
-    const obj = baseObjectLiteral(init);
-    if (obj) {
-      decls.set(name, {
-        kind: "object", objLiteral: obj, catchall: hasCatchall(init),
-        typeLiteral: null, comment: leadingComment(st),
-      });
-      continue;
-    }
-    const ev = enumValues(init);
-    if (ev && /^z\.enum\(/.test(t)) {
-      decls.set(name, { kind: "enum", values: ev, comment: leadingComment(st) });
-      continue;
-    }
-    // simple alias (numOrFormula / formulaMap / enabledField / positive / …)
-    decls.set(name, { kind: "alias", text: t.replace(/\s+/g, " ").trim() });
+  }
+}
+collectDecls(sf);
+if (genSf) collectDecls(genSf); // generated primitives (beam, floor_slab, …)
+// Register each generated schema under the ALIAS the union references it by
+// (`floor_slab as floorSlab`), so union-member lookup below finds it unchanged.
+if (genImport) {
+  for (const [alias, exportName] of genImport.aliasToExport) {
+    if (alias !== exportName && decls.has(exportName)) decls.set(alias, decls.get(exportName));
   }
 }
 
@@ -153,7 +195,7 @@ for (const st of sf.statements) {
 for (const [, info] of decls) {
   if (info.kind !== "object") continue;
   for (const p of info.objLiteral.properties) {
-    if (ts.isPropertyAssignment(p) && p.name.getText(sf) === "type") {
+    if (ts.isPropertyAssignment(p) && p.name.getText() === "type") {
       info.typeLiteral = literalValue(p.initializer);
     }
   }
@@ -179,6 +221,9 @@ const LINK = {
   layerDef: "LayerDef", configuratorInput: "ConfiguratorInput",
   configuratorSection: "configurator", site: "site", floor: "floor",
   wallHeightsEntry: "wall_heights entry", object: "Object types",
+  // Floors' `objects` array is `z.array(objectSchema)` (the built-in union OR a
+  // registered-object fallback, since P1e). Link it to the object-types section.
+  objectSchema: "Object types",
 };
 const anchor = (label) => `[${label}](#${String(label).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")})`;
 
@@ -258,21 +303,31 @@ function fields(objLiteral) {
   const rows = [];
   for (const p of objLiteral.properties) {
     if (!ts.isPropertyAssignment(p)) continue;
-    const name = p.name.getText(sf);
+    const name = p.name.getText();
     const { type, optional } = classify(txt(p.initializer));
     rows.push({ name, type, optional, comment: leadingComment(p) });
   }
   return rows;
 }
 
+// Canonical rendering of the shared-tail fields (formulas/enabled/layer), taken from
+// `room` (which keeps the nice `formulaMap`/`enabledField` aliases). Generated
+// primitives encode the tail raw (`z.record(z.string(),z.string())` etc.), so their
+// per-object rows would otherwise render it differently — mirror the canonical type
+// so every object's shared rows read identically.
+const sharedCanonType = {};
 function renderTable(rows, { perObject = false } = {}) {
   let md = "| field | type | req | notes |\n|---|---|---|---|\n";
   for (const r of rows) {
     const req = r.optional ? "" : "**yes**";
     let note = r.comment || "";
-    if (perObject && SHARED_TERSE.has(r.name)) note = "*(shared — see top)*";
+    let type = r.type;
+    if (perObject && SHARED_TERSE.has(r.name)) {
+      note = "*(shared — see top)*";
+      type = sharedCanonType[r.name] ?? type;
+    }
     note = note.replace(/\|/g, "\\|").replace(/\n/g, " ");
-    md += `| \`${r.name}\` | ${r.type} | ${req} | ${note} |\n`;
+    md += `| \`${r.name}\` | ${type} | ${req} | ${note} |\n`;
   }
   return md;
 }
@@ -285,6 +340,9 @@ p("# Wadi data model (`.wadi` / `house_config.json`)");
 p();
 p("> **Generated from `editor/src/schema/houseConfig.ts` — do not edit by hand.**");
 p("> Regenerate: `node scripts/gen-schema-doc.mjs <path/to/houseConfig.ts> reference/data-model.md`");
+p("> Some primitives (beam, floor_slab, pillar, plinth, ground) are generated from their");
+p("> `fields` (schema/fields/\\*) into generated/objects.generated.ts — run `npm run gen-primitives`");
+p("> in editor/ first if you changed those, so the generated schemas (which this doc reads) are current.");
 p("> The Zod schema is the single source of truth; this file mirrors it (structure + the");
 p("> semantics carried in its comments) so it can't drift.");
 p();
@@ -302,6 +360,9 @@ p("These appear on most object types; documented once here, marked *(cross-cutti
 p();
 const anyObj = decls.get("room");
 const crossRows = fields(anyObj.objLiteral).filter((r) => CROSS.has(r.name));
+// Record room's canonical shared-tail types so every per-object table renders them
+// identically (generated primitives encode the tail raw — see renderTable).
+for (const r of crossRows) if (SHARED_TERSE.has(r.name)) sharedCanonType[r.name] = r.type;
 p(renderTable(crossRows));
 p();
 p("- `type` — the discriminated-union tag; selects the object shape (values below).");
