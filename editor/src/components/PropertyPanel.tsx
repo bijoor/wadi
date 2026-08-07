@@ -15,6 +15,7 @@ import {
   PillarForm,
   StaircaseForm,
 } from "../forms/simpleForms";
+import { AutoForm } from "../forms/AutoForm";
 import { RoofV2Form } from "../forms/RoofV2Form";
 import { KitchenPlatformForm } from "../forms/KitchenPlatformForm";
 import { ComponentForm } from "../forms/ComponentForm";
@@ -372,6 +373,10 @@ function FormFor({ object, selection }: { object: HouseObject; selection: Select
         <NodeForm obj={object} selection={selection} />
       </Suspense>
     );
+  }
+  // No bespoke Form, but the primitive declares `fields` → generate its form (P2).
+  if (def?.fields) {
+    return <AutoForm fields={def.fields} obj={object} selection={selection} />;
   }
   switch (object.type) {
     case "component":

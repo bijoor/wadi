@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { fieldsToZod, fieldsToZodSource, fieldsToDocRows } from "./fieldSchema";
+import { fieldsToZod, fieldsToZodSource, fieldsToDocRows, fieldToFormControl, humanize, type FieldSpec } from "./fieldSchema";
 import { object } from "../schema/houseConfig";
 // The SINGLE source of truth for beam's shape (drives the generated schema too).
 import { beamFields } from "../schema/fields/beam";
@@ -81,6 +81,34 @@ describe("generated box primitives — key constraints hold via the object union
   for (const o of accepts) {
     it(`accepts valid ${o.type}`, () => expect(object.safeParse(o).success).toBe(true));
   }
+});
+
+describe("fieldSchema — fields→form control (AutoForm)", () => {
+  const fc = (spec: FieldSpec) => fieldToFormControl(spec);
+
+  it("humanizes names, honours a label override", () => {
+    expect(humanize("z_offset")).toBe("Z offset");
+    expect(fc({ name: "z_offset", kind: "coord" }).label).toBe("Z offset");
+    expect(fc({ name: "x", kind: "coord", label: "Top X" }).label).toBe("Top X");
+  });
+
+  it("number kinds → measure with the right min / integer / allowEmpty", () => {
+    expect(fc({ name: "x", kind: "coord" })).toMatchObject({ control: "measure", allowEmpty: false });
+    expect(fc({ name: "x", kind: "coord" }).min).toBeUndefined();
+    expect(fc({ name: "w", kind: "extent" })).toMatchObject({ control: "measure", min: 0.01 });
+    expect(fc({ name: "t", kind: "nonneg", required: false })).toMatchObject({ control: "measure", min: 0, allowEmpty: true });
+    expect(fc({ name: "n", kind: "int" })).toMatchObject({ control: "measure", integer: true });
+  });
+
+  it("text / enum / flag map to the right controls", () => {
+    expect(fc({ name: "name", kind: "text", required: false })).toMatchObject({ control: "text", allowEmpty: true });
+    expect(fc({ name: "side", kind: "enum", values: ["a", "b"] })).toMatchObject({ control: "select", values: ["a", "b"] });
+    expect(fc({ name: "on", kind: "flag" })).toMatchObject({ control: "flag" });
+  });
+
+  it("doc + unit become the hint", () => {
+    expect(fc({ name: "x", kind: "coord", doc: "Top-left X", unit: "project units" }).hint).toBe("Top-left X (project units)");
+  });
 });
 
 describe("fieldSchema — fields→docs", () => {

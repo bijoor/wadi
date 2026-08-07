@@ -60,10 +60,12 @@ export interface FieldSpec {
   required?: boolean;
   /** For kind "enum": the allowed values. */
   values?: readonly string[];
-  /** Human description (→ docs). */
+  /** Human description (→ docs + form hint). */
   doc?: string;
   /** Doc-only unit hint, e.g. "project units". */
   unit?: string;
+  /** Form label override (default: humanized name). */
+  label?: string;
 }
 
 function resolveFieldType(spec: FieldSpec): FieldType {
@@ -207,4 +209,45 @@ export function fieldsToDocRows(fields: readonly FieldSpec[]): DocRow[] {
     required: f.required !== false,
     doc: [f.doc, f.unit ? `(${f.unit})` : ""].filter(Boolean).join(" "),
   }));
+}
+
+// ---- Projection: FieldSpec → form control (AutoForm consumes this) ----------
+
+/** A humanized default label for a field name: "z_offset" → "Z offset". */
+export function humanize(name: string): string {
+  const s = name.replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Domain-neutral description of the form control a field needs. `AutoForm`
+ *  (forms/AutoForm.tsx) renders the concrete widget from this. */
+export interface FormControlSpec {
+  name: string;
+  label: string;
+  hint?: string;
+  /** measure = number (ObjectMeasureField, formula-aware); text; select; flag. */
+  control: "measure" | "text" | "select" | "flag";
+  /** For "measure": min bound (positive→0.01, nonneg→0) + integer flag. */
+  min?: number;
+  integer?: boolean;
+  /** Optional field → the control can be cleared to undefined. */
+  allowEmpty: boolean;
+  /** For "select": the options. */
+  values?: readonly string[];
+}
+
+/** Project a field to its form control. Derived from the field's KIND, so a
+ *  primitive gets a working form from `fields` alone; `label`/`doc` polish it. */
+export function fieldToFormControl(spec: FieldSpec): FormControlSpec {
+  const ft = resolveFieldType({ ...spec, required: true }); // ignore optionality for category
+  const label = spec.label ?? humanize(spec.name);
+  const hint = [spec.doc, spec.unit ? `(${spec.unit})` : ""].filter(Boolean).join(" ") || undefined;
+  const allowEmpty = spec.required === false;
+  const base = { name: spec.name, label, hint, allowEmpty };
+  if (ft.union || ft.atom === "boolean") return { ...base, control: "flag" };
+  if (ft.atom === "literal") return { ...base, control: "select", values: ft.values };
+  if (ft.atom === "string") return { ...base, control: "text" };
+  // number
+  const min = ft.constraints?.positive ? 0.01 : ft.constraints?.nonneg ? 0 : undefined;
+  return { ...base, control: "measure", min, integer: ft.constraints?.int };
 }

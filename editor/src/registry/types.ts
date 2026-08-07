@@ -10,6 +10,7 @@
 import type { ReactNode } from "react";
 import type { ComponentType } from "react";
 import type { ZodTypeAny } from "zod";
+import type { FieldSpec } from "./fieldSchema";
 import type { HouseConfig, HouseObject } from "../schema/houseConfig";
 import type { Selection } from "../state/configStore";
 import type { LayerRole } from "../state/layerDefaults";
@@ -94,7 +95,10 @@ export interface NodeDefinition {
   addable?: boolean;
   /** Build a default instance for the "+ Add" menu. */
   makeDefault?: (cfg: HouseConfig, existing: HouseObject[]) => HouseObject;
-  /** Property-panel editor. */
+  /** Declarative fields (P2). Drive the generated schema/docs and, when no bespoke
+   *  `Form` is given, the property-panel form (AutoForm). */
+  fields?: FieldSpec[];
+  /** Property-panel editor. Overrides the AutoForm generated from `fields`. */
   Form?: ComponentType<{ obj: HouseObject; selection: Selection }>;
   /** Zod schema for this object type (a z.object whose `type` is a literal). Used
    *  to build the config discriminated union from the registry (P1e). */
