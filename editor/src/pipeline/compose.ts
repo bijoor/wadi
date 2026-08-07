@@ -19,6 +19,10 @@ export interface ComposeCtx {
   resolved?: HouseConfig;
   warnings?: ResolveOut["warnings"];
   expanded?: ReturnType<typeof expandRoomWalls>;
+  // View-leaf artifacts (populated by the terminal stages in composeSheet.ts).
+  plans?: string;
+  elevations?: string;
+  roofTop?: string;
 }
 
 /** Fold formulas/variables/points → concrete numbers (the parametric pass). */

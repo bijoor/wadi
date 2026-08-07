@@ -8,11 +8,7 @@ import { resolveParametric } from "../../editor/src/param/resolve";
 import { validate } from "../../editor/src/schema/houseConfig";
 import { computeMergedV2Spec } from "../../editor/src/svg2d/roof/v2/computeFromHouse";
 import { lintStructure, partitionFindings } from "../../editor/src/lint/structural";
-import { generateCombinedFloorPlans } from "../../editor/src/svg2d/floorPlansCombined";
-import { generateCombinedElevations } from "../../editor/src/svg2d/elevationsCombined";
-import { computeRoofSections } from "../../editor/src/svg2d/roof/index";
-import { setDimensionUnits } from "../../editor/src/svg2d/format";
-import { setTextScale, computeTextScale, houseSpanUnits } from "../../editor/src/svg2d/config";
+import { composeSheet } from "../../editor/src/pipeline/composeSheet";
 import { Resvg } from "@resvg/resvg-js";
 import { MODULES } from "./assets.generated";
 
@@ -100,21 +96,18 @@ export function renderSvgs(wdl: string, views: ViewName[]): Array<{ view: ViewNa
   const res = validate(cfg);
   if (!res.ok) throw new Error("schema: " + (res.errors?.[0]?.message ?? "invalid config"));
 
-  // Same preamble as the editor's `dump-svgs`: display units + label scaling.
-  setDimensionUnits((cfg as { units?: unknown }).units as never);
-  setTextScale(computeTextScale(houseSpanUnits(cfg as never)));
-
+  // Render the requested views THROUGH the compose Stage DAG (resolve → units →
+  // view leaves). Byte-identical to the direct preamble+generate it replaces.
+  const sheet = composeSheet(cfg as never, views);
+  const artifact: Record<ViewName, string | undefined> = {
+    plans: sheet.plans,
+    elevations: sheet.elevations,
+    roof: sheet.roofTop,
+  };
   const out: Array<{ view: ViewName; svg: string }> = [];
   for (const v of views) {
-    if (v === "plans") {
-      out.push({ view: v, svg: generateCombinedFloorPlans(cfg as never) });
-    } else if (v === "elevations") {
-      out.push({ view: v, svg: generateCombinedElevations(cfg as never) });
-    } else if (v === "roof") {
-      const sections = computeRoofSections(cfg as never);
-      const top = sections?.panels?.find((p) => p.filename === "roof_top_view.svg");
-      if (top) out.push({ view: v, svg: top.content });
-    }
+    const svg = artifact[v];
+    if (svg !== undefined) out.push({ view: v, svg });
   }
   return out;
 }
