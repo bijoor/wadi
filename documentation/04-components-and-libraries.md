@@ -1,11 +1,14 @@
 # Components & libraries in the Wadi DSL
 
+> Part of the [Wadi documentation](README.md). Prerequisite: the
+> [authoring guide](03-authoring.md). This chapter covers **reuse**.
+
 Reuse in the Wadi DSL (`.wdl`) comes in two layers:
 
-- **Components** — a named, parametric *mini-house* (a stair, a bathroom, a
+- **Components**: a named, parametric *mini-house* (a stair, a bathroom, a
   verandah, a bench…) you define once and stamp onto any floor with `use`.
-- **Libraries** — a `.wdl` file of components (and furniture `asset`s) that other
-  files `import` and reuse. **A library *is* a `.wdl` file** — there's no separate
+- **Libraries**: a `.wdl` file of components (and furniture `asset`s) that other
+  files `import` and reuse. **A library *is* a `.wdl` file**. There is no separate
   format.
 
 Both are first-class in the language. This guide shows how to author them and how
@@ -52,28 +55,28 @@ floor 1 "Ground" {
 ```
 
 - `at (x, y)` offsets the component's local origin onto the floor.
-- `rotation <deg>` (optional) turns the whole stamped assembly about its origin —
+- `rotation <deg>` (optional) turns the whole stamped assembly about its origin:
   yaw°, 0=south, 90=east. **Right angles (0/90/180/270) are exact for any
   component**; a **non-right angle** is allowed **only for a furniture-only
   component** (a free angle on a component containing a room/pillar/beam/slab/
-  staircase is a compile error — arbitrary structural rotation is a future need).
+  staircase is a compile error; arbitrary structural rotation is a future need).
 - `with { p = v, … }` overrides params; un-overridden params fall back to their
   declared defaults.
-- A component expands **byte-identical** to writing its objects inline — pure
-  reuse, no runtime cost, nothing special downstream.
+- A component expands **byte-identical** to writing its objects inline. It has no
+  runtime cost and nothing special downstream.
 
 ### Rules & tips
 
 - **Local coords.** Author everything relative to `(0, 0)`; `use … at (x, y)` does
   the placement.
-- **Components nest freely.** A component — in-file *or* in an imported library —
+- **Components nest freely.** A component (in-file *or* in an imported library)
   may `use` another component and place `item` furniture. A library component can
   `use` a sibling in the same library, `use` a component from a library it itself
   `import`s, and `item ns."id"` from its own imports. Imports resolve
   **transitively** (a library may import libraries), each relocated under its
   namespace, with a clear error on an import cycle.
 - **Reserved param names.** A `param` name can't be a grammar keyword (`width`,
-  `depth`, `height`, `size`, …) — use `across` / `deep` / `tall`, etc.
+  `depth`, `height`, `size`, …). Use `across` / `deep` / `tall`, etc.
 - **Furniture too.** A component can place `item` furniture (see the furniture
   section of the DSL reference).
 
@@ -82,10 +85,10 @@ floor 1 "Ground" {
 ## 2. Libraries (reusable `.wdl` modules)
 
 A **library** is a `.wdl` file whose top level holds `component` / `asset` (and
-`import`) declarations — **no `house` block needed**:
+`import`) declarations, with **no `house` block needed**:
 
 ```wdl
-// konkan-parts.wdl — a reusable library (a "module")
+// konkan-parts.wdl - a reusable library (a "module")
 component Otla goal "a raised front platform" {
   param across = 240
   param deep   = 40
@@ -111,11 +114,11 @@ house Home {
 
 ### Two bundled packs
 
-Shipped with the editor and MCP — importable by name anywhere, no loading needed:
+Shipped with the editor and MCP, importable by name anywhere with no loading needed:
 
-- **`std-furniture`** — 120 furniture assets → `item f."bed_double"` after
+- **`std-furniture`**: 120 furniture assets → `item f."bed_double"` after
   `import "std-furniture" as f`.
-- **`konkan/base`** — goal-tagged Konkan parts (Stairwell, Verandah, Otla,
+- **`konkan/base`**: goal-tagged Konkan parts (Stairwell, Verandah, Otla,
   Bathroom, Kitchen, TulsiVrindavan, Parapet) → `use kb.Verandah …` after
   `import "konkan/base" as kb`.
 
@@ -124,7 +127,7 @@ Shipped with the editor and MCP — importable by name anywhere, no loading need
 ### Want a live preview while authoring a library?
 
 A house-less module has no floors, so the editor preview shows a *"no floors"*
-notice — that's expected; it isn't a renderable house. To see your components as
+notice. That's expected; it isn't a renderable house. To see your components as
 you build them, give the library a **demo `house`** that `use`s them. Importers
 pull only the library's `component` / `asset` exports and ignore the demo house.
 
@@ -132,7 +135,7 @@ pull only the library's `component` / `asset` exports and ignore the demo house.
 
 ## 3. Saving & reusing libraries in the WDL editor
 
-The editor keeps a **cache of loaded libraries** that `import` resolves from —
+The editor keeps a **cache of loaded libraries** that `import` resolves from. It is
 **identical on the web app and the desktop app**. Open the **📚 Library** toolbar
 menu:
 
@@ -142,7 +145,7 @@ menu:
 | **📂 Load library file…** | Loads one *or more* `.wdl` files into the cache (multi-select). |
 | *(the list of cached libraries)* | Click a name to insert its `import "…" as ns` line · **✎** opens it in the editor · **×** removes it from the cache. |
 
-Each entry shows an origin badge — **saved** (from *Save current as library*) or
+Each entry shows an origin badge: **saved** (from *Save current as library*) or
 **file** (loaded from a `.wdl`).
 
 ### Resolution order
@@ -154,10 +157,10 @@ Each entry shows an origin badge — **saved** (from *Save current as library*) 
 
 ### Desktop: libraries as real files
 
-In the desktop app, a library can simply be a **file on disk** — no explicit load:
+In the desktop app, a library can be a **file on disk**, with no explicit load:
 
 - Any `.wdl` **beside your open file**, or in a **`modules/` subfolder**, is
-  auto-loaded into the cache when you open the house — importable by its
+  auto-loaded into the cache when you open the house, importable by its
   **basename** (`kitchens.wdl` → `import "kitchens"`).
 - These are real files you can **commit, share, and version**, and the coding
   agent + MCP can read them.
@@ -167,9 +170,9 @@ In the desktop app, a library can simply be a **file on disk** — no explicit l
 Open a house that imports something not in the cache and the editor names exactly
 what's missing:
 
-> ⚠ missing libraries "kitchens", "bathrooms" — 📚 Library → Load library file…
+> ⚠ missing libraries "kitchens", "bathrooms". 📚 Library → Load library file…
 
-Load the named `.wdl`(s) — several at once — and it resolves.
+Load the named `.wdl`(s), several at once, and it resolves.
 
 ---
 
@@ -177,9 +180,9 @@ Load the named `.wdl`(s) — several at once — and it resolves.
 
 Over the Wadi MCP server:
 
-- `wadi_modules [query]` — list importable modules (filter by a component **goal**
+- `wadi_modules [query]`: list importable modules (filter by a component **goal**
   keyword, e.g. "stairs", "sit-out").
-- `wadi_module "<name>" [query]` — show a module's components (name + goal +
+- `wadi_module "<name>" [query]`: show a module's components (name + goal +
   params) and assets (id + dimensions).
 
 ---
@@ -204,5 +207,6 @@ use  ns.Comp as "id"? at (x, y) [with { … }]
 item ns."assetId" at (x, y)
 ```
 
-See also: [`README.md`](README.md) (the DSL overview) and the authoring reference
-at [`../wadi-skill/architect/reference/dsl.md`](../wadi-skill/architect/reference/dsl.md).
+See also: the [**authoring guide**](03-authoring.md) (the end-to-end tutorial) and the
+dense syntax reference at
+[`wadi-skill/architect/reference/dsl.md`](../wadi-skill/architect/reference/dsl.md).

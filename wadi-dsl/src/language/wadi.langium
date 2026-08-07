@@ -4,7 +4,7 @@ grammar Wadi
 // The Wadi DSL — a formal grammar for the parametric house model.
 //
 // It is written in TWO tiers, separated by the banner below. This split is the
-// whole point of the demonstration (see PARAMETRIC-DSL-METHOD.md):
+// whole point of the demonstration (see documentation/06-the-method.md):
 //
 //   • PARAMETRIC CORE — domain-NEUTRAL. Variables, points, grids, the formula
 //     expression sublanguage, the configurator (control knobs), and a `raw`

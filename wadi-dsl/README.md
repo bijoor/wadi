@@ -7,15 +7,16 @@ back to the canonical `.wadi` JSON so it drives the **real** Wadi pipeline
 
 This package is a **demonstration**, not a productivity tool. Wadi's JSON + Zod
 schema is already enough for coding agents. The point here is to prove that the
-*generalizable method* in [`../PARAMETRIC-DSL-METHOD.md`](../PARAMETRIC-DSL-METHOD.md)
+*generalizable method* in [`../documentation/06-the-method.md`](../documentation/06-the-method.md)
 — "a parametric domain model can be formalized as a grammar, so a domain expert
 can author reusable designs with a coding agent" — actually holds, using home
 architecture as the worked example.
 
-> **📖 New to authoring? Start with the [Author's Guide](AUTHORING.md)** — a
+> **📖 New to authoring? Start with the [Author's Guide](../documentation/03-authoring.md)** — a
 > task-oriented, end-to-end walkthrough of writing `.wdl` (from your first room to
 > grids, components, libraries, and the configurator) and using the editor. This
-> README covers the grammar/architecture; the Author's Guide covers *usage*.
+> README covers the grammar/architecture; the Author's Guide covers *usage*. Both
+> are part of the guided [`documentation/`](../documentation/) folder.
 
 ## The thesis: a two-tier grammar
 
@@ -107,7 +108,7 @@ by basename). Resolution order: **your cache → bundled packs**
 (`std-furniture`, `konkan/base`). If a house imports something uncached, the editor
 names exactly which libraries to load.
 
-**Full guide:** [`COMPONENTS-AND-LIBRARIES.md`](COMPONENTS-AND-LIBRARIES.md).
+**Full guide:** [`documentation/04-components-and-libraries.md`](../documentation/04-components-and-libraries.md).
 
 ## Run it
 
