@@ -150,6 +150,39 @@ domain-neutral; a primitive contributes only (a) which `fields` are formula-able
 `if (obj.type==="staircase")` / `"item"` branches in `expand.ts` become
 `getPrimitive(node.type).expand?.(node, ctx)`.
 
+### 2.5b The compositor boundary — per-object views vs pipeline views (FINDING, P1b–d)
+
+Wiring the dispatchers surfaced a real structural split that the capability model
+must respect:
+
+- **Per-object views** — the **3D** view and **expand** are clean per-object loops:
+  each node renders/decomposes independently. `render3D` and `expand` are true
+  per-primitive capabilities (this is why `item` "just works" in 3D). ✅ routed
+  through the registry.
+- **Pipeline views** — the **2D plan** and **elevation** renderers are NOT
+  per-object. They run **type-major passes** with **cross-object concerns**:
+  perimeter dimensioning, edge classification, **wall-trim where walls butt into
+  pillars** (`pillarRects`/`wallTrim`), and depth-sorted elevation projection with
+  height bands. Pillars aren't even independently drawn — they're *collected* and
+  the walls trim against them.
+
+Consequence: a per-primitive `drawPlan`/`drawElevation` capability fits only the
+**independent** objects (furniture footprints, and new self-contained primitives
+like `spiral_staircase`). The **engine-coupled** types (wall, room, pillar) are NOT
+per-primitive — their 2D output is a property of the **floor-plan/elevation
+COMPOSITOR**, a domain service that owns dimensioning + trim + projection. So the
+kernel boundary is: *primitives own their per-object capabilities (3D, expand,
+independent 2D fragments); the domain owns the 2D compositor.* We do **not** try to
+shred the compositor into per-primitive `drawPlan` calls — that would fight the
+cross-object topology and break byte-parity for no gain.
+
+Practical upshot for P1: `drawPlan` has a generic seam (no-op until an independent
+primitive uses it); `drawElevation`'s ctx is **deferred to its first real consumer**
+(the `spiral_staircase` elevation) rather than guessed; and **pillar is dropped as a
+migration target** — it belongs to the compositor. The framework proof becomes
+"**add an INDEPENDENT primitive with zero central edits**" (P5), not "migrate a
+compositor-coupled legacy type."
+
 ### 2.6 The DSL grammar decision (the one genuinely hard part)
 
 Langium generates a *static* parser, so we cannot register a bespoke grammar rule
@@ -176,6 +209,17 @@ domain-neutral answer:
 
 Net: the generic path is the framework; sugar is a Wadi convenience. New/contributed
 primitives ride the generic path; core Wadi types keep sugar via codegen.
+
+**Promotion path (decided):** a contributed primitive starts on the generic
+`ObjectDecl` syntax. When it is "promoted" (graduated to a first-class type), a
+mechanism generates bespoke sugar for it from its descriptor — i.e. generic →
+sugar is an *upgrade*, not a rewrite. The promoter itself is expected to be
+**domain-specific** (Wadi decides what nice syntax a promoted house-primitive
+gets), so the kernel defines only the hook/seam ("a primitive MAY carry a
+`syntax` spec that a domain-supplied codegen consumes"); we deliberately do NOT
+try to generalize the promotion codegen yet — too little signal. Both syntaxes
+remain valid for a promoted type (generic stays a permanent fallback), so
+existing `.wdl` never breaks on promotion.
 
 ---
 
