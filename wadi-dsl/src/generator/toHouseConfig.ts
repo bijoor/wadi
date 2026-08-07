@@ -21,6 +21,7 @@ import {
   isJsonStr,
   isJsonBool,
   isJsonNull,
+  isStrVal,
 } from "../language/generated/ast.js";
 
 // ---- Formula expressions -------------------------------------------------
@@ -624,9 +625,36 @@ function floorObject(o: ast.FloorObject): Record<string, unknown> {
       return roof(o);
     case "Raw":
       return { type: unquote(o.type), ...jsonObject(o.body) };
+    case "ObjectDecl":
+      return objectDecl(o);
     default:
       throw new Error(`unhandled object: ${(o as { $type: string }).$type}`);
   }
+}
+
+// ---- Generic primitive (§2.6): `type name? { key value … } <common>` compiles
+//      to `{ type, name?, …fields }` with no per-type code — the framework path
+//      any contributed primitive rides. Named-assignment form: each `key value`
+//      becomes a config field (string values direct; numeric/formula values go
+//      through the same placeholder+formulas split as bespoke geometry fields).
+function objectDecl(o: ast.ObjectDecl): Record<string, unknown> {
+  const formulas: Record<string, string> = {};
+  const out: Record<string, unknown> = { type: o.type };
+  if (o.name) out.name = unquote(o.name);
+  for (const fa of o.fields) {
+    const key = unquote(fa.key);
+    if (key === "type" || key === "name") continue; // set above / reserved
+    const v = fa.value;
+    if (isStrVal(v)) {
+      out[key] = unquote(v.str);
+    } else {
+      const { value, formula } = fieldAndFormula(v, 0);
+      out[key] = value;
+      if (formula) formulas[key] = formula;
+    }
+  }
+  applyCommon(out, formulas, o);
+  return done(out, formulas);
 }
 
 // ---- Component library definitions --------------------------------------

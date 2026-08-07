@@ -208,9 +208,32 @@ Floor:
     '{' objects+=FloorObject* '}';
 
 // The full discriminated union — every model object type has a first-class rule.
+// `ObjectDecl` is LAST: the generic, descriptor-driven fallback that parses ANY
+// primitive by name (keyword-led rules above win; a non-keyword type name falls
+// through to it). Bespoke rules above are ergonomic *sugar* over this generic core.
 FloorObject:
       Room | Wall | Pillar | Beam | FloorSlab | Plinth | Ground
-    | Staircase | KitchenPlatform | Item | Component | Roof | Raw;
+    | Staircase | KitchenPlatform | Item | Component | Roof | Raw
+    | ObjectDecl;
+
+// ---- Generic primitive (the framework's real grammar; §2.6). Parses any object
+//      type by name, semantics driven by the primitive's descriptor `fields`. A
+//      contributed primitive (e.g. spiral_staircase) needs ZERO grammar edits and
+//      no `langium generate`. Named-assignment form; positional-arg sugar +
+//      field-name validation/completion come from the descriptor (a later step).
+//      Field keys accept a bare id, the `x`/`y` keywords, or a quoted string (so
+//      a field whose name collides with a grammar keyword — `height`, `direction`,
+//      … — is still expressible, `"height" 8`). ----
+ObjectDecl:
+    type=ID name=NameRef?
+    ('{' fields+=FieldAssign* '}')?
+    Common;
+FieldAssign:
+    key=FieldKey value=Value;
+FieldKey returns string:
+    ID | 'x' | 'y' | STRING;
+Value infers Value:
+    {infer StrVal} str=STRING | Expr;
 
 // ---- Shared optional attribute tail: z-offset + the enabled/layer switches
 //      that EVERY object carries (fragment → inlined, no wrapper AST node). ----

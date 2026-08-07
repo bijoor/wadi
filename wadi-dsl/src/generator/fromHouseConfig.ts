@@ -298,6 +298,52 @@ function emitRaw(w: W, indent: number, o: Obj): void {
   w.line(indent, `raw ${str(type)} ${JSON.stringify(body)}`);
 }
 
+// Grammar keywords that could also be a generic field's name — emitted as a quoted
+// key (parses as FieldKey STRING) since a bare `material`/`height`/… would hit the
+// reserved keyword. `x`/`y` are allowed bare by FieldKey, so stay bare.
+const DSL_KEYWORDS = new Set([
+  "material", "height", "width", "length", "thickness", "size", "at", "from", "to",
+  "direction", "side", "depth", "name", "step", "path", "rotation", "scale", "sill",
+  "open", "asset", "target", "with", "turn", "floor", "room", "wall", "pillar", "beam",
+  "slab", "plinth", "ground", "staircase", "kitchen", "item", "use", "roof", "raw",
+  "z_offset", "enabled", "layer", "north", "south", "east", "west", "true", "false",
+]);
+const keyTok = (k: string): string =>
+  /^[A-Za-z_]\w*$/.test(k) && !DSL_KEYWORDS.has(k) ? k : str(k);
+
+// A generic field's value: its formula (unwrapped) if any, else a quoted string
+// or a number. Distinct from `fld`, which coerces every value to a number.
+function genFieldVal(o: Obj, key: string, v: unknown): string {
+  const f = o.formulas?.[key];
+  if (typeof f === "string") return f.replace(/^=\s*/, "").trim();
+  if (typeof v === "string") return str(v);
+  if (typeof v === "number") return num(v);
+  return "0";
+}
+
+// Generic primitive emit (§2.6): `type name? { key value … } <common>` — the
+// framework path any object type can decompile through with no bespoke emitter.
+// Only SCALAR (string/number) fields are expressible; anything nested (arrays /
+// objects, e.g. roof segments) falls back to the raw JSON escape.
+function emitObjectDecl(w: W, indent: number, o: Obj): void {
+  const RESERVED = new Set(["type", "name", "formulas", "z_offset", "enabled", "layer"]);
+  const entries = Object.entries(o).filter(([k]) => !RESERVED.has(k));
+  const scalar = entries.every(
+    ([, v]) => v === null || typeof v === "string" || typeof v === "number",
+  );
+  if (!scalar) return emitRaw(w, indent, o);
+  let head = String(o.type);
+  if (o.name !== undefined) head += ` ${nameTok(o.name)}`;
+  const suffix = commonSuffix(o, false); // z_offset/enabled/layer (material is a field here)
+  if (entries.length === 0) {
+    w.line(indent, head + suffix);
+    return;
+  }
+  w.line(indent, head + " {");
+  for (const [k, v] of entries) w.line(indent + 1, `${keyTok(k)} ${genFieldVal(o, k, v)}`);
+  w.line(indent, "}" + suffix);
+}
+
 function emitFloorObject(w: W, indent: number, o: Obj): void {
   switch (o.type) {
     case "room": return emitRoom(w, indent, o);
@@ -312,7 +358,9 @@ function emitFloorObject(w: W, indent: number, o: Obj): void {
     case "item": return emitItem(w, indent, o);
     case "component": return emitComponentUse(w, indent, o);
     case "roof": return emitRoof(w, indent, o);
-    default: return emitRaw(w, indent, o);
+    // Any other (contributed) type decompiles through the generic ObjectDecl path,
+    // which itself falls back to `raw` for non-scalar fields.
+    default: return emitObjectDecl(w, indent, o);
   }
 }
 
