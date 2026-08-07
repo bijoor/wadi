@@ -212,8 +212,15 @@ export const spiralStaircaseFields: FieldSpec[] = [
 
 Register it in the manifest, run the codegen, and — with **no other edits** — the
 type is in the typed schema union, has a property-panel form, appears in the
-data-model docs, and is a first-class DSL citizen: `spiral_staircase "S" (120, 120,
-45, 110, 1.75)` compiles, its fields validate, and the editor autocompletes them.
+data-model docs, and is a first-class DSL citizen:
+
+```
+spiral_staircase "Stair" { x 120 y 120 radius 45 total_height 110 turns 1.75 }
+```
+
+compiles, its fields validate, and the editor autocompletes them. Each value is a
+**named parameter** (`radius 45`, not a cryptic positional `45`); a terse
+positional form `(120, 120, 45, 110, 1.75)` is also accepted as sugar.
 
 **File 2 — the capabilities** (`editor/src/registry/nodes/spiralStaircase.tsx`):
 
@@ -232,8 +239,9 @@ export const spiralStaircaseNode: NodeDefinition = {
 
 Register the node, and the 3D scene, 2D plan, add-menu, and layers all pick it up.
 
-**Live proof:** in the WDL playground, `spiral_staircase "Stair" (120,120,45,110,
-1.75)`, authored purely through the generic DSL path, renders as wooden treads
+**Live proof:** in the WDL playground, `spiral_staircase "Stair" { x 120 y 120
+radius 45 total_height 110 turns 1.75 }`, authored purely through the generic DSL
+path with named parameters, renders as wooden treads
 winding a central pole inside a room — and the editor's completion widget lists
 `radius / total_height / turns / steps / tread_thickness / pole_radius / z_offset`.
 Two files; every projection and capability derived from them.

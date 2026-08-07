@@ -65,12 +65,15 @@ describe("DSL — generic ObjectDecl (P3, §2.6)", () => {
     expect(floor0Objects(compileDsl(wdl2))).toEqual(floor0Objects(cfg));
   });
 
-  it("a keyword-named field survives via a quoted key", () => {
-    const cfg = compileDsl(wrap(`gizmo { "direction" "up" "height" 9 }`));
-    expect(floor0Objects(cfg)[0]).toEqual({ type: "gizmo", direction: "up", height: 9 });
-    // …and the emitter quotes those keys back.
+  it("a still-reserved keyword field survives via a quoted key", () => {
+    // `rotation` is a grammar keyword NOT in FieldKey's bare set → must be quoted.
+    // (Common dimension/placement keywords like `height`/`total_height`/`material`
+    // ARE bare-allowed — see the named-parameters test in generic-descriptor.)
+    const cfg = compileDsl(wrap(`gizmo { "rotation" 5 finish "matte" }`));
+    expect(floor0Objects(cfg)[0]).toEqual({ type: "gizmo", rotation: 5, finish: "matte" });
+    // …and the emitter quotes the reserved key back.
     const wdl2 = emitWdl(cfg);
-    expect(wdl2).toContain('"direction" "up"');
+    expect(wdl2).toContain('"rotation" 5');
     expect(floor0Objects(compileDsl(wdl2))).toEqual(floor0Objects(cfg));
   });
 

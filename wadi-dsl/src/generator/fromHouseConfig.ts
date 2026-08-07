@@ -299,17 +299,23 @@ function emitRaw(w: W, indent: number, o: Obj): void {
 }
 
 // Grammar keywords that could also be a generic field's name — emitted as a quoted
-// key (parses as FieldKey STRING) since a bare `material`/`height`/… would hit the
-// reserved keyword. `x`/`y` are allowed bare by FieldKey, so stay bare.
+// key (parses as FieldKey STRING) since a bare one would hit the reserved keyword.
 const DSL_KEYWORDS = new Set([
-  "material", "height", "width", "length", "thickness", "size", "at", "from", "to",
-  "direction", "side", "depth", "name", "step", "path", "rotation", "scale", "sill",
-  "open", "asset", "target", "with", "turn", "floor", "room", "wall", "pillar", "beam",
-  "slab", "plinth", "ground", "staircase", "kitchen", "item", "use", "roof", "raw",
-  "z_offset", "enabled", "layer", "north", "south", "east", "west", "true", "false",
+  "material", "height", "total_height", "width", "length", "thickness", "size", "at",
+  "from", "to", "direction", "side", "depth", "name", "step", "path", "rotation",
+  "scale", "sill", "open", "asset", "target", "with", "turn", "floor", "room", "wall",
+  "pillar", "beam", "slab", "plinth", "ground", "staircase", "kitchen", "item", "use",
+  "roof", "raw", "z_offset", "enabled", "layer", "north", "south", "east", "west",
+  "true", "false",
+]);
+// …but the dimension/placement/material keywords are accepted BARE by FieldKey (see
+// the grammar), so emit them bare for readable named output (`total_height 110`,
+// `material "teak"`) rather than quoting. `x`/`y` are plain ids here and stay bare.
+const FIELDKEY_BARE = new Set([
+  "total_height", "height", "width", "thickness", "depth", "direction", "material",
 ]);
 const keyTok = (k: string): string =>
-  /^[A-Za-z_]\w*$/.test(k) && !DSL_KEYWORDS.has(k) ? k : str(k);
+  /^[A-Za-z_]\w*$/.test(k) && (!DSL_KEYWORDS.has(k) || FIELDKEY_BARE.has(k)) ? k : str(k);
 
 // A generic field's value: its formula (unwrapped) if any, else a quoted string
 // or a number. Distinct from `fld`, which coerces every value to a number.

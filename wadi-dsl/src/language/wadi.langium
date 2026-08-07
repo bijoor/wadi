@@ -231,8 +231,14 @@ ObjectDecl:
     Common;
 FieldAssign:
     key=FieldKey value=Value;
+// A generic field key: a bare id, a quoted string, or one of the grammar keywords
+// that are ALSO plausible field names (dimension/placement/material words already
+// reserved by bespoke rules) — so a generic primitive can write `total_height 110`
+// or `material "teak"` bare instead of quoting. These are already keywords, so
+// listing them here adds none; it just lets them be field keys too.
 FieldKey returns string:
-    ID | 'x' | 'y' | STRING;
+    ID | 'x' | 'y' | STRING
+    | 'total_height' | 'height' | 'width' | 'thickness' | 'depth' | 'direction' | 'material';
 Value infers Value:
     {infer StrVal} str=STRING | Expr;
 

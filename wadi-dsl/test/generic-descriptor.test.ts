@@ -108,6 +108,22 @@ describe("DSL — descriptor-driven generic path (P3b)", () => {
     });
   });
 
+  it("spiral_staircase reads with NAMED parameters (the idiomatic form)", () => {
+    // Named `{ key value }` — each value labelled, no cryptic positional list.
+    const cfg = compileDsl(
+      wrap(`spiral_staircase "Stair" { x 120 y 120 radius 45 total_height 110 turns 1.75 }`),
+    );
+    expect(floor0Objects(cfg)[0]).toEqual({
+      type: "spiral_staircase",
+      name: "Stair",
+      x: 120,
+      y: 120,
+      radius: 45,
+      total_height: 110,
+      turns: 1.75,
+    });
+  });
+
   it("an UNKNOWN type is left alone (no descriptor → no generic diagnostics)", async () => {
     // No synthetic descriptor set → getDescriptor returns undefined.
     const diags = await diagnostics(wrap(`mystery "M" { anything 1 }`));
