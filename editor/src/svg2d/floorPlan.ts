@@ -725,6 +725,18 @@ export function generateFloorPlanSvg(
     if (fp) svg += svgDrawItem(fp.cx, fp.cy, fp.w, fp.d, fp.rot ?? 0);
   }
 
+  // Registry-driven FULL-SVG plan fragments — an INDEPENDENT primitive that draws
+  // more than a footprint box (e.g. a spiral_staircase: circle + tread lines +
+  // arrow). Same "on top" placement as footprints. No-op today. NOTE: the
+  // engine-coupled legacy types (walls/rooms/pillars) stay in the passes above —
+  // their 2D output is entangled with cross-object dimensioning + wall-trim
+  // (pillarRects) and is NOT a per-primitive concern (see
+  // plans/primitive-componentization.md §2.4).
+  for (const obj of objects) {
+    const frag = getNode(obj.type as string)?.drawPlan?.(obj as Record<string, unknown>, {});
+    if (frag) svg += frag;
+  }
+
   // -----------------------------------------------------------------
   // Title footer
   // -----------------------------------------------------------------

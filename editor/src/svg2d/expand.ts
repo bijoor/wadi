@@ -14,6 +14,7 @@ import { buildScope } from "../param/resolve";
 import { evalFormula } from "../param/formula";
 import { expandStaircase } from "./stairExpand";
 import { anchorItem, anchorFacing, type RoomRect } from "./furnitureAnchor";
+import { getNode } from "../registry/registry";
 
 type Side = "north" | "south" | "east" | "west";
 const SIDES: readonly Side[] = ["north", "south", "east", "west"];
@@ -270,6 +271,35 @@ export function expandRoomWalls(
       } as Obj;
     };
     for (const obj of objs) {
+      // Registry-driven primitives may DECOMPOSE into child objects before any
+      // view runs (e.g. a future spiral_staircase → treads/landings). Consulted
+      // FIRST; the legacy expansions below (component/staircase/item) fall through
+      // because those types register no `expand` hook. Same doors/windows-last
+      // distribution as every other expansion.
+      const primDef = getNode(obj.type);
+      if (primDef?.expand) {
+        let kids: Obj[];
+        try {
+          kids =
+            (primDef.expand(obj as Record<string, unknown>, {
+              floorNum: (floor.floor_number as number | undefined) ?? fi,
+              floorSlabThickness,
+              floorBelowHeight,
+              lenient: opts?.lenient,
+              onWarning: opts?.onWarning,
+            }) as Obj[] | null) ?? [obj];
+        } catch (e) {
+          if (!opts?.lenient) throw e;
+          opts.onWarning?.(e instanceof Error ? e.message : String(e));
+          kids = [obj];
+        }
+        for (const c of kids) {
+          if (c.type === "door") deferredDoors.push(c);
+          else if (c.type === "window") deferredWindows.push(c);
+          else head.push(c);
+        }
+        continue;
+      }
       // A component instance expands into a whole set of already-flattened
       // primitives (resolve the referenced component with param+placement
       // overrides → recurse → offset). Distribute them like any expanded
