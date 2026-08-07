@@ -694,13 +694,23 @@ panel:
 3. **Fill in the details.** Give the template an id, title, description, and style
    / roof tags. Bedrooms, bathrooms, floor count, and the adjustable badge are
    derived from the model. The panel shows a live gallery-card preview.
-4. **Publish.** In the desktop app this writes the package (the compiled `.wadi`
-   with the cover images, plus the catalog entry) into your templates folder and
-   pushes the catalog to R2. In the browser it downloads the package so you can
-   drop it into `editor/public/templates/` and run `scripts/publish-templates.sh`.
+4. **Save it to your templates folder.** The design is saved as one
+   self-describing `.wadi`: its cover images and the details you typed live inside
+   the file (a `template` block), so the folder itself is the catalog. The desktop
+   app writes it into your templates folder; the browser downloads it so you can
+   drop it into an online folder (for example a shared Google Drive) with that
+   platform's own tools. There is no index file to maintain and no upload step —
+   the app **lists the folder and indexes every `.wadi` in it**, so a new file
+   shows up in the gallery straight away.
 
-The published `.wadi` keeps its full parametric layer (variables, points, grids,
+The saved `.wadi` keeps its full parametric layer (variables, points, grids,
 formulas, configurator), so the owner gets the same adjustable model you authored.
+
+**Pointing the app at a folder.** The gallery reads from a templates folder that
+you can change: a local folder (desktop, managed in Finder), a shared Google
+Drive folder (needs a Drive API key in the source settings), or the bundled
+starter set. Drop `.wadi` files in, remove them, rename them — the gallery follows
+the folder.
 
 ---
 

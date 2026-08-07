@@ -5,6 +5,12 @@
     "plot_length": 400,
     "plot_width": 300
   },
+  "template": {
+    "title": "Blank plot",
+    "description": "Empty 30 × 40 ft plot with a single floor slab. Best when you want to build your house entirely from scratch.",
+    "minWidthFt": 30,
+    "minLengthFt": 40
+  },
   "floors": [
     {
       "floor_number": 0,

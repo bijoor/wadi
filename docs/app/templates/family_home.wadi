@@ -423,6 +423,14 @@
       ]
     }
   },
+  "template": {
+    "title": "Family home (parametric)",
+    "description": "Fully-parametric Konkan family home: front verandah, three bedrooms, two bathrooms, central hall (Majghar), living, kitchen, passage and a rear Padvi under a hip roof with a loft. Resize the plot and the rooms re-flow. Default 40 × 52 ft.",
+    "style": "Konkan",
+    "roof": "Hip",
+    "minWidthFt": 34,
+    "minLengthFt": 44
+  },
   "floors": [
     {
       "floor_number": 0,
