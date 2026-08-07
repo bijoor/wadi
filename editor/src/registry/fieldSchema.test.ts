@@ -1,0 +1,59 @@
+import { describe, it, expect } from "vitest";
+import { fieldsToZod, fieldsToDocRows, type FieldSpec } from "./fieldSchema";
+import { object } from "../schema/houseConfig";
+
+// `beam` expressed ONCE as declarative fields. P2b will swap the hand-written
+// schema/houseConfig `beam` for this; P2a proves they validate identically first.
+const beamFields: FieldSpec[] = [
+  { name: "name", kind: "text", required: false, doc: "Label" },
+  { name: "x", kind: "coord", doc: "Top-left X", unit: "project units" },
+  { name: "y", kind: "coord", doc: "Top-left Y", unit: "project units" },
+  { name: "width", kind: "extent", doc: "X extent", unit: "project units" },
+  { name: "length", kind: "extent", doc: "Y extent", unit: "project units" },
+  { name: "height", kind: "extent", required: false, doc: "Vertical thickness" },
+  { name: "z_offset", kind: "coord", required: false, doc: "Lift above floor base" },
+];
+
+const generated = fieldsToZod("beam", beamFields);
+
+// Validate the SAME beam object against the generated schema and the real one (the
+// discriminated union routes a beam to its hand-written member). Success must match.
+const cases: { name: string; o: Record<string, unknown>; valid: boolean }[] = [
+  { name: "minimal", o: { type: "beam", x: 0, y: 0, width: 10, length: 10 }, valid: true },
+  {
+    name: "full",
+    o: {
+      type: "beam", name: "B", x: 1, y: 2, width: 5, length: 6, height: 8, z_offset: -3,
+      formulas: { width: "= a" }, enabled: 1, layer: "L",
+    },
+    valid: true,
+  },
+  { name: "enabled bool", o: { type: "beam", x: 0, y: 0, width: 10, length: 10, enabled: true }, valid: true },
+  { name: "negative z_offset ok (coord)", o: { type: "beam", x: 0, y: 0, width: 10, length: 10, z_offset: -5 }, valid: true },
+  { name: "width negative", o: { type: "beam", x: 0, y: 0, width: -1, length: 10 }, valid: false },
+  { name: "width zero", o: { type: "beam", x: 0, y: 0, width: 0, length: 10 }, valid: false },
+  { name: "height zero", o: { type: "beam", x: 0, y: 0, width: 10, length: 10, height: 0 }, valid: false },
+  { name: "missing length", o: { type: "beam", x: 0, y: 0, width: 10 }, valid: false },
+  { name: "x not number", o: { type: "beam", x: "0", y: 0, width: 10, length: 10 }, valid: false },
+  { name: "unknown key", o: { type: "beam", x: 0, y: 0, width: 10, length: 10, bogus: 1 }, valid: false },
+];
+
+describe("fieldSchema — fields→zod behavioural parity with hand-written beam", () => {
+  for (const c of cases) {
+    it(`${c.name}: generated agrees with the real schema`, () => {
+      const gen = generated.safeParse(c.o).success;
+      const real = object.safeParse(c.o).success;
+      expect(gen).toBe(real); // generated ≡ hand-written
+      expect(gen).toBe(c.valid); // …and both match the intended outcome
+    });
+  }
+});
+
+describe("fieldSchema — fields→docs", () => {
+  it("projects rows with type + required + doc", () => {
+    const rows = fieldsToDocRows(beamFields);
+    expect(rows).toContainEqual({ field: "width", type: "number > 0", required: true, doc: "X extent (project units)" });
+    expect(rows.find((r) => r.field === "name")).toMatchObject({ required: false });
+    expect(rows.find((r) => r.field === "z_offset")).toMatchObject({ type: "number", required: false });
+  });
+});
