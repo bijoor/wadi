@@ -181,6 +181,53 @@ Author loop for an AI: read the plugin reference, inspect a GLB for its parts, w
 component with a rig in WDL, verify with `check`/`preview`, add the promotion marker, and
 register it.
 
+## Publishing from the WDL workflow (templates and plugins)
+
+A related architect-workflow gap, folded in here because it shares the same R2
+distribution path as plugin distribution: an architect who authors a parametric `.wdl`
+has no in-workflow way to publish it as a template. Today the template catalog source is
+`editor/public/templates/` (`index.json` + per-template `.wadi` + cover images), and
+publishing is `scripts/publish-templates.sh`, which regenerates the index
+(`scripts/gen-catalog-index.mjs`) and uploads the folder to the R2 `wadi-templates`
+bucket at `templates.wadi.house`, using credentials in a gitignored `.env.r2`. The app
+loads the catalog from `REMOTE_TEMPLATES_URL` with a bundled fallback
+(`editor/src/io/templateSource.ts`). So publishing means: compile the `.wdl`, drop the
+`.wadi` into the repo folder, and hand-run a dev-machine script.
+
+Close it with a publish action that takes the current design (a `.wdl`, or its compiled
+`.wadi`) and:
+
+1. compiles the `.wdl` to `.wadi`, preserving the parametric layer (variables, points,
+   grids, formulas, configurator), so the owner can adjust the published template;
+2. captures thumbnails (reuse the existing multi-angle 3D and floor-plan capture);
+3. derives the catalog index entry (reuse `gen-catalog-index.mjs`: bedrooms, floors,
+   parametric flags, editorial fields);
+4. uploads to R2 and updates `index.json`.
+
+Two publish targets share this mechanism:
+
+- **template** to the owner gallery catalog (`wadi-templates` / `templates.wadi.house`).
+  This is the requested gap.
+- **plugin** to the plugins catalog (the P3 distribution above): the same compile,
+  capture, push, and index step, pointed at the plugins path.
+
+Surfaces:
+
+- Desktop app and DSL editor: a "Publish as template" action on the current design.
+- CLI: `publish-template <file.wdl>` and `publish-plugin <file.wdl>`, on an architect
+  machine with `.env.r2`.
+- MCP: `wadi_publish_template` and `wadi_publish_plugin` tools, so an assistant can
+  publish. Publishing is outward-facing and side-effectful, so it requires explicit user
+  confirmation before the upload and uses the user's local R2 credentials; the assistant
+  never sees the token.
+
+Constraint: R2 writes need credentials, which live on the architect's machine
+(`.env.r2`). The desktop app, CLI, and MCP run there and can publish. A pure-browser
+architect has no credentials, so browser publishing is deferred, or later routed through
+a small authenticated upload endpoint. Reads stay public with CORS `*`, as today. This
+capability is self-contained and can ship independently of the plugin work; the template
+half closes the gap on its own.
+
 ## Phasing
 
 - **P0. Promotion + runtime registration (composition only, no GLB rig).** The smallest
@@ -197,6 +244,10 @@ register it.
 - **P3. MCP authoring tools and distribution.** `wadi_plugins`/`wadi_plugin`, the
   plugin-aware `check`/`preview`, the embedded reference, cross-surface loading, and
   optional R2 hosting.
+- **P4. Publishing from the WDL workflow.** The publish action (compile, capture,
+  index, push to R2) for templates and plugins, exposed on the desktop app, the CLI, and
+  MCP. The template half is independent of P0 to P3 and can be built first to close the
+  architect gap early; the plugin half reuses the P3 plugin catalog.
 - **Optional. Generic solid primitives.** If composition needs shapes the core lacks (a
   cylinder for a tank), consider adding small parametric solids (`box`, `cylinder`,
   `prism`) as core primitives so more can be built without a GLB. Alternatively rely on
