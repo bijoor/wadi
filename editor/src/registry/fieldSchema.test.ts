@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { fieldsToZod, fieldsToDocRows, type FieldSpec } from "./fieldSchema";
+import { z } from "zod";
+import { fieldsToZod, fieldsToZodSource, fieldsToDocRows, type FieldSpec } from "./fieldSchema";
 import { object } from "../schema/houseConfig";
 
 // `beam` expressed ONCE as declarative fields. P2b will swap the hand-written
@@ -45,6 +46,27 @@ describe("fieldSchema — fields→zod behavioural parity with hand-written beam
       const real = object.safeParse(c.o).success;
       expect(gen).toBe(real); // generated ≡ hand-written
       expect(gen).toBe(c.valid); // …and both match the intended outcome
+    });
+  }
+});
+
+describe("fieldSchema — fields→zod SOURCE emitter (gen-primitives)", () => {
+  // Evaluate the emitted source (references `z` only) and run the same battery:
+  // the generated typed schema must behave exactly like the runtime one.
+  const src = fieldsToZodSource("beam", beamFields);
+  const evaledSchema = new Function("z", `return (${src});`)(z) as z.ZodTypeAny;
+
+  it("emits a self-contained z.object(...).strict() expression", () => {
+    expect(src.startsWith("z.object({")).toBe(true);
+    expect(src.trimEnd().endsWith(").strict()")).toBe(true);
+    expect(src).toContain("width: z.number().positive(),");
+    expect(src).toContain('type: z.literal("beam"),');
+  });
+
+  for (const c of cases) {
+    it(`${c.name}: emitted-source schema agrees with runtime + hand-written`, () => {
+      expect(evaledSchema.safeParse(c.o).success).toBe(object.safeParse(c.o).success);
+      expect(evaledSchema.safeParse(c.o).success).toBe(c.valid);
     });
   }
 });
