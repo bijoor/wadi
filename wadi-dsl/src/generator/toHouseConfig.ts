@@ -994,6 +994,21 @@ export function modelToHouseConfig(
     cfg.configurator = section;
   }
 
+  // Template catalog metadata → a self-describing `template` block on the .wadi.
+  if (model.template) {
+    const t = model.template;
+    const tm: Record<string, unknown> = {};
+    if (t.title) tm.title = unquote(t.title);
+    if (t.description) tm.description = unquote(t.description);
+    if (t.style) tm.style = unquote(t.style);
+    if (t.roof) tm.roof = unquote(t.roof);
+    if (t.minW !== undefined && t.minL !== undefined) {
+      tm.minWidthFt = Number(t.minW);
+      tm.minLengthFt = Number(t.minL);
+    }
+    if (Object.keys(tm).length) cfg.template = tm;
+  }
+
   if (model.layers.length) {
     cfg.layers = model.layers.map((l) => {
       const o: Record<string, unknown> = { id: unquote(l.id), label: unquote(l.label) };

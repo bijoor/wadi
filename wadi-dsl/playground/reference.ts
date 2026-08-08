@@ -53,6 +53,17 @@ label the panel; <code>group</code> sections it; each input takes a trailing
 and reference it from the point (<code>point House { x = W }</code>), then bind the
 knob to <code>W</code> — knobs target vars, not point fields.</p>
 
+<h3>Template metadata <span class="ref-dim">— makes the .wadi self-describing for the gallery</span></h3>
+<p class="ref-note">The editorial a gallery card needs that geometry can't derive.
+Put it in the house so a folder of templates auto-indexes with no separate index.
+All fields optional. <code>min_plot</code> is display-feet.</p>
+<pre>template {
+  title "Coastal cottage"
+  description "Breezy 2-bed on the grid."
+  style "Konkan"  roof "Gable"
+  min_plot (22, 34)
+}</pre>
+
 <h3>Floors <span class="ref-dim">— array order = vertical stack</span></h3>
 <pre>floor 0 "Plinth" <b>height 60</b> wall_height 108 slab_thickness 12 {
   …objects…

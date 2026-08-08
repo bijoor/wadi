@@ -44,6 +44,7 @@ entry Model:
         (units=Units)?
         (site=Site)?
         (defaults=Defaults)?
+        (template=TemplateMeta)?
         ( imports+=Import
         | assets+=AssetDecl
         | vars+=Var
@@ -93,6 +94,18 @@ GridLine:
 // (description), named groups that section the panel, per-input notes, and
 // human-readable select labels. Knobs bind to a `var` (target=ID); to expose a
 // plot dimension, model it as a var and reference it from the point.
+// ---- Template catalog metadata: makes the compiled .wadi self-describing so a
+//      folder of templates can be auto-indexed (see io/templateSource.ts). The
+//      editorial fields a gallery card needs that geometry can't derive. ----
+TemplateMeta:
+    'template' '{'
+        ('title' title=STRING)?
+        ('description' description=STRING)?
+        ('style' style=STRING)?
+        ('roof' roof=STRING)?
+        ('min_plot' '(' minW=NUMBER ',' minL=NUMBER ')')?
+    '}';
+
 Configurator:
     'configurator' '{'
         ('title' title=STRING)?

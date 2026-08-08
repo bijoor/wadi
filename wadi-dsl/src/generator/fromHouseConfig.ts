@@ -512,6 +512,21 @@ function emitConfigurator(w: W, indent: number, cfgr: Obj): void {
   w.line(indent, "}");
 }
 
+// The self-describing catalog metadata block. Fields emit in the grammar's order.
+function emitTemplate(w: W, indent: number, t: Obj): void {
+  const lines: string[] = [];
+  if (t.title) lines.push(`title ${str(t.title)}`);
+  if (t.description) lines.push(`description ${str(t.description)}`);
+  if (t.style) lines.push(`style ${str(t.style)}`);
+  if (t.roof) lines.push(`roof ${str(t.roof)}`);
+  if (t.minWidthFt !== undefined && t.minLengthFt !== undefined)
+    lines.push(`min_plot (${num(t.minWidthFt)}, ${num(t.minLengthFt)})`);
+  if (!lines.length) return;
+  w.line(indent, "template {");
+  for (const l of lines) w.line(indent + 1, l);
+  w.line(indent, "}");
+}
+
 // Hoist dotted configurator targets (`House.W`) to variables: the grammar binds a
 // knob to a `var` (target=ID), not a point field. For each dotted target we
 // synthesize a var holding the point coord's current value, rewrite the point to
@@ -624,6 +639,7 @@ export function emitWdl(config: Obj, houseName = "House"): string {
       if (d[k] !== undefined) parts.push(`${k} ${num(d[k])}`);
     if (parts.length) w.line(1, `defaults { ${parts.join(" ")} }`);
   }
+  if (config.template) emitTemplate(w, 1, config.template as Obj);
   if (config.variables && Object.keys(config.variables).length) { w.blank(); emitVars(w, 1, config.variables); }
   if (config.points && Object.keys(config.points).length) emitPoints(w, 1, config.points);
   if (config.grids && Object.keys(config.grids).length) { w.blank(); emitGrids(w, 1, config.grids); }
