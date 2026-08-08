@@ -35,26 +35,39 @@ export function thumbRelPath(base: string, n: number): string {
 export function patchThumbnails(src: string, paths: string[]): string {
   const line = `thumbnails ${paths.map((p) => JSON.stringify(p)).join(", ")}`;
 
-  // 1) An existing `thumbnails` line → replace in place, keeping its indent.
-  if (/^[ \t]*thumbnails[ \t]+.*$/m.test(src)) {
-    return src.replace(/^([ \t]*)thumbnails[ \t]+.*$/m, `$1${line}`);
-  }
+  // The `template {}` fields are an ORDERED grammar group:
+  //   title → description → style → roof → tags → thumbnails → min_plot
+  // so `thumbnails` must sit after `tags` and before `min_plot`. Inserting it
+  // anywhere else fails to parse. Strip any existing (possibly mis-placed)
+  // thumbnails line first, then insert at the one correct spot: just before
+  // `min_plot` if present, else at the very end of the block.
+  const stripped = src.replace(/^[ \t]*thumbnails[ \t]+.*\r?\n?/m, "");
 
-  // 2) An existing `template {` block → insert right after its opening brace.
-  const tpl = src.match(/^([ \t]*)template[ \t]*\{[ \t]*\r?\n/m);
+  const tpl = stripped.match(/^([ \t]*)template[ \t]*\{[ \t]*\r?\n/m);
   if (tpl && tpl.index !== undefined) {
-    const indent = tpl[1] + "  ";
-    const at = tpl.index + tpl[0].length;
-    return src.slice(0, at) + `${indent}${line}\n` + src.slice(at);
+    const bodyIndent = tpl[1] + "  ";
+    const bodyStart = tpl.index + tpl[0].length;
+    // The template block has no nested braces, so its closing `}` is the first
+    // line that is just a brace after the opening.
+    const closeRel = stripped.slice(bodyStart).search(/^[ \t]*\}/m);
+    const closeAbs = closeRel === -1 ? stripped.length : bodyStart + closeRel;
+    const body = stripped.slice(bodyStart, closeAbs);
+
+    const mp = body.match(/^([ \t]*)min_plot\b.*$/m);
+    if (mp && mp.index !== undefined) {
+      const at = bodyStart + mp.index;
+      return stripped.slice(0, at) + `${mp[1]}${line}\n` + stripped.slice(at);
+    }
+    return stripped.slice(0, closeAbs) + `${bodyIndent}${line}\n` + stripped.slice(closeAbs);
   }
 
-  // 3) No template block → create one right after the `house NAME {` header.
-  const house = src.match(/^([ \t]*)house\b[^\n{]*\{[ \t]*\r?\n/m);
+  // No template block → create one right after the `house NAME {` header.
+  const house = stripped.match(/^([ \t]*)house\b[^\n{]*\{[ \t]*\r?\n/m);
   if (house && house.index !== undefined) {
     const indent = house[1] + "  ";
     const at = house.index + house[0].length;
     const block = `${indent}template {\n${indent}  ${line}\n${indent}}\n`;
-    return src.slice(0, at) + block + src.slice(at);
+    return stripped.slice(0, at) + block + stripped.slice(at);
   }
 
   return src; // nothing to anchor to (source has no house block) — caller warns
