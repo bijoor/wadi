@@ -32,6 +32,10 @@ export interface PublishPanelDeps {
   saveCoverShots: () => Promise<PublishResult>;
   /** True when a .wdl is open on disk (cover-shot files need a file location). */
   hasOpenFile: () => boolean;
+  /** The folder the app saves + indexes templates from (null if not chosen yet). */
+  getTemplatesDir: () => string | null;
+  /** Desktop: pick the templates folder; returns the chosen path or null. */
+  chooseTemplatesDir: () => Promise<string | null>;
 }
 
 interface IframeWadi {
@@ -57,6 +61,21 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
   const shotsEl = $("pub-shots") as HTMLButtonElement;
   // Writing cover-shot FILES needs a file location, so it is desktop-only.
   shotsEl.hidden = !deps.isTauri();
+
+  // The templates folder (where publish saves + the gallery indexes from). Only
+  // meaningful on desktop, where it is a real local folder; the browser publishes
+  // by download, so hide the row there.
+  const folderRow = $("pub-folder");
+  const folderPathEl = $("pub-folder-path");
+  const folderChangeBtn = $("pub-folder-change") as HTMLButtonElement;
+  folderRow.hidden = !deps.isTauri();
+
+  function refreshFolder(): void {
+    const dir = deps.getTemplatesDir();
+    folderPathEl.textContent = dir || "not set — chosen the first time you publish";
+    folderPathEl.classList.toggle("unset", !dir);
+    folderPathEl.title = dir || "";
+  }
 
   // Read the current design from the preview: the parametric config is the last
   // COMPILE (the template's defaults, not the owner's runtime tweaks); the cover
@@ -165,11 +184,22 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
     if (!titleEl.value) {
       titleEl.value = idEl.value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     }
+    refreshFolder();
     // The preview already defaults to studio (capture toolbar visible), so opening
     // the panel usually needs no persona flip — just make sure we're in it.
     await deps.setPreviewMode("studio");
     setStatus("Capture cover shots + test the configurator in the preview, then publish.");
     refresh();
+  }
+
+  // Re-pick the templates folder (updates the shared source preference) without
+  // leaving the editor. Cancelling leaves the current folder unchanged.
+  async function changeFolder(): Promise<void> {
+    const dir = await deps.chooseTemplatesDir();
+    if (dir) {
+      refreshFolder();
+      setStatus(`Templates folder set to ${dir}`, "ok");
+    }
   }
 
   async function close(): Promise<void> {
@@ -185,6 +215,7 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
     try {
       const res = await deps.doPublish(r.pkg);
       setStatus(res.message, res.ok ? "ok" : "err");
+      refreshFolder(); // a first publish may have just set the folder
     } catch (e) {
       setStatus((e as Error).message, "err");
     } finally {
@@ -211,6 +242,7 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
   $("pub-close").addEventListener("click", () => void close());
   $("pub-refresh").addEventListener("click", refresh);
   shotsEl.addEventListener("click", () => void saveShots());
+  folderChangeBtn.addEventListener("click", () => void changeFolder());
   primaryEl.addEventListener("click", () => void publish());
   for (const el of [idEl, titleEl, descEl, styleEl, roofEl, tagsEl]) el.addEventListener("input", refresh);
 }

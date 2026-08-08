@@ -722,6 +722,8 @@ function wireToolbar(): void {
     doPublish,
     saveCoverShots,
     hasOpenFile: () => openFilePath !== null,
+    getTemplatesDir: () => localTemplatesDir(),
+    chooseTemplatesDir,
   });
 }
 wireToolbar();
@@ -744,17 +746,25 @@ async function doPublish(pkg: TemplatePackage): Promise<PublishResult> {
 // app auto-indexes FROM (the unified `templateSource` preference), so a saved
 // template shows up in the gallery straight away. Choosing a folder here also
 // makes it the active catalog source. The browser build never reaches this.
+// Pick the local templates folder and make it the active catalog source. Returns
+// the chosen path, or null if the author cancelled. Shared by the Publish action
+// and the panel's "Change…" control so both stay in sync.
+async function chooseTemplatesDir(): Promise<string | null> {
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const picked = await open({
+    directory: true,
+    title: "Pick your templates folder (the app will index every .wadi in it)",
+  });
+  if (typeof picked !== "string") return null;
+  setTemplateSource({ kind: "local", dir: picked }); // this folder is now the catalog too
+  return picked;
+}
+
 async function publishTemplateDesktop(pkg: TemplatePackage): Promise<PublishResult> {
   let dir = localTemplatesDir();
   if (!dir) {
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const picked = await open({
-      directory: true,
-      title: "Pick your templates folder (the app will index every .wadi in it)",
-    });
-    if (typeof picked !== "string") return { ok: false, message: "Save cancelled — no templates folder chosen." };
-    dir = picked;
-    setTemplateSource({ kind: "local", dir }); // this folder is now the catalog too
+    dir = await chooseTemplatesDir();
+    if (!dir) return { ok: false, message: "Save cancelled — no templates folder chosen." };
   }
   const { invoke } = await import("@tauri-apps/api/core");
   const message = await invoke<string>("save_template", {

@@ -98,6 +98,14 @@
     .pub-hint { padding: 10px 14px; color: var(--muted); font-size: .8rem; line-height: 1.5;
       background: #202020; border-bottom: 1px solid var(--border); }
     .pub-hint b { color: var(--text); }
+    .pub-folder { display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+      border-bottom: 1px solid var(--border); font-size: .8rem; }
+    .pub-folder-label { color: var(--muted); white-space: nowrap; }
+    .pub-folder-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; direction: rtl; text-align: left; background: #1e1e1e;
+      border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; color: var(--text); }
+    .pub-folder-path.unset { color: var(--muted); direction: ltr; }
+    .pub-folder-change { flex: none; }
     .pub-body { display: grid; grid-template-columns: 1fr 300px; gap: 16px; padding: 14px; }
     @media (max-width: 640px) { .pub-body { grid-template-columns: 1fr; } }
     .pub-form { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
@@ -273,6 +281,11 @@
       <div class="pub-hint">
         In the preview, use <b>📸 Shot</b> / <b>✨ Auto</b> to capture cover images, and
         <b>Preview as owner</b> to test the configurator. Then fill in the details and publish.
+      </div>
+      <div id="pub-folder" class="pub-folder">
+        <span class="pub-folder-label">Templates folder</span>
+        <code id="pub-folder-path" class="pub-folder-path" title="Where the app saves + auto-indexes templates">—</code>
+        <button id="pub-folder-change" class="tb-btn" title="Choose the folder the app saves templates into and indexes the gallery from">Change…</button>
       </div>
       <div class="pub-body">
         <div class="pub-form">
