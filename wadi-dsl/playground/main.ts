@@ -225,12 +225,20 @@ async function resolveTemplateThumbs(config: Record<string, unknown>): Promise<s
   const dir = parentDir(openFilePath);
   const { readFile } = await import("@tauri-apps/plugin-fs");
   const urls: string[] = [];
+  const failed: string[] = [];
   for (const rel of t) {
     if (typeof rel !== "string") continue;
     if (rel.startsWith("data:")) { urls.push(rel); continue; } // already inline
     try {
       urls.push(bytesToDataUrl(await readFile(joinRel(dir, rel))));
-    } catch { /* missing cover file — skip, the card just shows fewer shots */ }
+    } catch (e) {
+      failed.push(`${rel} (${(e as Error).message})`);
+    }
+  }
+  // Don't swallow read failures — a referenced cover that won't load is a real
+  // problem (missing file, or a denied fs permission) the author should see.
+  if (failed.length) {
+    setStatus(`⚠ couldn't read ${failed.length} cover image${failed.length === 1 ? "" : "s"}: ${failed.join("; ")}`, true);
   }
   return urls.length ? urls : null;
 }
