@@ -15,6 +15,7 @@ const wdl = `house H {
     style "Konkan"
     roof "Gable"
     tags "coastal", "compact", "2-bed"
+    thumbnails "thumbnails/H-1.png", "thumbnails/H-2.png"
     min_plot (22, 34)
   }
   floor 1 "G" slab_thickness 0 {
@@ -34,9 +35,22 @@ describe("DSL — template catalog metadata block", () => {
       style: "Konkan",
       roof: "Gable",
       tags: ["coastal", "compact", "2-bed"],
+      thumbnails: ["thumbnails/H-1.png", "thumbnails/H-2.png"],
       minWidthFt: 22,
       minLengthFt: 34,
     });
+  });
+
+  it("keeps cover paths as PATHS (never inlines a data URL into source)", () => {
+    const cfg = compileDsl(wdl) as Obj;
+    const wdl2 = emitWdl(cfg);
+    expect(wdl2).toContain('thumbnails "thumbnails/H-1.png", "thumbnails/H-2.png"');
+    // A config whose template.thumbnails accidentally holds a data URL must not
+    // leak it into WDL source.
+    const dirty = { ...(cfg as Obj), template: { ...(cfg.template as Obj), thumbnails: ["data:image/png;base64,AAAA", "thumbnails/H-2.png"] } };
+    const wdl3 = emitWdl(dirty);
+    expect(wdl3).not.toContain("data:image/png");
+    expect(wdl3).toContain('thumbnails "thumbnails/H-2.png"');
   });
 
   it("round-trips: emit → recompile preserves the block", () => {

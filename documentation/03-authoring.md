@@ -706,6 +706,25 @@ panel:
 The saved `.wadi` keeps its full parametric layer (variables, points, grids,
 formulas, configurator), so the owner gets the same adjustable model you authored.
 
+**Keeping cover shots in your source.** Screenshots are large images, so the `.wdl`
+never stores them inline. If you maintain your template as `.wdl` source (not just
+the published `.wadi`), use **🖼 Save cover shots to source** in the Publish panel
+(desktop): it writes the captured shots as PNG files in a `thumbnails/` subfolder
+next to your `.wdl` and adds a `thumbnails` line to the `template {}` block that
+references them by relative path:
+
+```
+template {
+  title "Coastal cottage"
+  thumbnails "thumbnails/cottage-1.png", "thumbnails/cottage-2.png"
+}
+```
+
+The paths are always relative to the `.wdl`, so the `.wdl` plus its `thumbnails/`
+folder travel together. When you reopen the `.wdl`, the app reads those files and
+re-inlines them into the compiled `.wadi` (and into every published copy). Move the
+`.wdl`, and move its `thumbnails/` folder with it.
+
 **Pointing the app at a folder.** The gallery reads from a templates folder that
 you can change: a local folder (desktop, managed in Finder), a shared Google
 Drive folder (needs a Drive API key in the source settings), or the bundled

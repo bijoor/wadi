@@ -37,6 +37,7 @@ import {
   libraryCacheVersion,
 } from "./libraries";
 import { registerWadiLsp } from "./lsp";
+import { THUMB_SUBDIR, joinRel, parentDir, thumbRelPath, patchThumbnails } from "./thumbPaths";
 import { initPublishPanel, type PublishResult } from "./publishPanel";
 import type { TemplatePackage } from "../../editor/src/templatePackage/assemble";
 import { localTemplatesDir, setTemplateSource } from "../../editor/src/io/templateSource";
@@ -192,6 +193,46 @@ let lastConfig: Record<string, unknown> | null = null;
 // imported we stash them here and re-attach on every recompile, so they survive
 // edits + reach the Publish panel. Captures made in the preview take precedence.
 let carriedThumbnails: string[] = [];
+// A .wdl can instead reference cover images by RELATIVE PATH in its `template {}`
+// block (files in a `thumbnails/` subfolder next to the .wdl). On desktop we read
+// those files and inline them as data URLs. Cache the last-resolved path list so a
+// recompile only re-reads the files when the paths actually changed (an edit to the
+// `thumbnails` line), and so freshly-captured (unsaved) shots aren't clobbered.
+let lastResolvedThumbPaths = "";
+
+// data URL ⇄ bytes (PNG) for reading/writing cover files via the Tauri fs plugin.
+function bytesToDataUrl(bytes: Uint8Array, mime = "image/png"): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return `data:${mime};base64,${btoa(binary)}`;
+}
+function dataUrlToBytes(url: string): Uint8Array {
+  const bin = atob(url.slice(url.indexOf(",") + 1));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// Desktop: turn a compiled config's `template.thumbnails` PATHS (relative to the
+// open .wdl) into inline data URLs. Missing files are skipped. Returns null when
+// there is nothing to resolve (browser, no open file, or no paths).
+async function resolveTemplateThumbs(config: Record<string, unknown>): Promise<string[] | null> {
+  const t = (config.template as { thumbnails?: unknown } | undefined)?.thumbnails;
+  if (!Array.isArray(t) || !t.length || !openFilePath || !isTauri()) return null;
+  const dir = parentDir(openFilePath);
+  const { readFile } = await import("@tauri-apps/plugin-fs");
+  const urls: string[] = [];
+  for (const rel of t) {
+    if (typeof rel !== "string") continue;
+    if (rel.startsWith("data:")) { urls.push(rel); continue; } // already inline
+    try {
+      urls.push(bytesToDataUrl(await readFile(joinRel(dir, rel))));
+    } catch { /* missing cover file — skip, the card just shows fewer shots */ }
+  }
+  return urls.length ? urls : null;
+}
 
 // Switch the preview persona IN PLACE via the viewer's wadi.setPersona (no iframe
 // reboot — a reboot blacks out the 3D and drops the loaded model). If the preview
@@ -228,15 +269,26 @@ function nudgeUntilSettled(): void {
 
 async function pushToViewer(config: Record<string, unknown>, findings: LintFinding[] = []): Promise<void> {
   try {
-    // Keep cover images across recompiles: prefer whatever the preview currently
-    // holds (imported + any shots captured in the panel), else seed from the
-    // imported .wadi. `wadi.load` replaces the whole config, so without this the
-    // thumbnails would vanish on the next keystroke.
+    // Cover images. Precedence:
+    //   1. `template.thumbnails` PATHS in the .wdl, resolved from files (desktop) —
+    //      but only re-read when the path list changed, so freshly-captured unsaved
+    //      shots in the preview aren't clobbered on an unrelated edit.
+    //   2. whatever the preview currently holds (imported .wadi + shots captured in
+    //      the panel).
+    //   3. the set carried from a decompiled .wadi.
+    // `wadi.load` replaces the whole config, so without this the thumbnails vanish
+    // on the next keystroke.
     const w0 = frame.contentWindow as (Window & { wadi?: { getConfig?: () => { thumbnails?: unknown } } }) | null;
     const existing = w0?.wadi?.getConfig?.()?.thumbnails;
-    const thumbs = Array.isArray(existing) && existing.length
-      ? (existing as string[])
-      : carriedThumbnails;
+    const pathKey = JSON.stringify((config.template as { thumbnails?: unknown } | undefined)?.thumbnails ?? null);
+    let thumbs: string[] | null = null;
+    if (pathKey !== lastResolvedThumbPaths) {
+      lastResolvedThumbPaths = pathKey;
+      thumbs = await resolveTemplateThumbs(config); // desktop path-ref → data URLs
+    }
+    if (!thumbs) {
+      thumbs = Array.isArray(existing) && existing.length ? (existing as string[]) : carriedThumbnails;
+    }
     if (thumbs.length) config.thumbnails = thumbs;
     else delete config.thumbnails;
     if (!booted) {
@@ -356,6 +408,7 @@ async function attachFile(path: string): Promise<void> {
   const { readTextFile, watch } = await import("@tauri-apps/plugin-fs");
   if (unwatchFile) { unwatchFile(); unwatchFile = null; }
   openFilePath = path;
+  lastResolvedThumbPaths = ""; // new file → re-resolve any template.thumbnails paths
   currentName = (path.split(/[/\\]/).pop() ?? "house").replace(/\.(wdl|txt)$/i, "") || "house";
   const text = await readTextFile(path);
   lastDiskText = text;
@@ -409,6 +462,7 @@ function detachFile(): void {
   openFilePath = null;
   lastDiskText = null;
   carriedThumbnails = []; // a fresh doc carries no cover images (New / Open / sample)
+  lastResolvedThumbPaths = "";
 }
 
 // The header label showing the open file + a • when there are unsaved edits.
@@ -643,6 +697,8 @@ function wireToolbar(): void {
     suggestId: () => currentName || "house",
     isTauri,
     doPublish,
+    saveCoverShots,
+    hasOpenFile: () => openFilePath !== null,
   });
 }
 wireToolbar();
@@ -684,6 +740,46 @@ async function publishTemplateDesktop(pkg: TemplatePackage): Promise<PublishResu
     wadi: pkg.wadi,
   });
   return { ok: true, message };
+}
+
+// Desktop: persist the cover shots captured in the preview as PNG FILES next to the
+// open .wdl (in a `thumbnails/` subfolder) and reference them from the .wdl's
+// `template {}` block, so the source is self-sufficient — reopening the .wdl later
+// re-inlines them. This is the source-workflow counterpart to publishing (which
+// bakes the data URLs into the .wadi artifact). Returns a user-facing message.
+async function saveCoverShots(): Promise<PublishResult> {
+  if (!isTauri()) {
+    return { ok: false, message: "Cover-shot files are a desktop feature — in the browser, capture and Publish inlines them." };
+  }
+  if (!openFilePath) {
+    return { ok: false, message: "Save the .wdl to a file first (Save As), then capture + save cover shots." };
+  }
+  const w = frame.contentWindow as (Window & { wadi?: { getConfig?: () => { thumbnails?: unknown } } }) | null;
+  const raw = w?.wadi?.getConfig?.()?.thumbnails;
+  const shots = Array.isArray(raw) ? raw.filter((s): s is string => typeof s === "string" && s.startsWith("data:")) : [];
+  if (!shots.length) {
+    return { ok: false, message: "No captured shots to save — use 📸 / ✨ in the preview first." };
+  }
+  const dir = parentDir(openFilePath);
+  const base = currentName || "house";
+  const { writeFile, mkdir } = await import("@tauri-apps/plugin-fs");
+  await mkdir(joinRel(dir, THUMB_SUBDIR), { recursive: true });
+  const paths: string[] = [];
+  for (let i = 0; i < shots.length; i++) {
+    const rel = thumbRelPath(base, i + 1);
+    await writeFile(joinRel(dir, rel), dataUrlToBytes(shots[i]));
+    paths.push(rel);
+  }
+  // Reference the files from the WDL source (creates/updates the template block).
+  const src = editor.getValue();
+  const patched = patchThumbnails(src, paths);
+  if (patched === src && !/^[ \t]*thumbnails[ \t]/m.test(src)) {
+    return { ok: false, message: `Wrote ${paths.length} file(s) to ${THUMB_SUBDIR}/, but could not find a house block to add the \`thumbnails\` line — add it manually.` };
+  }
+  // A path edit → recompile → resolveTemplateThumbs re-reads the just-written files.
+  lastResolvedThumbPaths = "";
+  if (patched !== src) editor.setValue(patched);
+  return { ok: true, message: `✓ Saved ${paths.length} cover shot${paths.length === 1 ? "" : "s"} to ${THUMB_SUBDIR}/ and referenced them in the WDL.` };
 }
 
 // ---- Libraries: save the current .wdl as a reusable module + reuse saved ones.

@@ -104,6 +104,7 @@ TemplateMeta:
         ('style' style=STRING)?
         ('roof' roof=STRING)?
         ('tags' tags+=STRING (',' tags+=STRING)*)?
+        ('thumbnails' thumbs+=STRING (',' thumbs+=STRING)*)?
         ('min_plot' '(' minW=NUMBER ',' minL=NUMBER ')')?
     '}';
 

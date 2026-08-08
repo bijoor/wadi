@@ -56,12 +56,16 @@ knob to <code>W</code> — knobs target vars, not point fields.</p>
 <h3>Template metadata <span class="ref-dim">— makes the .wadi self-describing for the gallery</span></h3>
 <p class="ref-note">The editorial a gallery card needs that geometry can't derive.
 Put it in the house so a folder of templates auto-indexes with no separate index.
-All fields optional. <code>min_plot</code> is display-feet.</p>
+All fields optional. <code>min_plot</code> is display-feet. <code>thumbnails</code>
+are cover-image paths <b>relative to this .wdl</b> (keep them in a subfolder like
+<code>thumbnails/</code>); the desktop app writes them there when you capture and
+inlines them into the compiled .wadi.</p>
 <pre>template {
   title "Coastal cottage"
   description "Breezy 2-bed on the grid."
   style "Konkan"  roof "Gable"
   tags "coastal", "compact", "2-bed"
+  thumbnails "thumbnails/cottage-1.png", "thumbnails/cottage-2.png"
   min_plot (22, 34)
 }</pre>
 

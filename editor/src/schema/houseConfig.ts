@@ -756,6 +756,10 @@ export const HouseConfig = z
         minWidthFt: z.number().optional(),
         minLengthFt: z.number().optional(),
         tags: z.array(z.string()).optional(),
+        // Cover-image source PATHS, relative to the .wdl dir (desktop resolves them
+        // to the top-level `thumbnails` data URLs at compile time). Distinct from
+        // the top-level `thumbnails` which holds the inlined data URLs.
+        thumbnails: z.array(z.string()).optional(),
       })
       .optional(),
     floors: z.array(floor).min(1),

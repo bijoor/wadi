@@ -28,6 +28,10 @@ export interface PublishPanelDeps {
   isTauri: () => boolean;
   /** Perform the publish/export of an assembled package. */
   doPublish: (pkg: TemplatePackage) => Promise<PublishResult>;
+  /** Desktop: write captured shots to files next to the .wdl + reference them. */
+  saveCoverShots: () => Promise<PublishResult>;
+  /** True when a .wdl is open on disk (cover-shot files need a file location). */
+  hasOpenFile: () => boolean;
 }
 
 interface IframeWadi {
@@ -50,6 +54,9 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
   const cardEl = $("pub-card");
   const statusEl = $("pub-status");
   const primaryEl = $("pub-primary") as HTMLButtonElement;
+  const shotsEl = $("pub-shots") as HTMLButtonElement;
+  // Writing cover-shot FILES needs a file location, so it is desktop-only.
+  shotsEl.hidden = !deps.isTauri();
 
   // Read the current design from the preview: the parametric config is the last
   // COMPILE (the template's defaults, not the owner's runtime tweaks); the cover
@@ -184,9 +191,25 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
     }
   }
 
+  // Write the captured shots to files next to the .wdl + reference them in source.
+  async function saveShots(): Promise<void> {
+    shotsEl.disabled = true;
+    setStatus("Saving cover shots to source…");
+    try {
+      const res = await deps.saveCoverShots();
+      setStatus(res.message, res.ok ? "ok" : "err");
+      if (res.ok) refresh(); // the recompiled design re-reads the new files
+    } catch (e) {
+      setStatus((e as Error).message, "err");
+    } finally {
+      shotsEl.disabled = false;
+    }
+  }
+
   $("publish").addEventListener("click", () => void open());
   $("pub-close").addEventListener("click", () => void close());
   $("pub-refresh").addEventListener("click", refresh);
+  shotsEl.addEventListener("click", () => void saveShots());
   primaryEl.addEventListener("click", () => void publish());
   for (const el of [idEl, titleEl, descEl, styleEl, roofEl, tagsEl]) el.addEventListener("input", refresh);
 }

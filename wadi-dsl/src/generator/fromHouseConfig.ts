@@ -520,7 +520,15 @@ function emitTemplate(w: W, indent: number, t: Obj): void {
   if (t.style) lines.push(`style ${str(t.style)}`);
   if (t.roof) lines.push(`roof ${str(t.roof)}`);
   if (Array.isArray(t.tags) && t.tags.length)
-    lines.push(`tags ${(t.tags as unknown[]).map((s) => str(s)).join(", ")}`);
+    lines.push(`tags ${(t.tags as unknown[]).map((s) => str(String(s))).join(", ")}`);
+  // Cover-image PATHS only (relative to the .wdl). Never emit inline data URLs into
+  // source — those live only in the compiled .wadi's top-level `thumbnails`.
+  if (Array.isArray(t.thumbnails)) {
+    const paths = (t.thumbnails as unknown[]).filter(
+      (s): s is string => typeof s === "string" && !s.startsWith("data:"),
+    );
+    if (paths.length) lines.push(`thumbnails ${paths.map((s) => str(s)).join(", ")}`);
+  }
   if (t.minWidthFt !== undefined && t.minLengthFt !== undefined)
     lines.push(`min_plot (${num(t.minWidthFt)}, ${num(t.minLengthFt)})`);
   if (!lines.length) return;
