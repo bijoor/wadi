@@ -238,13 +238,24 @@ export function StaircaseForm({
           />
         </div>
         <SelectField
+          label="Climb"
+          value={obj.climb ?? "down"}
+          onChange={(v) => patch({ climb: v as "up" | "down" })}
+          options={[
+            { value: "up", label: "up — bottom-anchored, ascends (put on the lower floor)" },
+            { value: "down", label: "down — top-anchored, descends (put on the upper floor)" },
+          ]}
+        />
+        <SelectField
           label="Direction"
           value={obj.direction}
           onChange={(v) => patch({ direction: v as Side })}
           options={SIDES.map((s) => ({ value: s, label: s }))}
         />
         <div className="mt-1 text-[11px] text-slate-400">
-          The stair descends from its top INTO this direction.
+          {(obj.climb ?? "down") === "up"
+            ? "Start is the bottom step; the stair ASCENDS from it INTO this direction."
+            : "Start is the top connection; the stair DESCENDS from it INTO this direction."}
         </div>
         <TextField
           label="Material"

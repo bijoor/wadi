@@ -319,6 +319,7 @@ function staircase(s: ast.Staircase): Record<string, unknown> {
     direction: s.direction,
   };
   if (s.name) o.name = unquote(s.name);
+  if (s.climb) o.climb = s.climb;
   // Placeholder 1 (not 0): these carry a `>0` schema constraint, and when the
   // value is a formula (e.g. a component `param`) the stored placeholder is what
   // schema-validation of the unresolved def sees — 0 would spuriously fail.

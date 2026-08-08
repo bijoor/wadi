@@ -38,6 +38,9 @@ house TwoStory {
       wall south                                      // exterior side (C2)
       wall east { window BW at 30 size (40, 40) sill 45 }
     }
+    // Bottom-anchored: it sits on the floor you climb FROM and ascends to the next
+    // level (`climb up`). `total_height` defaults to this floor's height.
+    staircase name "Stair" at (300, 60) step (7, 10, 36) direction south climb up
   }
 
   floor 2 "First Floor" {
@@ -50,7 +53,6 @@ house TwoStory {
       wall north south                                // exterior sides (C2)
       wall east { window B2 at 60 size (55, 50) sill 35 }
     }
-    staircase name "Stair" at (300, 60) step (7, 10, 36) direction south
   }
 
   floor 3 "Loft Floor" {

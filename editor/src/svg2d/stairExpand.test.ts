@@ -15,8 +15,8 @@ const base = (over: Partial<Obj> = {}): Obj => ({
   direction: "south",
   ...over,
 });
-const expand = (over: Partial<Obj> = {}, slab = 8, below = 100) =>
-  expandStaircase(base(over), slab, below);
+const expand = (over: Partial<Obj> = {}, slab = 8, below = 100, own = 100) =>
+  expandStaircase(base(over), slab, below, own);
 
 const stairs = (o: Obj[]) => o.filter((x) => x.type === "staircase");
 const landings = (o: Obj[]) => o.filter((x) => x.type === "floor_slab");
@@ -63,8 +63,8 @@ describe("expandStaircase", () => {
   });
 
   it("rise_height defaults to the floor-below height when omitted", () => {
-    const out = expandStaircase(base({ rise_height: undefined }), 8, 100);
-    expect(out[0].num_steps).toBe(19); // 20 risers − 1
+    const out = expandStaircase(base({ rise_height: undefined }), 8, 100, 116);
+    expect(out[0].num_steps).toBe(19); // down uses the floor BELOW (100) → 20 risers − 1
   });
 
   it("descends from the top INTO `direction`, within [start, start+max_run]", () => {
@@ -126,5 +126,43 @@ describe("expandStaircase", () => {
     expect(cw.x1 + ccw.x0).toBeCloseTo(mid2, 3);
     // and they are an actual mirror, not identical
     expect(cw.x0).not.toBeCloseTo(ccw.x0, 3);
+  });
+});
+
+describe("expandStaircase — climb up (bottom-anchored, ascending)", () => {
+  const up = (over: Partial<Obj> = {}, slab = 8, below = 100, own = 100) =>
+    expandStaircase(base({ climb: "up", ...over }), slab, below, own);
+
+  it("single flight keeps the start + direction and ascends from the bottom", () => {
+    const out = up();
+    expect(out).toHaveLength(1);
+    // start + direction UNCHANGED (start is the bottom step, not the top)
+    expect(out[0].start_x).toBe(100);
+    expect(out[0].start_y).toBe(50);
+    expect(out[0].direction).toBe("south");
+    expect("climb" in out[0]).toBe(false);
+    const lv = treadLevels(out);
+    expect(Math.min(...lv)).toBe(8 + 5); // bottom tread a riser above the floor
+    expect(Math.max(...lv)).toBe(8 + 90 - 5); // top tread a riser below the level above
+  });
+
+  it("rise_height defaults to THIS floor's own height", () => {
+    const out = up({ rise_height: undefined }, 8, 100, 116); // own=116, below=100
+    expect(out[0].num_steps).toBe(22); // round(116/5)=23 risers − 1
+  });
+
+  it("switchback ascends and stays in the allocated box, conserving the climb", () => {
+    for (const direction of ["south", "north", "east", "west"] as const) {
+      const out = up({ max_run: 60, direction });
+      const [lo, hi] = runExtent(out, direction, 100, 50);
+      expect(lo).toBeGreaterThanOrEqual(-0.01);
+      expect(hi).toBeLessThanOrEqual(60 + 0.01);
+    }
+    const out = up({ max_run: 100 });
+    expect(treads(out)).toBe(18 - stairs(out).length); // risers − numFlights
+    // ascending: the lowest tread sits just above the floor, the highest near the top
+    const lv = treadLevels(out);
+    expect(Math.min(...lv)).toBeCloseTo(8 + 5, 6);
+    expect(Math.max(...lv)).toBeCloseTo(8 + 90 - 5, 6);
   });
 });

@@ -149,26 +149,28 @@ stacks on its walls.)*
 
 **Statement.** A staircase's descent must not carry it below the ground plane (z < 0).
 
-**Rationale.** Staircases are **top-anchored**: you place one on the **upper** floor and it
-**descends** to the floor below (`at` is the top, `direction` is the descent, `total_height`
-is the drop). Put it on the *lower* floor (as if climbing up), or give it too large a
+**Rationale.** Only a `climb down` (top-anchored) stair can fall below ground: you place it
+on the **upper** floor and it **descends** (`at` is the top, `direction` is the descent,
+`total_height` is the drop). Put it on the wrong floor, or give it too large a
 `total_height`, and the expanded flight lands **below ground** — it still draws in the 2D
-plans (which ignore Z) but is **buried and invisible in 3D**, with no other error. This is
-the one that bit a real design: a stair on the ground floor "climbing" to the first floor
-was expanded to `z_offset: -105` and vanished from the 3D view.
+plans (which ignore Z) but is **buried and invisible in 3D**, with no other error. A
+`climb up` stair is anchored on its own floor and ascends, so it never trips this.
 
-**Fix.** Move the staircase **up one floor** and let it descend. The stair that connects the
-ground floor to the first floor lives on the **First Floor**:
+**Fix.** Prefer **`climb up`**: put the stair on the **lower** floor it rises FROM and let
+it ascend. The stair connecting the ground floor to the first floor lives on the **Ground
+Floor**:
 
 ```wdl
-floor 2 "First Floor" height 116 {
+floor 1 "Ground Floor" height 116 {
   slab at (…) size (…)
-  staircase name "Stair" at (212, 64) step (7, 11, 44)   // `at` = the TOP (this floor)
-    direction south total_height 116                     // descends to the floor below
+  staircase name "Stair" at (212, 64) step (7, 11, 44)   // `at` = the BOTTOM (this floor)
+    direction south climb up                             // ascends to the floor above
 }
 ```
 
-*(See the staircase section of `dsl.md` for the full top-anchored convention.)*
+(Or, if you must keep it `climb down`, move it **up one floor** or reduce `total_height`.)
+
+*(See the staircase section of `dsl.md` for the full `climb` convention.)*
 
 ## C6 — Openings on the same wall must not overlap · **error**
 

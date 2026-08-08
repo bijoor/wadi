@@ -275,13 +275,20 @@ const staircase = z
     enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string().optional(),
-    // A staircase belongs to the DESTINATION (upper) floor it leads to — put it
-    // on that floor's `objects` so deleting the floor deletes the stair. It is
-    // TOP-anchored and DESCENDS: (start_x, start_y) is the top connection where it
-    // meets this floor, and the stair descends INTO `direction` from there (its
-    // body + landings fill the box [start, start + max_run] along `direction`).
-    // `z_offset` is the top's height above the floor base (omitted → this floor's
-    // slab thickness, flush with the walking surface).
+    // `climb` picks which end (start_x, start_y) is and which way the flight runs
+    // in z as it extends into `direction`:
+    //   • "up" (recommended): BOTTOM-anchored. Put the stair on the LOWER floor it
+    //     rises FROM; (start_x, start_y) is the bottom step's near corner on that
+    //     floor and the flight ASCENDS into `direction`. `rise_height` defaults to
+    //     THIS floor's height (climb to the next level). The intuitive way.
+    //   • "down" (DEFAULT, kept for older configs): TOP-anchored. Put the stair on
+    //     the upper DESTINATION floor; (start_x, start_y) is the top connection and
+    //     the flight DESCENDS into `direction`. `rise_height` defaults to the floor
+    //     immediately BELOW this one.
+    // Either way the body + landings fill the box [start, start + max_run] along
+    // `direction`, and `z_offset` is the ANCHORED end's height above the floor base
+    // (omitted → this floor's slab thickness, flush with the walking surface).
+    climb: z.enum(["up", "down"]).optional(),
     start_x: z.number(),
     start_y: z.number(),
     // Total height the stair covers, top → floor below. The step COUNT is

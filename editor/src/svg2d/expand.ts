@@ -220,6 +220,12 @@ export function expandRoomWalls(
       typeof belowHeightRaw === "number" && belowHeightRaw > 0
         ? belowHeightRaw
         : houseDefaults?.floor_height ?? DEFAULT_GLOBAL_CONFIG.floor_height;
+    // THIS floor's own height — the default `rise_height` for a climb-up staircase
+    // that owns this floor and ascends to the next level.
+    const floorOwnHeight =
+      typeof floor.height === "number" && floor.height > 0
+        ? floor.height
+        : houseDefaults?.floor_height ?? DEFAULT_GLOBAL_CONFIG.floor_height;
     // Room footprints on this floor, for furniture anchoring (nested items + free
     // items with `anchor_to`). Rooms are already resolved to concrete x/y/w/l.
     const units = (hc as { units?: { system?: string; per_unit?: number } }).units;
@@ -331,7 +337,7 @@ export function expandRoomWalls(
       if (obj.type === "staircase") {
         let flights: Obj[];
         try {
-          flights = expandStaircase(obj, floorSlabThickness, floorBelowHeight);
+          flights = expandStaircase(obj, floorSlabThickness, floorBelowHeight, floorOwnHeight);
         } catch (e) {
           if (!opts?.lenient) throw e;
           opts.onWarning?.(e instanceof Error ? e.message : String(e));

@@ -52,6 +52,7 @@ These appear on most object types; documented once here, marked *(cross-cutting)
 | `configurator` | [configurator](#configurator) |  | Configurator metadata (Gharkul owner UI). Optional; see plans/configurator-plan.md. |
 | `thumbnails` | array of string |  | Preview snapshots (data: URLs) captured by the architect editor and saved WITH the template so the owner gallery can show real previews — multiple angles + the floor plan. `thumbnails[0]` is the gallery cover. Optional; excluded from share links (a preview isn't model data — see io/shareLink.ts). `thumbnail` (singular) is the legacy one-image form, still read as a fallback so old template files keep working. |
 | `thumbnail` | string |  |  |
+| `template` | inline object |  | Catalog metadata that makes a `.wadi` SELF-DESCRIBING: the editorial fields a gallery card needs that can't be derived from geometry (title, blurb, style/roof tags, min plot). With this block + `thumbnails[]`, a folder of `.wadi` files IS the catalog — the app lists the folder and indexes each file, with no separate index.json to maintain (see io/templateSource.ts). Non-strict so newer editorial fields don't break an older build. |
 | `floors` | array of [floor](#floor) | **yes** |  |
 | `_walls_expanded` | boolean |  |  |
 
@@ -156,6 +157,26 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `gap_y` | number |  |  |
 
 
+### `model`
+
+A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinct from `item` (furniture, catalog + anchoring): `model` is a rigged structural asset. `asset.dimensions` is the real metre size, used for the 2D footprint and the scale.
+
+| field | type | req | notes |
+|---|---|---|---|
+| `type` | literal `model` | **yes** |  |
+| `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
+| `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
+| `layer` | string |  | *(shared — see top)* |
+| `name` | string |  |  |
+| `asset` | [ItemAsset](#itemasset) | **yes** |  |
+| `x` | number | **yes** |  |
+| `y` | number | **yes** |  |
+| `rotation` | number |  |  |
+| `scale` | number > 0 |  |  |
+| `z_offset` | number |  |  |
+| `rig` | array of `rigOp` |  |  |
+
+
 ### `floor_slab`
 | field | type | req | notes |
 |---|---|---|---|
@@ -252,7 +273,8 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
 | `name` | string |  |  |
-| `start_x` | number | **yes** | A staircase belongs to the DESTINATION (upper) floor it leads to — put it on that floor's `objects` so deleting the floor deletes the stair. It is TOP-anchored and DESCENDS: (start_x, start_y) is the top connection where it meets this floor, and the stair descends INTO `direction` from there (its body + landings fill the box [start, start + max_run] along `direction`). `z_offset` is the top's height above the floor base (omitted → this floor's slab thickness, flush with the walking surface). |
+| `climb` | enum: `up` `down` |  | `climb` picks which end (start_x, start_y) is and which way the flight runs in z as it extends into `direction`: • "up" (recommended): BOTTOM-anchored. Put the stair on the LOWER floor it rises FROM; (start_x, start_y) is the bottom step's near corner on that floor and the flight ASCENDS into `direction`. `rise_height` defaults to THIS floor's height (climb to the next level). The intuitive way. • "down" (DEFAULT, kept for older configs): TOP-anchored. Put the stair on the upper DESTINATION floor; (start_x, start_y) is the top connection and the flight DESCENDS into `direction`. `rise_height` defaults to the floor immediately BELOW this one. Either way the body + landings fill the box [start, start + max_run] along `direction`, and `z_offset` is the ANCHORED end's height above the floor base (omitted → this floor's slab thickness, flush with the walking surface). |
+| `start_x` | number | **yes** |  |
 | `start_y` | number | **yes** |  |
 | `rise_height` | number > 0 |  | Total height the stair covers, top → floor below. The step COUNT is derived: num_steps = round(rise_height / step_rise). Omitted → defaults to the height of the floor immediately below this one. Formula-capable (e.g. "= floor_height"). Replaces the old explicit `num_steps`. |
 | `step_rise` | number > 0 | **yes** |  |
@@ -478,6 +500,7 @@ Furniture (GLB `item`) — shared schema pieces Defined BEFORE `room` so a room 
 | `variables` | map: string → number, or `"= formula"` string |  |  |
 | `points` | map: string → inline object |  |  |
 | `objects` | array of [Object types](#object-types) | **yes** |  |
+| `expose` | inline object |  | Promote this component to a typed primitive at load time (plans/declarative-plugins.md P0). When present, the component registers a NodeDefinition of type `expose.type` whose fields come from `params`; it can then be used like any core object type. `type` is namespaced (`pack.thing`). |
 
 
 ### ComponentParam
@@ -490,6 +513,8 @@ A reusable component DEFINITION in the in-file `components` library. It is a min
 | `label` | string |  |  |
 | `description` | string |  |  |
 | `default` | number |  |  |
+| `kind` | string |  | Field-projection annotations, used only when the component is `expose`d as a typed primitive (plans/declarative-plugins.md). `kind` is a FieldKind preset (coord/extent/nonneg/int/text/flag/enum); when absent the kind is inferred from the default's type. `unit` is a doc-only unit hint. |
+| `unit` | string |  |  |
 
 
 ### LayerDef

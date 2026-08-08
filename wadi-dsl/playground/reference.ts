@@ -116,7 +116,9 @@ fill the corner. Room walls handle their own corners.</p>
 
 <h3>Circulation &amp; fittings</h3>
 <pre>staircase [name "N"] at (start_x, start_y) step (rise, tread, width)
-  direction north|south|east|west
+  direction north|south|east|west  [climb up|down]
+                                //  climb up (recommended): put it on the LOWER floor; start = bottom step, ASCENDS.
+                                //  climb down (default): put it on the UPPER floor; start = top, DESCENDS. total_height defaults accordingly.
   [total_height &lt;h&gt;] [max_run &lt;r&gt;] [landing_depth …] [landing_thickness …] [flight_gap …] [turn clockwise|anticlockwise]
                                 //  max_run ⇒ auto switchback flights (landing_thickness / flight_gap tune it)
 spiral_staircase [name "N"] at (x, y) radius &lt;r&gt; total_height &lt;h&gt;

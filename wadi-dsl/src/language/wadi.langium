@@ -378,6 +378,7 @@ Staircase:
         'at' '(' start_x=Expr ',' start_y=Expr ')'
         'step' '(' step_rise=Expr ',' step_tread=Expr ',' step_width=Expr ')'
         'direction' direction=Side
+        ('climb' climb=('up' | 'down'))?
         ('total_height' rise_height=Expr)?
         ('max_run' max_run=Expr)?
         ('landing_depth' landing_depth=Expr)?

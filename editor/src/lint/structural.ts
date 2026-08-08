@@ -354,6 +354,7 @@ export function lintStructure(config: HouseConfig): LintFinding[] {
     // way expand.ts/stairExpand do and flag a below-ground landing.
     for (const o of objs) {
       if (o.type !== "staircase") continue;
+      if (((o.climb as string | undefined) ?? "down") === "up") continue; // ascends from this floor — can't fall below ground
       const riser = num(o.step_rise);
       if (riser <= 0) continue;
       const belowH =

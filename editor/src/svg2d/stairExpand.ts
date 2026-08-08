@@ -31,47 +31,50 @@ function stripMulti(sc: Obj): Obj {
     turn: _tn,
     flight_gap: _fg,
     rise_height: _rh,
+    climb: _cl,
     ...rest
   } = sc;
   return rest as Obj;
 }
 
 /**
- * Expand a staircase into its constituent primitives. TOP-anchored + DESCENDING:
- * `start_x`/`start_y`/`z_offset` describe the TOP of the stair (where it meets
- * the floor it belongs to) and the flights run DOWN to the floor below. The step
- * count is DERIVED: `num_steps = round(rise_height / step_rise)`, with
- * `rise_height` defaulting to `floorBelowHeight`. Returns `[flight]` when no
- * split is needed, else `[flight0, landing0, …]`, each carrying an explicit
- * `num_steps` for the renderers. `slabThickness` is the (owning) floor's slab
- * depth — the default TOP height, so an omitted-z stair's top is flush with the
- * walking surface.
+ * Expand a staircase into its constituent primitives. `climb` picks the anchor +
+ * z direction (see the schema): "up" is BOTTOM-anchored (start is the bottom step,
+ * flights ASCEND into `direction`, rise_height defaults to `floorOwnHeight`);
+ * "down" (default) is TOP-anchored (start is the top connection, flights DESCEND,
+ * rise_height defaults to `floorBelowHeight`). The step count is DERIVED:
+ * `num_steps = round(rise_height / step_rise)`. Returns `[flight]` when no split
+ * is needed, else `[flight0, landing0, …]`, each carrying an explicit `num_steps`
+ * for the renderers (which are always bottom-origin/ascending). `slabThickness` is
+ * the owning floor's slab depth — the default anchor height, so an omitted-z
+ * stair's anchored end is flush with the walking surface.
  */
 export function expandStaircase(
   sc: Obj,
   slabThickness: number,
   floorBelowHeight: number,
+  floorOwnHeight: number,
 ): Obj[] {
+  const up = ((sc.climb as string | undefined) ?? "down") === "up";
   const tread = n(sc.step_tread);
   const riser = n(sc.step_rise);
   const width = n(sc.step_width);
   const direction = (sc.direction as Dir) ?? "south";
-  // Height to cover (top → floor below); explicit wins, else the floor below's
-  // height. Step count is derived from it.
+  // Height to cover; explicit wins. Default: up → this floor's height (climb to
+  // the next level); down → the floor below's height (drop to it).
+  const defaultRise = up ? floorOwnHeight : floorBelowHeight;
   const riseHeight =
-    typeof sc.rise_height === "number" && sc.rise_height > 0
-      ? sc.rise_height
-      : floorBelowHeight;
+    typeof sc.rise_height === "number" && sc.rise_height > 0 ? sc.rise_height : defaultRise;
   const totalSteps = Math.max(1, Math.round(riseHeight / riser));
   const totalRise = totalSteps * riser;
   const maxRun = typeof sc.max_run === "number" ? sc.max_run : 0;
 
-  // TOP height of the stair above its floor base. Omitted → slab thickness, so
-  // the top is flush with the walking surface; the stair then descends by
-  // totalRise. `dz` shifts the canonical (bottom-at-0) build so the top lands
-  // at topZ — the same value the split path uses.
-  const topZ = sc.z_offset !== undefined ? n(sc.z_offset) : slabThickness;
-  const dz = topZ - totalRise;
+  // The ANCHORED end's height above the floor base (omitted → slab thickness, so
+  // it's flush with the walking surface). For "up" this is the BOTTOM; for "down"
+  // the TOP. `bottomZ` is the canonical build's lift so the whole stair lands
+  // right in either case.
+  const anchorZ = sc.z_offset !== undefined ? n(sc.z_offset) : slabThickness;
+  const bottomZ = up ? anchorZ : anchorZ - totalRise;
 
   // Switchback controls (needed to size the flights).
   const landingDepth =
@@ -80,10 +83,6 @@ export function expandStaircase(
       : width;
   const landingThickness =
     typeof sc.landing_thickness === "number" ? sc.landing_thickness : riser;
-  // Handedness (which side the return lane falls on), reckoned DESCENDING from
-  // the top. Signs are chosen so the label matches the rendered spiral: since the
-  // canonical build descends +Y, clockwise-going-down puts the return lane on the
-  // −lateral side. (Default = clockwise.)
   const latSign = sc.turn === "anticlockwise" ? 1 : -1;
   const gap =
     typeof sc.flight_gap === "number" && sc.flight_gap > 0 ? sc.flight_gap : 0;
@@ -92,12 +91,9 @@ export function expandStaircase(
   const landingX = Math.min(0, laneOffset);
   const [dvx, dvy] = DIR_VEC[direction];
 
-  // `totalSteps` = RISER count; a flight of R risers has R−1 treads (you fall
-  // onto the first tread from the top — no tread sits at a platform level).
-  // ALLOCATION: from the start (top) the stair descends INTO `direction` and the
-  // WHOLE assembly must fit the allocated box [start, start+max_run]. A flight's
-  // tread run plus one turn landing must fit: (R−1)·tread + landing_depth ≤
-  // max_run. If that's too tight, add more flights (shorter runs, more turns).
+  // `totalSteps` = RISER count; a flight of R risers has R−1 treads. The whole
+  // assembly must fit the allocated box [start, start+max_run] along `direction`:
+  // (R−1)·tread + landing_depth ≤ max_run; too tight ⇒ add flights.
   const singleRun = (totalSteps - 1) * tread;
   let numFlights: number;
   if (maxRun <= 0 || singleRun <= maxRun) {
@@ -108,96 +104,93 @@ export function expandStaircase(
     numFlights = Math.min(40, Math.max(2, Math.ceil(totalSteps / capRisers)));
   }
 
-  // --- Single flight: descends from the top (start) INTO `direction`, within
-  // [start, start+run]. It renders as a `opposite(direction)` flight whose
-  // TOP (high-z end) is at the start — so it falls as you move +direction.
+  // --- Single flight.
   if (numFlights <= 1) {
     const treads = Math.max(1, totalSteps - 1);
     const run = treads * tread;
     const o = stripMulti(sc);
-    o.direction = OPP[direction];
-    o.start_x = n(sc.start_x) + run * dvx; // bottom-near corner at the FAR (+dir) end
-    o.start_y = n(sc.start_y) + run * dvy;
     o.num_steps = treads;
-    o.z_offset = dz;
+    if (up) {
+      // Bottom-origin already: ascend from the start INTO `direction`.
+      o.direction = direction;
+      o.start_x = n(sc.start_x);
+      o.start_y = n(sc.start_y);
+      o.z_offset = bottomZ; // = anchorZ (the bottom)
+    } else {
+      // Descend from the top (start): render as opposite(direction) with the
+      // bottom-near corner at the FAR (+dir) end, dropped to top − totalRise.
+      o.direction = OPP[direction];
+      o.start_x = n(sc.start_x) + run * dvx;
+      o.start_y = n(sc.start_y) + run * dvy;
+      o.z_offset = bottomZ; // = topZ − totalRise
+    }
     return [o];
   }
 
-  // Balanced risers across flights (remainder falls to the bottom flight).
+  // Balanced risers across flights (remainder falls to the anchor flight).
   const perFlight = Math.ceil(totalSteps / numFlights);
-  const risersFromTop = (t: number) =>
+  const risersFor = (t: number) =>
     Math.max(0, Math.min(perFlight, totalSteps - t * perFlight));
   const flightRun = Math.max(1, perFlight - 1) * tread; // full flight tread run
 
-  // --- Build CANONICAL: box extends +Y from the top connection at (0,0); the
-  // stair descends into +Y within [0, flightRun + landing_depth]. Even (from the
-  // top) flights connect at the NEAR end and descend +Y; odd flights connect at
-  // the FAR end and descend −Y (adjacent lane). Turn landings sit at the end
-  // each flight bottoms out on. Then rotate +Y → `direction` + translate the top
-  // connection (0,0) → (start_x, start_y), and lift z so the top sits at topZ.
+  // --- Build CANONICAL along +Y from the ANCHOR connection at (0,0). For "down"
+  // the anchor is the TOP (z descends from 0); for "up" the BOTTOM (z ascends
+  // from 0). Even flights connect at the NEAR end, odd at the FAR end (adjacent
+  // lane). Turn landings sit at the platform each flight hands off on. Then rotate
+  // +Y → `direction`, translate (0,0) → (start_x, start_y), and lift z.
   type Item = { o: Obj; isStair: boolean };
   const items: Item[] = [];
-  let zTop = 0; // canonical z of the current flight's TOP platform (floor = 0)
+  const stepFields = { step_rise: riser, step_tread: tread, step_width: width };
+  let zCur = 0; // canonical z of the current flight's ANCHORED platform
   for (let t = 0; t < numFlights; t++) {
-    const risers = risersFromTop(t);
+    const risers = risersFor(t);
     if (risers <= 0) break;
     const treads = Math.max(1, risers - 1);
     const even = t % 2 === 0;
     const lane = even ? 0 : laneOffset;
-    const zBottom = zTop - risers * riser;
     const run = treads * tread;
-    items.push({
-      isStair: true,
-      o: even
-        ? {
-            // top at NEAR end (y=0), descends +Y → renders as "north"
-            type: "staircase",
-            direction: "north",
-            start_x: lane,
-            start_y: run,
-            num_steps: treads,
-            step_rise: riser,
-            step_tread: tread,
-            step_width: width,
-            z_offset: zBottom,
-          }
-        : {
-            // top at FAR end (y=flightRun), descends −Y → renders as "south"
-            type: "staircase",
-            direction: "south",
-            start_x: lane,
-            start_y: flightRun - run,
-            num_steps: treads,
-            step_rise: riser,
-            step_tread: tread,
-            step_width: width,
-            z_offset: zBottom,
-          },
-    });
-    if (t < numFlights - 1) {
-      // Turn landing at the platform this flight bottomed out on: even flights
-      // bottom at the FAR end, odd at the NEAR end. Both stay within [0,+Y].
+    if (up) {
+      const zBottomFlight = zCur;
+      const zTopFlight = zCur + risers * riser;
       items.push({
-        isStair: false,
-        o: {
-          type: "floor_slab",
-          x: landingX,
-          y: even ? flightRun : 0,
-          width: landingWidth,
-          length: landingDepth,
-          thickness: landingThickness,
-          z_offset: zBottom - landingThickness, // top flush with the platform
-        },
+        isStair: true,
+        o: even
+          ? { type: "staircase", direction: "south", start_x: lane, start_y: 0, num_steps: treads, ...stepFields, z_offset: zBottomFlight }
+          : { type: "staircase", direction: "north", start_x: lane, start_y: flightRun, num_steps: treads, ...stepFields, z_offset: zBottomFlight },
       });
+      if (t < numFlights - 1) {
+        // Landing at the TOP this flight reaches: even tops out at the FAR end,
+        // odd at the NEAR end; its top is flush with the platform (zTopFlight).
+        items.push({
+          isStair: false,
+          o: { type: "floor_slab", x: landingX, y: even ? flightRun : 0, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zTopFlight - landingThickness },
+        });
+      }
+      zCur = zTopFlight;
+    } else {
+      const zBottom = zCur - risers * riser;
+      items.push({
+        isStair: true,
+        o: even
+          ? { type: "staircase", direction: "north", start_x: lane, start_y: run, num_steps: treads, ...stepFields, z_offset: zBottom }
+          : { type: "staircase", direction: "south", start_x: lane, start_y: flightRun - run, num_steps: treads, ...stepFields, z_offset: zBottom },
+      });
+      if (t < numFlights - 1) {
+        items.push({
+          isStair: false,
+          o: { type: "floor_slab", x: landingX, y: even ? flightRun : 0, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zBottom - landingThickness },
+        });
+      }
+      zCur = zBottom;
     }
-    zTop = zBottom;
   }
 
-  // Rotate +Y → `direction`; the top connection is canonical (0,0) → translate
-  // to (start_x, start_y). Lift every z by topZ so the top platform is at topZ.
   const rotated = items.map((it) => ({ ...it, o: rotateObject(it.o, direction) }));
   const dx = n(sc.start_x);
   const dy = n(sc.start_y);
+  // The canonical anchor platform (flight 0) is at z=0, so lift the whole build by
+  // the anchor's real height. (For "down" that's the top; for "up" the bottom.)
+  const liftZ = anchorZ;
 
   const baseName = (sc.name as string) ?? "Stair";
   let fi = 0;
@@ -207,7 +200,7 @@ export function expandStaircase(
     if (typeof o.y === "number") o.y += dy;
     if (typeof o.start_x === "number") o.start_x += dx;
     if (typeof o.start_y === "number") o.start_y += dy;
-    o.z_offset = n(o.z_offset) + topZ;
+    o.z_offset = n(o.z_offset) + liftZ;
     if (sc.layer !== undefined) o.layer = sc.layer;
     if (isStair && sc.material !== undefined) o.material = sc.material;
     o.name = isStair ? `${baseName}_F${++fi}` : `${baseName}_L${++li}`;

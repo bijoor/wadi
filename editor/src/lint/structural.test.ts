@@ -139,6 +139,25 @@ describe("structural lint — C5 staircase must land on a floor, not below groun
     );
     expect(f.filter((x) => x.rule === "C5")).toHaveLength(0);
   });
+
+  it("does not flag a climb-up stair (it ascends from its floor, never below ground)", () => {
+    const f = lintStructure(
+      house([
+        { floor_number: 0, name: "Plinth", height: 30, objects: [{ type: "plinth", name: "P", x: 0, y: 0, width: 100, length: 100, height: 30 }] },
+        {
+          floor_number: 1,
+          name: "Ground",
+          height: 116,
+          objects: [
+            { type: "room", name: "R", x: 4, y: 4, width: 90, length: 90, walls: ["north", "south", "east", "west"] },
+            // Same numbers that would trip C5 as a `down` stair, but it climbs UP.
+            { type: "staircase", name: "S", climb: "up", start_x: 20, start_y: 20, step_rise: 7, step_tread: 11, step_width: 44, direction: "south", rise_height: 116 },
+          ],
+        },
+      ]),
+    );
+    expect(f.filter((x) => x.rule === "C5")).toHaveLength(0);
+  });
 });
 
 describe("structural lint — C2 rooms must wall every exterior side", () => {

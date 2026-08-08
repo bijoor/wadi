@@ -178,7 +178,7 @@ wall Name from (x1,y1) to (x2,y2) [height <h>] [height_end <h>] [facing north|�
 
 ```wdl
 staircase [name "N"] at (start_x, start_y) step (rise, tread, width)
-  direction north|south|east|west
+  direction north|south|east|west  [climb up|down]
   [total_height <h>] [max_run <r>] [landing_depth <d>]
   [landing_thickness <t>] [turn clockwise|anticlockwise] [flight_gap <g>]
 
@@ -186,29 +186,26 @@ kitchen [name "N"] path ((x,y), (x,y), …) side left|right
   depth <d> height <h> [base_z <z>]        // path points are literal numbers
 ```
 
-**Staircases are TOP-anchored — this is the #1 mistake.** You put a staircase on the
-**UPPER** floor and it **DESCENDS** to the floor below:
+**`climb` picks the anchor + z direction.** Prefer **`climb up`** — the intuitive way:
 
-- `at (x,y)` is the **TOP** of the stair (where it meets the floor it's declared on).
-- `direction` is the **descent** direction (the way it travels going *down*).
-- `total_height` is the **drop** to the floor below (omit → the floor-below's height).
+- Put the stair on the **LOWER** floor it rises FROM. `at (x,y)` is the **bottom** step's
+  near corner on that floor; `direction` is the **ascent** direction; the flight climbs UP.
+- `total_height` is the **rise** to the next level (omit → this floor's own height).
 - `max_run` caps a flight's run; exceed it and the stair auto-splits into switchback
   flights with turn landings (`landing_depth`/`turn`/`flight_gap` tune the switchback).
 
-So a stair connecting the ground floor **up** to the first floor lives on the **First
-Floor**, descending to the ground:
-
 ```wdl
-floor 2 "First Floor" height 116 {
+floor 1 "Ground Floor" height 116 {
   slab at (…) size (…)
-  staircase name "Stair" at (212, 64) step (7, 11, 44)   // top = this floor, at the landing
-    direction south total_height 116                     // descends south to the floor below
+  staircase name "Stair" at (212, 64) step (7, 11, 44)   // bottom = this floor
+    direction south climb up                             // ascends south to the floor above
 }
 ```
 
-Put it on the *lower* floor (thinking of it as "climbing up") and it descends the wrong way
-— **below ground** — where it draws in 2D plans but is buried/invisible in 3D. `check.sh`
-catches that (convention **C5**), but author it top-anchored from the start.
+`climb down` is the legacy mode (**DEFAULT** for older configs): put the stair on the
+**UPPER** destination floor; `at (x,y)` is the **top** connection, `direction` is the
+descent, and `total_height` defaults to the floor-below's height. New designs should use
+`climb up`.
 
 // three ways to name the GLB, in order of preference:
 item [name "N"] f."sofa"                                  // 1. from an imported module (see Imports)
