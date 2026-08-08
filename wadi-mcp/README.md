@@ -16,6 +16,7 @@ repo; this server replaces them for agents that speak MCP.)
 | Tool | What it does |
 | --- | --- |
 | `wadi_check` | Compile + validate a `.wdl`: parse, resolve formulas/grids, schema + wall/roof geometry, and the structural conventions (C1/C2/C3). Returns pass/fail + errors/warnings. **Run after every edit.** |
+| `wadi_scope` | Resolve a `.wdl`'s **variables, points & grid lines** to their actual values (with each variable's formula). See what `main.x2` / `House.W/2` resolves to before placing an object. |
 | `wadi_preview` | Render a `.wdl` to **PNG images** you can look at — floor plans, elevations, roof top view. Confirm layout/sizes/openings/roof visually. |
 | `wadi_examples` | List, or fetch the full source of, a validated example `.wdl` (`minimal` / `two_room` / `two_story` / `coastal` / `complete`). Copy from these. |
 | `wadi_reference` | The authoring docs, embedded: `guide`, `dsl`, `conventions`, `coordinate-system`, `parametric-conventions`, `roof-v2-guide`, `data-model`. |

@@ -5,6 +5,7 @@
 
 import { compileDsl } from "../../wadi-dsl/src/generator/toHouseConfig";
 import { resolveParametric } from "../../editor/src/param/resolve";
+import { buildRefsView, type RefsView } from "../../editor/src/param/refsView";
 import { validate } from "../../editor/src/schema/houseConfig";
 import { registerExposedComponents } from "../../editor/src/registry/promote";
 import { computeMergedV2Spec } from "../../editor/src/svg2d/roof/v2/computeFromHouse";
@@ -44,6 +45,15 @@ export function compileConfig(wdl: string): Cfg {
   registerExposedComponents(compiled as never);
   const { config } = resolveParametric(compiled as never);
   return config as Cfg;
+}
+
+/** The resolved variables, points, and grid lines an author can reference in
+ *  `= formulas`, with their computed values. Compiles the .wdl (BEFORE resolving,
+ *  so it works even when parametric geometry has issues) then shapes the scope. */
+export function scopeWdl(wdl: string): RefsView {
+  const compiled = compileDsl(wdl, { resolveModule: stdResolveModule }); // throws on parse error
+  registerExposedComponents(compiled as never);
+  return buildRefsView(compiled as never);
 }
 
 /** Full check: parse + resolve + schema + wall/roof geometry + structural conventions. */

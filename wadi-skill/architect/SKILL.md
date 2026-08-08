@@ -141,8 +141,9 @@ error — fix the `.wdl` and re-run before telling the user anything is ready.
 
 **If you have the `wadi_*` MCP tools** (from the `wadi-mcp` server) instead of a repo
 checkout, use them — they're the same pipeline, no clone needed: `wadi_check(wdl)` for
-this step, `wadi_preview(wdl)` for the images below, and `wadi_examples` / `wadi_reference`
-for the examples and these docs.
+this step, `wadi_preview(wdl)` for the images below, `wadi_scope(wdl)` to see the actual
+resolved value of every variable/point/grid line before you place an object on it, and
+`wadi_examples` / `wadi_reference` for the examples and these docs.
 
 ## See your work (don't author blind)
 

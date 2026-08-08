@@ -12,7 +12,7 @@ import { z } from "zod";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkWdl, compileConfig, renderSvgs, rasterize, ALL_VIEWS, type ViewName } from "./pipeline";
+import { checkWdl, compileConfig, renderSvgs, rasterize, scopeWdl, ALL_VIEWS, type ViewName } from "./pipeline";
 import { appReachable, appLoad, appCapture, APP_NOT_RUNNING } from "./appBridge";
 import { EXAMPLES, DOCS, MODULES } from "./assets.generated";
 import { moduleExports } from "../../wadi-dsl/src/generator/toHouseConfig";
@@ -56,6 +56,46 @@ server.registerTool(
     for (const e of r.errors) lines.push(`  ✖ ${e.rule ? `[${e.rule}] ` : ""}${e.message}`);
     for (const w of r.warnings) lines.push(`  ⚠ ${w.rule ? `[${w.rule}] ` : ""}${w.message}`);
     return { content: [{ type: "text", text: lines.join("\n") }], structuredContent: r };
+  },
+);
+
+// ---- wadi_scope --------------------------------------------------------------
+server.registerTool(
+  "wadi_scope",
+  {
+    title: "Resolve a Wadi design's variables, points & grid lines",
+    description:
+      "Compile a .wdl and return every symbol you can reference in an `= formula` with its RESOLVED " +
+      "numeric value: variables (with their formula source), point coordinates (x/y, also referenceable " +
+      "as .w/.l), and grid lines (`<grid>.x1`, `<grid>.yA`, …). Use it to see the ACTUAL numbers a formula " +
+      "will produce before you place an object (e.g. what `main.x2` or `House.W/2` resolves to). ⚠ = unresolved.",
+    inputSchema: { wdl: z.string().describe("The full .wdl source text.") },
+  },
+  async ({ wdl }) => {
+    let view;
+    try {
+      view = scopeWdl(wdl);
+    } catch (e) {
+      return {
+        content: [{ type: "text", text: "❌ Could not compile: " + (e as Error).message + "\nRun wadi_check for details." }],
+        isError: true,
+      };
+    }
+    const fmt = (v: number | null) =>
+      v === null ? "⚠" : Number.isInteger(v) ? String(v) : String(Math.round(v * 1000) / 1000);
+    const lines: string[] = [];
+    lines.push("Variables:");
+    if (!view.variables.length) lines.push("  (none)");
+    for (const v of view.variables) lines.push(`  ${v.name} = ${fmt(v.value)}${v.formula ? `   ${v.formula}` : ""}`);
+    lines.push("Points (x/y, also .w/.l):");
+    if (!view.points.length) lines.push("  (none)");
+    for (const p of view.points) lines.push(`  ${p.name}: x ${fmt(p.x)} · y ${fmt(p.y)}`);
+    for (const g of view.grids) {
+      lines.push(`Grid "${g.id}":`);
+      for (const l of g.xLines) lines.push(`  ${g.id}.x${l.name} = ${fmt(l.value)}`);
+      for (const l of g.yLines) lines.push(`  ${g.id}.y${l.name} = ${fmt(l.value)}`);
+    }
+    return { content: [{ type: "text", text: lines.join("\n") }], structuredContent: view as unknown as Record<string, unknown> };
   },
 );
 
