@@ -320,8 +320,10 @@ RoomWall:
         ('{' openings+=Opening* '}')?;
 Opening:
     kind=('door' | 'window') name=NameRef
-    'at' offset=Expr 'size' '(' width=Expr ',' height=Expr ')'
+    'at' offset=Expr ('from' anchor=OpeningAnchor)? 'size' '(' width=Expr ',' height=Expr ')'
     ('sill' sill=Expr)? (open?='open')? ('direction' direction=Side)?;
+OpeningAnchor returns string:
+    'start' | 'center' | 'end';
 Side returns string:
     'north' | 'south' | 'east' | 'west';
 

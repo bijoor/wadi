@@ -436,7 +436,8 @@ The plinth is now a normal object placed on the "Plinth" floor (the first floor,
 | `kind` | enum: `door` `window` | **yes** |  |
 | `name` | string |  |  |
 | `formulas` | map: field name → `"= formula"` string |  | Numeric fields hold the RESOLVED value; a `= formula` for any of them lives in `formulas` (e.g. formulas.offset), evaluated by resolveParametric against the house variables/points — same pattern as every other object. |
-| `offset` | number ≥ 0 | **yes** |  |
+| `offset` | number | **yes** | Any number: `center` anchor takes a signed shift; the resolved placement is fit-checked against the wall in expand.ts, so a bad value errors there. |
+| `anchor` | enum: `start` `center` `end` |  | Which end of the wall `offset` is measured from, so the opening holds its place when the wall/room scales — no formula needed. `start` (default, legacy): offset from the wall start to the near edge. `end`: offset from the wall end to the far edge (0 = flush to the end). `center`: signed shift of the opening centre from the wall midpoint (0 = centred; may be negative). Resolved to a start-based offset in expand.ts (openingAnchor.ts). |
 | `width` | number > 0 | **yes** |  |
 | `height` | number > 0 | **yes** |  |
 | `sill_height` | number |  |  |

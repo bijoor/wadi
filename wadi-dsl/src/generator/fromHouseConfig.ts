@@ -83,7 +83,9 @@ const size = (o: Obj) => `size (${fld(o, "width")}, ${fld(o, "length")})`;
 // ---- objects --------------------------------------------------------------
 
 function emitOpening(op: Obj): string {
-  let s = `${op.kind} ${nameTok(op.name)} at ${fld(op, "offset")} size (${fld(op, "width")}, ${fld(op, "height")})`;
+  const anchor = op.anchor as string | undefined;
+  const from = anchor && anchor !== "start" ? ` from ${anchor}` : "";
+  let s = `${op.kind} ${nameTok(op.name)} at ${fld(op, "offset")}${from} size (${fld(op, "width")}, ${fld(op, "height")})`;
   if (has(op, "sill_height")) s += ` sill ${fld(op, "sill_height")}`;
   else if (has(op, "sill")) s += ` sill ${fld(op, "sill")}`;
   if (op.open) s += " open";

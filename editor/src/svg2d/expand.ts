@@ -13,6 +13,7 @@ import { resolveParametric } from "../param/resolve";
 import { buildScope } from "../param/resolve";
 import { evalFormula } from "../param/formula";
 import { expandStaircase } from "./stairExpand";
+import { resolveOpeningAnchors } from "./openingAnchor";
 import { anchorItem, anchorFacing, type RoomRect } from "./furnitureAnchor";
 import { getNode } from "../registry/registry";
 
@@ -706,9 +707,10 @@ function expandRoom(room: Room, wallThickness: number): [Obj, Obj[]] {
     const openings = wc?.openings ?? [];
     if (openings.length === 0) continue;
     const wallLength = side === "north" || side === "south" ? rw : rl;
-    validateOpenings(openings, `Room '${rname}' ${side} wall`, wallLength);
-    for (let i = 0; i < openings.length; i++) {
-      const flat = roomOpeningToFlat(rname, side, t, rx, ry, rw, rl, openings[i], i);
+    const placed = resolveOpeningAnchors(openings, wallLength);
+    validateOpenings(placed, `Room '${rname}' ${side} wall`, wallLength);
+    for (let i = 0; i < placed.length; i++) {
+      const flat = roomOpeningToFlat(rname, side, t, rx, ry, rw, rl, placed[i], i);
       (flat.type === "door" ? doorExtras : windowExtras).push(flat);
     }
   }
@@ -804,7 +806,8 @@ function expandWall(wall: Wall, wallThickness: number): [Obj, Obj[]] {
     uy = dy / length;
 
   const defaultFacing = inferDefaultFacing(dx, dy, wallName, wall.facing);
-  validateOpenings(openings, `Wall '${wallName}'`, length);
+  const placed = resolveOpeningAnchors(openings, length);
+  validateOpenings(placed, `Wall '${wallName}'`, length);
 
   // Use the house's resolved wall thickness (not the code default) so the
   // opening's normal-shift matches how the 3D renderer un-shifts it — a

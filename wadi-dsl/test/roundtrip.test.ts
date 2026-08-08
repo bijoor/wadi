@@ -135,6 +135,36 @@ describe("Wadi DSL round-trip", () => {
     expect(room.walls.south.openings).toHaveLength(1);
   });
 
+  it("opening anchor: `at 0 from end` places the same as the equivalent start offset", () => {
+    // North wall is 200 wide; a 40-wide door flush to the END (offset 0 from end)
+    // must land exactly where a start-anchored door at offset 160 lands.
+    const mk = (opening: string) => `house W {
+      site { plot (300, 300) }
+      floor 0 "G" {
+        room R at (0, 0) size (200, 150) { wall north { ${opening} } }
+      }
+    }`;
+    const expand = (wdl: string) => {
+      const cfg = resolveParametric(compileDsl(wdl) as never).config;
+      const ex = expandRoomWalls(cfg as never) as { floors: { objects: any[] }[] };
+      return ex.floors[0].objects.find((o) => o.type === "door");
+    };
+    const fromEnd = expand(mk(`door D at 0 from end size (40, 84)`));
+    const fromStart = expand(mk(`door D at 160 size (40, 84)`));
+    expect(fromEnd).toBeDefined();
+    expect({ x: fromEnd.x, y: fromEnd.y }).toEqual({ x: fromStart.x, y: fromStart.y });
+    // the anchor is resolved away during expand — renderers see a plain door
+    expect("anchor" in fromEnd).toBe(false);
+  });
+
+  it("opening anchor: compiles onto the opening and survives decompile", () => {
+    const cfg = compileDsl(`house W {
+      floor 0 "G" { room R at (0,0) size (200,150) { wall north { window N at 10 from center size (40,40) } } }
+    }`) as { floors: { objects: any[] }[] };
+    const room = cfg.floors[0].objects.find((o) => o.name === "R");
+    expect(room.walls.north.openings[0].anchor).toBe("center");
+  });
+
   it("item shorthand: a top-level `asset` decl + `item \"id\"` == the inline asset block", () => {
     const shorthand = `house T {
       asset "mybed" src "https://x/bed.glb" dims (1.5, 0.5, 2.0) name "My Bed" category "Bedroom"

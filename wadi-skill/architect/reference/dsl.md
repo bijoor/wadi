@@ -138,17 +138,22 @@ only when it carries a door/window; omit a side to leave it open (verandah).
 ```wdl
 room Name at (x,y) size (w,l) [height <h>] [material "…"] {
   wall east west north                 // plain walls — several in one statement
-  wall south { door Main at <offset> size (w,h) [open] }   // wall WITH openings: one side
-  wall west  { window W at <offset> size (w,h) [sill <s>] [open] }
+  wall south { door Main at <offset> [from start|center|end] size (w,h) [open] }   // wall WITH openings
+  wall west  { window W at <offset> [from start|center|end] size (w,h) [sill <s>] [open] }
   item asset { … } anchor center [gap (gx,gy)]   // furniture anchored inside the room
 }
 ```
 
 - `wall <side>…` sides are `north|south|east|west`. A `wall <side>` line may also
   add `height <h>` / `height_end <h>` (sloped).
-- `door`/`window` `at <offset>` is measured along the wall from its start;
-  `size (width, height)`; `window … sill <s>` sets the sill height; `open` = a bare
-  hole (no leaf/glazing).
+- `door`/`window` `at <offset>` is measured along the wall; `size (width, height)`;
+  `window … sill <s>` sets the sill height; `open` = a bare hole (no leaf/glazing).
+- `from start|center|end` (default `start`) picks which end `<offset>` is measured
+  from, so the opening keeps its place when the wall or room scales — no formula
+  needed. `start`: offset from the wall start to the near edge (the legacy default).
+  `end`: offset from the wall end to the far edge (`at 0 from end` = flush to the end).
+  `center`: signed shift of the opening centre from the wall midpoint (`at 0 from
+  center` = centred; the offset may be negative).
 
 A **free-standing wall** (not a room side):
 

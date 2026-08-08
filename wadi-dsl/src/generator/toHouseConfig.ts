@@ -184,6 +184,7 @@ function opening(o: ast.Opening): Record<string, unknown> {
   };
   const s = put("sill_height", o.sill);
   if (s !== undefined) obj.sill_height = s;
+  if (o.anchor) obj.anchor = o.anchor;
   if (o.open) obj.open = true;
   if (o.direction) obj.direction = o.direction;
   return done(obj, formulas);

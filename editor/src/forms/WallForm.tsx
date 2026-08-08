@@ -9,6 +9,12 @@ const KINDS = [
   { value: "window" as const, label: "Window" },
 ];
 
+const OPENING_ANCHORS = [
+  { value: "start" as const, label: "Start of wall" },
+  { value: "center" as const, label: "Centre of wall" },
+  { value: "end" as const, label: "End of wall" },
+];
+
 export function WallForm({ wall, selection }: { wall: Wall; selection: Selection }) {
   const replace = useConfigStore((s) => s.replaceObject);
   const patch = (next: Partial<Wall>) => replace(selection, { ...wall, ...next });
@@ -143,14 +149,28 @@ export function WallForm({ wall, selection }: { wall: Wall; selection: Selection
               onChange={(v) => updateOpening(i, { kind: v })}
               options={KINDS}
             />
+            <SelectField
+              label="Anchor"
+              hint="which end offset is measured from; keeps the opening in place as the wall scales"
+              value={op.anchor ?? "start"}
+              onChange={(v) => updateOpening(i, { anchor: v === "start" ? undefined : (v as Opening["anchor"]) })}
+              options={OPENING_ANCHORS}
+            />
             <div className="grid grid-cols-2 gap-x-2">
               <ObjectMeasureField
                 object={op as unknown as Record<string, unknown>}
                 field="offset"
                 label="Offset"
                 patch={(p) => updateOpening(i, p as Partial<Opening>)}
-                min={0}
-                max={wallLength}
+                min={(op.anchor ?? "start") === "center" ? undefined : 0}
+                max={(op.anchor ?? "start") === "center" ? undefined : wallLength}
+                hint={
+                  (op.anchor ?? "start") === "end"
+                    ? "from wall end (0 = flush)"
+                    : (op.anchor ?? "start") === "center"
+                      ? "shift from centre (±, 0 = centred)"
+                      : `from wall start (0..${wallLength})`
+                }
               />
               <ObjectMeasureField
                 object={op as unknown as Record<string, unknown>}

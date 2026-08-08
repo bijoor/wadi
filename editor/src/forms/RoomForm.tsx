@@ -13,6 +13,12 @@ const KINDS = [
   { value: "window" as const, label: "Window" },
 ];
 
+const OPENING_ANCHORS = [
+  { value: "start" as const, label: "Start of wall" },
+  { value: "center" as const, label: "Centre of wall" },
+  { value: "end" as const, label: "End of wall" },
+];
+
 // Rebinds room.walls[side].openings via replaceObject. All edits go
 // through the store's replaceObject so undo/redo capture the whole
 // prev/next snapshot.
@@ -337,15 +343,28 @@ function OpeningRow({
         onChange={(v) => onChange({ kind: v })}
         options={KINDS}
       />
+      <SelectField
+        label="Anchor"
+        hint="which end offset is measured from; keeps the opening in place as the wall scales"
+        value={opening.anchor ?? "start"}
+        onChange={(v) => onChange({ anchor: v === "start" ? undefined : (v as Opening["anchor"]) })}
+        options={OPENING_ANCHORS}
+      />
       <div className="grid grid-cols-2 gap-x-2">
         <ObjectMeasureField
           object={opening as unknown as Record<string, unknown>}
           field="offset"
           label="Offset"
           patch={(p) => onChange(p as Partial<Opening>)}
-          min={0}
-          max={wallLength}
-          hint={`along wall (0..${wallLength})`}
+          min={(opening.anchor ?? "start") === "center" ? undefined : 0}
+          max={(opening.anchor ?? "start") === "center" ? undefined : wallLength}
+          hint={
+            (opening.anchor ?? "start") === "end"
+              ? `from wall end (0 = flush)`
+              : (opening.anchor ?? "start") === "center"
+                ? `shift from centre (± , 0 = centred)`
+                : `from wall start (0..${wallLength})`
+          }
         />
         <ObjectMeasureField
           object={opening as unknown as Record<string, unknown>}
