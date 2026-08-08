@@ -66,13 +66,10 @@ import { getPersona, isOwner, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPe
 import {
   fetchCatalogText,
   loadCatalog,
-  templatesBaseUrl,
-  setTemplatesBaseUrl,
-  isRemoteCatalog,
-  sourceKind,
-  driveApiKey,
-  setDriveApiKey,
+  templateSource,
+  setTemplateSource,
   resetCatalogSource,
+  type TemplateSource,
 } from "../io/templateSource";
 import { mountConfiguratorPanel } from "./configuratorPanel";
 import { writeValue } from "../configurator/spec";
@@ -2387,7 +2384,7 @@ async function openNewHouseModal(): Promise<void> {
   } catch (e) {
     grid.innerHTML =
       `<div class="new-house-modal-empty" style="color:#b00">
-        Couldn't load the template catalog from ${escapeHtml(templatesBaseUrl())}: ${e instanceof Error ? e.message : String(e)}
+        Couldn't load the template catalog (${escapeHtml(sourceLabel())}): ${e instanceof Error ? e.message : String(e)}
       </div>`;
     return;
   }
@@ -2405,18 +2402,26 @@ async function openNewHouseModal(): Promise<void> {
   renderTemplateCards();
 }
 
-// Small footer control (architect only) showing where templates come from and
-// letting anyone point the app at a cloud catalog + refresh. Shown to owners
-// too so they can see (and change) where their homes come from.
+// A human label for a templates source, used in the bar and error messages.
+function sourceLabel(s: TemplateSource = templateSource()): string {
+  switch (s.kind) {
+    case "default": return "Wadi hosted";
+    case "bundled": return "bundled with the app";
+    case "local": return `folder: ${s.dir}`;
+    case "url": return s.url;
+    case "gdrive": return `${s.url} (Google Drive)`;
+  }
+}
+
+// Footer control: shows where templates come from and lets anyone pick a source.
+// A single "kind" selector drives which field(s) show, so the four source types
+// (Wadi hosted / bundled / local folder / web address / Google Drive) are one
+// well-defined preference instead of three overlapping settings.
 function renderCatalogSourceBar(): void {
   const bar = document.getElementById("new-house-modal-source");
   if (!bar) return;
-  const base = templatesBaseUrl();
-  const kindLabel = isRemoteCatalog()
-    ? `${escapeHtml(base)}${sourceKind() === "gdrive" ? " (Google Drive)" : ""}`
-    : "bundled with the app";
   bar.innerHTML =
-    `<span class="tpl-source-label">Templates: <b>${kindLabel}</b></span>
+    `<span class="tpl-source-label">Templates: <b>${escapeHtml(sourceLabel())}</b></span>
      <button type="button" class="tpl-source-btn" id="tpl-source-set">Change source…</button>
      <button type="button" class="tpl-source-btn" id="tpl-source-refresh">↻ Refresh</button>`;
   document.getElementById("tpl-source-refresh")?.addEventListener("click", () => {
@@ -2424,40 +2429,90 @@ function renderCatalogSourceBar(): void {
     thumbCache.clear();
     void openNewHouseModal();
   });
-  document.getElementById("tpl-source-set")?.addEventListener("click", () => {
-    // Inline editor (window.prompt is unavailable in the Tauri WKWebView). The
-    // Drive API-key row appears only when the URL looks like a Google Drive folder.
-    bar.innerHTML =
-      `<span class="tpl-source-label">Catalog URL:</span>
-       <input type="text" id="tpl-source-input" class="tpl-source-input"
-              placeholder="https://… R2/jsDelivr, or a Drive folder link (blank = bundled)"
-              value="${isRemoteCatalog() ? escapeHtml(base) : ""}" />
-       <input type="text" id="tpl-drive-key" class="tpl-source-input tpl-drive-key"
-              placeholder="Google Drive API key" value="${escapeHtml(driveApiKey())}" />
-       <button type="button" class="tpl-source-btn" id="tpl-source-save">Save</button>
-       <button type="button" class="tpl-source-btn" id="tpl-source-cancel">Cancel</button>`;
-    const input = document.getElementById("tpl-source-input") as HTMLInputElement | null;
-    const keyInput = document.getElementById("tpl-drive-key") as HTMLInputElement | null;
-    const syncKeyVisibility = () => {
-      if (keyInput) keyInput.style.display = sourceKind(input?.value ?? "") === "gdrive" ? "" : "none";
-    };
-    syncKeyVisibility();
-    input?.addEventListener("input", syncKeyVisibility);
-    input?.focus();
-    const save = () => {
-      setTemplatesBaseUrl(input?.value.trim() || null);
-      setDriveApiKey(keyInput?.value.trim() || null);
-      resetCatalogSource();
-      thumbCache.clear();
-      void openNewHouseModal();
-    };
-    document.getElementById("tpl-source-save")?.addEventListener("click", save);
-    input?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") save();
-      else if (e.key === "Escape") renderCatalogSourceBar();
-    });
-    document.getElementById("tpl-source-cancel")?.addEventListener("click", () => renderCatalogSourceBar());
-  });
+  document.getElementById("tpl-source-set")?.addEventListener("click", () => openCatalogSourceEditor(bar));
+}
+
+function openCatalogSourceEditor(bar: HTMLElement): void {
+  const cur = templateSource();
+  let pickedDir = cur.kind === "local" ? cur.dir : "";
+  const curUrl = cur.kind === "url" || cur.kind === "gdrive" ? cur.url : "";
+  const curKey = cur.kind === "gdrive" ? cur.apiKey : "";
+  const localOpt = isTauri()
+    ? `<option value="local"${cur.kind === "local" ? " selected" : ""}>A folder on this computer</option>`
+    : "";
+  bar.innerHTML =
+    `<span class="tpl-source-label">Templates from:</span>
+     <select id="tpl-kind" class="tpl-source-input">
+       <option value="default"${cur.kind === "default" ? " selected" : ""}>Wadi hosted (default)</option>
+       <option value="bundled"${cur.kind === "bundled" ? " selected" : ""}>Bundled with the app</option>
+       ${localOpt}
+       <option value="url"${cur.kind === "url" ? " selected" : ""}>A web address (R2 / jsDelivr)</option>
+       <option value="gdrive"${cur.kind === "gdrive" ? " selected" : ""}>A Google Drive folder</option>
+     </select>
+     <span id="tpl-fields"></span>
+     <button type="button" class="tpl-source-btn" id="tpl-source-save">Save</button>
+     <button type="button" class="tpl-source-btn" id="tpl-source-cancel">Cancel</button>`;
+  const kindSel = document.getElementById("tpl-kind") as HTMLSelectElement;
+  const fields = document.getElementById("tpl-fields")!;
+
+  const renderFields = () => {
+    const kind = kindSel.value;
+    if (kind === "url") {
+      fields.innerHTML = `<input type="text" id="tpl-url" class="tpl-source-input"
+          placeholder="https://your-host/…" value="${escapeHtml(curUrl)}" />`;
+    } else if (kind === "gdrive") {
+      fields.innerHTML =
+        `<input type="text" id="tpl-url" class="tpl-source-input" placeholder="Drive folder share link"
+                value="${escapeHtml(curUrl)}" />
+         <input type="text" id="tpl-key" class="tpl-source-input" placeholder="Google Drive API key"
+                value="${escapeHtml(curKey)}" />`;
+    } else if (kind === "local") {
+      fields.innerHTML =
+        `<button type="button" class="tpl-source-btn" id="tpl-pick">Choose folder…</button>
+         <span class="tpl-source-label" id="tpl-dir">${escapeHtml(pickedDir || "no folder chosen")}</span>`;
+      document.getElementById("tpl-pick")?.addEventListener("click", async () => {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const picked = await open({ directory: true, title: "Choose your templates folder" });
+        if (typeof picked === "string") {
+          pickedDir = picked;
+          const dirEl = document.getElementById("tpl-dir");
+          if (dirEl) dirEl.textContent = picked;
+        }
+      });
+    } else {
+      fields.innerHTML = ""; // default / bundled need no field
+    }
+  };
+  renderFields();
+  kindSel.addEventListener("change", renderFields);
+
+  const save = () => {
+    const kind = kindSel.value;
+    let next: TemplateSource;
+    if (kind === "url") {
+      const url = (document.getElementById("tpl-url") as HTMLInputElement | null)?.value.trim() ?? "";
+      if (!url) return; // nothing to save
+      next = { kind: "url", url };
+    } else if (kind === "gdrive") {
+      const url = (document.getElementById("tpl-url") as HTMLInputElement | null)?.value.trim() ?? "";
+      const apiKey = (document.getElementById("tpl-key") as HTMLInputElement | null)?.value.trim() ?? "";
+      if (!url) return;
+      next = { kind: "gdrive", url, apiKey };
+    } else if (kind === "local") {
+      if (!pickedDir) return; // need a folder
+      next = { kind: "local", dir: pickedDir };
+    } else if (kind === "bundled") {
+      next = { kind: "bundled" };
+    } else {
+      next = { kind: "default" };
+    }
+    setTemplateSource(next);
+    resetCatalogSource();
+    thumbCache.clear();
+    void openNewHouseModal();
+  };
+  document.getElementById("tpl-source-save")?.addEventListener("click", save);
+  document.getElementById("tpl-source-cancel")?.addEventListener("click", () => renderCatalogSourceBar());
 }
 
 // Distinct non-placeholder values of a meta field across the loaded templates.

@@ -34,77 +34,109 @@ import { entryFromConfig, type TemplateEntry } from "../templatePackage/catalogM
 export const REMOTE_TEMPLATES_URL = "https://templates.wadi.house";
 
 const BUNDLED_BASE = "/templates";
-const OVERRIDE_KEY = "wadi.templatesUrl";
-const DRIVE_KEY_KEY = "wadi.driveApiKey";
-const LOCAL_DIR_KEY = "wadi.templatesDir";
 const CACHE_DIR = "templates-cache";
+const SOURCE_KEY = "wadi.templateSource";
+// Pre-unification keys — migrated once into SOURCE_KEY, then removed.
+const LEGACY_KEYS = { url: "wadi.templatesUrl", drive: "wadi.driveApiKey", dir: "wadi.templatesDir" };
 
 const isTemplateFile = (name: string) =>
   /\.(wadi|json)$/i.test(name) && name !== "index.json" && name !== "manifest.json";
 
-/** A local templates FOLDER (desktop only): the author manages `.wadi` files in
- *  it with Finder, and the app lists + indexes it — no publish, no index file.
- *  This is the same folder the Publish panel saves into. Empty string → unset. */
-export function localTemplatesDir(): string {
-  if (!isTauri()) return "";
+const stripTrailingSlash = (u: string) => u.replace(/\/+$/, "");
+
+// The ONE templates-source preference. Everything about "where do templates come
+// from" derives from this. `default` = the Wadi-hosted catalog (REMOTE_TEMPLATES_URL).
+export type TemplateSource =
+  | { kind: "default" }
+  | { kind: "bundled" }
+  | { kind: "local"; dir: string }
+  | { kind: "url"; url: string }
+  | { kind: "gdrive"; url: string; apiKey: string };
+
+const DEFAULT_SOURCE: TemplateSource = { kind: "default" };
+
+function readKey(key: string): string {
   try {
-    return localStorage.getItem(LOCAL_DIR_KEY)?.trim() ?? "";
+    return localStorage.getItem(key)?.trim() ?? "";
   } catch {
     return "";
   }
 }
-export function setLocalTemplatesDir(dir: string | null): void {
+
+// Fold the old three keys into one TemplateSource (once), then delete them.
+function migrateLegacy(): TemplateSource | null {
+  const dir = readKey(LEGACY_KEYS.dir);
+  const url = readKey(LEGACY_KEYS.url);
+  if (dir) return { kind: "local", dir };
+  if (url) {
+    return driveFolderId(url)
+      ? { kind: "gdrive", url: stripTrailingSlash(url), apiKey: readKey(LEGACY_KEYS.drive) }
+      : { kind: "url", url: stripTrailingSlash(url) };
+  }
+  return null;
+}
+
+/** The active templates-source preference (single source of truth). */
+export function templateSource(): TemplateSource {
+  const raw = readKey(SOURCE_KEY);
+  if (raw) {
+    try {
+      const p = JSON.parse(raw) as TemplateSource;
+      if (p && typeof p === "object" && typeof p.kind === "string") return p;
+    } catch {
+      /* corrupt — fall through to default */
+    }
+  }
+  const migrated = migrateLegacy();
+  if (migrated) {
+    setTemplateSource(migrated);
+    try {
+      for (const k of Object.values(LEGACY_KEYS)) localStorage.removeItem(k);
+    } catch {
+      /* ignore */
+    }
+    return migrated;
+  }
+  return DEFAULT_SOURCE;
+}
+
+/** Persist the templates-source preference. */
+export function setTemplateSource(p: TemplateSource): void {
   try {
-    if (dir && dir.trim()) localStorage.setItem(LOCAL_DIR_KEY, dir.trim());
-    else localStorage.removeItem(LOCAL_DIR_KEY);
+    localStorage.setItem(SOURCE_KEY, JSON.stringify(p));
   } catch {
     /* ignore */
   }
 }
 
-const stripTrailingSlash = (u: string) => u.replace(/\/+$/, "");
+// --- derived views (the rest of the module + the UI read these) --------------
 
-/** The active catalog source URL (no trailing slash). */
+/** A local templates FOLDER (desktop only): the app lists + indexes it, and the
+ *  Publish panel saves into it. Empty string when the source isn't a local one. */
+export function localTemplatesDir(): string {
+  if (!isTauri()) return "";
+  const s = templateSource();
+  return s.kind === "local" ? s.dir : "";
+}
+
+/** The active catalog base URL (for the generic/gdrive/default HTTP adapters). */
 export function templatesBaseUrl(): string {
-  try {
-    const override = localStorage.getItem(OVERRIDE_KEY);
-    if (override && override.trim()) return stripTrailingSlash(override.trim());
-  } catch {
-    /* localStorage blocked — ignore */
-  }
-  return REMOTE_TEMPLATES_URL ? stripTrailingSlash(REMOTE_TEMPLATES_URL) : BUNDLED_BASE;
-}
-
-/** Persist a user override (empty string clears it → back to the default). */
-export function setTemplatesBaseUrl(url: string | null): void {
-  try {
-    if (url && url.trim()) localStorage.setItem(OVERRIDE_KEY, stripTrailingSlash(url.trim()));
-    else localStorage.removeItem(OVERRIDE_KEY);
-  } catch {
-    /* ignore */
-  }
+  const s = templateSource();
+  if (s.kind === "url" || s.kind === "gdrive") return stripTrailingSlash(s.url);
+  if (s.kind === "bundled" || s.kind === "local") return BUNDLED_BASE;
+  return stripTrailingSlash(REMOTE_TEMPLATES_URL); // default
 }
 
 /** Google API key used by the Drive adapter (read of public files). */
 export function driveApiKey(): string {
-  try {
-    return localStorage.getItem(DRIVE_KEY_KEY)?.trim() ?? "";
-  } catch {
-    return "";
-  }
-}
-export function setDriveApiKey(key: string | null): void {
-  try {
-    if (key && key.trim()) localStorage.setItem(DRIVE_KEY_KEY, key.trim());
-    else localStorage.removeItem(DRIVE_KEY_KEY);
-  } catch {
-    /* ignore */
-  }
+  const s = templateSource();
+  return s.kind === "gdrive" ? s.apiKey : "";
 }
 
-/** True when the catalog is served from somewhere other than the bundled copy. */
+/** True when the catalog is served from a remote host (not bundled or local). */
 export function isRemoteCatalog(): boolean {
-  return templatesBaseUrl() !== BUNDLED_BASE;
+  const k = templateSource().kind;
+  return k === "default" || k === "url" || k === "gdrive";
 }
 
 // --- source detection --------------------------------------------------------

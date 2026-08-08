@@ -39,6 +39,7 @@ import {
 import { registerWadiLsp } from "./lsp";
 import { initPublishPanel, type PublishResult } from "./publishPanel";
 import type { TemplatePackage } from "../../editor/src/templatePackage/assemble";
+import { localTemplatesDir, setTemplateSource } from "../../editor/src/io/templateSource";
 import { resolveParametric } from "../../editor/src/param/resolve";
 import {
   lintStructure,
@@ -636,11 +637,11 @@ async function doPublish(pkg: TemplatePackage): Promise<PublishResult> {
 }
 
 // Desktop: save the file into the managed templates folder — the SAME folder the
-// app auto-indexes FROM (localStorage `wadi.templatesDir`), so a saved template
-// shows up in the gallery straight away. The browser build never reaches this.
-const TEMPLATES_DIR_KEY = "wadi.templatesDir";
+// app auto-indexes FROM (the unified `templateSource` preference), so a saved
+// template shows up in the gallery straight away. Choosing a folder here also
+// makes it the active catalog source. The browser build never reaches this.
 async function publishTemplateDesktop(pkg: TemplatePackage): Promise<PublishResult> {
-  let dir = localStorage.getItem(TEMPLATES_DIR_KEY) || "";
+  let dir = localTemplatesDir();
   if (!dir) {
     const { open } = await import("@tauri-apps/plugin-dialog");
     const picked = await open({
@@ -649,7 +650,7 @@ async function publishTemplateDesktop(pkg: TemplatePackage): Promise<PublishResu
     });
     if (typeof picked !== "string") return { ok: false, message: "Save cancelled — no templates folder chosen." };
     dir = picked;
-    localStorage.setItem(TEMPLATES_DIR_KEY, dir);
+    setTemplateSource({ kind: "local", dir }); // this folder is now the catalog too
   }
   const { invoke } = await import("@tauri-apps/api/core");
   const message = await invoke<string>("save_template", {
