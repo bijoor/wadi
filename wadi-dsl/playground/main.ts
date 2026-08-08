@@ -42,6 +42,7 @@ import { initPublishPanel, type PublishResult } from "./publishPanel";
 import type { TemplatePackage } from "../../editor/src/templatePackage/assemble";
 import { localTemplatesDir, setTemplateSource } from "../../editor/src/io/templateSource";
 import { resolveParametric } from "../../editor/src/param/resolve";
+import { buildRefsView, formatRefValue, type RefsView } from "../../editor/src/param/refsView";
 import {
   lintStructure,
   partitionFindings,
@@ -113,6 +114,46 @@ type DslDiagnostic = { startLineNumber: number; startColumn: number; message: st
 function escHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 }
+// Render the ƒx-refs panel body from a RefsView, filtered by a case-insensitive
+// substring on the symbol name. Grid lines show as `<id>.x1` etc. so an author can
+// copy the exact reference.
+function renderRefsHtml(view: RefsView, filter: string): string {
+  const q = filter.toLowerCase();
+  const hit = (name: string) => !q || name.toLowerCase().includes(q);
+  const cell = (v: number | null) =>
+    `<td class="v${v === null ? " refs-warn" : ""}">${escHtml(formatRefValue(v))}</td>`;
+  const rows: string[] = [];
+
+  const vars = view.variables.filter((v) => hit(v.name));
+  rows.push(`<div class="refs-group">Variables</div>`);
+  rows.push(vars.length
+    ? `<table>${vars.map((v) =>
+        `<tr><td class="k">${escHtml(v.name)}</td>${cell(v.value)}` +
+        `<td class="f">${v.formula ? escHtml(v.formula) : ""}</td></tr>`).join("")}</table>`
+    : `<div class="refs-empty">none</div>`);
+
+  const pts = view.points.filter((p) => hit(p.name));
+  rows.push(`<div class="refs-group">Points (.x/.w · .y/.l)</div>`);
+  rows.push(pts.length
+    ? `<table>${pts.map((p) =>
+        `<tr><td class="k">${escHtml(p.name)}</td>` +
+        `<td class="v" colspan="2">x ${escHtml(formatRefValue(p.x))} · y ${escHtml(formatRefValue(p.y))}</td></tr>`).join("")}</table>`
+    : `<div class="refs-empty">none</div>`);
+
+  for (const g of view.grids) {
+    const lines = [
+      ...g.xLines.map((l) => ({ key: `${g.id}.x${l.name}`, value: l.value })),
+      ...g.yLines.map((l) => ({ key: `${g.id}.y${l.name}`, value: l.value })),
+    ].filter((l) => hit(l.key));
+    if (!lines.length) continue;
+    rows.push(`<div class="refs-group">Grid “${escHtml(g.id)}”</div>`);
+    rows.push(`<table>${lines.map((l) =>
+      `<tr><td class="k">${escHtml(l.key)}</td>${cell(l.value)}<td class="f"></td></tr>`).join("")}</table>`);
+  }
+
+  return rows.join("");
+}
+
 function probRow(level: "error" | "warn", badge: string, message: string, line?: number, col?: number): string {
   const cls = `prob ${level}${line ? " jump" : ""}`;
   const data = line ? ` data-line="${line}" data-col="${col ?? 1}"` : "";
@@ -190,6 +231,9 @@ let booted = false;
 // `lastConfig` is the most recent compiled config.
 let previewMode: "owner" | "studio" = "studio";
 let lastConfig: Record<string, unknown> | null = null;
+// Re-render the "ƒx refs" panel from lastConfig (set up in wireToolbar; a no-op
+// until then). Called after every compile so the resolved values stay live.
+let refreshRefs: () => void = () => {};
 // Cover images (thumbnails) live ONLY in a .wadi, never the .wdl. When a .wadi is
 // imported we stash them here and re-attach on every recompile, so they survive
 // edits + reach the Publish panel. Captures made in the preview take precedence.
@@ -339,6 +383,7 @@ function run(): void {
   renderProblems(diagnostics, findings);
   if (config) {
     lastConfig = config;
+    refreshRefs(); // keep the ƒx-refs panel's resolved values in sync
     setStatus("compiling…");
     void pushToViewer(config, findings);
   } else {
@@ -709,6 +754,23 @@ function wireToolbar(): void {
   $("ref-close").addEventListener("click", () => {
     panel.hidden = true;
   });
+
+  // ƒx refs slide-over — the same resolved variables/points/grid lines the form
+  // editor's "ƒx refs" popover shows (shared buildRefsView), live-updated on every
+  // compile, so an author sees the actual numbers a `= formula` will resolve to.
+  const refsPanel = $("refs-panel");
+  const refsBody = $("refs-body");
+  const refsFilter = $("refs-filter") as HTMLInputElement;
+  refreshRefs = () => {
+    if (refsPanel.hidden || !lastConfig) return;
+    refsBody.innerHTML = renderRefsHtml(buildRefsView(lastConfig as never), refsFilter.value.trim());
+  };
+  $("refs").addEventListener("click", () => {
+    refsPanel.hidden = !refsPanel.hidden;
+    if (!refsPanel.hidden) { refreshRefs(); refsFilter.focus(); }
+  });
+  $("refs-close").addEventListener("click", () => { refsPanel.hidden = true; });
+  refsFilter.addEventListener("input", refreshRefs);
 
   // Publish-template panel: capture cover shots + test the configurator in the
   // studio preview, then ship a complete package. Desktop pushes to R2; browser

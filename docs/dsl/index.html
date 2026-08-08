@@ -198,13 +198,45 @@
     .ref-table th { color: var(--muted); font-weight: 600; }
     .ref-table td:first-child { color: #e0a97a; white-space: nowrap; font-family: ui-monospace, Menlo, monospace; }
 
+    /* ƒx refs — resolved variables/points/grid lines, live from the compile. */
+    #refs-panel {
+      position: absolute; top: 0; right: 0; bottom: 0; width: min(340px, 92%);
+      background: var(--panel); border-left: 1px solid var(--border);
+      box-shadow: -8px 0 24px rgba(0,0,0,.35); overflow-y: auto; z-index: 20;
+      display: flex; flex-direction: column;
+    }
+    #refs-panel[hidden] { display: none; }
+    .refs-head {
+      position: sticky; top: 0; background: var(--panel); z-index: 1;
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .refs-head strong { font-size: .85rem; color: var(--accent); }
+    #refs-filter {
+      flex: 1; min-width: 0; background: #1e1e1e; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 4px 8px; font-size: .8rem;
+    }
+    #refs-close { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; }
+    #refs-close:hover { color: var(--text); }
+    #refs-body { padding: 8px 12px 40px; font-size: .78rem; }
+    #refs-body .refs-group { margin: 4px 0 2px; text-transform: uppercase; letter-spacing: .04em;
+      font-size: .66rem; font-weight: 600; color: var(--muted); }
+    #refs-body .refs-empty { color: var(--muted); padding: 2px 0 8px; }
+    #refs-body table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    #refs-body td { padding: 3px 6px 3px 0; vertical-align: top; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    #refs-body td.k { color: #7fd6a8; white-space: nowrap; }
+    #refs-body td.v { color: var(--text); text-align: right; white-space: nowrap; }
+    #refs-body td.f { color: var(--muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #refs-body tr:hover td { background: #262626; }
+    #refs-body .refs-warn { color: #f0a3a3; }
+
     @media (max-width: 760px) {
       main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
       .editor-col { border-right: 0; border-bottom: 1px solid var(--border); }
       header .brand { display: none; }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-_5P7W4N5.js"></script>
+  <script type="module" crossorigin src="./assets/index-BiMcx9Ac.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-D8UQ_xkR.css">
 </head>
 <body>
@@ -244,6 +276,7 @@
     <span class="spacer"></span>
     <span id="filename" title="Current file">untitled.wdl</span>
     <span id="status">starting…</span>
+    <button id="refs" class="tb-btn" title="Resolved variables, points &amp; grid lines you can reference in = formulas">ƒx refs</button>
     <button id="reference" class="tb-btn" title="WDL reference">📖 Reference</button>
     <a class="applink" href="/app/" target="_blank" rel="noopener">Open the app →</a>
   </header>
@@ -267,6 +300,14 @@
     <aside id="reference-panel" hidden>
       <div class="ref-head"><button id="ref-close" title="Close">✕</button></div>
       <div id="reference-body"></div>
+    </aside>
+    <aside id="refs-panel" hidden>
+      <div class="refs-head">
+        <strong>ƒx refs</strong>
+        <input id="refs-filter" type="text" placeholder="filter…" spellcheck="false" autocomplete="off" />
+        <button id="refs-close" title="Close">✕</button>
+      </div>
+      <div id="refs-body"></div>
     </aside>
   </main>
   <input type="file" id="file" accept=".wdl,.txt" hidden />
