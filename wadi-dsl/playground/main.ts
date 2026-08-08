@@ -515,6 +515,15 @@ async function saveAsWdl(): Promise<void> {
     await attachFile(path); // now the watched, co-edited file
     setStatus(`✓ saved + watching ${baseName(path)}`);
     updateFileLabel();
+    // An imported .wadi carries cover images as data URLs (in `carriedThumbnails`)
+    // that the .wdl can't hold inline. Now that the doc HAS a location, materialize
+    // them as files next to it + reference them — so import → Save As is a complete
+    // round-trip and the shots survive a reopen. Skip if the source already
+    // references cover paths (the author manages them).
+    if (carriedThumbnails.length && !/^[ \t]*thumbnails[ \t]/m.test(editor.getValue())) {
+      const res = await saveCoverShots();
+      if (res.ok) setStatus(`✓ saved ${baseName(path)} — ${res.message.replace(/^✓ /, "")}`);
+    }
   } catch (e) {
     setStatus(`save failed: ${(e as Error).message}`, true);
   }
@@ -581,7 +590,10 @@ function loadDecompiledWadi(jsonText: string, nameHint: string): void {
   editor.setValue(wdl);    // fires onDidChangeModelContent → recompile + render
   currentName = nameHint || "house";
   updateFileLabel();
-  const shot = carriedThumbnails.length ? ` (${carriedThumbnails.length} cover image${carriedThumbnails.length === 1 ? "" : "s"} kept)` : "";
+  const n = carriedThumbnails.length;
+  const shot = n
+    ? ` — ${n} cover image${n === 1 ? "" : "s"} kept${isTauri() ? " (Save As writes them to a thumbnails/ folder)" : ""}`
+    : "";
   setStatus(`↩ decompiled ${nameHint || "house"}.wadi → WDL${shot} (unsaved — Save As to keep)`);
 }
 
@@ -754,9 +766,12 @@ async function saveCoverShots(): Promise<PublishResult> {
   if (!openFilePath) {
     return { ok: false, message: "Save the .wdl to a file first (Save As), then capture + save cover shots." };
   }
+  // Shots come from the preview (freshly captured) or, for an imported .wadi that
+  // hasn't been re-captured, the set carried off that .wadi.
   const w = frame.contentWindow as (Window & { wadi?: { getConfig?: () => { thumbnails?: unknown } } }) | null;
   const raw = w?.wadi?.getConfig?.()?.thumbnails;
-  const shots = Array.isArray(raw) ? raw.filter((s): s is string => typeof s === "string" && s.startsWith("data:")) : [];
+  const fromPreview = Array.isArray(raw) ? raw.filter((s): s is string => typeof s === "string" && s.startsWith("data:")) : [];
+  const shots = fromPreview.length ? fromPreview : carriedThumbnails.filter((s) => s.startsWith("data:"));
   if (!shots.length) {
     return { ok: false, message: "No captured shots to save — use 📸 / ✨ in the preview first." };
   }
