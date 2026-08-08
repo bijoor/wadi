@@ -423,8 +423,12 @@ async function bootViewer(): Promise<void> {
   // Owner first-step: on a fresh default load (no shared link, no opened
   // file), greet the owner (Gharkul) with the template gallery so they START
   // by choosing a home to customize. Architects, share-link recipients, and
-  // file-opens skip straight to the model.
-  if (isOwner() && !loadedFromOpenFile && !loadedFromHash && !loadedFromLoadParam) {
+  // file-opens skip straight to the model. EMBED never shows it: an embedded
+  // viewer (the WDL editor's preview, the home-architect skill) is a pure
+  // renderer driven by its host — the picker would fight the pushed config.
+  const q = new URLSearchParams(location.search);
+  const embedded = q.get("panels") === "off" || q.get("embed") === "1";
+  if (isOwner() && !embedded && !loadedFromOpenFile && !loadedFromHash && !loadedFromLoadParam) {
     void openNewHouseModal();
   }
 }

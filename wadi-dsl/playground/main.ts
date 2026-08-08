@@ -225,18 +225,19 @@ function nudgeUntilSettled(): void {
 async function pushToViewer(config: Record<string, unknown>, findings: LintFinding[] = []): Promise<void> {
   try {
     if (!booted) {
-      // Boot the app WITH the model present via ?load=<url>, so it runs its
-      // normal camera-fit-to-house path. The config is served to the same-origin
-      // iframe as a blob: URL.
-      const blobUrl = URL.createObjectURL(
-        new Blob([JSON.stringify(config)], { type: "application/json" }),
-      );
+      // Boot the preview as a PURE, ISOLATED renderer: bare `?load` = EMBED mode,
+      // which skips the owner "Choose your home" picker + the default auto-load
+      // and just waits for our wadi.load(). We push the config over `wadi.load`
+      // (NOT a blob: URL in ?load=) because a Tauri WKWebView iframe can't fetch a
+      // blob: URL minted by its parent — that failed silently on the desktop and
+      // dropped the preview into the owner gallery, showing a template instead of
+      // the compiled WDL.
       const modeParam = previewMode === "studio" ? "mode=studio&" : "";
-      frame.src = `/app/?${modeParam}panels=off&load=${encodeURIComponent(blobUrl)}`;
+      frame.src = `/app/?${modeParam}panels=off&load`;
       wadiPromise = whenWadiReady();
-      await wadiPromise;
+      const wadi = await wadiPromise;
       booted = true;
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000); // after the app fetched it
+      wadi.load(config); // first render (also runs the camera-fit-to-house path)
       nudgeUntilSettled(); // first paint: correct the canvas size once laid out
       applyRenderedStatus(findings);
       return;
