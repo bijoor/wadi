@@ -43,6 +43,12 @@
     }
     .popup-menu button:hover { background: #3a3a3a; }
     .popup-menu .desc { color: var(--muted); }
+    .popup-menu .menu-head {
+      padding: 6px 10px 3px; font-size: .68rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--muted);
+    }
+    .popup-menu .menu-sep { height: 1px; background: var(--border); margin: 5px 6px; }
+    #file-menu { min-width: 300px; }
     #library-menu { min-width: 280px; max-width: 360px; }
     .lib-sep { height: 1px; background: #3a3a3a; margin: 4px 2px; }
     .lib-empty { color: var(--muted); padding: 8px 10px; font-size: .78rem; line-height: 1.4; white-space: normal; }
@@ -194,31 +200,41 @@
 <body>
   <header>
     <span class="brand">Wadi <b>WDL</b></span>
+
+    <!-- File: everything about the document (new / open / save / import / export). -->
     <div class="menu-wrap">
-      <button id="new" class="tb-btn" title="Start a new house from a sample" aria-haspopup="true">✨ New ▾</button>
-      <div id="new-menu" class="popup-menu" hidden role="menu">
+      <button id="file" class="tb-btn" title="New, open, save, import + export" aria-haspopup="true">📄 File ▾</button>
+      <div id="file-menu" class="popup-menu" hidden role="menu">
+        <div class="menu-head">New from sample</div>
         <button data-sample="minimal">minimal <span class="desc">— smallest valid house</span></button>
         <button data-sample="two_room">two_room <span class="desc">— two rooms, no grid</span></button>
         <button data-sample="two_story">two_story <span class="desc">— plinth + 2 storeys + hip roof</span></button>
         <button data-sample="coastal">coastal <span class="desc">— grid + configurator cottage</span></button>
         <button data-sample="complete">complete <span class="desc">— every entity + module imports</span></button>
         <button data-sample="konkan_cottage">konkan_cottage <span class="desc">— imports furniture + konkan/base packs</span></button>
+        <div class="menu-sep"></div>
+        <button id="open">📂 Open .wdl… <span class="desc">⌘O</span></button>
+        <button id="save">💾 Save <span class="desc">⌘S</span></button>
+        <button id="saveas">Save As… <span class="desc">⇧⌘S</span></button>
+        <div class="menu-sep"></div>
+        <button id="import">↩ Import .wadi <span class="desc">— decompile to WDL</span></button>
+        <button id="download">⬇ Export .wadi <span class="desc">— compiled config</span></button>
       </div>
     </div>
-    <button id="open" class="tb-btn" title="Open a .wdl file (⌘O)">📂 Open</button>
-    <button id="import" class="tb-btn" title="Import a .wadi house → decompile it to editable WDL code">↩ Import .wadi</button>
+
+    <!-- Library: reusable modules. -->
     <div class="menu-wrap">
       <button id="library" class="tb-btn" title="Save the current file as a reusable library, or insert an import" aria-haspopup="true">📚 Library ▾</button>
       <div id="library-menu" class="popup-menu" hidden role="menu"></div>
     </div>
-    <button id="save" class="tb-btn" title="Save the .wdl (⌘S)">💾 Save</button>
-    <button id="saveas" class="tb-btn" title="Save to a new file (⇧⌘S)">Save As…</button>
-    <button id="download" class="tb-btn" title="Export the compiled .wadi">⬇ .wadi</button>
-    <button id="publish" class="tb-btn" title="Assemble a template package (cover shots + details) and publish it to the owner gallery">📦 Publish template</button>
-    <button id="reference" class="tb-btn" title="WDL reference">📖 Reference</button>
+
+    <!-- Publish: the ship-it action (primary). -->
+    <button id="publish" class="tb-btn primary" title="Assemble a template package (cover shots + details) and publish it to the owner gallery">📦 Publish template</button>
+
     <span class="spacer"></span>
     <span id="filename" title="Current file">untitled.wdl</span>
     <span id="status">starting…</span>
+    <button id="reference" class="tb-btn" title="WDL reference">📖 Reference</button>
     <a class="applink" href="/app/" target="_blank" rel="noopener">Open the app →</a>
   </header>
   <main>

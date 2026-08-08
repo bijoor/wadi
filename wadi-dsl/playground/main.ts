@@ -183,11 +183,12 @@ function whenWadiReady(timeoutMs = 15000): Promise<Wadi> {
 let wadiPromise: Promise<Wadi> | null = null;
 let booted = false;
 
-// The preview iframe runs in one of two personas: "owner" (Gharkul — the default
-// clean preview, shows the live configurator) or "studio" (Nakasha — reveals the
-// capture toolbar + "Preview as owner" toggle, for assembling a template package).
-// The Publish panel flips this. `lastConfig` is the most recent compiled config.
-let previewMode: "owner" | "studio" = "owner";
+// The preview iframe runs in one of two personas: "studio" (Nakasha — the DEFAULT
+// for the WDL editor: shows the capture toolbar + "Preview as owner" toggle, since
+// the WDL editor IS the designer surface) or "owner" (Gharkul — the clean preview
+// with the live configurator, reached via the in-preview "Preview as owner" toggle).
+// `lastConfig` is the most recent compiled config.
+let previewMode: "owner" | "studio" = "studio";
 let lastConfig: Record<string, unknown> | null = null;
 // Cover images (thumbnails) live ONLY in a .wadi, never the .wdl. When a .wadi is
 // imported we stash them here and re-attach on every recompile, so they survive
@@ -610,15 +611,17 @@ async function importWadiNative(): Promise<void> {
 function wireToolbar(): void {
   const $ = (id: string) => document.getElementById(id)!;
 
-  // New — a menu of starter samples. Picking one starts a fresh, UNSAVED
-  // document (detached from any open file); Save As then writes it to disk.
-  const newBtn = $("new");
-  const newMenu = $("new-menu");
-  newBtn.addEventListener("click", (e) => {
+  // File — the document menu: starter samples (New from sample), plus open / save /
+  // save-as / import / export (those buttons keep their ids, so their handlers below
+  // wire up unchanged; they just live inside this menu now). Picking a sample starts
+  // a fresh, UNSAVED document; Save As then writes it to disk.
+  const fileBtn = $("file");
+  const fileMenu = $("file-menu");
+  fileBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    newMenu.hidden = !newMenu.hidden;
+    fileMenu.hidden = !fileMenu.hidden;
   });
-  newMenu.querySelectorAll<HTMLButtonElement>("button[data-sample]").forEach((b) =>
+  fileMenu.querySelectorAll<HTMLButtonElement>("button[data-sample]").forEach((b) =>
     b.addEventListener("click", () => {
       const key = b.dataset.sample ?? "";
       const src = SAMPLES[key];
@@ -628,10 +631,10 @@ function wireToolbar(): void {
         currentName = key;
         updateFileLabel();
       }
-      newMenu.hidden = true;
     }),
   );
-  document.addEventListener("click", () => { newMenu.hidden = true; });
+  // Any click inside the menu (sample or action button) or anywhere outside closes it.
+  document.addEventListener("click", () => { fileMenu.hidden = true; });
 
   // Open a .wdl from disk. Desktop → native dialog + live file WATCH (co-edit);
   // browser → a one-shot file read (no disk watch available).

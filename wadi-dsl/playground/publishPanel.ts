@@ -165,7 +165,8 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
     if (!titleEl.value) {
       titleEl.value = idEl.value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     }
-    setStatus("Flipping the preview to studio mode…");
+    // The preview already defaults to studio (capture toolbar visible), so opening
+    // the panel usually needs no persona flip — just make sure we're in it.
     await deps.setPreviewMode("studio");
     setStatus("Capture cover shots + test the configurator in the preview, then publish.");
     refresh();
@@ -173,7 +174,7 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
 
   async function close(): Promise<void> {
     overlay.hidden = true;
-    await deps.setPreviewMode("owner");
+    await deps.setPreviewMode("studio"); // stay in the designer preview (the default)
   }
 
   async function publish(): Promise<void> {
