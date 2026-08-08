@@ -62,7 +62,7 @@ import {
   buildShareUrl,
 } from "../io/shareLink";
 import { isTauri, invoke } from "@tauri-apps/api/core";
-import { getPersona, isOwner, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona } from "./persona";
+import { getPersona, isOwner, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona, type Persona } from "./persona";
 import {
   fetchCatalogText,
   loadCatalog,
@@ -857,6 +857,9 @@ export interface WadiApi {
   load: (config: unknown) => { ok: true };
   /** The current in-store config (for reading / round-tripping / saving). */
   getConfig: () => unknown;
+  /** Flip the viewer persona in place (no reload). "owner" | "architect" |
+   *  "studio" (studio == architect). Keeps the loaded model + camera. */
+  setPersona: (target: string) => { ok: true; persona: "owner" | "architect" };
   /** Set one configurator knob — "House.W"/"House.L" hit points, bare names
    *  hit variables — exactly like moving that slider. Values are raw units
    *  (plot: 10 units = 1 ft; roof_style 0=Flat,1=Shed,2=Gable,3=Hip). */
@@ -1965,6 +1968,16 @@ function wireWadiApi(): void {
       return store().config;
     },
 
+    // Flip the viewer persona IN PLACE (no reload → the loaded model + camera are
+    // kept). The WDL editor's Publish flow calls this to preview as owner/studio
+    // without rebooting the iframe (a reboot blacks out the 3D). Accepts
+    // "owner" | "architect" | "studio" (studio == architect).
+    setPersona(target: string) {
+      const p: Persona = target === "studio" || target === "architect" ? "architect" : "owner";
+      applyPersonaSwitch(p);
+      return { ok: true as const, persona: p };
+    },
+
     setKnob(target: string, value: number) {
       const cfg = store().config;
       if (!cfg) throw new Error("wadi.setKnob: no config loaded yet");
@@ -2269,26 +2282,32 @@ function wireWebMcpTools(): void {
 }
 
 // Switch persona IN PLACE (no page reload) so the currently-loaded model is
-// preserved. Reload-based navigation would drop back to the default config
-// (which has no configurator). Wired once; applyPersona() reruns the gating.
+// preserved. Reload-based navigation would drop back to the default config (which
+// has no configurator) — and, in an embedded preview, reloading blacks out the 3D.
+// Shared by the header toggle and window.wadi.setPersona (the WDL editor's Publish
+// flow flips studio↔owner through it).
+function applyPersonaSwitch(target: Persona): void {
+  setPersona(target);
+  // Entering architect means working with the loaded model — never show the
+  // owner welcome overlay over it (e.g. after switching back to owner).
+  if (target === "architect") markHomeChosen();
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set("mode", target === "architect" ? "studio" : "owner");
+    history.replaceState(null, "", u.pathname + u.search + u.hash);
+  } catch {
+    /* ignore */
+  }
+  applyPersona();
+  window.dispatchEvent(new Event("wadi:persona-changed"));
+}
+
+// Wired once; applyPersona() reruns the gating.
 function wirePersonaSwitch(): void {
   const sw = document.getElementById("persona-switch");
   sw?.addEventListener("click", (e) => {
     e.preventDefault();
-    const target = otherPersona().persona;
-    setPersona(target);
-    // Entering architect means working with the loaded model — never show the
-    // owner welcome overlay over it (e.g. after switching back to owner).
-    if (target === "architect") markHomeChosen();
-    try {
-      const u = new URL(location.href);
-      u.searchParams.set("mode", target === "architect" ? "studio" : "owner");
-      history.replaceState(null, "", u.pathname + u.search + u.hash);
-    } catch {
-      /* ignore */
-    }
-    applyPersona();
-    window.dispatchEvent(new Event("wadi:persona-changed"));
+    applyPersonaSwitch(otherPersona().persona);
   });
 }
 

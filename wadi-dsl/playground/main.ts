@@ -163,7 +163,7 @@ function renderProblems(diagnostics: DslDiagnostic[], findings: LintFinding[]): 
   });
 }
 
-type Wadi = { load: (c: unknown) => unknown };
+type Wadi = { load: (c: unknown) => unknown; setPersona?: (target: string) => unknown };
 
 // The iframe's window.wadi appears once the viewer has booted. Resolve to it.
 function whenWadiReady(timeoutMs = 15000): Promise<Wadi> {
@@ -182,23 +182,23 @@ function whenWadiReady(timeoutMs = 15000): Promise<Wadi> {
 let wadiPromise: Promise<Wadi> | null = null;
 let booted = false;
 
-// The preview iframe boots in one of two personas: "owner" (Gharkul — the default
+// The preview iframe runs in one of two personas: "owner" (Gharkul — the default
 // clean preview, shows the live configurator) or "studio" (Nakasha — reveals the
 // capture toolbar + "Preview as owner" toggle, for assembling a template package).
-// The Publish panel flips this. `lastConfig` is the most recent compiled config,
-// re-pushed after a persona reboot.
+// The Publish panel flips this. `lastConfig` is the most recent compiled config.
 let previewMode: "owner" | "studio" = "owner";
 let lastConfig: Record<string, unknown> | null = null;
 
-// Switch the preview persona: reboot the iframe under the new mode and re-push the
-// current design (the shots the author captured live in the iframe, so a reboot
-// clears them — acceptable when deliberately toggling persona to test/capture).
+// Switch the preview persona IN PLACE via the viewer's wadi.setPersona (no iframe
+// reboot — a reboot blacks out the 3D and drops the loaded model). If the preview
+// hasn't booted yet, the next boot picks up `previewMode` for its mode param.
 async function setPreviewMode(mode: "owner" | "studio"): Promise<void> {
   if (mode === previewMode) return;
   previewMode = mode;
-  booted = false;
-  wadiPromise = null;
-  if (lastConfig) await pushToViewer(lastConfig);
+  if (!booted) return;
+  const w = frame.contentWindow as (Window & { wadi?: Wadi }) | null;
+  w?.wadi?.setPersona?.(mode === "studio" ? "architect" : "owner");
+  pokeResize(); // the chrome changed → nudge the canvas to re-fit its new size
 }
 
 // The 3D scene renders on demand; after a load, the async geometry (CSG
