@@ -23,6 +23,7 @@ describe("assembleTemplatePackage", () => {
       description: "A breezy home.",
       style: "Konkan",
       roof: "Gable",
+      tags: ["coastal", "compact"],
     });
     expect(pkg.file).toBe("coastal_home.wadi");
     expect(pkg.wadi.thumbnails).toEqual(["data:img/a", "data:img/b"]);
@@ -32,7 +33,9 @@ describe("assembleTemplatePackage", () => {
       description: "A breezy home.",
       style: "Konkan",
       roof: "Gable",
+      tags: ["coastal", "compact"],
     });
+    expect(pkg.entry.meta.tags).toEqual(["coastal", "compact"]);
     // the parametric layer survives so owners can adjust the published template
     expect(pkg.wadi.variables).toEqual({ plot_w: 220 });
     expect(pkg.wadi.configurator).toBeTruthy();

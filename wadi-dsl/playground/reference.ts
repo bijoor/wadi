@@ -61,6 +61,7 @@ All fields optional. <code>min_plot</code> is display-feet.</p>
   title "Coastal cottage"
   description "Breezy 2-bed on the grid."
   style "Konkan"  roof "Gable"
+  tags "coastal", "compact", "2-bed"
   min_plot (22, 34)
 }</pre>
 

@@ -755,6 +755,7 @@ export const HouseConfig = z
         roof: z.string().optional(),
         minWidthFt: z.number().optional(),
         minLengthFt: z.number().optional(),
+        tags: z.array(z.string()).optional(),
       })
       .optional(),
     floors: z.array(floor).min(1),

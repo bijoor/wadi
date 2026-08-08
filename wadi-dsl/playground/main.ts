@@ -188,6 +188,10 @@ let booted = false;
 // The Publish panel flips this. `lastConfig` is the most recent compiled config.
 let previewMode: "owner" | "studio" = "owner";
 let lastConfig: Record<string, unknown> | null = null;
+// Cover images (thumbnails) live ONLY in a .wadi, never the .wdl. When a .wadi is
+// imported we stash them here and re-attach on every recompile, so they survive
+// edits + reach the Publish panel. Captures made in the preview take precedence.
+let carriedThumbnails: string[] = [];
 
 // Switch the preview persona IN PLACE via the viewer's wadi.setPersona (no iframe
 // reboot — a reboot blacks out the 3D and drops the loaded model). If the preview
@@ -224,6 +228,17 @@ function nudgeUntilSettled(): void {
 
 async function pushToViewer(config: Record<string, unknown>, findings: LintFinding[] = []): Promise<void> {
   try {
+    // Keep cover images across recompiles: prefer whatever the preview currently
+    // holds (imported + any shots captured in the panel), else seed from the
+    // imported .wadi. `wadi.load` replaces the whole config, so without this the
+    // thumbnails would vanish on the next keystroke.
+    const w0 = frame.contentWindow as (Window & { wadi?: { getConfig?: () => { thumbnails?: unknown } } }) | null;
+    const existing = w0?.wadi?.getConfig?.()?.thumbnails;
+    const thumbs = Array.isArray(existing) && existing.length
+      ? (existing as string[])
+      : carriedThumbnails;
+    if (thumbs.length) config.thumbnails = thumbs;
+    else delete config.thumbnails;
     if (!booted) {
       // Boot the preview as a PURE, ISOLATED renderer: bare `?load` = EMBED mode,
       // which skips the owner "Choose your home" picker + the default auto-load
@@ -393,6 +408,7 @@ function detachFile(): void {
   if (unwatchFile) { unwatchFile(); unwatchFile = null; }
   openFilePath = null;
   lastDiskText = null;
+  carriedThumbnails = []; // a fresh doc carries no cover images (New / Open / sample)
 }
 
 // The header label showing the open file + a • when there are unsaved edits.
@@ -501,10 +517,18 @@ function loadDecompiledWadi(jsonText: string, nameHint: string): void {
     return;
   }
   detachFile();            // decompiled code is a new unsaved doc (Save As to keep it)
+  // The cover images live ONLY in the .wadi (never the .wdl), so stash them and
+  // re-attach on every recompile — otherwise they'd be lost the moment the source
+  // recompiles. (detachFile above cleared them; set AFTER it.)
+  const rawThumbs = (cfg as { thumbnails?: unknown }).thumbnails;
+  carriedThumbnails = Array.isArray(rawThumbs)
+    ? rawThumbs.filter((x): x is string => typeof x === "string")
+    : [];
   editor.setValue(wdl);    // fires onDidChangeModelContent → recompile + render
   currentName = nameHint || "house";
   updateFileLabel();
-  setStatus(`↩ decompiled ${nameHint || "house"}.wadi → WDL (unsaved — Save As to keep)`);
+  const shot = carriedThumbnails.length ? ` (${carriedThumbnails.length} cover image${carriedThumbnails.length === 1 ? "" : "s"} kept)` : "";
+  setStatus(`↩ decompiled ${nameHint || "house"}.wadi → WDL${shot} (unsaved — Save As to keep)`);
 }
 
 async function importWadiNative(): Promise<void> {

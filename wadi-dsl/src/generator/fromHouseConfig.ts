@@ -519,6 +519,8 @@ function emitTemplate(w: W, indent: number, t: Obj): void {
   if (t.description) lines.push(`description ${str(t.description)}`);
   if (t.style) lines.push(`style ${str(t.style)}`);
   if (t.roof) lines.push(`roof ${str(t.roof)}`);
+  if (Array.isArray(t.tags) && t.tags.length)
+    lines.push(`tags ${(t.tags as unknown[]).map((s) => str(s)).join(", ")}`);
   if (t.minWidthFt !== undefined && t.minLengthFt !== undefined)
     lines.push(`min_plot (${num(t.minWidthFt)}, ${num(t.minLengthFt)})`);
   if (!lines.length) return;

@@ -16,6 +16,8 @@ export interface TemplateMeta {
   minWidthFt: number;
   minLengthFt: number;
   parametric: boolean;
+  /** Free-form searchable tags (e.g. "coastal", "compact", "modern"). */
+  tags?: string[];
 }
 
 export interface TemplateEntry {
@@ -35,6 +37,7 @@ export interface EditorialFields {
   roof?: string;
   minWidthFt?: number;
   minLengthFt?: number;
+  tags?: string[];
 }
 
 type LooseConfig = {
@@ -96,21 +99,23 @@ export function deriveTemplateEntry(
 ): TemplateEntry {
   const { bedrooms, bathrooms } = countRooms(cfg);
   const plot = defaultPlotFt(cfg);
+  const meta: TemplateMeta = {
+    bedrooms,
+    bathrooms,
+    floors: countFloors(cfg),
+    style: prev?.style ?? "—",
+    roof: prev?.roof ?? "—",
+    minWidthFt: prev?.minWidthFt ?? plot.minWidthFt,
+    minLengthFt: prev?.minLengthFt ?? plot.minLengthFt,
+    parametric: isParametric(cfg),
+  };
+  if (prev?.tags?.length) meta.tags = prev.tags.slice();
   return {
     id,
     title: prev?.title ?? titleCase(id),
     description: prev?.description ?? "",
     file,
-    meta: {
-      bedrooms,
-      bathrooms,
-      floors: countFloors(cfg),
-      style: prev?.style ?? "—",
-      roof: prev?.roof ?? "—",
-      minWidthFt: prev?.minWidthFt ?? plot.minWidthFt,
-      minLengthFt: prev?.minLengthFt ?? plot.minLengthFt,
-      parametric: isParametric(cfg),
-    },
+    meta,
   };
 }
 

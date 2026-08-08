@@ -14,6 +14,7 @@ const wdl = `house H {
     description "Breezy 2-bed on the grid."
     style "Konkan"
     roof "Gable"
+    tags "coastal", "compact", "2-bed"
     min_plot (22, 34)
   }
   floor 1 "G" slab_thickness 0 {
@@ -32,6 +33,7 @@ describe("DSL — template catalog metadata block", () => {
       description: "Breezy 2-bed on the grid.",
       style: "Konkan",
       roof: "Gable",
+      tags: ["coastal", "compact", "2-bed"],
       minWidthFt: 22,
       minLengthFt: 34,
     });

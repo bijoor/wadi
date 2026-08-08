@@ -103,6 +103,7 @@ TemplateMeta:
         ('description' description=STRING)?
         ('style' style=STRING)?
         ('roof' roof=STRING)?
+        ('tags' tags+=STRING (',' tags+=STRING)*)?
         ('min_plot' '(' minW=NUMBER ',' minL=NUMBER ')')?
     '}';
 

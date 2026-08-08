@@ -54,6 +54,7 @@ export function assembleTemplatePackage(
   if (form.description) template.description = form.description;
   if (form.style) template.style = form.style;
   if (form.roof) template.roof = form.roof;
+  if (form.tags?.length) template.tags = form.tags.slice();
   if (form.minWidthFt !== undefined) template.minWidthFt = form.minWidthFt;
   if (form.minLengthFt !== undefined) template.minLengthFt = form.minLengthFt;
   if (Object.keys(template).length) wadi.template = template;

@@ -1002,6 +1002,7 @@ export function modelToHouseConfig(
     if (t.description) tm.description = unquote(t.description);
     if (t.style) tm.style = unquote(t.style);
     if (t.roof) tm.roof = unquote(t.roof);
+    if (t.tags?.length) tm.tags = t.tags.map((s) => unquote(s));
     if (t.minW !== undefined && t.minL !== undefined) {
       tm.minWidthFt = Number(t.minW);
       tm.minLengthFt = Number(t.minL);

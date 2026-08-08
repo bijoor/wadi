@@ -45,6 +45,7 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
   const descEl = $("pub-desc") as HTMLTextAreaElement;
   const styleEl = $("pub-style") as HTMLInputElement;
   const roofEl = $("pub-roof") as HTMLInputElement;
+  const tagsEl = $("pub-tags") as HTMLInputElement;
   const derivedEl = $("pub-derived");
   const cardEl = $("pub-card");
   const statusEl = $("pub-status");
@@ -61,14 +62,34 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
       : [];
   }
 
+  const parseTags = (s: string): string[] =>
+    s.split(",").map((t) => t.trim()).filter(Boolean);
+
   function currentForm() {
+    const tags = parseTags(tagsEl.value);
     return {
       id: idEl.value,
       title: titleEl.value.trim(),
       description: descEl.value.trim(),
       style: styleEl.value.trim() || undefined,
       roof: roofEl.value.trim() || undefined,
+      tags: tags.length ? tags : undefined,
     };
+  }
+
+  // Pre-fill the form from the design's own `template` metadata block (so an
+  // imported .wadi / an edited WDL `template {}` populates the editor instead of
+  // starting blank). The panel is a metadata EDITOR, not just a publish dialog.
+  function prefillFromDesign(): void {
+    const cfg = deps.getLastConfig();
+    const t = (cfg?.template ?? {}) as {
+      title?: string; description?: string; style?: string; roof?: string; tags?: unknown;
+    };
+    if (t.title) titleEl.value = t.title;
+    if (t.description) descEl.value = t.description;
+    if (t.style) styleEl.value = t.style;
+    if (t.roof) roofEl.value = t.roof;
+    if (Array.isArray(t.tags)) tagsEl.value = t.tags.filter((x) => typeof x === "string").join(", ");
   }
 
   // Assemble the package from the current form + design, or null if not ready.
@@ -93,6 +114,7 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
     chips.push(`${m.floors} floor${m.floors === 1 ? "" : "s"}`);
     if (m.style && m.style !== "—") chips.push(esc(m.style));
     if (m.roof && m.roof !== "—") chips.push(esc(m.roof));
+    for (const tag of m.tags ?? []) chips.push(esc(tag));
     cardEl.innerHTML =
       (cover
         ? `<img class="pc-cover" src="${esc(cover)}" alt="cover" />`
@@ -130,10 +152,11 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
   async function open(): Promise<void> {
     overlay.hidden = false;
     primaryEl.textContent = deps.isTauri() ? "Save to templates folder" : "Download .wadi";
-    if (!idEl.value) {
-      const id = normalizeId(deps.suggestId());
-      idEl.value = id;
-      if (!titleEl.value) titleEl.value = id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    if (!idEl.value) idEl.value = normalizeId(deps.suggestId());
+    // Reflect the design's own metadata (imported .wadi / WDL `template {}` block).
+    prefillFromDesign();
+    if (!titleEl.value) {
+      titleEl.value = idEl.value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     }
     setStatus("Flipping the preview to studio mode…");
     await deps.setPreviewMode("studio");
@@ -165,5 +188,5 @@ export function initPublishPanel(deps: PublishPanelDeps): void {
   $("pub-close").addEventListener("click", () => void close());
   $("pub-refresh").addEventListener("click", refresh);
   primaryEl.addEventListener("click", () => void publish());
-  for (const el of [idEl, titleEl, descEl, styleEl, roofEl]) el.addEventListener("input", refresh);
+  for (const el of [idEl, titleEl, descEl, styleEl, roofEl, tagsEl]) el.addEventListener("input", refresh);
 }
