@@ -244,6 +244,11 @@ let carriedThumbnails: string[] = [];
 // recompile only re-reads the files when the paths actually changed (an edit to the
 // `thumbnails` line), and so freshly-captured (unsaved) shots aren't clobbered.
 let lastResolvedThumbPaths = "";
+// Set when the document is REPLACED (New / Open / Import) rather than edited. On the
+// next push the cover images must come only from the new doc (its resolved paths, or
+// the carried set from an imported .wadi) — never inherited from the preview's
+// previous state — so switching to a doc with no covers clears the old ones.
+let resetThumbs = false;
 
 // data URL ⇄ bytes (PNG) for reading/writing cover files via the Tauri fs plugin.
 function bytesToDataUrl(bytes: Uint8Array, mime = "image/png"): string {
@@ -322,27 +327,33 @@ function nudgeUntilSettled(): void {
 
 async function pushToViewer(config: Record<string, unknown>, findings: LintFinding[] = []): Promise<void> {
   try {
-    // Cover images. Precedence:
-    //   1. `template.thumbnails` PATHS in the .wdl, resolved from files (desktop) —
-    //      but only re-read when the path list changed, so freshly-captured unsaved
-    //      shots in the preview aren't clobbered on an unrelated edit.
-    //   2. whatever the preview currently holds (imported .wadi + shots captured in
-    //      the panel).
-    //   3. the set carried from a decompiled .wadi.
-    // `wadi.load` replaces the whole config, so without this the thumbnails vanish
-    // on the next keystroke.
+    // Cover images. `wadi.load` replaces the whole config, so we decide the
+    // thumbnails on every push:
+    //   • On a FILE SWITCH (New / Open / Import → `resetThumbs`): the covers come
+    //     ONLY from the new doc — its resolved `template.thumbnails` paths (desktop),
+    //     else the set carried off a decompiled .wadi, else NONE. Never the preview's
+    //     previous state, so switching to a doc with no covers clears the old ones.
+    //   • On a same-doc RECOMPILE: prefer the doc's path-refs (re-read only when the
+    //     path list changed), else keep whatever the preview holds (fresh captures /
+    //     carried), so unsaved shots survive a keystroke.
     const w0 = frame.contentWindow as (Window & { wadi?: { getConfig?: () => { thumbnails?: unknown } } }) | null;
     const existing = w0?.wadi?.getConfig?.()?.thumbnails;
     const pathKey = JSON.stringify((config.template as { thumbnails?: unknown } | undefined)?.thumbnails ?? null);
     let thumbs: string[] | null = null;
-    if (pathKey !== lastResolvedThumbPaths) {
+    if (resetThumbs) {
       lastResolvedThumbPaths = pathKey;
-      thumbs = await resolveTemplateThumbs(config); // desktop path-ref → data URLs
+      thumbs = (await resolveTemplateThumbs(config)) ?? (carriedThumbnails.length ? carriedThumbnails.slice() : null);
+      resetThumbs = false;
+    } else {
+      if (pathKey !== lastResolvedThumbPaths) {
+        lastResolvedThumbPaths = pathKey;
+        thumbs = await resolveTemplateThumbs(config); // desktop path-ref → data URLs
+      }
+      if (!thumbs) {
+        thumbs = Array.isArray(existing) && existing.length ? (existing as string[]) : carriedThumbnails;
+      }
     }
-    if (!thumbs) {
-      thumbs = Array.isArray(existing) && existing.length ? (existing as string[]) : carriedThumbnails;
-    }
-    if (thumbs.length) config.thumbnails = thumbs;
+    if (thumbs && thumbs.length) config.thumbnails = thumbs;
     else delete config.thumbnails;
     if (!booted) {
       // Boot the preview as a PURE, ISOLATED renderer: bare `?load` = EMBED mode,
@@ -458,11 +469,15 @@ let openFilePath: string | null = null;
 let lastDiskText: string | null = null;      // break the write→watch→reload echo loop
 let unwatchFile: (() => void) | null = null;
 
-async function attachFile(path: string): Promise<void> {
+// `keepThumbnails` is set by Save As (which just gave the CURRENT doc a path — its
+// carried covers must survive so they can be materialized). A plain Open replaces
+// the doc, so it drops the previous doc's covers.
+async function attachFile(path: string, opts?: { keepThumbnails?: boolean }): Promise<void> {
   const { readTextFile, watch } = await import("@tauri-apps/plugin-fs");
   if (unwatchFile) { unwatchFile(); unwatchFile = null; }
   openFilePath = path;
   lastResolvedThumbPaths = ""; // new file → re-resolve any template.thumbnails paths
+  if (!opts?.keepThumbnails) { carriedThumbnails = []; resetThumbs = true; }
   currentName = (path.split(/[/\\]/).pop() ?? "house").replace(/\.(wdl|txt)$/i, "") || "house";
   const text = await readTextFile(path);
   lastDiskText = text;
@@ -517,6 +532,7 @@ function detachFile(): void {
   lastDiskText = null;
   carriedThumbnails = []; // a fresh doc carries no cover images (New / Open / sample)
   lastResolvedThumbPaths = "";
+  resetThumbs = true;     // the next push must not inherit the old doc's covers
 }
 
 // The header label showing the open file + a • when there are unsaved edits.
@@ -566,7 +582,7 @@ async function saveAsWdl(): Promise<void> {
   try {
     const { writeTextFile } = await import("@tauri-apps/plugin-fs");
     await writeTextFile(path, editor.getValue());
-    await attachFile(path); // now the watched, co-edited file
+    await attachFile(path, { keepThumbnails: true }); // now the watched, co-edited file (keep carried covers to materialize)
     setStatus(`✓ saved + watching ${baseName(path)}`);
     updateFileLabel();
     // An imported .wadi carries cover images as data URLs (in `carriedThumbnails`)
@@ -699,6 +715,7 @@ function wireToolbar(): void {
   file.addEventListener("change", async () => {
     const f = file.files?.[0];
     if (!f) return;
+    detachFile(); // browser open replaces the doc → drop the previous doc's covers
     editor.setValue(await f.text());
     currentName = f.name.replace(/\.(wdl|txt)$/i, "") || "house";
     file.value = "";
