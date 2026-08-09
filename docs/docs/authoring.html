@@ -85,8 +85,8 @@ a:hover{text-decoration:underline}
 <a href="roof-v2-guide.html">The roof object</a>
 <a href="conventions.html">Structural conventions</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#contents">Contents</a><a href="#1-what-you39re-writing">1. What you're writing</a><a href="#2-your-first-house">2. Your first house</a><a href="#3-the-house-skeleton">3. The house skeleton</a><a href="#4-floors">4. Floors</a><a href="#5-rooms-walls-amp-openings">5. Rooms, walls & openings</a><a href="#6-structure">6. Structure</a><a href="#7-circulation-amp-fittings">7. Circulation & fittings</a><a href="#8-furniture">8. Furniture</a><a href="#9-roofs">9. Roofs</a><a href="#10-going-parametric">10. Going parametric</a><a href="#11-components">11. Components</a><a href="#12-libraries">12. Libraries</a><a href="#13-the-configurator">13. The configurator</a><a href="#14-layers-amp-the-raw-escape">14. Layers & the raw escape</a><a href="#15-using-the-editor">15. Using the editor</a><a href="#16-sharing-amp-exporting">16. Sharing & exporting</a><a href="#17-publishing-a-template">17. Publishing a template</a><a href="#18-good-practice-amp-gotchas">18. Good practice & gotchas</a><a href="#19-quick-reference">19. Quick reference</a></nav>
-    <article class="md"><h1>Designing a house with the Wadi DSL: an author&#39;s guide</h1>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#contents">Contents</a><a href="#1-what-youre-writing">1. What you&#39;re writing</a><a href="#2-your-first-house">2. Your first house</a><a href="#3-the-house-skeleton">3. The house skeleton</a><a href="#4-floors">4. Floors</a><a href="#5-rooms-walls--openings">5. Rooms, walls &amp; openings</a><a href="#6-structure">6. Structure</a><a href="#7-circulation--fittings">7. Circulation &amp; fittings</a><a href="#8-furniture">8. Furniture</a><a href="#9-roofs">9. Roofs</a><a href="#10-going-parametric">10. Going parametric</a><a href="#11-components">11. Components</a><a href="#12-libraries">12. Libraries</a><a href="#13-the-configurator">13. The configurator</a><a href="#14-layers--the-raw-escape">14. Layers &amp; the raw escape</a><a href="#15-using-the-editor">15. Using the editor</a><a href="#16-sharing--exporting">16. Sharing &amp; exporting</a><a href="#17-publishing-a-template">17. Publishing a template</a><a href="#18-good-practice--gotchas">18. Good practice &amp; gotchas</a><a href="#19-quick-reference">19. Quick reference</a></nav>
+    <article class="md"><h1 id="designing-a-house-with-the-wadi-dsl-an-authors-guide">Designing a house with the Wadi DSL: an author&#39;s guide</h1>
 <p>This is a task-oriented guide to writing <code>.wdl</code>, the Wadi Design Language, and
 driving the editor to turn one text file into a live 3-D house plus 2-D floor
 plans, elevations, roof details, and quantities. It is written for the author:
@@ -124,7 +124,7 @@ New to the whole thing? Start at the <a href="index.html">documentation index</a
 <li><a href="#19-quick-reference">Quick reference</a></li>
 </ol>
 <hr>
-<h2 id="1-what-you39re-writing">1. What you&#39;re writing</h2>
+<h2 id="1-what-youre-writing">1. What you&#39;re writing</h2>
 <p>A <code>.wdl</code> file is a complete, human-readable description of a building. You type
 it in the WDL editor (the web app at <code>wadi.house/dsl</code>, or the desktop app&#39;s
 <code>Window → DSL editor</code>, ⌘⇧D) and the model rebuilds live in the pane beside you: a
@@ -234,7 +234,7 @@ the plinth height (see §6). The floors above it are the living levels.</li>
 <p>Inside a floor is a list of objects: rooms, walls, structure, furniture,
 roofs, component instances. The rest of §5 to §11 is that vocabulary.</p>
 <hr>
-<h2 id="5-rooms-walls-amp-openings">5. Rooms, walls &amp; openings</h2>
+<h2 id="5-rooms-walls--openings">5. Rooms, walls &amp; openings</h2>
 <p>The <code>room</code> is the main object. It is a rectangle that grows its own walls.</p>
 <pre><code class="language-wdl">room Living at (main.x1, main.yA) size (200, 200) {
   wall west                                    // a plain exterior wall
@@ -254,7 +254,7 @@ window). One side per block.</li>
 <li>Omit a side to leave it open. That is how you model a verandah or a
 sit-out.</li>
 </ul>
-<h3 id="doors-amp-windows">Doors &amp; windows</h3>
+<h3 id="doors--windows">Doors &amp; windows</h3>
 <p>Openings live inside a wall&#39;s block:</p>
 <pre><code class="language-wdl">wall south { door Main at 120 size (36, 84) [open] }
 wall west  { window W1  at 100 from end size (60, 50) sill 35 [open] }
@@ -307,7 +307,7 @@ the grid without fighting the walls.</li>
 sits on. Put both on the floor-0 &quot;Plinth&quot; floor.</li>
 </ul>
 <hr>
-<h2 id="7-circulation-amp-fittings">7. Circulation &amp; fittings</h2>
+<h2 id="7-circulation--fittings">7. Circulation &amp; fittings</h2>
 <h3 id="staircase">Staircase</h3>
 <pre><code class="language-wdl">staircase name &quot;Stair&quot; at (208, 64) step (7, 11, 44) direction south climb up
   total_height 116 max_run 90 turn clockwise
@@ -536,7 +536,7 @@ library component may <code>use</code> a sibling or place furniture from its own
 <li><code>konkan/base</code>: goal-tagged Konkan parts: <code>Stairwell</code>, <code>Verandah</code>, <code>Otla</code>,
 <code>Bathroom</code>, <code>Kitchen</code>, <code>TulsiVrindavan</code>, <code>Parapet</code> → <code>use kb.Verandah …</code>.</li>
 </ul>
-<h3 id="save-amp-reuse-your-own-libraries">Save &amp; reuse your own libraries</h3>
+<h3 id="save--reuse-your-own-libraries">Save &amp; reuse your own libraries</h3>
 <p>The editor keeps a cache of loaded libraries that <code>import</code> resolves from, the
 same on the web app and desktop. Open the <strong>📚 Library</strong> toolbar menu:</p>
 <table>
@@ -602,7 +602,7 @@ point fields.</p>
 it in the app and turns your knobs to fit their plot and taste, without touching the
 geometry.</p>
 <hr>
-<h2 id="14-layers-amp-the-raw-escape">14. Layers &amp; the raw escape</h2>
+<h2 id="14-layers--the-raw-escape">14. Layers &amp; the raw escape</h2>
 <p><strong>Layers</strong> are display groups (show/hide, colour), visual only, never geometry:</p>
 <pre><code class="language-wdl">layer &quot;structure&quot; &quot;Structure&quot; color &quot;#8B5A2B&quot; group &quot;Frame&quot;
 // then, on any object:
@@ -637,7 +637,7 @@ this file or into the imported library (which opens read-only).</li>
 (download the compiled model), <strong>📚 Library</strong> (§12), <strong>↩ Import .wadi</strong> (§16), and
 <strong>📖 Reference</strong>, a built-in cheat-sheet of every construct.</p>
 <hr>
-<h2 id="16-sharing-amp-exporting">16. Sharing &amp; exporting</h2>
+<h2 id="16-sharing--exporting">16. Sharing &amp; exporting</h2>
 <ul>
 <li><strong>Download the model:</strong> <strong>⬇ .wadi</strong> gives you the compiled JSON model (what the
 renderer consumes; also what you would publish as a template).</li>
@@ -697,7 +697,7 @@ Drive folder (needs a Drive API key in the source settings), or the bundled
 starter set. Drop <code>.wadi</code> files in, remove them, rename them — the gallery follows
 the folder.</p>
 <hr>
-<h2 id="18-good-practice-amp-gotchas">18. Good practice &amp; gotchas</h2>
+<h2 id="18-good-practice--gotchas">18. Good practice &amp; gotchas</h2>
 <ul>
 <li><strong>Use <code>convention center</code>.</strong> It removes all wall-offset arithmetic.</li>
 <li><strong>Author on a grid.</strong> Define a <code>grid</code> from your plot <code>point</code>, then place rooms/

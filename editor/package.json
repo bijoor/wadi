@@ -52,6 +52,7 @@
     "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^6.0.3",
     "marked": "^18.0.9",
+    "marked-gfm-heading-id": "^4.1.4",
     "oxlint": "^1.71.0",
     "tailwindcss": "^4.3.2",
     "tsx": "^4.23.0",

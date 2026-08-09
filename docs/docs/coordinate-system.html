@@ -85,10 +85,10 @@ a:hover{text-decoration:underline}
 <a href="roof-v2-guide.html">The roof object</a>
 <a href="conventions.html">Structural conventions</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#axes-inkscape-frame-y-is-down">Axes — Inkscape frame (Y is DOWN)</a><a href="#units-10-project-units-1-foot">Units — 10 project units = 1 foot</a><a href="#rooms-walls-and-the-centreline-convention">Rooms, walls, and the centreline convention</a><a href="#vertical-z-fields-recap">Vertical (Z) fields recap</a><a href="#sloping-tops">Sloping tops</a><a href="#quick-self-check-before-saving">Quick self-check before saving</a></nav>
-    <article class="md"><h1>Coordinate system &amp; units</h1>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#axes--inkscape-frame-y-is-down">Axes — Inkscape frame (Y is DOWN)</a><a href="#units--10-project-units--1-foot">Units — 10 project units = 1 foot</a><a href="#rooms-walls-and-the-centreline-convention">Rooms, walls, and the centreline convention</a><a href="#vertical-z-fields-recap">Vertical (Z) fields recap</a><a href="#sloping-tops">Sloping tops</a><a href="#quick-self-check-before-saving">Quick self-check before saving</a></nav>
+    <article class="md"><h1 id="coordinate-system--units">Coordinate system &amp; units</h1>
 <p>This is the #1 source of mistakes. Read it before placing anything.</p>
-<h2 id="axes-inkscape-frame-y-is-down">Axes — Inkscape frame (Y is DOWN)</h2>
+<h2 id="axes--inkscape-frame-y-is-down">Axes — Inkscape frame (Y is DOWN)</h2>
 <p>The config uses an <strong>Inkscape-style 2D frame</strong>, the same one the SVG floor plans
 use directly:</p>
 <pre><code>   origin (0,0) ── X increases →  (east / right)
@@ -116,7 +116,7 @@ derived from <code>height</code>/floor stacking. <code>sill_height</code>, <code
 <li>A north-up architect&#39;s sketch has its <strong>Y flipped</strong> when you transcribe it: the
 top of the drawing (north) maps to small Y, the bottom (south) to large Y.</li>
 </ul>
-<h2 id="units-10-project-units-1-foot">Units — 10 project units = 1 foot</h2>
+<h2 id="units--10-project-units--1-foot">Units — 10 project units = 1 foot</h2>
 <p>All lengths/coordinates are <strong>project units</strong>. The display/dimension convention is
 <strong><code>unit_conversion = 10</code> → 10 units = 1 ft</strong>. So:</p>
 <table>
@@ -184,7 +184,7 @@ its outer extent is <code>width + t</code> × <code>length + t</code>. The syste
 outer face automatically at render time (<code>expandRoomWalls</code>), so you never write <code>t</code>.</li>
 </ul>
 <p>That&#39;s the whole rule. No &quot;overlap by <code>wall_thickness</code>,&quot; no directional offsets.</p>
-<h3 id="placing-a-plan-on-a-grid-rooms-reference-the-grid-directly">Placing a plan on a grid — rooms reference the grid directly</h3>
+<h3 id="placing-a-plan-on-a-grid--rooms-reference-the-grid-directly">Placing a plan on a grid — rooms reference the grid directly</h3>
 <p>Because room coords <em>are</em> wall centrelines and a <strong>grid</strong> (<code>grids</code> block) is a set of
 named wall centrelines, a room is just the rectangle between four grid lines — with
 <strong>no arithmetic</strong>:</p>

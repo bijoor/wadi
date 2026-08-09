@@ -85,8 +85,8 @@ a:hover{text-decoration:underline}
 <a href="roof-v2-guide.html">The roof object</a>
 <a class="active" href="conventions.html">Structural conventions</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-vertical-model-why-c1-and-c3-exist">The vertical model (why C1 and C3 exist)</a><a href="#c1-the-plinth-floor39s-height-must-match-the-plinth-block-height-error">C1 — The plinth floor's height must match the plinth block height · **error**</a><a href="#c2-a-room-must-wall-every-exterior-side-warning">C2 — A room must wall every exterior side · **warning**</a><a href="#c3-a-floor-with-no-slab-must-set-slab_thickness-to-0-error">C3 — A floor with no slab must set slab_thickness to 0 · **error**</a><a href="#c4-a-stacked-floor39s-height-should-equal-wall_height-slab_thickness-warning">C4 — A stacked floor's height should equal wall_height + slab_thickness · **warning**</a><a href="#c5-a-staircase-must-land-on-a-floor-not-below-ground-warning">C5 — A staircase must land on a floor, not below ground · **warning**</a><a href="#c6-openings-on-the-same-wall-must-not-overlap-error">C6 — Openings on the same wall must not overlap · **error**</a><a href="#c7-furniture-items-should-not-overlap-warning">C7 — Furniture items should not overlap · **warning**</a><a href="#c8-two-abutting-rooms-need-a-partition-between-them-warning">C8 — Two abutting rooms need a partition between them · **warning**</a><a href="#c9-a-floor39s-slab_thickness-should-match-its-slab-object39s-thickness-warning">C9 — A floor's slab_thickness should match its slab object's thickness · **warning**</a><a href="#c10-the-roof-should-cover-the-rooms-of-the-top-occupied-floor-warning">C10 — The roof should cover the rooms of the top occupied floor · **warning**</a><a href="#sp1-a-spiral-staircase39s-central-pole-must-be-smaller-than-its-radius-error">SP1 — A spiral staircase's central pole must be smaller than its radius · **error**</a><a href="#running-the-checks">Running the checks</a><a href="#planned-conventions-not-yet-enforced">Planned conventions (not yet enforced)</a></nav>
-    <article class="md"><h1>Wadi structural conventions (coding guidelines)</h1>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-vertical-model-why-c1-and-c3-exist">The vertical model (why C1 and C3 exist)</a><a href="#c1--the-plinth-floors-height-must-match-the-plinth-block-height--error">C1 — The plinth floor&#39;s height must match the plinth block height · error</a><a href="#c2--a-room-must-wall-every-exterior-side--warning">C2 — A room must wall every exterior side · warning</a><a href="#c3--a-floor-with-no-slab-must-set-slab_thickness-to-0--error">C3 — A floor with no slab must set slab_thickness to 0 · error</a><a href="#c4--a-stacked-floors-height-should-equal-wall_height--slab_thickness--warning">C4 — A stacked floor&#39;s height should equal wall_height + slab_thickness · warning</a><a href="#c5--a-staircase-must-land-on-a-floor-not-below-ground--warning">C5 — A staircase must land on a floor, not below ground · warning</a><a href="#c6--openings-on-the-same-wall-must-not-overlap--error">C6 — Openings on the same wall must not overlap · error</a><a href="#c7--furniture-items-should-not-overlap--warning">C7 — Furniture items should not overlap · warning</a><a href="#c8--two-abutting-rooms-need-a-partition-between-them--warning">C8 — Two abutting rooms need a partition between them · warning</a><a href="#c9--a-floors-slab_thickness-should-match-its-slab-objects-thickness--warning">C9 — A floor&#39;s slab_thickness should match its slab object&#39;s thickness · warning</a><a href="#c10--the-roof-should-cover-the-rooms-of-the-top-occupied-floor--warning">C10 — The roof should cover the rooms of the top occupied floor · warning</a><a href="#sp1--a-spiral-staircases-central-pole-must-be-smaller-than-its-radius--error">SP1 — A spiral staircase&#39;s central pole must be smaller than its radius · error</a><a href="#running-the-checks">Running the checks</a><a href="#planned-conventions-not-yet-enforced">Planned conventions (not yet enforced)</a></nav>
+    <article class="md"><h1 id="wadi-structural-conventions-coding-guidelines">Wadi structural conventions (coding guidelines)</h1>
 <!-- GENERATED FILE — do not edit conventions.md by hand. It is built from
      conventions.preamble.md + the constraint modules in editor/src/lint/constraints.
      Regenerate with `npm --prefix editor run gen-conventions-doc`. --><p>A house can be <strong>well-formed but structurally unsound</strong>: it passes the schema and
@@ -124,7 +124,7 @@ is no deck, so the walls float by that amount. → <strong>C3</strong></li>
 model enforces no relationship between them. These conventions add the few
 relationships that structural soundness <em>does</em> require.</p>
 <hr>
-<h2 id="c1-the-plinth-floor39s-height-must-match-the-plinth-block-height-error">C1 — The plinth floor&#39;s height must match the plinth block height · <strong>error</strong></h2>
+<h2 id="c1--the-plinth-floors-height-must-match-the-plinth-block-height--error">C1 — The plinth floor&#39;s height must match the plinth block height · <strong>error</strong></h2>
 <p><strong>Statement.</strong> A floor that carries a <code>plinth</code> object (the Plinth floor) must set an explicit <code>height</code>, and that height must equal the plinth block&#39;s <code>height</code>.</p>
 <p><strong>Rationale.</strong> The floor above is stacked at <code>plinth-floor.height</code>; the plinth block rises to <code>plinth.height</code>. If they differ, the floor above floats above the plinth (<code>floor.height &gt; plinth.height</code>) or sinks into it (<code>&lt;</code>). If the floor <code>height</code> is omitted it silently defaults to <code>100</code>, almost never the plinth height.</p>
 <p><strong>Fix.</strong></p>
@@ -135,7 +135,7 @@ relationships that structural soundness <em>does</em> require.</p>
 </code></pre>
 <p>(If the plinth block omits its own <code>height</code>, it follows the floor height and is consistent by construction — but set the floor <code>height</code> explicitly anyway, so the stack is not left to the default.)</p>
 <hr>
-<h2 id="c2-a-room-must-wall-every-exterior-side-warning">C2 — A room must wall every exterior side · <strong>warning</strong></h2>
+<h2 id="c2--a-room-must-wall-every-exterior-side--warning">C2 — A room must wall every exterior side · <strong>warning</strong></h2>
 <p><strong>Statement.</strong> A room shown with a <strong>partial</strong> <code>walls</code> list must still wall every side that faces <strong>outside</strong> (no room beyond it). Interior (shared) sides may be omitted — the neighbour&#39;s wall stands on the shared centreline.</p>
 <p><strong>Rationale.</strong> A room shows exactly the walls it declares; a <strong>bare room (no <code>wall</code> lines) is enclosed on all four sides</strong>. But the moment you add a <code>wall</code> line to hang a door or window, the room switches to a <em>whitelist</em> — every side you don&#39;t list is now a hole. An exterior hole leaves the room open to the weather. It is a <strong>warning</strong>, not an error, because an open exterior side is sometimes intentional (a verandah / open padvi).</p>
 <p><strong>Fix.</strong></p>
@@ -146,7 +146,7 @@ relationships that structural soundness <em>does</em> require.</p>
 }
 </code></pre>
 <hr>
-<h2 id="c3-a-floor-with-no-slab-must-set-slab_thickness-to-0-error">C3 — A floor with no slab must set slab_thickness to 0 · <strong>error</strong></h2>
+<h2 id="c3--a-floor-with-no-slab-must-set-slab_thickness-to-0--error">C3 — A floor with no slab must set slab_thickness to 0 · <strong>error</strong></h2>
 <p><strong>Statement.</strong> A floor that has wall/room objects but <strong>no <code>floor_slab</code> object</strong> must set <code>slab_thickness 0</code>.</p>
 <p><strong>Rationale.</strong> <code>slab_thickness</code> is the deck the floor&#39;s walls stand on (<code>wallZ = base + slab_thickness</code>). Its default is <code>8</code>. With no slab object there is no deck, so every wall on the floor floats <code>slab_thickness</code> units above the floor base. Setting it to <code>0</code> puts the walls on the floor base; alternatively, model the deck by adding a <code>slab</code>.</p>
 <p><strong>Fix.</strong></p>
@@ -156,7 +156,7 @@ relationships that structural soundness <em>does</em> require.</p>
 </code></pre>
 <p><em>(This does not fire on a floor that carries no walls/rooms — e.g. a Plinth floor of just <code>ground</code> + <code>plinth</code>, or a roof-only top floor — where <code>slab_thickness</code> is harmless.)</em></p>
 <hr>
-<h2 id="c4-a-stacked-floor39s-height-should-equal-wall_height-slab_thickness-warning">C4 — A stacked floor&#39;s height should equal wall_height + slab_thickness · <strong>warning</strong></h2>
+<h2 id="c4--a-stacked-floors-height-should-equal-wall_height--slab_thickness--warning">C4 — A stacked floor&#39;s height should equal wall_height + slab_thickness · <strong>warning</strong></h2>
 <p><strong>Statement.</strong> A floor that carries a floor above it (and has walls/rooms) should set <code>height</code> = <code>wall_height</code> + <code>slab_thickness</code>.</p>
 <p><strong>Rationale.</strong> The next floor sits at <code>base + height</code>; this floor&#39;s walls stand on the deck and reach <code>base + slab_thickness + wall_height</code>. When <code>height</code> is larger, the floor above leaves a gap over the walls; when smaller, the walls poke through it. It is a <strong>warning</strong> — a deliberate gap is legitimate (a service plenum, a deep transfer beam) — but usually they should match.</p>
 <p><strong>Fix.</strong></p>
@@ -164,7 +164,7 @@ relationships that structural soundness <em>does</em> require.</p>
 </code></pre>
 <p><em>(Skipped for the plinth floor — governed by C1 — and for the topmost floor, since nothing stacks on its walls.)</em></p>
 <hr>
-<h2 id="c5-a-staircase-must-land-on-a-floor-not-below-ground-warning">C5 — A staircase must land on a floor, not below ground · <strong>warning</strong></h2>
+<h2 id="c5--a-staircase-must-land-on-a-floor-not-below-ground--warning">C5 — A staircase must land on a floor, not below ground · <strong>warning</strong></h2>
 <p><strong>Statement.</strong> A staircase&#39;s descent must not carry it below the ground plane (z &lt; 0).</p>
 <p><strong>Rationale.</strong> Only a <code>climb down</code> (top-anchored) stair can fall below ground: you place it on the <strong>upper</strong> floor and it <strong>descends</strong>. Put it on the wrong floor, or give it too large a <code>total_height</code>, and the expanded flight lands <strong>below ground</strong> — it still draws in the 2D plans (which ignore Z) but is <strong>buried and invisible in 3D</strong>, with no other error. A <code>climb up</code> stair is anchored on its own floor and ascends, so it never trips this.</p>
 <p><strong>Fix.</strong></p>
@@ -177,19 +177,19 @@ relationships that structural soundness <em>does</em> require.</p>
 </code></pre>
 <p>(Or, if you must keep it <code>climb down</code>, move it <strong>up one floor</strong> or reduce <code>total_height</code>.)</p>
 <hr>
-<h2 id="c6-openings-on-the-same-wall-must-not-overlap-error">C6 — Openings on the same wall must not overlap · <strong>error</strong></h2>
+<h2 id="c6--openings-on-the-same-wall-must-not-overlap--error">C6 — Openings on the same wall must not overlap · <strong>error</strong></h2>
 <p><strong>Statement.</strong> Two openings (doors/windows) cut into the <strong>same physical wall</strong> must not overlap along it. This includes openings that belong to <strong>two different rooms sharing a boundary wall</strong>.</p>
 <p><strong>Rationale.</strong> Each opening is a boolean-subtract from the wall. Overlapping spans merge into one ragged hole (or fight over the same brick), which is never what you meant — and on a shared wall it silently punches a bigger gap than either room&#39;s plan shows.</p>
 <p><strong>Fix.</strong></p>
 <p>Offset or narrow one opening so the spans are disjoint. Openings are measured from the wall&#39;s start corner (<code>offset</code> = near edge; the opening occupies <code>[offset, offset+width]</code>).</p>
 <hr>
-<h2 id="c7-furniture-items-should-not-overlap-warning">C7 — Furniture items should not overlap · <strong>warning</strong></h2>
+<h2 id="c7--furniture-items-should-not-overlap--warning">C7 — Furniture items should not overlap · <strong>warning</strong></h2>
 <p><strong>Statement.</strong> Two furniture <code>item</code>s whose plan footprints overlap are flagged — as a <strong>warning</strong>, because it is sometimes intentional (a rug under a table, a lamp on a desk, deliberately stacked pieces).</p>
 <p><strong>Rationale.</strong> More often it&#39;s a placement slip — two beds dropped on the same spot, or an anchored piece that reflowed into another when a room was resized. The footprint used is the item&#39;s rotated bounding box (yaw-aware), so it matches what the plan draws.</p>
 <p><strong>Fix.</strong></p>
 <p>Reposition one item, or ignore the warning if the overlap is deliberate.</p>
 <hr>
-<h2 id="c8-two-abutting-rooms-need-a-partition-between-them-warning">C8 — Two abutting rooms need a partition between them · <strong>warning</strong></h2>
+<h2 id="c8--two-abutting-rooms-need-a-partition-between-them--warning">C8 — Two abutting rooms need a partition between them · <strong>warning</strong></h2>
 <p><strong>Statement.</strong> Where two rooms share a boundary line and <strong>neither</strong> declares a wall on it, there is no partition between them.</p>
 <p><strong>Rationale.</strong> A bare room (no <code>wall</code> lines) is enclosed on all four sides, so two bare neighbours have two walls on their shared line. But once <strong>both</strong> rooms switch to partial <code>walls</code> lists and both omit the shared side, the centreline is left open — the rooms merge into one space with no divider. C2 only guards <em>exterior</em> sides; this is its interior counterpart. It is a <strong>warning</strong> because an intentional open-plan link (kitchen into living) is legitimate.</p>
 <p><strong>Fix.</strong></p>
@@ -198,7 +198,7 @@ relationships that structural soundness <em>does</em> require.</p>
 room Living  at (…) size (…) { wall north south west }
 </code></pre>
 <hr>
-<h2 id="c9-a-floor39s-slab_thickness-should-match-its-slab-object39s-thickness-warning">C9 — A floor&#39;s slab_thickness should match its slab object&#39;s thickness · <strong>warning</strong></h2>
+<h2 id="c9--a-floors-slab_thickness-should-match-its-slab-objects-thickness--warning">C9 — A floor&#39;s slab_thickness should match its slab object&#39;s thickness · <strong>warning</strong></h2>
 <p><strong>Statement.</strong> When a floor carries a <code>floor_slab</code> object with an explicit <code>thickness</code>, that thickness should equal the floor&#39;s <code>slab_thickness</code>.</p>
 <p><strong>Rationale.</strong> The floor&#39;s <code>slab_thickness</code> is the deck the walls stand on (<code>wallZ = base + slab_thickness</code>); the slab object&#39;s own <code>thickness</code> is how thick the slab MESH is drawn. If they differ, the walls sit at the floor&#39;s <code>slab_thickness</code> while the slab top is at the object&#39;s <code>thickness</code>, so the walls float above or sink into the drawn deck. (A slab with no explicit <code>thickness</code> follows the floor&#39;s <code>slab_thickness</code> and is consistent by construction — this only fires when both are set and disagree.)</p>
 <p><strong>Fix.</strong></p>
@@ -208,13 +208,13 @@ room Living  at (…) size (…) { wall north south west }
 }
 </code></pre>
 <hr>
-<h2 id="c10-the-roof-should-cover-the-rooms-of-the-top-occupied-floor-warning">C10 — The roof should cover the rooms of the top occupied floor · <strong>warning</strong></h2>
+<h2 id="c10--the-roof-should-cover-the-rooms-of-the-top-occupied-floor--warning">C10 — The roof should cover the rooms of the top occupied floor · <strong>warning</strong></h2>
 <p><strong>Statement.</strong> Every room on the top occupied floor should sit under a roof segment — no room left entirely uncovered.</p>
 <p><strong>Rationale.</strong> The roof&#39;s segments span a plan area (each segment&#39;s ridge line ± its <code>width</code>). A room on the top floor whose footprint does not overlap <strong>any</strong> roof segment has open sky above it — usually a roof that was sized to the wrong footprint, or a room added after the roof. (Only a <em>completely</em> uncovered room is flagged, so eave overhangs and partial coverage never false-warn; a house with no roof at all — a terrace — is not flagged.)</p>
 <p><strong>Fix.</strong></p>
 <p>Extend or add a roof segment to span the room, or reduce the room. Roof segments cover <code>start → end</code> along the ridge, <code>width</code> across it, so grow <code>width</code>/<code>end</code> (or the plot variables they derive from) until the room is under it.</p>
 <hr>
-<h2 id="sp1-a-spiral-staircase39s-central-pole-must-be-smaller-than-its-radius-error">SP1 — A spiral staircase&#39;s central pole must be smaller than its radius · <strong>error</strong></h2>
+<h2 id="sp1--a-spiral-staircases-central-pole-must-be-smaller-than-its-radius--error">SP1 — A spiral staircase&#39;s central pole must be smaller than its radius · <strong>error</strong></h2>
 <p><strong>Statement.</strong> A <code>spiral_staircase</code>&#39;s <code>pole_radius</code> must be less than its outer <code>radius</code>.</p>
 <p><strong>Rationale.</strong> The treads run from the central pole out to the outer radius. If the pole is as wide as (or wider than) the stair, there is no tread left to stand on — the geometry collapses.</p>
 <p><strong>Fix.</strong></p>

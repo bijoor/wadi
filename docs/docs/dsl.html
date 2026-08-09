@@ -85,8 +85,8 @@ a:hover{text-decoration:underline}
 <a href="roof-v2-guide.html">The roof object</a>
 <a href="conventions.html">Structural conventions</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-loop">The loop</a><a href="#skeleton">Skeleton</a><a href="#parametric-core-domain-neutral">Parametric core (domain-neutral)</a><a href="#common-attribute-tail-every-object">Common attribute tail (every object)</a><a href="#objects-structure-amp-envelope">Objects — structure & envelope</a><a href="#objects-rooms-walls-amp-openings">Objects — rooms, walls & openings</a><a href="#objects-circulation-amp-fittings">Objects — circulation & fittings</a><a href="#objects-glb-models-model">Objects — GLB models (model)</a><a href="#imports-amp-modules-reusable-wdl-libraries">Imports & modules (reusable .wdl libraries)</a><a href="#objects-roof-one-object-flat-shed-gable-hip">Objects — roof (one object; flat / shed / gable / hip)</a><a href="#components-amp-layers">Components & layers</a><a href="#template-metadata-template">Template metadata (template)</a><a href="#the-raw-escape-rarely-needed">The raw escape (rarely needed)</a><a href="#dsl-specific-pitfalls">DSL-specific pitfalls</a></nav>
-    <article class="md"><h1>The Wadi DSL (<code>.wdl</code>) — authoring reference</h1>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-loop">The loop</a><a href="#skeleton">Skeleton</a><a href="#parametric-core-domain-neutral">Parametric core (domain-neutral)</a><a href="#common-attribute-tail-every-object">Common attribute tail (every object)</a><a href="#objects--structure--envelope">Objects — structure &amp; envelope</a><a href="#objects--rooms-walls--openings">Objects — rooms, walls &amp; openings</a><a href="#objects--circulation--fittings">Objects — circulation &amp; fittings</a><a href="#imports--modules-reusable-wdl-libraries">Imports &amp; modules (reusable .wdl libraries)</a><a href="#objects--roof-one-object-flat--shed--gable--hip">Objects — roof (one object; flat / shed / gable / hip)</a><a href="#components--layers">Components &amp; layers</a><a href="#template-metadata-template">Template metadata (template)</a><a href="#the-raw-escape-rarely-needed">The raw escape (rarely needed)</a><a href="#dsl-specific-pitfalls">DSL-specific pitfalls</a></nav>
+    <article class="md"><h1 id="the-wadi-dsl-wdl--authoring-reference">The Wadi DSL (<code>.wdl</code>) — authoring reference</h1>
 <p>You author houses in the <strong>Wadi DSL</strong> — a small, formal language (<code>.wdl</code>) that
 compiles to a resolved <code>.wadi</code> (<code>house_config.json</code>). The DSL is <strong>complete</strong>:
 every object type in the model has first-class syntax, so you rarely need the
@@ -185,7 +185,7 @@ only the chosen one.)</li>
 <li><code>material &quot;id&quot;</code> — only on plinth / ground / room / wall / staircase / kitchen /
 roof.</li>
 </ul>
-<h2 id="objects-structure-amp-envelope">Objects — structure &amp; envelope</h2>
+<h2 id="objects--structure--envelope">Objects — structure &amp; envelope</h2>
 <pre><code class="language-wdl">slab   [name &quot;N&quot;] at (x,y) size (w,l) [thickness &lt;t&gt;]     // floor_slab
 beam   [name &quot;N&quot;] at (x,y) size (w,l) [height &lt;h&gt;]
 plinth [name &quot;N&quot;] at (x,y) size (w,l) height &lt;h&gt;          // raised base (Plinth floor)
@@ -198,7 +198,7 @@ pillar Name       at (x,y) size (w,l) [height &lt;h&gt;]        // (x,y) = TOP-L
 still its corner. To <strong>centre a column on a point</strong> <code>(cx, cy)</code> — a grid node, a room
 corner — place it at <strong><code>at (cx - w/2, cy - l/2)</code></strong>, never at <code>(cx, cy)</code>. On a grid, the
 <code>pilInset</code> idiom (see <code>parametric-conventions.md</code>) does exactly this so columns sit flush.</p>
-<h2 id="objects-rooms-walls-amp-openings">Objects — rooms, walls &amp; openings</h2>
+<h2 id="objects--rooms-walls--openings">Objects — rooms, walls &amp; openings</h2>
 <p>A room shows exactly the walls you declare. A <strong>bare room (no <code>wall</code> lines) is
 enclosed on all four sides.</strong> List plain walls compactly; give a wall its own line
 only when it carries a door/window; omit a side to leave it open (verandah).</p>
@@ -241,7 +241,7 @@ wall V from (160, 40) to (160, 160) height 108    // butts into H&#39;s overlapp
 <p>(Room walls handle their own corners; this only applies to <code>wall … from … to …</code>.)</p>
 </li>
 </ul>
-<h2 id="objects-circulation-amp-fittings">Objects — circulation &amp; fittings</h2>
+<h2 id="objects--circulation--fittings">Objects — circulation &amp; fittings</h2>
 <pre><code class="language-wdl">staircase [name &quot;N&quot;] at (start_x, start_y) step (rise, tread, width)
   direction north|south|east|west  [climb up|down]
   [total_height &lt;h&gt;] [max_run &lt;r&gt;] [landing_depth &lt;d&gt;]
@@ -332,7 +332,7 @@ model [name &quot;N&quot;] &lt;asset&gt; at (x,y) [rotation &lt;deg&gt;] [scale 
 nodes; <code>array</code> replicates a node <code>count</code> times along <code>step</code>, and its nested block
 applies further ops per copy. Use <code>model</code> for a rigged mechanism (a fan, a louvre
 bank, a spiral of balusters); use <code>item</code> for a plain piece of furniture.</p>
-<h2 id="imports-amp-modules-reusable-wdl-libraries">Imports &amp; modules (reusable <code>.wdl</code> libraries)</h2>
+<h2 id="imports--modules-reusable-wdl-libraries">Imports &amp; modules (reusable <code>.wdl</code> libraries)</h2>
 <p>A <code>.wdl</code> file can be a <strong>module</strong> — top-level declarations (no <code>house</code> needed) —
 that another file <code>import</code>s. Two bundled ones: <code>std-furniture</code> (asset pack →
 <code>item ns.&quot;id&quot;</code>) and <code>konkan/base</code> (goal-tagged component pack → <code>use ns.Comp</code>;
@@ -355,7 +355,7 @@ asset &quot;daybed&quot; src &quot;https://…/daybed.glb&quot; dims (1.8, 0.4, 
 shows a module&#39;s asset ids + dimensions (filter with a <code>query</code>). Import refs
 resolve by name against the bundled <code>std-*</code> packs (a local <code>modules/</code> search
 path and git refs come later).</p>
-<h2 id="objects-roof-one-object-flat-shed-gable-hip">Objects — roof (one object; flat / shed / gable / hip)</h2>
+<h2 id="objects--roof-one-object-flat--shed--gable--hip">Objects — roof (one object; flat / shed / gable / hip)</h2>
 <p>The roof lives ALONE on its own top floor and you never set its Z (see
 <code>roof-v2-guide.md</code>). <code>endpoint</code>: <code>closed</code> = hip triangle, <code>open</code> = gable end-wall.</p>
 <pre><code class="language-wdl">roof [name &quot;N&quot;] pitched|shed|flat
@@ -418,7 +418,7 @@ and widens by wall_thickness, exactly the grow a room gets). <code>overhang</cod
 extends <em>beyond</em> the outer face. So to cover a footprint spanning wall centrelines
 <code>x1..x2</code> (E–W) and <code>yA..yB</code> (N–S), write <code>from (x1, (yA+yB)/2) to (x2, (yA+yB)/2) width (yB - yA)</code> — do <strong>not</strong> add ½-wall fudge factors; the convention handles it.
 (Before this, a roof drawn on the grid sat half a wall-thickness <em>inside</em> the walls.)</p>
-<h2 id="components-amp-layers">Components &amp; layers</h2>
+<h2 id="components--layers">Components &amp; layers</h2>
 <pre><code class="language-wdl">component Bench {                 // a reusable mini-house in LOCAL coords (origin 0,0)
   param blen = 60 label &quot;Bench length&quot;
   beam name &quot;Top&quot; at (0,0) size (blen, 18) height 6

@@ -85,8 +85,8 @@ a:hover{text-decoration:underline}
 <a href="roof-v2-guide.html">The roof object</a>
 <a href="conventions.html">Structural conventions</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#fields-shared-by-almost-every-object">Fields shared by (almost) every object</a><a href="#top-level-houseconfig">Top level — HouseConfig</a><a href="#floor">floor</a><a href="#object-types-floorsobjects">Object types (floors[].objects[])</a><a href="#shared-amp-nested-schemas">Shared & nested schemas</a></nav>
-    <article class="md"><h1>Wadi data model (<code>.wadi</code> / <code>house_config.json</code>)</h1>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#fields-shared-by-almost-every-object">Fields shared by (almost) every object</a><a href="#top-level--houseconfig">Top level — HouseConfig</a><a href="#floor">floor</a><a href="#object-types-floorsobjects">Object types (floors[].objects[])</a><a href="#shared--nested-schemas">Shared &amp; nested schemas</a></nav>
+    <article class="md"><h1 id="wadi-data-model-wadi--house_configjson">Wadi data model (<code>.wadi</code> / <code>house_config.json</code>)</h1>
 <blockquote>
 <p><strong>Generated from <code>editor/src/schema/houseConfig.ts</code> — do not edit by hand.</strong>
 Regenerate: <code>node scripts/gen-schema-doc.mjs &lt;path/to/houseConfig.ts&gt; reference/data-model.md</code>
@@ -163,7 +163,7 @@ matching numeric field. See <code>parametric-conventions.md</code>.</li>
 staircase, kitchen_platform) default it to the floor&#39;s slab thickness; slab/beam/pillar/
 roof default to 0.</li>
 </ul>
-<h2 id="top-level-houseconfig">Top level — HouseConfig</h2>
+<h2 id="top-level--houseconfig">Top level — HouseConfig</h2>
 <table>
 <thead>
 <tr>
@@ -1719,7 +1719,7 @@ roof default to 0.</li>
 <td><em>(shared — see top)</em></td>
 </tr>
 </tbody></table>
-<h2 id="shared-amp-nested-schemas">Shared &amp; nested schemas</h2>
+<h2 id="shared--nested-schemas">Shared &amp; nested schemas</h2>
 <h3 id="site">site</h3>
 <p>Objects don&#39;t bind to the grid with a special field — a grid line&#39;s position is published as a formula symbol (<code>&lt;gridId&gt;.x&lt;name&gt;</code> / <code>.y&lt;name&gt;</code>, see param/resolve.ts), so a room places itself with ordinary <code>formulas</code>, e.g. { x: &quot;= main.x1&quot;, width: &quot;= main.x5 - main.x1&quot; }. With coord_convention:&quot;center&quot; those are wall centrelines and expandRoomWalls handles the wall extent.</p>
 <table>

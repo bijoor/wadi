@@ -11,6 +11,11 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, basename } from "node:path";
 import { marked } from "marked";
+import { gfmHeadingId, getHeadingList, resetHeadings } from "marked-gfm-heading-id";
+
+// GitHub-compatible heading ids, so hand-authored `#anchor` links in the source
+// markdown (e.g. `#5-rooms-walls--openings`) resolve to the generated ids.
+marked.use({ gfm: true }, gfmHeadingId());
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "..", ".."); // editor/scripts -> repo root
@@ -47,20 +52,10 @@ const allPages = GROUPS.flatMap((g) => g.pages);
 // basename(.md) -> output href, so inter-doc links resolve to the generated pages.
 const linkMap = new Map(allPages.map((p) => [basename(p.src), `${p.slug}.html`]));
 
-marked.setOptions({ gfm: true });
-
-function slugify(s) {
-  return s
-    .toLowerCase()
-    .replace(/<[^>]+>/g, "")
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
-}
-
 // Rewrite a markdown link target: a known doc basename -> its .html (keep #anchor);
-// bare .md that we don't publish is left as-is.
+// an in-page `#anchor` or a bare .md we don't publish is left as-is.
 function rewriteHref(href) {
+  if (!href || href.startsWith("#") || /^[a-z]+:/i.test(href)) return href; // in-page / external
   const m = /^([^#]*?)(#.*)?$/.exec(href);
   const path = m[1] || "";
   const hash = m[2] || "";
@@ -69,28 +64,18 @@ function rewriteHref(href) {
   return href;
 }
 
-function renderMarkdown(md) {
-  const renderer = new marked.Renderer();
-  const baseLink = renderer.link.bind(renderer);
-  renderer.link = (token) => {
-    const t = { ...token, href: rewriteHref(token.href) };
-    return baseLink(t);
-  };
-  let html = marked.parse(md, { renderer });
-  // Add stable ids to h2/h3 for in-page anchors + the "on this page" list.
-  html = html.replace(/<(h[23])>(.*?)<\/\1>/g, (_all, tag, inner) => {
-    return `<${tag} id="${slugify(inner)}">${inner}</${tag}>`;
-  });
-  return html;
-}
-
-function tocFor(md) {
-  const items = [];
-  for (const line of md.split("\n")) {
-    const m = /^##\s+(.+?)\s*$/.exec(line);
-    if (m) items.push({ text: m[1].replace(/`/g, ""), id: slugify(marked.parseInline(m[1])) });
-  }
-  return items;
+// Render a page: GitHub-slugged heading ids (via the extension), doc-link
+// rewriting as a post-process (composes cleanly with the extension), and an
+// "on this page" list taken from the extension's heading list so it always
+// matches the rendered ids.
+function renderPage(md) {
+  resetHeadings();
+  let html = marked.parse(md);
+  html = html.replace(/href="([^"]+)"/g, (_m, h) => `href="${rewriteHref(h)}"`);
+  const toc = getHeadingList()
+    .filter((h) => h.level === 2)
+    .map((h) => ({ id: h.id, text: h.text.replace(/<[^>]+>/g, "").replace(/`/g, "") }));
+  return { html, toc };
 }
 
 function sidebar(currentSlug) {
@@ -209,7 +194,8 @@ for (const p of allPages) {
   const md = readFileSync(resolve(repo, p.src), "utf8");
   const titleMatch = /^#\s+(.+)$/m.exec(md);
   const title = titleMatch ? titleMatch[1].replace(/`/g, "").replace(/[*_]/g, "") : p.nav;
-  const html = page({ slug: p.slug, title, body: renderMarkdown(md), toc: tocFor(md) });
+  const { html: body, toc } = renderPage(md);
+  const html = page({ slug: p.slug, title, body, toc });
   writeFileSync(resolve(outDir, `${p.slug}.html`), html);
   n++;
 }

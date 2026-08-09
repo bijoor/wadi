@@ -85,8 +85,8 @@ a:hover{text-decoration:underline}
 <a href="roof-v2-guide.html">The roof object</a>
 <a href="conventions.html">Structural conventions</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#1-components">1. Components</a><a href="#2-libraries-reusable-wdl-modules">2. Libraries (reusable .wdl modules)</a><a href="#3-saving-amp-reusing-libraries-in-the-wdl-editor">3. Saving & reusing libraries in the WDL editor</a><a href="#4-mcp-for-coding-agents">4. MCP (for coding agents)</a><a href="#5-quick-reference">5. Quick reference</a></nav>
-    <article class="md"><h1>Components &amp; libraries in the Wadi DSL</h1>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#1-components">1. Components</a><a href="#2-libraries-reusable-wdl-modules">2. Libraries (reusable .wdl modules)</a><a href="#3-saving--reusing-libraries-in-the-wdl-editor">3. Saving &amp; reusing libraries in the WDL editor</a><a href="#4-mcp-for-coding-agents">4. MCP (for coding agents)</a><a href="#5-quick-reference">5. Quick reference</a></nav>
+    <article class="md"><h1 id="components--libraries-in-the-wadi-dsl">Components &amp; libraries in the Wadi DSL</h1>
 <blockquote>
 <p>Part of the <a href="index.html">Wadi documentation</a>. Prerequisite: the
 <a href="authoring.html">authoring guide</a>. This chapter covers <strong>reuse</strong>.</p>
@@ -140,7 +140,7 @@ declared defaults.</li>
 <li>A component expands <strong>byte-identical</strong> to writing its objects inline. It has no
 runtime cost and nothing special downstream.</li>
 </ul>
-<h3 id="rules-amp-tips">Rules &amp; tips</h3>
+<h3 id="rules--tips">Rules &amp; tips</h3>
 <ul>
 <li><strong>Local coords.</strong> Author everything relative to <code>(0, 0)</code>; <code>use … at (x, y)</code> does
 the placement.</li>
@@ -207,7 +207,7 @@ notice. That&#39;s expected; it isn&#39;t a renderable house. To see your compon
 you build them, give the library a <strong>demo <code>house</code></strong> that <code>use</code>s them. Importers
 pull only the library&#39;s <code>component</code> / <code>asset</code> exports and ignore the demo house.</p>
 <hr>
-<h2 id="3-saving-amp-reusing-libraries-in-the-wdl-editor">3. Saving &amp; reusing libraries in the WDL editor</h2>
+<h2 id="3-saving--reusing-libraries-in-the-wdl-editor">3. Saving &amp; reusing libraries in the WDL editor</h2>
 <p>The editor keeps a <strong>cache of loaded libraries</strong> that <code>import</code> resolves from. It is
 <strong>identical on the web app and the desktop app</strong>. Open the <strong>📚 Library</strong> toolbar
 menu:</p>
@@ -248,7 +248,7 @@ auto-loaded into the cache when you open the house, importable by its
 <li>These are real files you can <strong>commit, share, and version</strong>, and the coding
 agent + MCP can read them.</li>
 </ul>
-<h3 id="if-a-library-isn39t-loaded">If a library isn&#39;t loaded</h3>
+<h3 id="if-a-library-isnt-loaded">If a library isn&#39;t loaded</h3>
 <p>Open a house that imports something not in the cache and the editor names exactly
 what&#39;s missing:</p>
 <blockquote>

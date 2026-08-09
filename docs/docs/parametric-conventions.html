@@ -85,8 +85,8 @@ a:hover{text-decoration:underline}
 <a href="roof-v2-guide.html">The roof object</a>
 <a href="conventions.html">Structural conventions</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#0-the-one-big-idea-the-grid-is-the-parametric-layer">0. The one big idea: the GRID is the parametric layer</a><a href="#1-set-the-centreline-convention">1. Set the centreline convention</a><a href="#2-variables-the-knobs">2. Variables — the knobs</a><a href="#3-the-grid-named-lines-as-formulas">3. The grid — named lines as formulas</a><a href="#4-rooms-slabs-plinth-reference-the-grid-nothing-else">4. Rooms, slabs, plinth — reference the grid, nothing else</a><a href="#5-pillars-corner-anchored-centre-on-a-node-by-subtracting-half-the-width">5. Pillars — corner-anchored; centre on a node by subtracting half the width</a><a href="#6-openings">6. Openings</a><a href="#7-konkan-layout-conventions">7. Konkan layout conventions</a><a href="#8-build-amp-verify-the-loop">8. Build & verify — the loop</a></nav>
-    <article class="md"><h1>Parametric model conventions (reusable house templates)</h1>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#0-the-one-big-idea-the-grid-is-the-parametric-layer">0. The one big idea: the GRID is the parametric layer</a><a href="#1-set-the-centreline-convention">1. Set the centreline convention</a><a href="#2-variables--the-knobs">2. Variables — the knobs</a><a href="#3-the-grid--named-lines-as-formulas">3. The grid — named lines as formulas</a><a href="#4-rooms-slabs-plinth--reference-the-grid-nothing-else">4. Rooms, slabs, plinth — reference the grid, nothing else</a><a href="#5-pillars--corner-anchored-centre-on-a-node-by-subtracting-half-the-width">5. Pillars — corner-anchored; centre on a node by subtracting half the width</a><a href="#6-openings">6. Openings</a><a href="#7-konkan-layout-conventions">7. Konkan layout conventions</a><a href="#8-build--verify--the-loop">8. Build &amp; verify — the loop</a></nav>
+    <article class="md"><h1 id="parametric-model-conventions-reusable-house-templates">Parametric model conventions (reusable house templates)</h1>
 <p>How to author a <strong>fully-parametric</strong> <code>.wadi</code> — a template that stays valid under <em>any</em>
 knob change (resize the plot, widen a room, add a floor) instead of a one-off with
 baked-in numbers. Use it when building a <strong>template</strong> for the library / picker; skip it
@@ -114,7 +114,7 @@ that share a wall just ABUT on the shared line</strong> — room A spans X <code
 spans <code>[x4,x8]</code>, the wall is centred on <code>x4</code> and shared. No overlap, no <code>wallT</code> math;
 the renderer grows each footprint to the outer face automatically. See
 <code>coordinate-system.md</code> → &quot;the centreline convention&quot;.</p>
-<h2 id="2-variables-the-knobs">2. Variables — the knobs</h2>
+<h2 id="2-variables--the-knobs">2. Variables — the knobs</h2>
 <ul>
 <li><strong>Base dims:</strong> <code>wallT</code> (wall thickness), <code>floorH</code>, <code>slabH</code>, plus derived helpers
 (<code>wallH = &quot;=floorH-slabH&quot;</code>).</li>
@@ -126,7 +126,7 @@ inline literals.</li>
 <li><strong>Room-proportion knobs:</strong> <code>pct&lt;Room&gt;&lt;W/L&gt;</code> + <code>min&lt;Room&gt;&lt;W/L&gt;</code> (see §3).</li>
 </ul>
 <p>Variables may reference only other variables (they resolve before the grid).</p>
-<h2 id="3-the-grid-named-lines-as-formulas">3. The grid — named lines as formulas</h2>
+<h2 id="3-the-grid--named-lines-as-formulas">3. The grid — named lines as formulas</h2>
 <p>Define <code>grids.main</code> with X and Y lines. The <strong>outer</strong> lines anchor to the plinth edge;
 <strong>interior</strong> lines carry the room-proportion logic:</p>
 <pre><code class="language-jsonc">&quot;grids&quot;: { &quot;main&quot;: {
@@ -152,7 +152,7 @@ equals the clear interior.</li>
 (<code>main.x1</code>, <code>main.yA</code>). Positions are conserved automatically — the lines partition
 the span, so there are no gaps/overlaps to reconcile.</li>
 </ul>
-<h2 id="4-rooms-slabs-plinth-reference-the-grid-nothing-else">4. Rooms, slabs, plinth — reference the grid, nothing else</h2>
+<h2 id="4-rooms-slabs-plinth--reference-the-grid-nothing-else">4. Rooms, slabs, plinth — reference the grid, nothing else</h2>
 <pre><code class="language-jsonc">{ &quot;type&quot;:&quot;room&quot;, &quot;name&quot;:&quot;Hall&quot;,
   &quot;formulas&quot;: { &quot;x&quot;:&quot;= main.x1&quot;, &quot;y&quot;:&quot;= main.yA&quot;,
                 &quot;width&quot;:&quot;= main.x4 - main.x1&quot;, &quot;length&quot;:&quot;= main.yC - main.yA&quot; } }
@@ -166,7 +166,7 @@ the span, so there are no gaps/overlaps to reconcile.</li>
 <li><strong>Keep valid placeholder literals</strong> on <code>x/y/width/length</code> (positive numbers) — the
 strict schema checks stored literals <em>before</em> resolve. The resolver overwrites them.</li>
 </ul>
-<h2 id="5-pillars-corner-anchored-centre-on-a-node-by-subtracting-half-the-width">5. Pillars — corner-anchored; centre on a node by subtracting half the width</h2>
+<h2 id="5-pillars--corner-anchored-centre-on-a-node-by-subtracting-half-the-width">5. Pillars — corner-anchored; centre on a node by subtracting half the width</h2>
 <p>A pillar&#39;s <code>(x,y)</code> is its <strong>TOP-LEFT CORNER</strong> in <strong>both</strong> conventions (columns align
 to corners — the convention never shifts a pillar the way it grows a room). To drop a
 column <strong>centred</strong> on a grid node, subtract <strong>half its width</strong> in the formula:</p>
@@ -216,7 +216,7 @@ together.</li>
 <li>Give fixed rooms a comfortable <strong>minimum</strong> (a 6&#39;×6&#39; bathroom reads cramped; ~7&#39;×7&#39; is
 better) — raise the <code>min</code>, not just the <code>pct</code>.</li>
 </ul>
-<h2 id="8-build-amp-verify-the-loop">8. Build &amp; verify — the loop</h2>
+<h2 id="8-build--verify--the-loop">8. Build &amp; verify — the loop</h2>
 <ol>
 <li><strong>Author</strong> the grid + formulas with valid placeholder literals.</li>
 <li><strong>Validate:</strong> <code>cd editor &amp;&amp; npx tsx ../wadi-skill/architect/scripts/validate.mjs &lt;ABS_PATH&gt;</code>
