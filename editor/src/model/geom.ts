@@ -102,10 +102,22 @@ export function ringsToFootprint(rings: Ring[]): Footprint {
 
 // ---- predicates / measures -------------------------------------------------
 
+// AABB centre as a flatten Point — inside for convex footprints (rects, OBBs,
+// roof/segment quads), which is what the coincident/containing fallback needs.
+function centerPoint(f: Footprint): Point {
+  const b = aabbOf(f);
+  return new Point((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2);
+}
+
 /** True iff the two footprints share positive area (touching edges do not count). */
 export function footprintsOverlap(a: Footprint, b: Footprint): boolean {
   if (!aabbsOverlap(aabbOf(a), aabbOf(b))) return false;
-  return BooleanOperations.intersect(a, b).area() > AREA_EPS;
+  if (BooleanOperations.intersect(a, b).area() > AREA_EPS) return true;
+  // flatten's booleans DEGENERATE for coincident / fully-containing polygons
+  // (intersect → empty, subtract → unchanged), so fall back to an interior-point
+  // test: "room exactly under the roof" / "room inside a bigger roof" still count,
+  // while a shared-edge touch or an AABB-overlapping near-miss does not.
+  return a.contains(centerPoint(b)) || b.contains(centerPoint(a));
 }
 
 /** The overlap region, or null if they do not overlap with positive area. */

@@ -37,6 +37,13 @@ describe("geom — overlap / intersection", () => {
     expect(footprintIntersection(a, b)!.area()).toBeCloseTo(25, 6);
   });
 
+  it("coincident and fully-containing footprints overlap (flatten intersect degeneracy)", () => {
+    const a = fp(rectRing(0, 0, 100, 100));
+    expect(footprintsOverlap(a, fp(rectRing(0, 0, 100, 100)))).toBe(true); // identical
+    expect(footprintsOverlap(a, fp(rectRing(20, 20, 40, 40)))).toBe(true); // b inside a
+    expect(footprintsOverlap(fp(rectRing(20, 20, 40, 40)), a)).toBe(true); // a inside b
+  });
+
   it("touching edges do NOT count as overlap", () => {
     const a = fp(rectRing(0, 0, 10, 10));
     const b = fp(rectRing(10, 0, 10, 10)); // shares the x=10 edge only

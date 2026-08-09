@@ -11,6 +11,7 @@ import { toThreePos } from "../../three/coords";
 import { defaultLayerFor } from "../../three/layers";
 import { uniqueName } from "../../state/naming";
 import { spiralStaircaseFields } from "../../schema/fields/spiralStaircase";
+import { SPIRAL_POLE } from "./spiralStaircase.constraints";
 import type { HouseObject } from "../../schema/houseConfig";
 import type { NodeDefinition } from "../types";
 
@@ -24,6 +25,7 @@ export const spiralStaircaseNode: NodeDefinition = {
   addable: true,
   layerRole: "structure",
   fields: spiralStaircaseFields, // → AutoForm (no bespoke Form needed)
+  constraints: [SPIRAL_POLE], // per-primitive rule (P5) — merged into allConstraints()
 
   makeDefault: (cfg, existing) =>
     ({

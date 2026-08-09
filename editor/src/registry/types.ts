@@ -135,6 +135,11 @@ export interface NodeDefinition {
   /** CAPABILITY — 2D elevation: an SVG fragment for one elevation direction.
    *  Consumed by the "elevation" view (wired in P1d). */
   drawElevation?: (obj: Record<string, unknown>, ctx: NodeElevationCtx) => string | null;
+  /** Structural constraints this primitive contributes, checked alongside the
+   *  house-level C-rules (merged into allConstraints() by the lint registry).
+   *  Typed `unknown[]` here to avoid a value dependency on the lint package;
+   *  the lint side casts to Constraint[]. See plans/functional-constraints-testing.md. */
+  constraints?: unknown[];
 }
 
 /** The capability hooks a VIEW can consume (see capabilities.ts). */

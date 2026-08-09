@@ -163,6 +163,65 @@ Reposition one item, or ignore the warning if the overlap is deliberate.
 
 ---
 
+## C8 — Two abutting rooms need a partition between them · **warning**
+
+**Statement.** Where two rooms share a boundary line and **neither** declares a wall on it, there is no partition between them.
+
+**Rationale.** A bare room (no `wall` lines) is enclosed on all four sides, so two bare neighbours have two walls on their shared line. But once **both** rooms switch to partial `walls` lists and both omit the shared side, the centreline is left open — the rooms merge into one space with no divider. C2 only guards *exterior* sides; this is its interior counterpart. It is a **warning** because an intentional open-plan link (kitchen into living) is legitimate.
+
+**Fix.**
+
+Declare the wall on **one** of the two rooms (the neighbour's wall stands on the shared centreline, so one is enough):
+
+```wdl
+room Kitchen at (…) size (…) { wall north south east }   // east = the shared line
+room Living  at (…) size (…) { wall north south west }
+```
+
+---
+
+## C9 — A floor's slab_thickness should match its slab object's thickness · **warning**
+
+**Statement.** When a floor carries a `floor_slab` object with an explicit `thickness`, that thickness should equal the floor's `slab_thickness`.
+
+**Rationale.** The floor's `slab_thickness` is the deck the walls stand on (`wallZ = base + slab_thickness`); the slab object's own `thickness` is how thick the slab MESH is drawn. If they differ, the walls sit at the floor's `slab_thickness` while the slab top is at the object's `thickness`, so the walls float above or sink into the drawn deck. (A slab with no explicit `thickness` follows the floor's `slab_thickness` and is consistent by construction — this only fires when both are set and disagree.)
+
+**Fix.**
+
+Make them equal — most simply, drop the slab's explicit `thickness` so it follows the floor:
+
+```wdl
+floor 1 "Ground" slab_thickness 8 {
+  slab name "Deck" at (…) size (…)          // no thickness → uses 8
+}
+```
+
+---
+
+## C10 — The roof should cover the rooms of the top occupied floor · **warning**
+
+**Statement.** Every room on the top occupied floor should sit under a roof segment — no room left entirely uncovered.
+
+**Rationale.** The roof's segments span a plan area (each segment's ridge line ± its `width`). A room on the top floor whose footprint does not overlap **any** roof segment has open sky above it — usually a roof that was sized to the wrong footprint, or a room added after the roof. (Only a *completely* uncovered room is flagged, so eave overhangs and partial coverage never false-warn; a house with no roof at all — a terrace — is not flagged.)
+
+**Fix.**
+
+Extend or add a roof segment to span the room, or reduce the room. Roof segments cover `start → end` along the ridge, `width` across it, so grow `width`/`end` (or the plot variables they derive from) until the room is under it.
+
+---
+
+## SP1 — A spiral staircase's central pole must be smaller than its radius · **error**
+
+**Statement.** A `spiral_staircase`'s `pole_radius` must be less than its outer `radius`.
+
+**Rationale.** The treads run from the central pole out to the outer radius. If the pole is as wide as (or wider than) the stair, there is no tread left to stand on — the geometry collapses.
+
+**Fix.**
+
+Reduce `pole_radius` below `radius` (a pole is typically a small fraction of the radius).
+
+---
+
 ## Running the checks
 
 ```bash
