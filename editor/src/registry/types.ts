@@ -89,6 +89,10 @@ export interface NodeFacets {
   bbox?: (obj: Record<string, unknown>) => PlanAABB | null;
   /** Plan footprint (also surfaced via `planFootprint` for back-compat). */
   footprint?: (obj: Record<string, unknown>) => NodePlanFootprint | null;
+  /** TRUE plan polygon for a non-box primitive (roof segments, a concave model):
+   *  an array of rings, first = outer boundary, rest = holes. Consumed by the
+   *  model query layer (editor/src/model); box facets are used when this is absent. */
+  footprintPoly?: (obj: Record<string, unknown>) => Array<Array<{ x: number; y: number }>> | null;
 }
 
 // The descriptor a primitive registers — one file owns its whole surface. Named

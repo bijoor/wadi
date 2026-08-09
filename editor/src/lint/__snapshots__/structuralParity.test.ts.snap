@@ -1,0 +1,92 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`structural lint — findings parity (C1-C7) > C1_float findings are stable 1`] = `
+[
+  {
+    "floor": 0,
+    "level": "error",
+    "message": "Floor 0 "Plinth": floor \`height\` (100) ≠ plinth "P" height (40). The floor above floats 60 units. Make the floor height and the plinth height equal.",
+    "rule": "C1",
+    "where": ""P"",
+  },
+]
+`;
+
+exports[`structural lint — findings parity (C1-C7) > C2_open findings are stable 1`] = `
+[
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "Room "Studio" on floor 1 "Ground": the east side faces outside but has no wall — the room is open to the weather there. Add \`wall east\` unless this side is intentionally open (e.g. a verandah).",
+    "rule": "C2",
+    "where": ""Studio"",
+  },
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "Room "Studio" on floor 1 "Ground": the west side faces outside but has no wall — the room is open to the weather there. Add \`wall west\` unless this side is intentionally open (e.g. a verandah).",
+    "rule": "C2",
+    "where": ""Studio"",
+  },
+]
+`;
+
+exports[`structural lint — findings parity (C1-C7) > C3_noslab findings are stable 1`] = `
+[
+  {
+    "floor": 1,
+    "level": "error",
+    "message": "Floor 1 "Ground" has 1 wall/room object but no floor slab, yet slab_thickness is 8 (default). The walls float 8 units above the floor base. Set \`slab_thickness 0\` on this floor, or add a \`slab\`.",
+    "rule": "C3",
+    "where": undefined,
+  },
+]
+`;
+
+exports[`structural lint — findings parity (C1-C7) > C4_gap findings are stable 1`] = `
+[
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "Floor 1 "Ground": floor height (120) ≠ wall_height (108) + slab_thickness (8) = 116. The floor above leaves a 4-unit gap over the walls. Set height = wall_height + slab_thickness (or adjust them) unless the gap is intentional.",
+    "rule": "C4",
+    "where": undefined,
+  },
+]
+`;
+
+exports[`structural lint — findings parity (C1-C7) > C5_buried findings are stable 1`] = `
+[
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "Staircase "S" on floor 1 "Ground" descends to z=-75 — below the ground plane, so it draws in 2D plans but is buried (invisible) in 3D. Staircases are TOP-anchored: place them on the UPPER floor and they DESCEND to the floor below (\`direction\` is the descent). Move it up a floor or reduce total_height.",
+    "rule": "C5",
+    "where": ""S"",
+  },
+]
+`;
+
+exports[`structural lint — findings parity (C1-C7) > C6_overlap findings are stable 1`] = `
+[
+  {
+    "floor": 1,
+    "level": "error",
+    "message": "Floor 1 "Ground": door "D1" and window "W1" overlap by ~20 units on room "Hall" south. Two openings can't occupy the same span of a wall — move or narrow one.",
+    "rule": "C6",
+    "where": "room "Hall" south",
+  },
+]
+`;
+
+exports[`structural lint — findings parity (C1-C7) > C7_furniture findings are stable 1`] = `
+[
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "Floor 1 "Ground": furniture "Bed A" and "Bed B" overlap (~56×66 units). Reposition one if that isn't intentional.",
+    "rule": "C7",
+    "where": ""Bed A"",
+  },
+]
+`;
