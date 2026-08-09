@@ -30,6 +30,7 @@ const GROUPS = [
       { src: "documentation/01-concept.md", slug: "concept", nav: "The concept" },
       { src: "documentation/02-personas.md", slug: "personas", nav: "Who it's for" },
       { src: "documentation/03-authoring.md", slug: "authoring", nav: "Authoring a house" },
+      { src: "documentation/07-ai-assistants.md", slug: "ai-assistants", nav: "Using an AI assistant" },
       { src: "documentation/04-components-and-libraries.md", slug: "components", nav: "Components & libraries" },
       { src: "documentation/05-extending-the-dsl.md", slug: "extending", nav: "Extending the DSL" },
       { src: "documentation/06-the-method.md", slug: "method", nav: "The method" },

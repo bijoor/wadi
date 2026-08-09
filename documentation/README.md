@@ -21,6 +21,7 @@ Read in order for a full tour, or jump using the [reading paths](#reading-paths)
 | 01 | [What Wadi is, and why it is designed for AI](01-concept.md) | The product, why the DSL exists so an AI assistant can author designs, what each persona does, and why the system is built to add object types at low cost. Start here. |
 | 02 | [Personas](02-personas.md) | Who uses Wadi and how: AI coding assistant, architect, home-owner, developer. |
 | 03 | [Authoring guide](03-authoring.md) | The step-by-step guide to writing a house in `.wdl`, from the first room to a parametric, configurable template. |
+| 07 | [Using an AI coding assistant](07-ai-assistants.md) | Step-by-step setup: connect an assistant over MCP, install the desktop app, and run the co-edit loop. |
 | 04 | [Components & libraries](04-components-and-libraries.md) | Reuse: define a part once and place it many times; share parts across files. |
 | 05 | [Extending the DSL](05-extending-the-dsl.md) | Advanced. Add a new object type in about two files: the componentization framework and its kernel. |
 | 06 | [The method](06-the-method.md) | Advanced. The general recipe for building a parametric DSL like this in another domain. |
@@ -34,8 +35,9 @@ Read in order for a full tour, or jump using the [reading paths](#reading-paths)
   [personas, Architect](02-personas.md#architect), then the full
   [authoring guide](03-authoring.md), then [components & libraries](04-components-and-libraries.md).
 - Using an AI coding tool (have an agent write the design): [concept](01-concept.md),
-  then [personas, AI coding assistant](02-personas.md#ai-coding-assistant) for setup, then let
-  the agent read the [reference](#reference) below.
+  then the step-by-step [using an AI coding assistant](07-ai-assistants.md) (connect over
+  MCP, install the desktop app, the co-edit loop), then let the agent read the
+  [reference](#reference) below.
 - Developer (add object types, or reuse the engine): [concept](01-concept.md), then
   [extending the DSL](05-extending-the-dsl.md), then [the method](06-the-method.md).
 
