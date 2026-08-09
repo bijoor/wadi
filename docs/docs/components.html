@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components & libraries in the Wadi DSL · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a class="active" href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#1-components">1. Components</a><a href="#2-libraries-reusable-wdl-modules">2. Libraries (reusable .wdl modules)</a><a href="#3-saving-amp-reusing-libraries-in-the-wdl-editor">3. Saving & reusing libraries in the WDL editor</a><a href="#4-mcp-for-coding-agents">4. MCP (for coding agents)</a><a href="#5-quick-reference">5. Quick reference</a></nav>
+    <article class="md"><h1>Components &amp; libraries in the Wadi DSL</h1>
+<blockquote>
+<p>Part of the <a href="index.html">Wadi documentation</a>. Prerequisite: the
+<a href="authoring.html">authoring guide</a>. This chapter covers <strong>reuse</strong>.</p>
+</blockquote>
+<p>Reuse in the Wadi DSL (<code>.wdl</code>) comes in two layers:</p>
+<ul>
+<li><strong>Components</strong>: a named, parametric <em>mini-house</em> (a stair, a bathroom, a
+verandah, a bench…) you define once and stamp onto any floor with <code>use</code>.</li>
+<li><strong>Libraries</strong>: a <code>.wdl</code> file of components (and furniture <code>asset</code>s) that other
+files <code>import</code> and reuse. <strong>A library <em>is</em> a <code>.wdl</code> file</strong>. There is no separate
+format.</li>
+</ul>
+<p>Both are first-class in the language. This guide shows how to author them and how
+to save / load / resolve libraries in the WDL editor (web app + desktop app).</p>
+<hr>
+<h2 id="1-components">1. Components</h2>
+<h3 id="define-a-component">Define a component</h3>
+<p>A component is authored in its <strong>own local coordinates</strong> (origin <code>(0, 0)</code>) so it
+can be dropped anywhere. It may declare <code>param</code>s (knobs, with optional defaults),
+local <code>var</code>/<code>point</code>s, and any floor objects.</p>
+<pre><code class="language-wdl">component Bench {
+  param length = 60 label &quot;Bench length&quot;      // a knob (default 60)
+  param seat   = 18
+  beam name &quot;Seat&quot; at (0, 0) size (length, seat) height 6
+}
+</code></pre>
+<p>An optional <code>goal &quot;…&quot;</code> documents intent and is the discovery key for module search
+(see <a href="#2-libraries-reusable-wdl-modules">Libraries</a> and <a href="#4-mcp-for-coding-agents">MCP</a>):</p>
+<pre><code class="language-wdl">component Stairwell goal &quot;climb to the next floor&quot; {
+  param rise = 116
+  staircase name &quot;Stair&quot; at (0, 0) step (7, 11, 44) direction south climb up total_height rise
+}
+</code></pre>
+<h3 id="use-stamp-a-component">Use (stamp) a component</h3>
+<p><code>use</code> places a component on a floor at <code>(x, y)</code>, optionally naming the instance and
+overriding params. <strong>Param overrides use <code>=</code></strong> (not <code>:</code>):</p>
+<pre><code class="language-wdl">floor 1 &quot;Ground&quot; {
+  use Bench at (40, 40)                        // all defaults
+  use Bench as &quot;LongBench&quot; at (40, 120) with { length = 120 }
+}
+</code></pre>
+<ul>
+<li><code>at (x, y)</code> offsets the component&#39;s local origin onto the floor.</li>
+<li><code>rotation &lt;deg&gt;</code> (optional) turns the whole stamped assembly about its origin:
+yaw°, 0=south, 90=east. <strong>Right angles (0/90/180/270) are exact for any
+component</strong>; a <strong>non-right angle</strong> is allowed <strong>only for a furniture-only
+component</strong> (a free angle on a component containing a room/pillar/beam/slab/
+staircase is a compile error; arbitrary structural rotation is a future need).</li>
+<li><code>with { p = v, … }</code> overrides params; un-overridden params fall back to their
+declared defaults.</li>
+<li>A component expands <strong>byte-identical</strong> to writing its objects inline. It has no
+runtime cost and nothing special downstream.</li>
+</ul>
+<h3 id="rules-amp-tips">Rules &amp; tips</h3>
+<ul>
+<li><strong>Local coords.</strong> Author everything relative to <code>(0, 0)</code>; <code>use … at (x, y)</code> does
+the placement.</li>
+<li><strong>Components nest freely.</strong> A component (in-file <em>or</em> in an imported library)
+may <code>use</code> another component and place <code>item</code> furniture. A library component can
+<code>use</code> a sibling in the same library, <code>use</code> a component from a library it itself
+<code>import</code>s, and <code>item ns.&quot;id&quot;</code> from its own imports. Imports resolve
+<strong>transitively</strong> (a library may import libraries), each relocated under its
+namespace, with a clear error on an import cycle.</li>
+<li><strong>Reserved param names.</strong> A <code>param</code> name can&#39;t be a grammar keyword (<code>width</code>,
+<code>depth</code>, <code>height</code>, <code>size</code>, …). Use <code>across</code> / <code>deep</code> / <code>tall</code>, etc.</li>
+<li><strong>Furniture too.</strong> A component can place <code>item</code> furniture (see the furniture
+section of the DSL reference).</li>
+</ul>
+<h3 id="promote-a-component-to-a-primitive-expose-as">Promote a component to a primitive (<code>expose as</code>)</h3>
+<p>A component can be <strong>promoted to a runtime typed primitive</strong>, so it reads and behaves
+like a built-in object type (<code>pack.type</code>) instead of a <code>use</code> instance:</p>
+<pre><code class="language-wdl">component Bench goal &quot;a place to sit&quot; expose as garden.bench [layer &quot;id&quot;] [label &quot;…&quot;] {
+  param length = 60
+  beam name &quot;Seat&quot; at (0, 0) size (length, 18) height 6
+}
+</code></pre>
+<p><code>expose as &lt;pack&gt;.&lt;type&gt;</code> names the promoted primitive (a dotted <code>pack.type</code> id);
+optional <code>layer &quot;id&quot;</code> and <code>label &quot;…&quot;</code> set its default layer and menu label. Once
+exposed, <code>pack.type</code> is a first-class object type throughout the model, its <code>param</code>s
+becoming that type&#39;s fields, so authors place it directly rather than through <code>use</code>.</p>
+<hr>
+<h2 id="2-libraries-reusable-wdl-modules">2. Libraries (reusable <code>.wdl</code> modules)</h2>
+<p>A <strong>library</strong> is a <code>.wdl</code> file whose top level holds <code>component</code> / <code>asset</code> (and
+<code>import</code>) declarations, with <strong>no <code>house</code> block needed</strong>:</p>
+<pre><code class="language-wdl">// konkan-parts.wdl - a reusable library (a &quot;module&quot;)
+component Otla goal &quot;a raised front platform&quot; {
+  param across = 240
+  param deep   = 40
+  plinth name &quot;Otla&quot; at (0, 0) size (across, deep) height 15
+}
+
+asset &quot;daybed&quot; src &quot;https://…/daybed.glb&quot; dims (1.8, 0.4, 0.9) name &quot;Daybed&quot; category &quot;Living&quot;
+</code></pre>
+<p>Another file pulls it in with <code>import</code>, then stamps components with <code>use ns.Comp</code>
+and places assets with <code>item ns.&quot;id&quot;</code>:</p>
+<pre><code class="language-wdl">house Home {
+  import &quot;konkan-parts&quot; as kp
+  floor 1 &quot;Ground&quot; slab_thickness 0 {
+    room Hall at (20, 20) size (200, 200) { wall north east south west }
+    use kp.Otla at (20, 4) with { across = 200 }
+    item kp.&quot;daybed&quot; at (60, 60)
+  }
+}
+</code></pre>
+<h3 id="two-bundled-packs">Two bundled packs</h3>
+<p>Shipped with the editor and MCP, importable by name anywhere with no loading needed:</p>
+<ul>
+<li><strong><code>std-furniture</code></strong>: 120 furniture assets → <code>item f.&quot;bed_double&quot;</code> after
+<code>import &quot;std-furniture&quot; as f</code>.</li>
+<li><strong><code>konkan/base</code></strong>: goal-tagged Konkan parts (Stairwell, Verandah, Otla,
+Bathroom, Kitchen, TulsiVrindavan, Parapet) → <code>use kb.Verandah …</code> after
+<code>import &quot;konkan/base&quot; as kb</code>.</li>
+</ul>
+<p><code>examples/konkan_cottage.wdl</code> assembles a whole house from both.</p>
+<h3 id="want-a-live-preview-while-authoring-a-library">Want a live preview while authoring a library?</h3>
+<p>A house-less module has no floors, so the editor preview shows a <em>&quot;no floors&quot;</em>
+notice. That&#39;s expected; it isn&#39;t a renderable house. To see your components as
+you build them, give the library a <strong>demo <code>house</code></strong> that <code>use</code>s them. Importers
+pull only the library&#39;s <code>component</code> / <code>asset</code> exports and ignore the demo house.</p>
+<hr>
+<h2 id="3-saving-amp-reusing-libraries-in-the-wdl-editor">3. Saving &amp; reusing libraries in the WDL editor</h2>
+<p>The editor keeps a <strong>cache of loaded libraries</strong> that <code>import</code> resolves from. It is
+<strong>identical on the web app and the desktop app</strong>. Open the <strong>📚 Library</strong> toolbar
+menu:</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>💾 Save current as library…</strong></td>
+<td>Names the current file and puts it in the cache.</td>
+</tr>
+<tr>
+<td><strong>📂 Load library file…</strong></td>
+<td>Loads one <em>or more</em> <code>.wdl</code> files into the cache (multi-select).</td>
+</tr>
+<tr>
+<td><em>(the list of cached libraries)</em></td>
+<td>Click a name to insert its <code>import &quot;…&quot; as ns</code> line · <strong>✎</strong> opens it in the editor · <strong>×</strong> removes it from the cache.</td>
+</tr>
+</tbody></table>
+<p>Each entry shows an origin badge: <strong>saved</strong> (from <em>Save current as library</em>) or
+<strong>file</strong> (loaded from a <code>.wdl</code>).</p>
+<h3 id="resolution-order">Resolution order</h3>
+<p><code>import &quot;name&quot;</code> resolves in this order:</p>
+<ol>
+<li><strong>Your cache</strong> (saved + loaded libraries)</li>
+<li><strong>Bundled packs</strong> (<code>std-furniture</code>, <code>konkan/base</code>)</li>
+</ol>
+<h3 id="desktop-libraries-as-real-files">Desktop: libraries as real files</h3>
+<p>In the desktop app, a library can be a <strong>file on disk</strong>, with no explicit load:</p>
+<ul>
+<li>Any <code>.wdl</code> <strong>beside your open file</strong>, or in a <strong><code>modules/</code> subfolder</strong>, is
+auto-loaded into the cache when you open the house, importable by its
+<strong>basename</strong> (<code>kitchens.wdl</code> → <code>import &quot;kitchens&quot;</code>).</li>
+<li>These are real files you can <strong>commit, share, and version</strong>, and the coding
+agent + MCP can read them.</li>
+</ul>
+<h3 id="if-a-library-isn39t-loaded">If a library isn&#39;t loaded</h3>
+<p>Open a house that imports something not in the cache and the editor names exactly
+what&#39;s missing:</p>
+<blockquote>
+<p>⚠ missing libraries &quot;kitchens&quot;, &quot;bathrooms&quot;. 📚 Library → Load library file…</p>
+</blockquote>
+<p>Load the named <code>.wdl</code>(s), several at once, and it resolves.</p>
+<hr>
+<h2 id="4-mcp-for-coding-agents">4. MCP (for coding agents)</h2>
+<p>Over the Wadi MCP server:</p>
+<ul>
+<li><code>wadi_modules [query]</code>: list importable modules (filter by a component <strong>goal</strong>
+keyword, e.g. &quot;stairs&quot;, &quot;sit-out&quot;).</li>
+<li><code>wadi_module &quot;&lt;name&gt;&quot; [query]</code>: show a module&#39;s components (name + goal +
+params) and assets (id + dimensions).</li>
+</ul>
+<hr>
+<h2 id="5-quick-reference">5. Quick reference</h2>
+<pre><code class="language-wdl">// ── define a component ───────────────────────────────────────────────
+component Name goal &quot;…&quot;? {           // goal optional (discovery key)
+  param p = default label &quot;…&quot;?       // default &amp; label optional
+  …objects in LOCAL coords (origin 0,0)…
+}
+
+// ── stamp it (same file) ─────────────────────────────────────────────
+use Name as &quot;id&quot;? at (x, y) [rotation &lt;deg&gt;] [with { p = v, … }]   // overrides use `=`
+//   rotation: 0/90/180/270 for structural, any angle for furniture-only
+
+// ── a library: a .wdl of component/asset decls, no `house` needed ─────
+// then in another file:
+import &quot;name&quot; as ns                  // ns.Comp · ns.&quot;assetId&quot;
+use  ns.Comp as &quot;id&quot;? at (x, y) [with { … }]
+item ns.&quot;assetId&quot; at (x, y)
+</code></pre>
+<p>See also: the <a href="authoring.html"><strong>authoring guide</strong></a> (the end-to-end tutorial) and the
+dense syntax reference at
+<a href="dsl.html"><code>wadi-skill/architect/reference/dsl.md</code></a>.</p>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

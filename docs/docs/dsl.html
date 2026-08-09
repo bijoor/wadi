@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Wadi DSL (.wdl) — authoring reference · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a class="active" href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-loop">The loop</a><a href="#skeleton">Skeleton</a><a href="#parametric-core-domain-neutral">Parametric core (domain-neutral)</a><a href="#common-attribute-tail-every-object">Common attribute tail (every object)</a><a href="#objects-structure-amp-envelope">Objects — structure & envelope</a><a href="#objects-rooms-walls-amp-openings">Objects — rooms, walls & openings</a><a href="#objects-circulation-amp-fittings">Objects — circulation & fittings</a><a href="#objects-glb-models-model">Objects — GLB models (model)</a><a href="#imports-amp-modules-reusable-wdl-libraries">Imports & modules (reusable .wdl libraries)</a><a href="#objects-roof-one-object-flat-shed-gable-hip">Objects — roof (one object; flat / shed / gable / hip)</a><a href="#components-amp-layers">Components & layers</a><a href="#template-metadata-template">Template metadata (template)</a><a href="#the-raw-escape-rarely-needed">The raw escape (rarely needed)</a><a href="#dsl-specific-pitfalls">DSL-specific pitfalls</a></nav>
+    <article class="md"><h1>The Wadi DSL (<code>.wdl</code>) — authoring reference</h1>
+<p>You author houses in the <strong>Wadi DSL</strong> — a small, formal language (<code>.wdl</code>) that
+compiles to a resolved <code>.wadi</code> (<code>house_config.json</code>). The DSL is <strong>complete</strong>:
+every object type in the model has first-class syntax, so you rarely need the
+<code>raw</code> escape. Authoring the DSL is more direct and less error-prone than writing
+JSON — the grammar enforces structure, and <code>check.sh</code> reports parse errors with
+line:col.</p>
+<p><strong>This file is the SYNTAX reference.</strong> The <em>semantics</em> live in the other
+references and apply unchanged — read them:</p>
+<ul>
+<li><code>coordinate-system.md</code> — X→right, <strong>Y→DOWN</strong>, Z→up; <strong>10 units = 1 ft</strong>;
+the <strong>centreline</strong> convention. The #1 source of mistakes.</li>
+<li><code>conventions.md</code> — the <strong>structural coding conventions</strong> (<code>check.sh</code> enforces
+them): plinth-floor height must match the plinth block, rooms must wall every
+exterior side, a no-slab floor must set <code>slab_thickness 0</code>.</li>
+<li><code>parametric-conventions.md</code> — the grid-first recipe for reusable templates.</li>
+<li><code>roof-v2-guide.md</code> — roof segments, hip vs gable, trusses, joints.</li>
+<li><code>data-model.md</code> — the underlying <code>.wadi</code> schema (what the DSL compiles to; also
+the field reference for the <code>raw</code> escape).</li>
+</ul>
+<h2 id="the-loop">The loop</h2>
+<ol>
+<li>Write / edit <code>house.wdl</code> — the <strong>single shared source</strong> (you and the human
+co-edit it; the app&#39;s DSL previewer renders it live). You never produce a <code>.wadi</code>.</li>
+<li><code>wadi-skill/architect/scripts/check.sh house.wdl</code> — runs the DSL compiler +
+validator (schema + wall/roof geometry) against a <strong>throwaway temp</strong> just for
+feedback; fix any reported error and re-run.</li>
+<li><code>preview.sh house.wdl</code> → read the PNGs (plans / elevations / roof) to check your
+work. (It also compiles to a throwaway temp — no persistent <code>.wadi</code>.)</li>
+</ol>
+<h2 id="skeleton">Skeleton</h2>
+<pre><code class="language-wdl">house MyHouse {
+  convention center                 // ALWAYS use center (wall-centreline coords)
+  units feet_inches per_unit 10     // 10 project units = 1 ft
+  site { plot (WIDTH, LENGTH) ref (0, 0) }
+  defaults { floor_height 120 wall_height 108 slab_thickness 8 wall_thickness 8 }
+
+  // parametric core (optional): var, point, grid, configurator
+  // component / layer declarations (optional)
+  floor 0 &quot;Plinth&quot; { … }            // floors stack in source order (0 = plinth)
+  floor 1 &quot;Ground Floor&quot; { … }
+  floor 2 &quot;Loft&quot; { roof … }         // roof lives ALONE on its own top floor
+}
+</code></pre>
+<p>Numbers are <strong>project units</strong> (feet × 10 by default). Names after <code>house</code>,
+<code>room</code>, <code>pillar</code>, <code>var</code>, <code>point</code>, <code>grid</code>, and <code>use</code>/<code>component</code> are bare
+identifiers (no spaces); names introduced with the <code>name</code> keyword are quoted
+strings.</p>
+<h2 id="parametric-core-domain-neutral">Parametric core (domain-neutral)</h2>
+<pre><code class="language-wdl">var wallT = 8                       // a knob; may reference other vars
+var pilInset = (pillarW - wallT) / 2
+
+point House { x = 420, y = 470 }    // reference as House.x / House.W / House.L
+                                    // (.W = x, .L = y — a point doubles as a size)
+
+grid main {                         // named wall centrelines; publishes main.x1 / main.yA
+  x: 1 @ wallT / 2, 2 @ House.W / 2, 3 @ House.W - wallT / 2
+  y: A @ wallT / 2, B @ House.L / 2, C @ House.L - wallT / 2
+}
+// each line may add:  … @ &lt;expr&gt; thick &lt;expr&gt;  role structural|planning
+
+configurator {                      // the owner-facing template you author
+  title &quot;Configure your home&quot;       // panel heading (optional)
+  note  &quot;Everything re-flows to fit.&quot;   // panel subtitle (optional)
+
+  slider pillarW    &quot;Column size&quot; ft [8 .. 14 step 1] note &quot;help text&quot;  // trailing note optional
+  number ceiling    &quot;Ceiling height&quot; ft
+  toggle has_loft   &quot;Add a loft&quot;
+  select roof_style &quot;Roof style&quot; { Flat = 0, Shed = 1, Gable = 2, Hip = 3 }
+  select floorH     &quot;Ceiling height&quot; { &quot;9 ft&quot; = 90, &quot;10 ft (std)&quot; = 100 }  // labels can be quoted strings
+
+  group &quot;Plot&quot; note &quot;about this section&quot; {   // sections the panel; label only
+    slider W &quot;Plot width&quot; ft [340 .. 520 step 10]
+  }
+}
+</code></pre>
+<p>Every knob binds to a <code>var</code> by name (<code>target</code>). To expose a plot dimension, model
+it as a <code>var</code> and reference it from the point (<code>point House { x = W }</code>), then bind
+the knob to <code>W</code> — knobs target vars, never a point field like <code>House.W</code>.</p>
+<p><strong>Formulas are automatic.</strong> Any geometry number can be a formula — just write the
+expression instead of a literal (<code>at (main.x1, main.yA)</code>, <code>size (House.W/2, 200)</code>).
+Operators: <code>+ - * /</code>, unary <code>-</code>, parentheses, and the functions
+<code>min max clamp round floor ceil abs</code>. References: a <code>var</code>, a <code>point</code>
+(<code>House.W</code>), or a grid line (<code>main.x3 - main.x1</code>). No comparison operators — gate
+things with the <code>min/abs</code> idiom (see <code>enabled</code> below).</p>
+<h2 id="common-attribute-tail-every-object">Common attribute tail (every object)</h2>
+<p>After an object&#39;s geometry, in THIS order, any of:</p>
+<pre><code>… z_offset &lt;expr&gt;   enabled &lt;expr&gt;   layer &quot;id&quot;   [material &quot;id&quot;]
+</code></pre>
+<ul>
+<li><code>enabled &lt;expr&gt;</code> — the on/off switch. A <code>0</code>/<code>false</code> value hides the object. To
+gate on a configurator variable, use a 0/1 formula:
+<code>enabled 1 - min(1, abs(roof_style - 3))</code> renders the object only when
+<code>roof_style == 3</code>. (This is how one template carries several roofs and shows
+only the chosen one.)</li>
+<li><code>z_offset &lt;expr&gt;</code> — lift above the floor base (split levels).</li>
+<li><code>material &quot;id&quot;</code> — only on plinth / ground / room / wall / staircase / kitchen /
+roof.</li>
+</ul>
+<h2 id="objects-structure-amp-envelope">Objects — structure &amp; envelope</h2>
+<pre><code class="language-wdl">slab   [name &quot;N&quot;] at (x,y) size (w,l) [thickness &lt;t&gt;]     // floor_slab
+beam   [name &quot;N&quot;] at (x,y) size (w,l) [height &lt;h&gt;]
+plinth [name &quot;N&quot;] at (x,y) size (w,l) height &lt;h&gt;          // raised base (Plinth floor)
+ground [name &quot;N&quot;] at (x,y) size (w,l) [height &lt;h&gt;]        // terrain plane
+pillar Name       at (x,y) size (w,l) [height &lt;h&gt;]        // (x,y) = TOP-LEFT corner
+</code></pre>
+<p><code>at (x,y)</code> is the <strong>TOP-LEFT CORNER</strong> — <strong>not the centre</strong> — for every one of these
+(same as rooms/slabs/beams); <code>size (w,l)</code> is width × length. All accept the common tail.</p>
+<p><strong>Pillars catch people out here.</strong> A column reads as &quot;placed at a point,&quot; but <code>at</code> is
+still its corner. To <strong>centre a column on a point</strong> <code>(cx, cy)</code> — a grid node, a room
+corner — place it at <strong><code>at (cx - w/2, cy - l/2)</code></strong>, never at <code>(cx, cy)</code>. On a grid, the
+<code>pilInset</code> idiom (see <code>parametric-conventions.md</code>) does exactly this so columns sit flush.</p>
+<h2 id="objects-rooms-walls-amp-openings">Objects — rooms, walls &amp; openings</h2>
+<p>A room shows exactly the walls you declare. A <strong>bare room (no <code>wall</code> lines) is
+enclosed on all four sides.</strong> List plain walls compactly; give a wall its own line
+only when it carries a door/window; omit a side to leave it open (verandah).</p>
+<pre><code class="language-wdl">room Name at (x,y) size (w,l) [height &lt;h&gt;] [material &quot;…&quot;] {
+  wall east west north                 // plain walls — several in one statement
+  wall south { door Main at &lt;offset&gt; [from start|center|end] size (w,h) [open] }   // wall WITH openings
+  wall west  { window W at &lt;offset&gt; [from start|center|end] size (w,h) [sill &lt;s&gt;] [open] }
+  item asset { … } anchor center [gap (gx,gy)]   // furniture anchored inside the room
+}
+</code></pre>
+<ul>
+<li><code>wall &lt;side&gt;…</code> sides are <code>north|south|east|west</code>. A <code>wall &lt;side&gt;</code> line may also
+add <code>height &lt;h&gt;</code> / <code>height_end &lt;h&gt;</code> (sloped).</li>
+<li><code>door</code>/<code>window</code> <code>at &lt;offset&gt;</code> is measured along the wall; <code>size (width, height)</code>;
+<code>window … sill &lt;s&gt;</code> sets the sill height; <code>open</code> = a bare hole (no leaf/glazing).</li>
+<li><code>from start|center|end</code> (default <code>start</code>) picks which end <code>&lt;offset&gt;</code> is measured
+from, so the opening keeps its place when the wall or room scales — no formula
+needed. <code>start</code>: offset from the wall start to the near edge (the legacy default).
+<code>end</code>: offset from the wall end to the far edge (<code>at 0 from end</code> = flush to the end).
+<code>center</code>: signed shift of the opening centre from the wall midpoint (<code>at 0 from center</code> = centred; the offset may be negative).</li>
+</ul>
+<p>A <strong>free-standing wall</strong> (not a room side):</p>
+<pre><code class="language-wdl">wall Name from (x1,y1) to (x2,y2) [height &lt;h&gt;] [height_end &lt;h&gt;] [facing north|…] {
+  … door/window openings …
+}
+</code></pre>
+<ul>
+<li><p><code>from</code>/<code>to</code> are the wall&#39;s <strong>centreline</strong> endpoints; the wall is drawn as a rectangle
+<code>wall_thickness</code> wide, centred on that line.</p>
+</li>
+<li><p><strong>Overlap walls at corners — they do NOT auto-mitre.</strong> Two free-standing walls that
+merely <em>touch</em> at a shared endpoint leave an unfilled square notch (½·<code>wall_thickness</code>)
+at the corner, because each is just a rectangle capped at its endpoint. To fill the
+corner, <strong>extend the endpoints so the wall bodies OVERLAP</strong> — run at least one wall&#39;s
+end <strong>half the wall thickness past</strong> the shared point (overlapping by the full thickness
+is fine and simplest). For an L of thickness 8 meeting at <code>(160,40)</code>:</p>
+<pre><code class="language-wdl">wall H from (40, 40)  to (164, 40)  height 108   // ends 4 (½·8) PAST the corner
+wall V from (160, 40) to (160, 160) height 108    // butts into H&#39;s overlapped body
+</code></pre>
+<p>(Room walls handle their own corners; this only applies to <code>wall … from … to …</code>.)</p>
+</li>
+</ul>
+<h2 id="objects-circulation-amp-fittings">Objects — circulation &amp; fittings</h2>
+<pre><code class="language-wdl">staircase [name &quot;N&quot;] at (start_x, start_y) step (rise, tread, width)
+  direction north|south|east|west  [climb up|down]
+  [total_height &lt;h&gt;] [max_run &lt;r&gt;] [landing_depth &lt;d&gt;]
+  [landing_thickness &lt;t&gt;] [turn clockwise|anticlockwise] [flight_gap &lt;g&gt;]
+
+kitchen [name &quot;N&quot;] path ((x,y), (x,y), …) side left|right
+  depth &lt;d&gt; height &lt;h&gt; [base_z &lt;z&gt;]        // path points are literal numbers
+</code></pre>
+<p><strong><code>climb</code> picks the anchor + z direction.</strong> Prefer <strong><code>climb up</code></strong> — the intuitive way:</p>
+<ul>
+<li>Put the stair on the <strong>LOWER</strong> floor it rises FROM. <code>at (x,y)</code> is the <strong>bottom</strong> step&#39;s
+near corner on that floor; <code>direction</code> is the <strong>ascent</strong> direction; the flight climbs UP.</li>
+<li><code>total_height</code> is the <strong>rise</strong> to the next level (omit → this floor&#39;s own height).</li>
+<li><code>max_run</code> caps a flight&#39;s run; exceed it and the stair auto-splits into switchback
+flights with turn landings (<code>landing_depth</code>/<code>turn</code>/<code>flight_gap</code> tune the switchback).</li>
+</ul>
+<pre><code class="language-wdl">floor 1 &quot;Ground Floor&quot; height 116 {
+  slab at (…) size (…)
+  staircase name &quot;Stair&quot; at (212, 64) step (7, 11, 44)   // bottom = this floor
+    direction south climb up                             // ascends south to the floor above
+}
+</code></pre>
+<p><code>climb down</code> is the legacy mode (<strong>DEFAULT</strong> for older configs): put the stair on the
+<strong>UPPER</strong> destination floor; <code>at (x,y)</code> is the <strong>top</strong> connection, <code>direction</code> is the
+descent, and <code>total_height</code> defaults to the floor-below&#39;s height. New designs should use
+<code>climb up</code>.</p>
+<p>// three ways to name the GLB, in order of preference:
+item [name &quot;N&quot;] f.&quot;sofa&quot;                                  // 1. from an imported module (see Imports)
+item [name &quot;N&quot;] &quot;sofa&quot;                                    // 2. a same-file / bare-imported <code>asset</code> id
+item [name &quot;N&quot;] asset { id &quot;sofa&quot; src &quot;…/sofa.glb&quot; dims (w,h,d) [category &quot;…&quot;] }  // 3. inline one-off
+  at (x,y) [rotation <deg>] [scale <s>]
+  [anchor_to &quot;RoomName&quot; anchor center gap (gx,gy)]</p>
+<pre><code>
+Prefer the module form (`item f.&quot;bed_double&quot;`) — `import &quot;std-furniture&quot; as f`
+once and every piece is a short id, no URLs. The bare form (`item &quot;sofa&quot;`) needs
+a matching top-level `asset &quot;sofa&quot; …` in the file (or a bare `import`). The inline
+`asset { … }` block is only for a one-off GLB not in any pack. All three produce
+the identical `{id,src,dims}` downstream. Furniture `dims` are the real-world size
+in **metres** `(width, height, depth)`; `src` is a GLB URL (an unreachable GLB
+shows a placeholder box, never a blank). `anchor` is one of `top-left top-center
+top-right center-left center center-right bottom-left bottom-center bottom-right`.
+
+**Orientation — this is how you point furniture the right way.** A piece&#39;s FRONT
+(the side you sit at / the doors / the open side) faces a known compass direction
+per its `rotation` (degrees):
+
+| `rotation` | front faces |
+|---|---|
+| `0`   | **South** (the plot front / entrance side, +Y) |
+| `90`  | East |
+| `180` | North |
+| `270` | West |
+
+So a sofa against the NORTH wall (facing into the room, i.e. south) is `rotation
+0`; against the SOUTH wall (facing north) it&#39;s `rotation 180`; against the WEST
+wall (facing east) `rotation 90`. The floor plan (`wadi_preview plans`) draws a
+small triangle on each piece&#39;s front edge so you can verify the way it points;
+for a definitive 3D check use `wadi_capture_3d({ room: &quot;…&quot; })` (first-person from
+inside the room).
+
+**Anchoring auto-orients.** When you `anchor` a piece to a wall and DON&#39;T give a
+`rotation`, it automatically faces away from that wall, into the room — `anchor
+top-center` → faces south, `bottom-center` → north, `center-left` → east,
+`center-right` → west (a corner uses its north/south edge). So `item f.&quot;bed_double&quot;
+anchor top-center` needs no rotation. An explicit `rotation` always overrides,
+and the derived value is written into the resolved model, so the plan notch and
+the 3D view show it — anchoring never changes facing silently.
+
+## Objects — GLB models (`model`)
+
+A `model` places a **GLB at real metre scale** and manipulates it through a **rig**
+of named-node operations. It is distinct from `item` (catalog furniture): `model`
+targets the GLB&#39;s internal node graph, so you can hide, move, recolour, or array
+sub-parts of one asset.
+
+```wdl
+model [name &quot;N&quot;] &lt;asset&gt; at (x,y) [rotation &lt;deg&gt;] [scale &lt;s&gt;] {
+  translate &quot;nodeName&quot; (x,y,z)          // move a named node
+  rotate    &quot;nodeName&quot; (x,y,z)          // rotate it (degrees)
+  scale     &quot;nodeName&quot; (x,y,z)          // scale it
+  visible   &quot;nodeName&quot; false            // hide a node
+  material  &quot;nodeName&quot; color &quot;#rrggbb&quot;  // recolour a node
+  array     &quot;nodeName&quot; count N step (dx,dy,dz) { … nested rig ops … }
+}
+</code></pre>
+<p><code>&lt;asset&gt;</code> names the GLB the same three ways as <code>item</code> (module <code>ns.&quot;id&quot;</code>, bare
+<code>&quot;id&quot;</code>, or an inline <code>asset { … }</code> block). The rig ops run against the GLB&#39;s named
+nodes; <code>array</code> replicates a node <code>count</code> times along <code>step</code>, and its nested block
+applies further ops per copy. Use <code>model</code> for a rigged mechanism (a fan, a louvre
+bank, a spiral of balusters); use <code>item</code> for a plain piece of furniture.</p>
+<h2 id="imports-amp-modules-reusable-wdl-libraries">Imports &amp; modules (reusable <code>.wdl</code> libraries)</h2>
+<p>A <code>.wdl</code> file can be a <strong>module</strong> — top-level declarations (no <code>house</code> needed) —
+that another file <code>import</code>s. Two bundled ones: <code>std-furniture</code> (asset pack →
+<code>item ns.&quot;id&quot;</code>) and <code>konkan/base</code> (goal-tagged component pack → <code>use ns.Comp</code>;
+Stairwell, Verandah, Otla, Bathroom, Kitchen, TulsiVrindavan, Parapet). The
+<code>konkan_cottage</code> example (<code>wadi_examples</code>) assembles a whole house from both.</p>
+<pre><code class="language-wdl">house Home {
+  import &quot;std-furniture&quot; as f       // aliased: refer to its assets as f.&quot;&lt;id&gt;&quot;
+  // import &quot;std-furniture&quot;          // bare: its ids drop into scope for item &quot;&lt;id&gt;&quot;
+  floor 1 &quot;G&quot; slab_thickness 0 {
+    room Bed at (20,20) size (160,200) { wall north east south west
+      item f.&quot;bed_double&quot; anchor center }
+  }
+}
+</code></pre>
+<p>A module file itself is just top-level <code>asset</code> and <code>component</code> decls:</p>
+<pre><code class="language-wdl">// my-furniture.wdl — a house-less module (a reusable library)
+asset &quot;daybed&quot; src &quot;https://…/daybed.glb&quot; dims (1.8, 0.4, 0.9) name &quot;Daybed&quot; category &quot;Living&quot;
+</code></pre>
+<p>Over MCP, <code>wadi_modules</code> lists importable modules and <code>wadi_module &quot;&lt;name&gt;&quot;</code>
+shows a module&#39;s asset ids + dimensions (filter with a <code>query</code>). Import refs
+resolve by name against the bundled <code>std-*</code> packs (a local <code>modules/</code> search
+path and git refs come later).</p>
+<h2 id="objects-roof-one-object-flat-shed-gable-hip">Objects — roof (one object; flat / shed / gable / hip)</h2>
+<p>The roof lives ALONE on its own top floor and you never set its Z (see
+<code>roof-v2-guide.md</code>). <code>endpoint</code>: <code>closed</code> = hip triangle, <code>open</code> = gable end-wall.</p>
+<pre><code class="language-wdl">roof [name &quot;N&quot;] pitched|shed|flat
+  [endpoint open|closed]
+  [slope angle &lt;deg&gt; | slope height &lt;ridge_h&gt;]     // symmetric pitch (one value)
+  [slope angle (&lt;left&gt;, &lt;right&gt;)]                  // asymmetric (saltbox) gable — angle pair
+  [overhang &lt;o&gt;] [slab_thickness &lt;t&gt;] [parapet &lt;h&gt; x &lt;t&gt;] [gable_wall_thickness &lt;t&gt;] {
+    segment &quot;id&quot; from (x,y) to (x,y) width &lt;w&gt;
+      [high_side left|right]                        // shed only
+      [start_endpoint open|closed] [end_endpoint open|closed]
+      [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)]
+      [overhang &lt;o&gt;]                                // uniform eave, all four sides
+      [overhang_start &lt;o&gt;] [overhang_end &lt;o&gt;]       // per-side along the axis (shed;
+                                                    //   on a gable end = gable_overhang)
+      [overhang_low &lt;o&gt;] [overhang_high &lt;o&gt;]        // SHED eaves (down-slope / up-slope)
+      [overhang_left &lt;o&gt;] [overhang_right &lt;o&gt;]      // PITCHED eaves (left / right of ridge)
+      [tie_beams N]
+    truss &quot;segId&quot; fink|mono_pitch at (pos, pos, …)
+  }
+</code></pre>
+<p>Segment <code>from</code>/<code>to</code>/<code>width</code> and the <code>hip_setback</code>/… values accept formulas, so a
+roof scales with the plot (e.g. <code>width House.W</code>, <code>hip_setback (Verandah.L, Padvi.L)</code>).</p>
+<p><strong>Per-side overhang (cantilever one edge).</strong> <code>overhang &lt;o&gt;</code> sets a uniform eave on
+all four sides. Any sloping roof can override a side independently — each defaults to
+<code>overhang</code>. <strong>Along the axis:</strong> <code>overhang_start</code> / <code>overhang_end</code> (on a shed, or a
+gable open end — there they&#39;re the same as <code>gable_overhang</code>; a hip end is geometric,
+tuned via <code>hip_setback</code>). <strong>Eaves:</strong> <code>overhang_low</code> / <code>overhang_high</code> on a <strong>shed</strong>
+(down-slope / up-slope); <code>overhang_left</code> / <code>overhang_right</code> on a <strong>pitched</strong> roof
+(the two eaves either side of the ridge). A bigger eave overhang also drops that
+eave&#39;s edge along the same pitch, so the slope stays planar. (Per-eave on a <em>pitched</em>
+roof is single-segment only — on a multi-segment roof the eaves share one height so
+joints line up.)</p>
+<p><strong>Asymmetric gable (saltbox) — an angle pair.</strong> A pitched roof&#39;s <code>slope</code> gives both
+faces the same pitch (a symmetric gable). To make the two sides different, give
+<code>slope angle</code> a <strong>pair</strong> instead of one value — <code>slope angle (45, 25)</code>. A single value
+is symmetric; a pair is asymmetric, and that&#39;s the whole distinction (no separate
+keywords, nothing half-settable). The two eaves stay put (footprint unchanged) and the
+ridge shifts across the width so each face takes its angle; the gable-end triangle and
+trusses follow. The pair is <code>(left, right)</code> by the segment&#39;s left normal — the <strong>same
+sides as</strong> <code>overhang_left</code>/<code>overhang_right</code>. Angles are measured to the wall-top eave
+line. <code>height</code> is single-value only (both faces share one ridge line). Intended for a
+single-segment gable (<code>endpoint open</code>); on a hip end the ridge shift skews the hip.</p>
+<pre><code class="language-wdl">roof pitched endpoint open slope angle (45, 25) {
+  segment &quot;s0&quot; from (House.W/2, 0) to (House.W/2, House.L) width House.W
+}
+</code></pre>
+<p>Idiom: keep the roof FOOTPRINT (its supported edges) on the main room, then cantilever
+one eave to cover an entry landing / stair — end the axis on the room wall and set a big
+<code>overhang_end</code>:</p>
+<pre><code class="language-wdl">// footprint ends on the main room&#39;s east wall (x204 centreline → x208 outer);
+// the east eave reaches 258, covering a landing that sticks out to x256.
+segment &quot;seg0&quot; from (4,124) to (204,124) width 240 high_side right overhang 25 overhang_end 50
+</code></pre>
+<p><strong>Roof coordinates are wall centrelines (under <code>convention center</code>), same as
+rooms.</strong> <code>from</code>/<code>to</code> is the segment&#39;s ridge/axis and <code>width</code> its span <em>centred on
+that axis</em>. Author them on the <strong>same centreline grid as the walls</strong> — a segment
+whose axis + width match the rooms&#39; centrelines auto-grows to the <strong>outer wall
+face</strong> on every side (the compiler extends the axis by ½·wall_thickness at each end
+and widens by wall_thickness, exactly the grow a room gets). <code>overhang</code> then
+extends <em>beyond</em> the outer face. So to cover a footprint spanning wall centrelines
+<code>x1..x2</code> (E–W) and <code>yA..yB</code> (N–S), write <code>from (x1, (yA+yB)/2) to (x2, (yA+yB)/2) width (yB - yA)</code> — do <strong>not</strong> add ½-wall fudge factors; the convention handles it.
+(Before this, a roof drawn on the grid sat half a wall-thickness <em>inside</em> the walls.)</p>
+<h2 id="components-amp-layers">Components &amp; layers</h2>
+<pre><code class="language-wdl">component Bench {                 // a reusable mini-house in LOCAL coords (origin 0,0)
+  param blen = 60 label &quot;Bench length&quot;
+  beam name &quot;Top&quot; at (0,0) size (blen, 18) height 6
+}
+use Bench as &quot;B1&quot; at (x,y) [rotation &lt;deg&gt;] with { blen = 80 }   // stamp onto a floor
+
+layer &quot;structure&quot; &quot;Structure&quot; [color &quot;#rrggbb&quot;] [group &quot;Frame&quot;]   // per-house layer registry
+</code></pre>
+<p>A component may carry a <strong><code>goal</code></strong> — a short description of what it accomplishes,
+the discovery key for module lookup (<code>wadi_module</code> / a <code>wadi_modules</code> query):</p>
+<pre><code class="language-wdl">component Stairwell goal &quot;climb to the next floor&quot; {
+  param rise = 116
+  staircase name &quot;Stair&quot; at (0,0) step (7,11,44) direction south total_height rise
+}
+</code></pre>
+<p>Components can also come from an <strong>imported module</strong> (see <em>Imports &amp; modules</em>),
+stamped with a namespaced <code>use ns.Comp</code>:</p>
+<pre><code class="language-wdl">house Home {
+  import &quot;konkan/base&quot; as kb        // Stairwell, Verandah, Otla (goal-tagged)
+  floor 1 &quot;G&quot; slab_thickness 0 {
+    room Hall at (20,20) size (200,200) { wall north east south west }
+    use kb.Stairwell at (60,60) with { rise = 116 }   // param args use `=`, not `:`
+  }
+}
+</code></pre>
+<p><code>use ns.Comp</code> expands byte-identical to an inline <code>component</code>. Components <strong>nest
+freely</strong>: a library component may <code>use</code> a sibling, <code>use</code> a component from a
+library it itself <code>import</code>s, and place <code>item ns.&quot;id&quot;</code> furniture from its own
+imports — imports resolve <strong>transitively</strong> (cycles are a compile error).
+Un-overridden <code>param</code>s fall back to their declared defaults.</p>
+<p><code>rotation &lt;deg&gt;</code> (optional, yaw°: 0=south, 90=east) turns the whole stamped
+assembly about its origin. <strong>Right angles (0/90/180/270) are exact for any
+component</strong> (rooms/pillars/beams/slabs swap dims + remap wall sides; furniture
+turns with them). A <strong>non-right angle</strong> is allowed <strong>only for a furniture-only
+component</strong> (items/free walls rotate to any angle); a free angle on a component
+that contains a room/pillar/beam/slab/staircase is a compile error (arbitrary
+structural rotation is a future feature).</p>
+<h3 id="promote-a-component-to-a-primitive-expose-as">Promote a component to a primitive (<code>expose as</code>)</h3>
+<p>A component can be <strong>promoted to a runtime typed primitive</strong> with <code>expose as</code>, so it
+reads and behaves like a built-in object type (<code>pack.type</code>) rather than a <code>use</code>
+instance:</p>
+<pre><code class="language-wdl">component Bench goal &quot;a place to sit&quot; expose as garden.bench [layer &quot;id&quot;] [label &quot;…&quot;] {
+  param length = 60
+  beam name &quot;Seat&quot; at (0,0) size (length, 18) height 6
+}
+</code></pre>
+<p><code>expose as &lt;pack&gt;.&lt;type&gt;</code> names the promoted primitive (a dotted <code>pack.type</code> id);
+optional <code>layer &quot;id&quot;</code> and <code>label &quot;…&quot;</code> set its default layer and menu label. Once
+exposed, the component is available as a first-class object type named <code>pack.type</code>
+throughout the model, its <code>param</code>s becoming that type&#39;s fields.</p>
+<h2 id="template-metadata-template">Template metadata (<code>template</code>)</h2>
+<p>A <code>template { … }</code> block <strong>self-describes a template</strong> on its <code>.wdl</code> / <code>.wadi</code>, so a
+gallery can index the file without a separate catalog. It carries display metadata
+only (no geometry):</p>
+<pre><code class="language-wdl">template {
+  title       &quot;Coastal Cottage&quot;
+  description &quot;A compact single-storey Konkan home.&quot;
+  style       &quot;konkan&quot;
+  roof        &quot;gable&quot;
+  tags        (&quot;coastal&quot;, &quot;1BHK&quot;, &quot;compact&quot;)
+  thumbnails  (&quot;thumb-iso.png&quot;, &quot;thumb-plan.png&quot;)
+  min_plot    (340, 400)
+}
+</code></pre>
+<p>Fields: <code>title</code>, <code>description</code>, <code>style</code>, <code>roof</code>, <code>tags</code> (a list), <code>thumbnails</code> (a
+list of image paths), <code>min_plot</code> (the minimum plot the template needs). The folder
+of self-describing files IS the catalog.</p>
+<h2 id="the-raw-escape-rarely-needed">The <code>raw</code> escape (rarely needed)</h2>
+<p>Anything the first-class syntax doesn&#39;t cover can be written as literal JSON per
+the <code>.wadi</code> schema (<code>data-model.md</code>):</p>
+<pre><code class="language-wdl">raw &quot;type&quot; { &quot;field&quot;: 1, &quot;formulas&quot;: { &quot;field&quot;: &quot;= expr&quot; } }
+</code></pre>
+<h2 id="dsl-specific-pitfalls">DSL-specific pitfalls</h2>
+<ul>
+<li><strong><code>convention center</code> and <code>units … per_unit 10</code></strong> belong at the top of every
+<code>house</code> — same as the JSON path. All the <code>coordinate-system.md</code> rules (Y-down,
+units, centreline abutment) apply identically; the DSL just writes them shorter.</li>
+<li><strong>Formulas are bare expressions</strong>, not <code>&quot;= …&quot;</code> strings — the compiler emits the
+<code>= …</code> form for you. Write <code>at (main.x1, main.yA)</code>, not <code>at (&quot;= main.x1&quot;, …)</code>.</li>
+<li><strong><code>name &quot;…&quot;</code> is quoted; <code>room</code>/<code>pillar</code>/<code>var</code>/grid-line names are bare</strong> ids
+(no spaces, and not a reserved word like <code>width</code>, <code>height</code>, <code>size</code>, <code>at</code>).</li>
+<li><strong>Roof alone on the top floor</strong>; segment widths/positions come from the walls
+they sit on. See <code>roof-v2-guide.md</code>.</li>
+<li><strong>A pillar&#39;s <code>at</code> is its TOP-LEFT corner, not its centre.</strong> To centre a column on
+<code>(cx,cy)</code>, author <code>at (cx - w/2, cy - l/2)</code>.</li>
+<li><strong>Free-standing walls don&#39;t auto-mitre at corners</strong> — extend endpoints so the wall
+bodies overlap (≥ ½·<code>wall_thickness</code> past the shared point), or the corner is left
+as a gap.</li>
+<li><strong>Prefer <code>climb up</code> — it&#39;s bottom-anchored.</strong> Put the stair on the LOWER floor it
+rises FROM; <code>at</code> is the bottom step and the flight ascends into <code>direction</code>.
+Top-anchored is the legacy <code>climb down</code> (default only for older configs): the stair
+sits on the UPPER floor and descends. <code>check.sh</code> C5 flags a stair that lands below
+ground. See the staircase note.</li>
+<li><strong>Structural conventions are enforced</strong> — <code>check.sh</code> fails on floating floors
+(plinth-floor <code>height</code> ≠ plinth block height; a no-slab floor with nonzero
+<code>slab_thickness</code>) and warns on exterior room sides left open. See
+<code>conventions.md</code>; the DSL editor shows the same findings in its status pill.</li>
+<li>Compile after <strong>every</strong> edit; a parse error means the <code>.wadi</code> wasn&#39;t updated, so
+the live model just won&#39;t change — never silently wrong.</li>
+</ul>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

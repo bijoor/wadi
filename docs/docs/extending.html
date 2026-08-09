@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wadi as a DSL-software framework · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="components.html">Components & libraries</a>
+<a class="active" href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#0-the-one-paragraph-version">0. The one-paragraph version</a><a href="#1-dsl-based-software">1. DSL-based software</a><a href="#2-the-central-mechanism-one-declaration-many-projections">2. The central mechanism: one declaration → many projections</a><a href="#3-the-architecture">3. The architecture</a><a href="#4-adding-a-primitive-in-2-files-the-spiral_staircase-case">4. Adding a primitive in ~2 files: the spiral_staircase case</a><a href="#5-build-discipline">5. Build discipline</a><a href="#6-retargeting-to-a-new-domain">6. Retargeting to a new domain</a><a href="#7-capabilities-and-open-directions">7. Capabilities and open directions</a><a href="#8-map-of-the-code">8. Map of the code</a><a href="#summary">Summary</a></nav>
+    <article class="md"><h1>Wadi as a DSL-software framework</h1>
+<h3 id="how-one-declaration-per-concept-is-projected-onto-every-surface-and-how-the-domain-neutral-parts-were-extracted-into-a-reusable-kernel">How one declaration per concept is projected onto every surface, and how the domain-neutral parts were extracted into a reusable kernel.</h3>
+<blockquote>
+<p>Part of the <a href="index.html">Wadi documentation</a>, the advanced tier, for developers
+extending the language itself. If you only want to design houses, the
+<a href="authoring.html">authoring guide</a> is all you need.</p>
+<p>Companion to <a href="method.html">the parametric method</a>. That document explains the
+parametric layers (variables, formulas, the resolver, the configurator). This
+document explains the componentization framework: how a new concept (a &quot;primitive&quot;)
+is defined once and shows up in the schema, the forms, the docs, and the DSL, and
+how the domain-neutral parts were extracted into a reusable kernel. Read this for
+the approach; read that for the parametric machinery underneath.</p>
+</blockquote>
+<hr>
+<h2 id="0-the-one-paragraph-version">0. The one-paragraph version</h2>
+<p>Wadi lets you design a house from a single declarative file and get a live 3D
+model, dimensioned 2D plans, elevations, roof drawings, a property-panel editor,
+and a typed text DSL, all from the same source of truth. The mechanism behind this
+is that all of those surfaces are generated from one declaration per concept. A
+concept (a wall, a beam, a spiral staircase) declares its fields once (as data) and
+its capabilities once (as code), and the framework projects those onto every
+surface. Adding a new object type is about 2 files, with no edits scattered across
+renderers. The domain-neutral half of this machinery is extracted into a kernel
+that a different domain (a PCB tool, a solar-farm planner) can reuse verbatim. Wadi
+is the reference instance of that framework.</p>
+<hr>
+<h2 id="1-dsl-based-software">1. DSL-based software</h2>
+<p>Most low-code and model-driven tools hard-wire a fixed set of concepts into a
+monolith: the schema knows about walls, the 3D renderer knows about walls, the
+forms know about walls, and the file format knows about walls. Adding a <code>pillar</code>
+means touching all four in lockstep, by hand. The coupling sets the product&#39;s
+ceiling.</p>
+<p>The alternative Wadi pursues:</p>
+<blockquote>
+<p>A concept is a single declaration. Every surface is a projection of it.</p>
+</blockquote>
+<p>If that holds, then:</p>
+<ul>
+<li>Adding a concept is additive and local. You write the declaration and its
+capabilities in one place; the schema, form, docs, and DSL fall out.</li>
+<li>The surfaces cannot drift. They are generated from the same source, and a
+parity harness proves it byte-for-byte on every change.</li>
+<li>The engine is separable from the domain. The projection machinery mentions
+no house, so it can be lifted out and pointed at another domain.</li>
+</ul>
+<p>This is what &quot;DSL-based software&quot; means here: a framework for building
+domain-specific-language software, where the domain is data and the engine is
+reusable.</p>
+<hr>
+<h2 id="2-the-central-mechanism-one-declaration-many-projections">2. The central mechanism: one declaration → many projections</h2>
+<p>A primitive is defined by two things:</p>
+<ol>
+<li><code>fields</code> (data). The list of properties the concept has, each with a
+kind (<code>coord</code>, <code>extent</code>, <code>nonneg</code>, <code>int</code>, <code>text</code>, <code>flag</code>, <code>enum</code>), plus a doc
+string and unit. This is the whole shape of the concept.</li>
+<li>capabilities (code). How the concept turns into pixels: a 3D renderer, a
+2D footprint, an optional decomposition (<code>expand</code>), a layer, an add-menu default.</li>
+</ol>
+<p>From the one <code>fields</code> declaration, four surfaces are generated:</p>
+<pre><code>                    ┌───────────────────────────────────────┐
+                    │      fields  (one declaration)         │
+                    │  [{name:&quot;radius&quot;, kind:&quot;extent&quot;, …}]   │
+                    └───────────────────────────────────────┘
+                        │        │          │           │
+        fieldsToZodSource   fieldToFormControl  fieldsToDocRows   descriptor
+                        │        │          │           │
+                        ▼        ▼          ▼           ▼
+                   ┌────────┐ ┌──────┐ ┌─────────┐ ┌───────────────┐
+                   │ SCHEMA │ │ FORM │ │  DOCS   │ │ DSL  (grammar │
+                   │ (typed │ │(Auto-│ │ (data-  │ │ +positional   │
+                   │  Zod,  │ │ Form)│ │ model)  │ │ +validation   │
+                   │ in the │ │      │ │         │ │ +completion)  │
+                   │ union) │ │      │ │         │ │               │
+                   └────────┘ └──────┘ └─────────┘ └───────────────┘
+</code></pre>
+<ul>
+<li>Schema. A codegen step (<code>gen-primitives</code>) reads every primitive&#39;s <code>fields</code>
+and emits typed Zod source into a generated file, which the config union
+imports. So <code>z.infer</code> gives precise types, with no dynamic/<code>any</code> schema. (The runtime
+builder is kept only for a parity test.)</li>
+<li>Form. <code>fieldToFormControl</code> maps each field&#39;s kind to a widget
+(<code>measure</code>/<code>text</code>/<code>select</code>/<code>flag</code>) with defaults (min bound from the
+constraint, label from the humanized name, optionality from <code>required</code>). A
+primitive gets a working property-panel form from <code>fields</code> alone.</li>
+<li>Docs. <code>fieldsToDocRows</code> (and the doc comments the schema codegen emits) feed
+the human-readable data-model reference, so the docs an authoring agent reads
+cannot drift from the schema.</li>
+<li>DSL. The <code>fields</code> become a descriptor the text DSL consumes: positional
+arguments map to the field order, and unknown-field and arg-count validation
+and editor completion are derived from it.</li>
+</ul>
+<p>The capabilities are consulted by a registry: the 3D scene, the
+2D plan, the property panel, the add-menu, and the layer system each ask the
+registry &quot;who handles this type?&quot; first, and fall back to the legacy per-type
+switch for not-yet-migrated types. A new type is one registry entry, nothing
+scattered.</p>
+<p>The structural-conventions linter is another such surface. It is now a declarative
+per-constraint registry (<code>editor/src/lint/constraints/</code>, currently C1-C10 plus the
+spiral&#39;s SP1), each rule a self-contained module (check + doc + fixtures) built on a
+spatial query layer (<code>editor/src/model/</code>, a <code>@flatten-js/core</code> adapter). <code>structural.ts</code>
+is a thin loop over <code>allConstraints()</code>, and <code>conventions.md</code> is generated from those
+modules, so the linter, its docs, and per-primitive rules (<code>NodeDefinition.constraints</code>)
+all fall out of one declaration each, the same as the four surfaces above.</p>
+<p>The two-tier structure that keeps this open: field kinds are presets (Tier 2)
+composed from a small closed set of atoms plus constraints (Tier 1). Adding a kind is
+data, not an engine release, the same way Zod, JSON-Schema, and protobuf treat
+their type vocabularies.</p>
+<hr>
+<h2 id="3-the-architecture">3. The architecture</h2>
+<pre><code>        ┌──────────────────────────────────────────────────────────────┐
+        │                    @dslkit/kernel  (domain-NEUTRAL)           │
+        │  fieldSchema  : fields → {schema-source, docs, form-control}  │
+        │  stageRunner  : pure toposort-fold over a stage DAG           │
+        │  (mentions no house / three / react / langium / zod)          │
+        └──────────────────────────────────────────────────────────────┘
+                              ▲ consumed via thin re-export shims
+        ┌─────────────────────┴────────────────────────────────────────┐
+        │                     WADI  (the domain)                        │
+        │                                                               │
+        │  schema/fields/*   ─ the primitive declarations (data)        │
+        │  registry/nodes/*  ─ the primitive capabilities (code)        │
+        │  registry          ─ type → {schema, fields, render3D,        │
+        │                       planFootprint, expand, layer, default}  │
+        │  pipeline/compose  ─ the compositor as a Stage DAG            │
+        │  wadi-dsl/         ─ the text DSL: grammar + compile + emit + │
+        │                       validate + complete (fed by descriptors)│
+        └───────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="31-kernel-vs-domain-and-the-guardrail">3.1 Kernel vs domain (and the guardrail)</h3>
+<p>The kernel (<code>kernel/</code>) is the domain-neutral engine: the field-projection
+machinery and the stage runner. It imports nothing outside itself and node
+builtins, not even zod. The Wadi domain consumes it through thin <code>export *</code> shims
+(<code>editor/src/registry/fieldSchema.ts</code>, <code>editor/src/pipeline/stageRunner.ts</code>), so no
+consumer changed when the code moved out. A dependency-direction guardrail test
+(<code>kernelBoundary.test.ts</code>) fails CI if any kernel file ever imports domain code,
+so the boundary cannot silently rot. This makes &quot;the engine is separable&quot;
+a checked claim rather than an aspiration.</p>
+<p>(The one runtime zod builder stays on the Wadi side, so the kernel needs no zod
+dependency and the app keeps a single zod instance in its schema union.)</p>
+<h3 id="32-two-registries">3.2 Two registries</h3>
+<ul>
+<li>Primitive registry: type → <code>NodeDefinition</code> (<code>fields</code>, <code>schema</code>, <code>render3D</code>,
+<code>planFootprint</code>, <code>expand</code>, <code>layerRole</code>, <code>makeDefault</code>, <code>constraints</code>). The socket a new object
+plugs into. Dispatchers consult-first, fall-back, so migration never breaks the
+app mid-flight.</li>
+<li>Stage registry: the compositor is a DAG of pure
+stages (resolve → expand → edges → perimeter → dimensions → wall-trim →
+roof-derive → draw). <code>orderStages</code> toposorts them; <code>runStages</code> folds them over a
+shared context. This is a build-not-adopt decision: it is one page of code, not
+Airflow. It is synchronous, pure, byte-parity-preserving dataflow that runs on every
+edit.</li>
+</ul>
+<p>The finding that shaped this: 3D and expansion are clean per-object (registry-routable),
+but 2D plan/elevation are pipeline/compositor-structured (type-major
+passes plus cross-object dimensioning and wall-trim). So primitives own their
+per-object capabilities and independent 2D fragments; the domain owns the 2D
+compositor. The boundary follows the structure of the problem, not a tidy
+diagram.</p>
+<h3 id="33-the-two-track-grammar">3.3 The two-track grammar</h3>
+<p>A parser generator produces a static grammar, so you cannot register a bespoke
+rule per contributed primitive at runtime. The resolution is two tracks:</p>
+<ol>
+<li>A generic core rule (<code>ObjectDecl</code>) parses any primitive by name:
+<code>type name? (positional, args) { key value … }</code>. Semantics come from the
+descriptor&#39;s <code>fields</code>. A contributed primitive needs zero grammar edits and
+no code-gen of the parser. This is the framework&#39;s real grammar.</li>
+<li>Optional bespoke sugar: the hand-authored ergonomic rules (<code>wall north { window … }</code>) stay, as sugar over the generic core. A promotion path lets a
+contributed primitive graduate from generic syntax to bespoke sugar without ever
+breaking existing files (both syntaxes remain valid).</li>
+</ol>
+<p>The layering is visible live: author a not-yet-registered type and the grammar
+accepts it (zero parse errors) while the strict schema gates it. That is the
+design: the front-end parses any name; the schema registers the real ones.</p>
+<hr>
+<h2 id="4-adding-a-primitive-in-2-files-the-spiral_staircase-case">4. Adding a primitive in ~2 files: the <code>spiral_staircase</code> case</h2>
+<p>A helical staircase, <code>spiral_staircase</code>, is a new object type defined in about two
+files.</p>
+<p>File 1, the declaration (<code>editor/src/schema/fields/spiralStaircase.ts</code>):</p>
+<pre><code class="language-ts">export const spiralStaircaseFields: FieldSpec[] = [
+  { name: &quot;name&quot;, kind: &quot;text&quot;, required: false, doc: &quot;Label&quot; },
+  { name: &quot;x&quot;, kind: &quot;coord&quot;, doc: &quot;Centre X&quot;, unit: &quot;project units&quot; },
+  { name: &quot;y&quot;, kind: &quot;coord&quot;, doc: &quot;Centre Y&quot;, unit: &quot;project units&quot; },
+  { name: &quot;radius&quot;, kind: &quot;extent&quot;, doc: &quot;Outer radius&quot;, unit: &quot;project units&quot; },
+  { name: &quot;total_height&quot;, kind: &quot;extent&quot;, doc: &quot;Total rise&quot;, unit: &quot;project units&quot; },
+  { name: &quot;turns&quot;, kind: &quot;extent&quot;, required: false, doc: &quot;Revolutions&quot; },
+  { name: &quot;steps&quot;, kind: &quot;int&quot;, required: false, doc: &quot;Number of treads&quot; },
+  // …tread_thickness, pole_radius, z_offset
+];
+</code></pre>
+<p>With the declaration registered in the manifest and the codegen run, the type is in
+the typed schema union, has a property-panel form, appears in the data-model docs, and
+is a DSL citizen, with no other edits. It reads in two forms.</p>
+<p>The generic form uses named parameters in a block:</p>
+<pre><code>spiral_staircase &quot;Stair&quot; { radius 45 total_height 110 turns 1.75 }
+</code></pre>
+<p>A primitive can also carry bespoke sugar (§3.3): a second file, a grammar rule plus a
+compile/emit pair, that lets it read like the built-in primitives, with <code>at (x, y)</code>
+placement and named clauses and no braces:</p>
+<pre><code>spiral_staircase &quot;Stair&quot; at (120, 120) radius 45 total_height 110 turns 1.75
+</code></pre>
+<p>Both forms compile to the same object, and the <code>fields</code> declaration drives the schema,
+form, and docs either way; only the surface syntax differs. A bespoke rule claims the
+type keyword, so for a type that has one the generic form yields to it. The clause
+keywords (<code>radius</code>, <code>turns</code>, …) stay usable as bare field keys on any generic
+primitive: a soft-keyword token builder (<code>wadi-token-builder.ts</code>) makes every
+field-marker keyword also lex as an identifier. The soft set is derived from the
+grammar (field markers minus a small, stable set of object and statement leaders), so
+no grammar edit is needed per primitive, and a primitive is still about two files.</p>
+<p>File 2, the capabilities (<code>editor/src/registry/nodes/spiralStaircase.tsx</code>):</p>
+<pre><code class="language-ts">export const spiralStaircaseNode: NodeDefinition = {
+  type: &quot;spiral_staircase&quot;,
+  label: &quot;Spiral staircase&quot;,
+  addable: true,
+  layerRole: &quot;structure&quot;,
+  fields: spiralStaircaseFields,          // → AutoForm, no bespoke form needed
+  makeDefault: (cfg, existing) =&gt; ({ … }),// add-menu default
+  render3D: (obj, ctx) =&gt; ({ … }),        // helix of treads + central pole (lazy)
+  planFootprint: (obj) =&gt; ({ … }),        // 2D footprint
+};
+</code></pre>
+<p>Register the node, and the 3D scene, 2D plan, add-menu, and layers all pick it up.</p>
+<p>File 3 (optional), a per-primitive structural constraint. A primitive can also ship
+its own rule by setting <code>NodeDefinition.constraints?: Constraint[]</code>, which the
+structural-conventions linter merges into <code>allConstraints()</code>. The spiral staircase
+does exactly this: <code>editor/src/registry/nodes/spiralStaircase.constraints.ts</code> supplies
+<code>SP1</code>, so the primitive carries its own validation alongside the shared C1-C10 rules.</p>
+<p>In the WDL playground, <code>spiral_staircase &quot;Stair&quot; at (120, 120) radius 45 total_height 110 turns 1.75</code> renders as wooden treads
+winding a central pole inside a room, and the editor&#39;s completion widget lists
+<code>radius / total_height / turns / steps / tread_thickness / pole_radius / z_offset</code>.
+Two files, with every projection and capability derived from them.</p>
+<h3 id="41-the-steps-end-to-end">4.1 The steps, end to end</h3>
+<p>The two files above are the fields declaration and the capabilities node. In practice
+you also register each in a manifest and run the schema codegen. A new type today lives
+in the repository, so adding one is a branch and a pull request. The full sequence:</p>
+<ol>
+<li><strong>Declare the fields.</strong> Create <code>editor/src/schema/fields/&lt;type&gt;.ts</code> exporting a
+<code>FieldSpec[]</code>, one entry per property (<code>name</code>, <code>kind</code>, <code>doc</code>, optional <code>unit</code>,
+<code>required</code>). This is the whole shape of the type.</li>
+<li><strong>Add it to the fields manifest.</strong> One line in <code>PRIMITIVE_FIELD_DECLS</code>, in
+<code>editor/src/schema/fields/index.ts</code>.</li>
+<li><strong>Run the schema codegen.</strong> <code>npm --prefix editor run gen-primitives</code>. It reads the
+manifest and rewrites <code>editor/src/schema/generated/objects.generated.ts</code> (a
+generated file, not hand-edited). <code>gen-primitives:check</code> fails CI if it is stale.</li>
+<li><strong>Add the type to the schema union.</strong> In <code>editor/src/schema/houseConfig.ts</code>, import
+the generated const and add it to the <code>z.discriminatedUnion(&quot;type&quot;, [ … ])</code>. This is
+the one hand-edit to a shared file.</li>
+<li><strong>Write the capabilities node.</strong> Create <code>editor/src/registry/nodes/&lt;type&gt;.tsx</code>
+exporting a <code>NodeDefinition</code>: <code>type</code>, <code>label</code>, <code>addable</code>, <code>layerRole</code>, <code>fields</code>
+(reuse the declaration from step 1, so the property-panel form is generated),
+<code>makeDefault</code> (the add-menu default), and the render capabilities the type needs
+(<code>render3D</code>, <code>planFootprint</code>, and optionally <code>expand</code>, <code>drawPlan</code>, <code>drawElevation</code>).</li>
+<li><strong>Register the node.</strong> Add <code>registerNode(&lt;type&gt;Node)</code> to the list in
+<code>editor/src/registry/registry.ts</code>.</li>
+<li><strong>Add the 3D component, if any.</strong> If <code>render3D</code> draws geometry, add the React-Three
+component it imports (for example <code>editor/src/three/&lt;Type&gt;.tsx</code>).</li>
+<li><strong>The DSL needs nothing for the generic form.</strong> <code>&lt;type&gt; &quot;name&quot; { field value … }</code>
+parses and compiles with no grammar change. Bespoke sugar (<code>&lt;type&gt; &quot;name&quot; at (x, y) …</code>) is optional; it needs a grammar rule plus a compile function in <code>wadi-dsl</code>,
+followed by <code>npm --prefix wadi-dsl run langium:generate</code>.</li>
+</ol>
+<p>Verify with the parity gate and the tests: <code>npm --prefix editor run parity-render</code>
+(must stay 6/6) and <code>npm --prefix editor test</code>.</p>
+<p>So it is two files of real content (steps 1 and 5) plus three build-time registration
+and codegen touches (steps 2, 3, 4, 6). All of it is base-code, edited and shipped in a
+build. Removing that constraint, so a type can be added without touching the base code,
+is the job of a plugin loader, which is not built yet.</p>
+<hr>
+<h2 id="5-build-discipline">5. Build discipline</h2>
+<p>Two disciplines keep the framework correct as it changes, and let a change stay
+additive and reversible rather than a rewrite.</p>
+<ul>
+<li>A parity gate. A self-referential golden snapshot (expand plus combined plans plus
+elevations plus the merged roof spec, hashed per config over 6 real configs) must
+stay 6/6 byte-identical. <code>npm run parity-render</code> is the gate. A refactor that must
+not change output is checked mechanically rather than by eye.</li>
+<li>Consult-first, fall-back dispatch. Every dispatcher (3D, 2D, expand, add-menu,
+layers) asks the registry first and falls back to the legacy per-type switch, so a
+partially-migrated system is still a working system.</li>
+</ul>
+<p>Together they mean a new primitive, a new stage, or a moved module is added without a
+rewrite, and the gate confirms nothing else moved.</p>
+<hr>
+<h2 id="6-retargeting-to-a-new-domain">6. Retargeting to a new domain</h2>
+<p>Because the kernel mentions no house, a second domain reuses it verbatim and
+rewrites only the domain layer. The mapping (worked out in full for a
+parametric solar-PV farm in
+<a href="method.html">the parametric method, §13</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Keep verbatim (kernel + method)</th>
+<th>Rewrite (domain)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>field engine: <code>fields → {schema, docs, form}</code></td>
+<td>the primitive <em>catalogue</em> (panel, inverter, trench…)</td>
+</tr>
+<tr>
+<td>stage-DAG runner</td>
+<td>the compositor <em>stages</em> + the coordinate/units conventions</td>
+</tr>
+<tr>
+<td>generic <code>ObjectDecl</code> grammar + descriptor-driven compile/validate/complete</td>
+<td>the bespoke <em>sugar</em> rules (optional)</td>
+</tr>
+<tr>
+<td>parametric engine + resolver (variables/points/grids/formulas)</td>
+<td>the <em>views</em> (3D, plan, elevation, bill-of-materials)</td>
+</tr>
+<tr>
+<td>capability + view registry + generic dispatch</td>
+<td>the capability <em>vocabulary</em> + concrete renderers</td>
+</tr>
+</tbody></table>
+<p>The procedure is: enumerate the domain&#39;s primitives and their <code>fields</code>; write their
+capabilities against the registry; keep the parametric layer and the DSL front-end
+as-is. The engine is the constant; the domain is the variable.</p>
+<hr>
+<h2 id="7-capabilities-and-open-directions">7. Capabilities and open directions</h2>
+<p>What the framework provides:</p>
+<ul>
+<li>One <code>fields</code> declaration projects to the schema, form, docs, and DSL, all four,
+non-drifting.</li>
+<li>A new primitive is about 2 files and renders live (<code>spiral_staircase</code>).</li>
+<li>A domain-neutral kernel with an enforced dependency-direction boundary.</li>
+<li>A two-track grammar where any primitive parses generically and the schema gates it.</li>
+<li>The compositor is a pure, ordered, byte-parity-preserving stage DAG.</li>
+</ul>
+<p>Open, by choice:</p>
+<ul>
+<li>Promoting the kernel from a guarded boundary to a separately-published npm
+package (needs workspace hoisting to keep a single zod instance).</li>
+<li>Migrating the remaining compositor-coupled types (wall/room) fully to <code>fields</code>
+for their schema/form/docs while keeping their 2D render in the compositor.</li>
+<li>A domain-agnostic promotion codegen (generic syntax → bespoke sugar).</li>
+</ul>
+<hr>
+<h2 id="8-map-of-the-code">8. Map of the code</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>kernel/</code></td>
+<td>domain-neutral engine (field projections + stage runner) + boundary guardrail</td>
+</tr>
+<tr>
+<td><code>editor/src/schema/fields/*</code></td>
+<td>primitive <strong>declarations</strong> (<code>fields</code>)</td>
+</tr>
+<tr>
+<td><code>editor/src/registry/</code></td>
+<td>the primitive registry, node definitions, and the field-engine shim</td>
+</tr>
+<tr>
+<td><code>editor/src/pipeline/</code></td>
+<td>the compositor: stage runner shim + compose layer</td>
+</tr>
+<tr>
+<td><code>editor/scripts/gen-primitives.mjs</code></td>
+<td><code>fields → generated typed schema</code> codegen</td>
+</tr>
+<tr>
+<td><code>editor/scripts/parity-render.mjs</code></td>
+<td>the 6/6 byte-parity gate</td>
+</tr>
+<tr>
+<td><code>wadi-dsl/</code></td>
+<td>the text DSL: grammar, compile, decompile, validate, complete</td>
+</tr>
+<tr>
+<td><code>wadi-dsl/src/generator/descriptors.ts</code></td>
+<td>the seam feeding <code>fields</code> to the DSL</td>
+</tr>
+<tr>
+<td><a href="method.html"><code>06-the-method.md</code></a></td>
+<td>the parametric-layer methodology (variables/formulas/resolver)</td>
+</tr>
+<tr>
+<td><a href="../plans/primitive-componentization.md"><code>../plans/primitive-componentization.md</code></a></td>
+<td>the working design doc for this framework</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="summary">Summary</h2>
+<p>Wadi is a parametric house designer. Underneath it is a framework where a
+concept is declared once and the schema, the forms, the docs, and the language
+are projected from that declaration, on a domain-neutral kernel that can be pointed at
+another domain. Adding a new kind of object is about two files, and it shows up
+across all the surfaces from that one declaration.</p>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

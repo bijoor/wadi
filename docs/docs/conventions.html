@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wadi structural conventions (coding guidelines) · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a class="active" href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-vertical-model-why-c1-and-c3-exist">The vertical model (why C1 and C3 exist)</a><a href="#c1-the-plinth-floor39s-height-must-match-the-plinth-block-height-error">C1 — The plinth floor's height must match the plinth block height · **error**</a><a href="#c2-a-room-must-wall-every-exterior-side-warning">C2 — A room must wall every exterior side · **warning**</a><a href="#c3-a-floor-with-no-slab-must-set-slab_thickness-to-0-error">C3 — A floor with no slab must set slab_thickness to 0 · **error**</a><a href="#c4-a-stacked-floor39s-height-should-equal-wall_height-slab_thickness-warning">C4 — A stacked floor's height should equal wall_height + slab_thickness · **warning**</a><a href="#c5-a-staircase-must-land-on-a-floor-not-below-ground-warning">C5 — A staircase must land on a floor, not below ground · **warning**</a><a href="#c6-openings-on-the-same-wall-must-not-overlap-error">C6 — Openings on the same wall must not overlap · **error**</a><a href="#c7-furniture-items-should-not-overlap-warning">C7 — Furniture items should not overlap · **warning**</a><a href="#c8-two-abutting-rooms-need-a-partition-between-them-warning">C8 — Two abutting rooms need a partition between them · **warning**</a><a href="#c9-a-floor39s-slab_thickness-should-match-its-slab-object39s-thickness-warning">C9 — A floor's slab_thickness should match its slab object's thickness · **warning**</a><a href="#c10-the-roof-should-cover-the-rooms-of-the-top-occupied-floor-warning">C10 — The roof should cover the rooms of the top occupied floor · **warning**</a><a href="#sp1-a-spiral-staircase39s-central-pole-must-be-smaller-than-its-radius-error">SP1 — A spiral staircase's central pole must be smaller than its radius · **error**</a><a href="#running-the-checks">Running the checks</a><a href="#planned-conventions-not-yet-enforced">Planned conventions (not yet enforced)</a></nav>
+    <article class="md"><h1>Wadi structural conventions (coding guidelines)</h1>
+<!-- GENERATED FILE — do not edit conventions.md by hand. It is built from
+     conventions.preamble.md + the constraint modules in editor/src/lint/constraints.
+     Regenerate with `npm --prefix editor run gen-conventions-doc`. --><p>A house can be <strong>well-formed but structurally unsound</strong>: it passes the schema and
+the wall/roof geometry check, yet the building would not stand up — a floor floats
+in mid-air, a room is open to the weather, walls hover above a phantom slab. These
+are the <em>coding conventions</em> every Wadi house must follow.</p>
+<p>They are <strong>formally defined here</strong> and <strong>enforced in code</strong> by the structural
+linter (<code>editor/src/lint/structural.ts</code>), which runs automatically:</p>
+<ul>
+<li>in <strong><code>check.sh</code></strong> (and <code>validate.mjs</code>) — <strong>errors fail</strong> the check, <strong>warnings</strong>
+are printed but advisory;</li>
+<li>in the <strong>DSL editor</strong> — the status pill shows the count and lists every finding
+in its hover tooltip, while still rendering the model so you can <em>see</em> the
+unsound part.</li>
+</ul>
+<p>Each finding carries its convention id (<code>C1</code>, <code>C2</code>, …). Each convention is a
+self-contained module under <code>editor/src/lint/constraints/</code> (its check + this doc +
+its example fixtures), and <strong>this file is generated from those modules</strong>
+(<code>editor/scripts/gen-conventions-doc.mjs</code>) — so the doc and the linter cannot
+drift. Add a rule by adding a constraint module and regenerating.</p>
+<hr>
+<h2 id="the-vertical-model-why-c1-and-c3-exist">The vertical model (why C1 and C3 exist)</h2>
+<p>Floors stack in source order (floor 0 = the Plinth floor). The renderer places
+them like this (<code>editor/src/three/coords.ts</code>):</p>
+<ul>
+<li><strong>A floor&#39;s base elevation = the running sum of the previous floors&#39; <code>height</code>
+only.</strong> <code>wall_height</code> and <code>slab_thickness</code> do <strong>not</strong> raise the next floor.</li>
+<li>The <strong>plinth block</strong> is drawn to its <em>own</em> <code>height</code>. So the floor above sits at
+<code>plinth-floor.height</code>, while the plinth top is at <code>plinth.height</code> — they must be
+equal or the floor above floats/sinks by the difference. → <strong>C1</strong></li>
+<li><strong><code>slab_thickness</code> lifts a floor&#39;s walls within its band</strong> (<code>wallZ = base + slab_thickness</code>) — it is the deck the walls stand on. With no slab object there
+is no deck, so the walls float by that amount. → <strong>C3</strong></li>
+</ul>
+<p><code>height</code>, <code>wall_height</code>, and <code>slab_thickness</code> are otherwise <strong>independent</strong> — the
+model enforces no relationship between them. These conventions add the few
+relationships that structural soundness <em>does</em> require.</p>
+<hr>
+<h2 id="c1-the-plinth-floor39s-height-must-match-the-plinth-block-height-error">C1 — The plinth floor&#39;s height must match the plinth block height · <strong>error</strong></h2>
+<p><strong>Statement.</strong> A floor that carries a <code>plinth</code> object (the Plinth floor) must set an explicit <code>height</code>, and that height must equal the plinth block&#39;s <code>height</code>.</p>
+<p><strong>Rationale.</strong> The floor above is stacked at <code>plinth-floor.height</code>; the plinth block rises to <code>plinth.height</code>. If they differ, the floor above floats above the plinth (<code>floor.height &gt; plinth.height</code>) or sinks into it (<code>&lt;</code>). If the floor <code>height</code> is omitted it silently defaults to <code>100</code>, almost never the plinth height.</p>
+<p><strong>Fix.</strong></p>
+<pre><code class="language-wdl">floor 0 &quot;Plinth&quot; height 40 {          // == the plinth block height below
+  ground name &quot;Ground&quot; at (0,0) size (500,500)
+  plinth name &quot;Plinth&quot; at (…) size (…) height 40
+}
+</code></pre>
+<p>(If the plinth block omits its own <code>height</code>, it follows the floor height and is consistent by construction — but set the floor <code>height</code> explicitly anyway, so the stack is not left to the default.)</p>
+<hr>
+<h2 id="c2-a-room-must-wall-every-exterior-side-warning">C2 — A room must wall every exterior side · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A room shown with a <strong>partial</strong> <code>walls</code> list must still wall every side that faces <strong>outside</strong> (no room beyond it). Interior (shared) sides may be omitted — the neighbour&#39;s wall stands on the shared centreline.</p>
+<p><strong>Rationale.</strong> A room shows exactly the walls it declares; a <strong>bare room (no <code>wall</code> lines) is enclosed on all four sides</strong>. But the moment you add a <code>wall</code> line to hang a door or window, the room switches to a <em>whitelist</em> — every side you don&#39;t list is now a hole. An exterior hole leaves the room open to the weather. It is a <strong>warning</strong>, not an error, because an open exterior side is sometimes intentional (a verandah / open padvi).</p>
+<p><strong>Fix.</strong></p>
+<pre><code class="language-wdl">room Living at (x,y) size (w,l) {
+  wall east west                       // plain exterior sides — enclosed
+  wall south { door Main at 120 size (36,84) }
+  wall north { window N1 at 100 size (60,50) sill 35 }
+}
+</code></pre>
+<hr>
+<h2 id="c3-a-floor-with-no-slab-must-set-slab_thickness-to-0-error">C3 — A floor with no slab must set slab_thickness to 0 · <strong>error</strong></h2>
+<p><strong>Statement.</strong> A floor that has wall/room objects but <strong>no <code>floor_slab</code> object</strong> must set <code>slab_thickness 0</code>.</p>
+<p><strong>Rationale.</strong> <code>slab_thickness</code> is the deck the floor&#39;s walls stand on (<code>wallZ = base + slab_thickness</code>). Its default is <code>8</code>. With no slab object there is no deck, so every wall on the floor floats <code>slab_thickness</code> units above the floor base. Setting it to <code>0</code> puts the walls on the floor base; alternatively, model the deck by adding a <code>slab</code>.</p>
+<p><strong>Fix.</strong></p>
+<pre><code class="language-wdl">floor 1 &quot;Ground&quot; slab_thickness 0 {   // no slab modelled → walls sit on the base
+  room Studio at (…) size (…) { … }
+}
+</code></pre>
+<p><em>(This does not fire on a floor that carries no walls/rooms — e.g. a Plinth floor of just <code>ground</code> + <code>plinth</code>, or a roof-only top floor — where <code>slab_thickness</code> is harmless.)</em></p>
+<hr>
+<h2 id="c4-a-stacked-floor39s-height-should-equal-wall_height-slab_thickness-warning">C4 — A stacked floor&#39;s height should equal wall_height + slab_thickness · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A floor that carries a floor above it (and has walls/rooms) should set <code>height</code> = <code>wall_height</code> + <code>slab_thickness</code>.</p>
+<p><strong>Rationale.</strong> The next floor sits at <code>base + height</code>; this floor&#39;s walls stand on the deck and reach <code>base + slab_thickness + wall_height</code>. When <code>height</code> is larger, the floor above leaves a gap over the walls; when smaller, the walls poke through it. It is a <strong>warning</strong> — a deliberate gap is legitimate (a service plenum, a deep transfer beam) — but usually they should match.</p>
+<p><strong>Fix.</strong></p>
+<pre><code class="language-wdl">defaults { floor_height 116 wall_height 108 slab_thickness 8 }   // 108 + 8 = 116
+</code></pre>
+<p><em>(Skipped for the plinth floor — governed by C1 — and for the topmost floor, since nothing stacks on its walls.)</em></p>
+<hr>
+<h2 id="c5-a-staircase-must-land-on-a-floor-not-below-ground-warning">C5 — A staircase must land on a floor, not below ground · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A staircase&#39;s descent must not carry it below the ground plane (z &lt; 0).</p>
+<p><strong>Rationale.</strong> Only a <code>climb down</code> (top-anchored) stair can fall below ground: you place it on the <strong>upper</strong> floor and it <strong>descends</strong>. Put it on the wrong floor, or give it too large a <code>total_height</code>, and the expanded flight lands <strong>below ground</strong> — it still draws in the 2D plans (which ignore Z) but is <strong>buried and invisible in 3D</strong>, with no other error. A <code>climb up</code> stair is anchored on its own floor and ascends, so it never trips this.</p>
+<p><strong>Fix.</strong></p>
+<p>Prefer <strong><code>climb up</code></strong>: put the stair on the <strong>lower</strong> floor it rises FROM and let it ascend.</p>
+<pre><code class="language-wdl">floor 1 &quot;Ground Floor&quot; height 116 {
+  slab at (…) size (…)
+  staircase name &quot;Stair&quot; at (212, 64) step (7, 11, 44)   // `at` = the BOTTOM (this floor)
+    direction south climb up                             // ascends to the floor above
+}
+</code></pre>
+<p>(Or, if you must keep it <code>climb down</code>, move it <strong>up one floor</strong> or reduce <code>total_height</code>.)</p>
+<hr>
+<h2 id="c6-openings-on-the-same-wall-must-not-overlap-error">C6 — Openings on the same wall must not overlap · <strong>error</strong></h2>
+<p><strong>Statement.</strong> Two openings (doors/windows) cut into the <strong>same physical wall</strong> must not overlap along it. This includes openings that belong to <strong>two different rooms sharing a boundary wall</strong>.</p>
+<p><strong>Rationale.</strong> Each opening is a boolean-subtract from the wall. Overlapping spans merge into one ragged hole (or fight over the same brick), which is never what you meant — and on a shared wall it silently punches a bigger gap than either room&#39;s plan shows.</p>
+<p><strong>Fix.</strong></p>
+<p>Offset or narrow one opening so the spans are disjoint. Openings are measured from the wall&#39;s start corner (<code>offset</code> = near edge; the opening occupies <code>[offset, offset+width]</code>).</p>
+<hr>
+<h2 id="c7-furniture-items-should-not-overlap-warning">C7 — Furniture items should not overlap · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> Two furniture <code>item</code>s whose plan footprints overlap are flagged — as a <strong>warning</strong>, because it is sometimes intentional (a rug under a table, a lamp on a desk, deliberately stacked pieces).</p>
+<p><strong>Rationale.</strong> More often it&#39;s a placement slip — two beds dropped on the same spot, or an anchored piece that reflowed into another when a room was resized. The footprint used is the item&#39;s rotated bounding box (yaw-aware), so it matches what the plan draws.</p>
+<p><strong>Fix.</strong></p>
+<p>Reposition one item, or ignore the warning if the overlap is deliberate.</p>
+<hr>
+<h2 id="c8-two-abutting-rooms-need-a-partition-between-them-warning">C8 — Two abutting rooms need a partition between them · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> Where two rooms share a boundary line and <strong>neither</strong> declares a wall on it, there is no partition between them.</p>
+<p><strong>Rationale.</strong> A bare room (no <code>wall</code> lines) is enclosed on all four sides, so two bare neighbours have two walls on their shared line. But once <strong>both</strong> rooms switch to partial <code>walls</code> lists and both omit the shared side, the centreline is left open — the rooms merge into one space with no divider. C2 only guards <em>exterior</em> sides; this is its interior counterpart. It is a <strong>warning</strong> because an intentional open-plan link (kitchen into living) is legitimate.</p>
+<p><strong>Fix.</strong></p>
+<p>Declare the wall on <strong>one</strong> of the two rooms (the neighbour&#39;s wall stands on the shared centreline, so one is enough):</p>
+<pre><code class="language-wdl">room Kitchen at (…) size (…) { wall north south east }   // east = the shared line
+room Living  at (…) size (…) { wall north south west }
+</code></pre>
+<hr>
+<h2 id="c9-a-floor39s-slab_thickness-should-match-its-slab-object39s-thickness-warning">C9 — A floor&#39;s slab_thickness should match its slab object&#39;s thickness · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> When a floor carries a <code>floor_slab</code> object with an explicit <code>thickness</code>, that thickness should equal the floor&#39;s <code>slab_thickness</code>.</p>
+<p><strong>Rationale.</strong> The floor&#39;s <code>slab_thickness</code> is the deck the walls stand on (<code>wallZ = base + slab_thickness</code>); the slab object&#39;s own <code>thickness</code> is how thick the slab MESH is drawn. If they differ, the walls sit at the floor&#39;s <code>slab_thickness</code> while the slab top is at the object&#39;s <code>thickness</code>, so the walls float above or sink into the drawn deck. (A slab with no explicit <code>thickness</code> follows the floor&#39;s <code>slab_thickness</code> and is consistent by construction — this only fires when both are set and disagree.)</p>
+<p><strong>Fix.</strong></p>
+<p>Make them equal — most simply, drop the slab&#39;s explicit <code>thickness</code> so it follows the floor:</p>
+<pre><code class="language-wdl">floor 1 &quot;Ground&quot; slab_thickness 8 {
+  slab name &quot;Deck&quot; at (…) size (…)          // no thickness → uses 8
+}
+</code></pre>
+<hr>
+<h2 id="c10-the-roof-should-cover-the-rooms-of-the-top-occupied-floor-warning">C10 — The roof should cover the rooms of the top occupied floor · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> Every room on the top occupied floor should sit under a roof segment — no room left entirely uncovered.</p>
+<p><strong>Rationale.</strong> The roof&#39;s segments span a plan area (each segment&#39;s ridge line ± its <code>width</code>). A room on the top floor whose footprint does not overlap <strong>any</strong> roof segment has open sky above it — usually a roof that was sized to the wrong footprint, or a room added after the roof. (Only a <em>completely</em> uncovered room is flagged, so eave overhangs and partial coverage never false-warn; a house with no roof at all — a terrace — is not flagged.)</p>
+<p><strong>Fix.</strong></p>
+<p>Extend or add a roof segment to span the room, or reduce the room. Roof segments cover <code>start → end</code> along the ridge, <code>width</code> across it, so grow <code>width</code>/<code>end</code> (or the plot variables they derive from) until the room is under it.</p>
+<hr>
+<h2 id="sp1-a-spiral-staircase39s-central-pole-must-be-smaller-than-its-radius-error">SP1 — A spiral staircase&#39;s central pole must be smaller than its radius · <strong>error</strong></h2>
+<p><strong>Statement.</strong> A <code>spiral_staircase</code>&#39;s <code>pole_radius</code> must be less than its outer <code>radius</code>.</p>
+<p><strong>Rationale.</strong> The treads run from the central pole out to the outer radius. If the pole is as wide as (or wider than) the stair, there is no tread left to stand on — the geometry collapses.</p>
+<p><strong>Fix.</strong></p>
+<p>Reduce <code>pole_radius</code> below <code>radius</code> (a pole is typically a small fraction of the radius).</p>
+<hr>
+<h2 id="running-the-checks">Running the checks</h2>
+<pre><code class="language-bash">wadi-skill/architect/scripts/check.sh house.wdl
+</code></pre>
+<ul>
+<li><strong><code>✖ [C…]</code></strong> — a structural <strong>error</strong>; the check exits non-zero. Fix before you
+save/share.</li>
+<li><strong><code>⚠ [C…]</code></strong> — a structural <strong>warning</strong>; advisory. Fix, or keep it if the open
+side is intentional.</li>
+</ul>
+<p>In the DSL editor the same findings appear in the status pill (hover for the full
+list); the model still renders so you can see the problem.</p>
+<hr>
+<h2 id="planned-conventions-not-yet-enforced">Planned conventions (not yet enforced)</h2>
+<p>Documented so authors know they matter; not linted yet:</p>
+<ul>
+<li><strong>Interior partition gaps</strong> — where two rooms share a centreline and <em>neither</em>
+declares that wall, there is no partition between them. (C2 only covers
+<em>exterior</em> sides.)</li>
+<li><strong>Slab thickness ↔ slab object</strong> — when a floor <em>does</em> carry a <code>floor_slab</code>,
+its <code>slab_thickness</code> should match the slab&#39;s own thickness so walls sit on the
+real deck.</li>
+<li><strong>Roof footprint coverage</strong> — the roof segments should span the top occupied
+floor&#39;s footprint (no uncovered rooms).</li>
+</ul>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

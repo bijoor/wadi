@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Building a Parametric Domain-Specific Language · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a class="active" href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#0-what-this-document-is">0. What this document is</a><a href="#1-the-core-idea">1. The core idea</a><a href="#2-the-seven-layers-map-of-the-rest-of-the-document">2. The seven layers (map of the rest of the document)</a><a href="#3-layer-1-primitives-the-vocabulary">3. Layer 1: Primitives (the vocabulary)</a><a href="#4-layer-2-the-assembly-model">4. Layer 2: The assembly model</a><a href="#5-layer-3-the-parametric-layer">5. Layer 3: The parametric layer</a><a href="#6-layer-4-the-resolver">6. Layer 4: The resolver</a><a href="#7-layer-5-control-parameters-the-knobs">7. Layer 5: Control parameters (the knobs)</a><a href="#8-layer-6-components-reusable-parametric-sub-assemblies">8. Layer 6: Components (reusable parametric sub-assemblies)</a><a href="#9-layer-7-expansion-and-renderers-one-model-many-outputs">9. Layer 7: Expansion and renderers (one model, many outputs)</a><a href="#10-cross-cutting-concerns">10. Cross-cutting concerns</a><a href="#11-the-principles-distilled">11. The principles, distilled</a><a href="#12-the-recipe-applying-the-method-to-a-new-domain">12. The recipe (applying the method to a new domain)</a><a href="#13-worked-second-domain-a-parametric-solar-pv-farm">13. Worked second domain: a parametric solar-PV farm</a><a href="#14-anti-patterns-things-this-method-deliberately-avoids">14. Anti-patterns (things this method deliberately avoids)</a><a href="#15-summary">15. Summary</a></nav>
+    <article class="md"><h1>Building a Parametric Domain-Specific Language</h1>
+<h3 id="a-reference-method-derived-from-wadi-parametric-house-design-for-reproducing-the-same-system-in-any-domain">A reference method, derived from Wadi (parametric house design), for reproducing the same system in any domain</h3>
+<blockquote>
+<p>Part of the <a href="index.html">Wadi documentation</a>, the advanced tier. This is the most
+abstract chapter: the general method behind Wadi, for anyone building a similar
+system in another domain.</p>
+<p>Companion: <a href="extending.html">extending the DSL</a> explains the
+componentization framework: how a concept is declared once (as <code>fields</code>) and
+projected onto the schema, forms, docs, and DSL, and how the domain-neutral engine
+is extracted into a reusable kernel. This document is the parametric layer
+underneath it (variables, formulas, the resolver, the configurator).</p>
+</blockquote>
+<hr>
+<h2 id="0-what-this-document-is">0. What this document is</h2>
+<p>This is a methodology reference. It describes how Wadi turns a single declarative
+document into a live parametric 3-D house, then abstracts that into a domain-agnostic
+recipe you can follow to build an equivalent system for a different domain (a solar
+farm, a data-centre floor, a garden, a PCB, a factory line, a slide layout).</p>
+<p>A parametric design tool is not one program but a stack of separated layers, each with
+a single responsibility. If you reproduce the layers and the contracts between them,
+you get the same behaviour (choose a design and vary it, author once and reuse, one
+model to many outputs) regardless of what the primitives are.</p>
+<p>The document has three parts:</p>
+<ol>
+<li>The layered architecture (§1 to §10). Each layer explained with the Wadi
+mechanics.</li>
+<li>The distilled principles (§11). The transferable rules, without the houses.</li>
+<li>The recipe and a worked second domain (§12 to §13). How to apply it to a new
+domain, shown on a solar-PV farm, with a mapping table for several more.</li>
+</ol>
+<p>Throughout, &quot;Wadi&quot; is the concrete case and &quot;the model&quot; is the generic idea.</p>
+<hr>
+<h2 id="1-the-core-idea">1. The core idea</h2>
+<p>A parametric design system is built from three tiers that must not be conflated:</p>
+<pre><code>        ┌─────────────────────────────────────────────┐
+  TIER 3│  CONTROL          knobs a user turns for a    │  &quot;make THIS house
+        │  (configurator)   specific instance           │   30ft wide, hip roof&quot;
+        ├─────────────────────────────────────────────┤
+  TIER 2│  ASSEMBLY         a parametric MODEL: primitives│ &quot;a 3-bay Konkan house
+        │  (the document)   composed + related by formulas│  on a grid&quot;
+        ├─────────────────────────────────────────────┤
+  TIER 1│  VOCABULARY       PRIMITIVES with typed         │ &quot;room, wall, pillar,
+        │  (the schema)     parameters                    │  roof, staircase…&quot;
+        └─────────────────────────────────────────────┘
+</code></pre>
+<ul>
+<li>Tier 1, Vocabulary. A small fixed set of primitives. Each is a typed record: a
+<code>type</code> discriminator plus a flat set of scalar parameters, and sometimes a little
+nested structure. Primitives are the words.</li>
+<li>Tier 2, Assembly. A model is a document that composes primitives and wires
+relationships between them with named variables and formulas. This is a sentence: a
+parametric design, not one frozen instance.</li>
+<li>Tier 3, Control. A curated set of the model&#39;s variables are surfaced as control
+parameters (sliders, selects, toggles). Turning a knob re-runs the relationships and
+the model re-flows. This is speaking the sentence for a particular occasion.</li>
+</ul>
+<p>Everything else in this document is the machinery that makes those three tiers work
+together: a formula engine, a resolver, reusable components, an expansion step,
+multiple renderers, validation, and an extensibility socket.</p>
+<p>The full data and control flow:</p>
+<pre><code class="language-mermaid">flowchart TD
+    A[&quot;Author writes a MODEL document&lt;br/&gt;(primitives + variables + grids + formulas)&quot;] --&gt; V{&quot;validate&lt;br/&gt;(strict schema)&quot;}
+    K[&quot;User turns CONTROL knobs&lt;br/&gt;(configurator)&quot;] --&gt;|writes a variable| V
+    V --&gt; R[&quot;RESOLVE&lt;br/&gt;formulas → numeric fields&lt;br/&gt;(pure, topological, cycle-safe)&quot;]
+    R --&gt; X[&quot;EXPAND / DERIVE&lt;br/&gt;components, grids→walls, disabled dropped&lt;br/&gt;→ one concrete low-level model&quot;]
+    X --&gt; O1[&quot;3-D view&quot;]
+    X --&gt; O2[&quot;2-D plans / elevations&quot;]
+    X --&gt; O3[&quot;quantities / BOM&quot;]
+    X --&gt; O4[&quot;export / share link&quot;]
+</code></pre>
+<p>Each box is a pure function of the box before it. That purity is what makes the system
+live, testable, and shareable.</p>
+<hr>
+<h2 id="2-the-seven-layers-map-of-the-rest-of-the-document">2. The seven layers (map of the rest of the document)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Layer</th>
+<th>Responsibility</th>
+<th>Wadi file(s)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><strong>Primitives</strong></td>
+<td>the typed vocabulary</td>
+<td><code>schema/houseConfig.ts</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Assembly model</strong></td>
+<td>composition, coordinate frame, conventions</td>
+<td>the <code>.wadi</code> document</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Parametric layer</strong></td>
+<td>variables, points, grids, per-field formulas</td>
+<td><code>schema</code> + author data</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Resolver</strong></td>
+<td>formulas → numbers, one directional pass</td>
+<td><code>param/resolve.ts</code>, <code>param/formula.ts</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Control</strong></td>
+<td>curated knobs + presence switches</td>
+<td><code>configurator</code>, <code>enabled</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Components</strong></td>
+<td>reusable parametric sub-assemblies</td>
+<td><code>components</code>, <code>component</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Expansion + renderers</strong></td>
+<td>derive a concrete model; many outputs</td>
+<td><code>svg2d/expand.ts</code> + renderers</td>
+</tr>
+</tbody></table>
+<p>Plus three cross-cutting concerns (§10): validation and forward-compat, units and
+display, and the extensibility registry.</p>
+<hr>
+<h2 id="3-layer-1-primitives-the-vocabulary">3. Layer 1: Primitives (the vocabulary)</h2>
+<p>A primitive is a self-contained typed record. In Wadi every object is a member of a
+discriminated union keyed on <code>type</code>:</p>
+<pre><code class="language-ts">object = discriminatedUnion(&quot;type&quot;, [
+  plinth, ground, floor_slab, beam, pillar, wall, room, staircase,
+  door, window, kitchen_platform, roof, item, component
+])
+</code></pre>
+<p>Each carries:</p>
+<ul>
+<li>a <code>type</code> discriminator (the &quot;part of speech&quot;),</li>
+<li>a flat set of scalar parameters, its intrinsic geometry and behaviour,</li>
+<li>optional nested sub-structures (e.g. a <code>wall</code> has <code>openings[]</code>; a <code>roof</code> has
+<code>segments[]</code>, <code>slope</code>, <code>trusses[]</code>; a <code>room</code> has <code>walls{}</code> and <code>items[]</code>),</li>
+<li>a few universal fields every primitive shares (see below).</li>
+</ul>
+<h3 id="31-the-wadi-primitive-catalogue">3.1 The Wadi primitive catalogue</h3>
+<table>
+<thead>
+<tr>
+<th>Primitive</th>
+<th>What it is</th>
+<th>Key intrinsic parameters</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>room</code></td>
+<td>a rectangular space that grows its own walls</td>
+<td><code>x, y, width, length, walls{north,south,east,west}, wall_heights, items[]</code></td>
+</tr>
+<tr>
+<td><code>wall</code></td>
+<td>a free-standing wall segment</td>
+<td><code>start_x, start_y, end_x, end_y, height, height_end, openings[]</code></td>
+</tr>
+<tr>
+<td><code>pillar</code></td>
+<td>a structural column</td>
+<td><code>x, y, width, length, height</code> (x,y = <strong>centre</strong>)</td>
+</tr>
+<tr>
+<td><code>beam</code></td>
+<td>a horizontal member</td>
+<td><code>x, y, …, height, height_end</code></td>
+</tr>
+<tr>
+<td><code>floor_slab</code></td>
+<td>an RCC deck</td>
+<td><code>x, y, width, length, thickness</code></td>
+</tr>
+<tr>
+<td><code>staircase</code></td>
+<td>a flight (auto-splits into switchbacks)</td>
+<td><code>start_x, start_y, step_rise, step_tread, step_width, direction, max_run, rise_height</code></td>
+</tr>
+<tr>
+<td><code>roof</code></td>
+<td>unified segment roof (hip/gable/shed/flat)</td>
+<td><code>segments[], slope, trusses[], default_endpoint</code></td>
+</tr>
+<tr>
+<td><code>door</code> / <code>window</code> (or nested <code>openings[]</code>)</td>
+<td>a hole cut in a wall</td>
+<td><code>x, y, width, height, sill_height, direction</code></td>
+</tr>
+<tr>
+<td><code>kitchen_platform</code></td>
+<td>a polyline countertop</td>
+<td><code>path[], side, depth, height</code></td>
+</tr>
+<tr>
+<td><code>plinth</code> / <code>ground</code></td>
+<td>the base / terrain of a floor</td>
+<td><code>x, y, width, length, height</code></td>
+</tr>
+<tr>
+<td><code>item</code></td>
+<td>a GLB furniture / décor instance</td>
+<td><code>asset{src, dimensions[w,h,d]}, x, y, rotation, scale</code></td>
+</tr>
+<tr>
+<td><code>component</code></td>
+<td>an <strong>instance</strong> of a reusable sub-assembly</td>
+<td><code>ref, params{}, x, y, z_offset</code></td>
+</tr>
+</tbody></table>
+<h3 id="32-universal-fields-the-primitive-envelope">3.2 Universal fields (the primitive envelope)</h3>
+<p>Every primitive shares a small envelope that the higher layers rely on:</p>
+<ul>
+<li><code>type</code>: the discriminator (how dispatchers route it).</li>
+<li><code>name</code>: a human handle (also a reference target, e.g. an opening&#39;s
+<code>room</code>+<code>direction</code>).</li>
+<li><code>formulas</code>: the parametric hook (§5): <code>{ fieldName: &quot;= expression&quot; }</code>.</li>
+<li><code>enabled</code>: a presence switch (<code>bool | number</code>). <code>false</code>/<code>0</code> removes the object from
+every view. It can be driven by a formula, which is the basis of optional rooms and
+mutually-exclusive variants.</li>
+<li><code>layer</code>: a visibility tag (display-only, never geometry).</li>
+<li><code>z_offset</code>: placement in the stacking axis relative to the container base.</li>
+</ul>
+<blockquote>
+<p>Design rule. Keep intrinsic geometry as plain numbers. Do not store a formula in a
+geometry field. Store the number there and the formula beside it in <code>formulas</code>. The
+number is always a valid, renderable fallback; the formula is an overlay the
+resolver applies. This keeps every consumer simple (they only ever read numbers) and
+makes the model degrade gracefully.</p>
+</blockquote>
+<hr>
+<h2 id="4-layer-2-the-assembly-model">4. Layer 2: The assembly model</h2>
+<h3 id="41-it-is-a-single-declarative-document">4.1 It is a single declarative document</h3>
+<p>The entire design is one JSON document (<code>.wadi</code> / <code>house_config.json</code>), not code and
+not a binary. This has several consequences:</p>
+<ul>
+<li>it is inspectable, diffable, and version-controllable;</li>
+<li>it can be shared in a URL (Wadi encodes a whole house into a share link);</li>
+<li>it can be authored by a human, a form UI, or an AI agent interchangeably;</li>
+<li>it is serialisable across runtimes (the same document drove a Python/Blender
+pipeline and now a TypeScript/Three.js one).</li>
+</ul>
+<h3 id="42-the-composition-container">4.2 The composition container</h3>
+<p>Primitives do not float free. They live in containers that impose stacking and
+scoping. In Wadi the container hierarchy is:</p>
+<pre><code>HouseConfig
+ ├─ site           (plot dimensions, reference origin)
+ ├─ defaults       (house-wide fallbacks: wall_thickness, floor_height…)
+ ├─ variables / points / grids / components   (the parametric layer, §5)
+ ├─ configurator   (control metadata, §5.4)
+ ├─ layers         (visibility groups)
+ └─ floors[]       (ordered; array order == vertical stack)
+      └─ objects[] (the primitives on that floor)
+</code></pre>
+<p>The floor is the assembly unit. It owns an ordered <code>objects[]</code> list and its own
+overridable heights (<code>height</code>, <code>wall_height</code>, <code>slab_thickness</code>). Array order is the
+physical stack: reordering floors restacks the building. Your domain&#39;s container might
+be a page, a layer, a stage, or a rack row. The principle is the same: a scoping and
+stacking bucket that primitives belong to.</p>
+<h3 id="43-the-coordinate-frame-and-conventions-critical-easy-to-get-wrong">4.3 The coordinate frame and conventions (critical, easy to get wrong)</h3>
+<p>A parametric model needs an unambiguous placement frame, and conventions that
+eliminate arithmetic for the author.</p>
+<p>Wadi&#39;s frame is Inkscape-style: origin top-left, X right, Y down, and a separate
+stacking axis for height. The <code>coord_convention</code> knob controls how positions are read:</p>
+<ul>
+<li><code>&quot;outer&quot;</code> (legacy): a room&#39;s <code>x,y,width,length</code> describe the outer wall face.
+Adjacent rooms must overlap by a wall thickness, so the author does wall math
+constantly.</li>
+<li><code>&quot;center&quot;</code> (canonical): the same numbers are wall centrelines. Adjacent rooms abut
+on a shared line, and the expansion step grows each footprint by <code>wall_thickness/2</code>
+to the outer face. The author does no wall math.</li>
+</ul>
+<blockquote>
+<p>Design rule. Push structure into the model so the author writes less. The centreline
+convention and the grid (§5.3) exist for one reason: to let an author say &quot;this room
+spans grid line 1 to line 3&quot; and get correct geometry without computing a single
+wall offset. Find your domain&#39;s equivalent arithmetic tax and design it away.</p>
+</blockquote>
+<h3 id="44-units-are-a-first-class-explicit-concern">4.4 Units are a first-class, explicit concern</h3>
+<p>Geometry lives in abstract project units. A separate <code>units</code> block controls only how
+numbers are labelled on drawings (<code>feet_inches</code>, <code>per_unit: 10</code>, and so on). Geometry
+never changes with the display unit. Keeping storage units and display units separate
+avoids a class of &quot;someone changed the unit and the model resized&quot; bugs.</p>
+<hr>
+<h2 id="5-layer-3-the-parametric-layer">5. Layer 3: The parametric layer</h2>
+<p>This is what turns a static document (Tier 1 and 2) into a parametric model. Four
+constructs, all optional (if absent, you get a plain, non-parametric design):</p>
+<h3 id="51-variables-named-scalars">5.1 Variables (named scalars)</h3>
+<pre><code class="language-json">&quot;variables&quot;: { &quot;bay&quot;: 120, &quot;depth&quot;: 300, &quot;wallT&quot;: 8, &quot;roof_style&quot;: 3 }
+</code></pre>
+<p>A variable is <code>name → number | &quot;= formula&quot;</code>. Variables may reference each other. They
+are the model&#39;s degrees of freedom, the things a knob will eventually move.</p>
+<h3 id="52-points-named-2-d-anchors-that-double-as-sizes">5.2 Points (named 2-D anchors that double as sizes)</h3>
+<pre><code class="language-json">&quot;points&quot;: { &quot;House&quot;: { &quot;x&quot;: &quot;= 3 * bay&quot;, &quot;y&quot;: &quot;= depth&quot; } }
+</code></pre>
+<p>A point is a named coordinate pair. Each coordinate is referenceable under
+case-insensitive synonyms: <code>House.x / .X / .w / .W</code> for the first,
+<code>House.y / .Y / .l / .L</code> for the second. A single point therefore doubles as both a
+position and a rectangle size (<code>House.W</code>, <code>House.L</code>) without a second structure.</p>
+<h3 id="53-grids-first-class-structural-scaffolds">5.3 Grids (first-class structural scaffolds)</h3>
+<p>A grid is a set of named, ordered centrelines per axis (X numbered <code>1,2,3…</code>, Y
+lettered <code>A,B,C…</code> by convention), each positioned by a formula:</p>
+<pre><code class="language-json">&quot;grids&quot;: {
+  &quot;main&quot;: {
+    &quot;x&quot;: [ {&quot;name&quot;:&quot;1&quot;,&quot;at&quot;:0}, {&quot;name&quot;:&quot;2&quot;,&quot;at&quot;:&quot;= bay&quot;}, {&quot;name&quot;:&quot;3&quot;,&quot;at&quot;:&quot;= 2*bay&quot;} ],
+    &quot;y&quot;: [ {&quot;name&quot;:&quot;A&quot;,&quot;at&quot;:0}, {&quot;name&quot;:&quot;B&quot;,&quot;at&quot;:&quot;= depth&quot;} ]
+  }
+}
+</code></pre>
+<p>The resolver publishes each grid line as a formula symbol: <code>main.x1</code>, <code>main.x2</code>,
+<code>main.yA</code>, and so on. A room then places itself with ordinary formulas and no wall
+math:</p>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;room&quot;, &quot;name&quot;: &quot;Living&quot;, &quot;x&quot;: 0, &quot;y&quot;: 0, &quot;width&quot;: 1, &quot;length&quot;: 1,
+  &quot;formulas&quot;: { &quot;x&quot;: &quot;= main.x1&quot;, &quot;y&quot;: &quot;= main.yA&quot;,
+                &quot;width&quot;: &quot;= main.x3 - main.x1&quot;, &quot;length&quot;: &quot;= main.yB - main.yA&quot; } }
+</code></pre>
+<p>Grids carry per-line <code>thickness</code> (a &quot;tartan&quot; grid) and a <code>role</code> tag
+(<code>structural</code> | <code>planning</code>). Because a grid is defined in centrelines, it is
+thickness-independent and reusable across templates: change the bay spacing and every
+room, slab, and column bound to the grid re-flows together.</p>
+<h3 id="54-the-per-field-formulas-map-the-universal-hook">5.4 The per-field <code>formulas</code> map (the universal hook)</h3>
+<p>Every container (object, floor, <code>site</code>, <code>defaults</code>, and even nested openings / roof
+segments / truss positions) may carry:</p>
+<pre><code class="language-json">&quot;formulas&quot;: { &quot;width&quot;: &quot;= main.x3 - main.x1&quot;, &quot;enabled&quot;: &quot;= 1 - min(1, abs(roof_style - 3))&quot; }
+</code></pre>
+<p>The resolver evaluates each entry and writes the number into the named field. The
+authored number in the field is a fallback; the formula overlays it.</p>
+<h3 id="55-the-formula-language">5.5 The formula language</h3>
+<p>A deliberately small, safe, side-effect-free arithmetic language. No <code>eval</code>, no
+branching, no loops, no I/O:</p>
+<pre><code>expr   := term ((&#39;+&#39; | &#39;-&#39;) term)*
+term   := factor ((&#39;*&#39; | &#39;/&#39;) factor)*
+factor := &#39;-&#39; factor | &#39;(&#39; expr &#39;)&#39; | number | call | identifier
+call   := name &#39;(&#39; args? &#39;)&#39;          // min, max, clamp, round, floor, ceil, abs
+identifier := name (&#39;.&#39; name)*        // dotted: point/grid symbols, e.g. main.x1, House.W
+</code></pre>
+<ul>
+<li>A leading <code>=</code> marks a string as a formula (the storage convention). It is stripped
+before parsing.</li>
+<li>Evaluation never throws. Parse errors, unknown symbols, and divide-by-zero produce
+<code>{ value: null, error }</code>, surfaced as a warning, never a crash.</li>
+<li>The engine also extracts a formula&#39;s dependencies (the symbols it reads), which the
+resolver needs for ordering.</li>
+</ul>
+<blockquote>
+<p>Why no <code>if</code> or comparisons? Branching is emulated with arithmetic.
+<code>enabled = 1 - min(1, abs(roof_style - 3))</code> is <code>1</code> exactly when <code>roof_style == 3</code>,
+else <code>0</code>. Keeping the language total (every expression has a value) and branch-free
+makes the dependency graph static and the resolver simple to reason about. Add
+domain functions (e.g. <code>min/max/clamp</code>) rather than control flow.</p>
+</blockquote>
+<hr>
+<h2 id="6-layer-4-the-resolver">6. Layer 4: The resolver</h2>
+<p>The resolver is a pure function <code>config → config</code> that evaluates every formula and
+writes the results into fields. Its contract:</p>
+<ul>
+<li>Never throws. Any unexpected error returns the original config plus one warning.</li>
+<li>Fast path. A model with no variables, points, or formulas is returned by reference:
+zero cost, no spurious re-render.</li>
+<li>Idempotent. Resolving an already-resolved model yields identical numbers.</li>
+<li>Immutable and minimal. The same reference is preserved wherever nothing changed, so
+only the parts that moved get a new identity (cheaper re-rendering).</li>
+<li>Source-of-truth preservation. Only object numeric fields are written. <code>variables</code>
+and <code>points</code> keep their authored value (which may be a formula string).</li>
+</ul>
+<h3 id="61-the-pipeline">6.1 The pipeline</h3>
+<pre><code class="language-mermaid">flowchart TD
+    A[&quot;collect symbols&lt;br/&gt;variables + point coords (with synonyms)&quot;] --&gt; B[&quot;topological order&lt;br/&gt;(DFS) + cycle detection&quot;]
+    B --&gt; C[&quot;evaluate in order → flat numeric Scope&quot;]
+    C --&gt; D[&quot;publish grid symbols&lt;br/&gt;main.x1, main.yA … into Scope&quot;]
+    D --&gt; E[&quot;apply formulas into fields:&lt;br/&gt;objects, floors, site, defaults&quot;]
+    E --&gt; F[&quot;nested: openings, roof segments/trusses/slope&quot;]
+    F --&gt; G[&quot;config&#39; (numbers written) + warnings[]&quot;]
+</code></pre>
+<ol>
+<li>Collect symbols. Every variable and every point coordinate (under all its synonyms)
+becomes a symbol with a value-or-formula and a dependency list.</li>
+<li>Topologically order the symbols by dependency, using a DFS that marks on-stack
+nodes to detect cycles (a circular reference becomes a warning, not a hang).</li>
+<li>Evaluate each symbol in order into a flat <code>Scope: { symbol → number }</code>.</li>
+<li>Publish scaffold symbols. Resolve each grid&#39;s line positions (and per-line
+thickness) and inject <code>&lt;gridId&gt;.x&lt;name&gt;</code> / <code>.y&lt;name&gt;</code> into the same <code>Scope</code>.</li>
+<li>Apply formulas into fields. For every object, floor, <code>site</code>, and <code>defaults</code>,
+evaluate its <code>formulas</code> map against <code>Scope</code> and write the numbers into the named
+fields. Recurse one level into nested structures that carry their own formulas
+(wall and room openings; roof segments whose <code>start_x/start_y/end_x/end_y</code> map into
+coordinate arrays; truss <code>pos&lt;i&gt;</code> positions; the roof slope).</li>
+<li>Certain fields are semantically integers (<code>num_steps</code>, <code>tie_beam_count</code>), and the
+resolver rounds them at the single write point rather than in each consumer.</li>
+</ol>
+<p>The dataflow is one-directional: <code>knobs → variables → points → grids → object fields</code>.
+Objects reference the scaffolds, never each other, so objects need no ordering among
+themselves and there is never a constraint-solving fixpoint. It is a dataflow
+spreadsheet, not a constraint solver. That makes it predictable, fast, and debuggable.</p>
+<h3 id="62-performance-and-caching">6.2 Performance and caching</h3>
+<p>Because a config is an immutable value that changes identity on every edit, the
+resolver caches the built <code>Scope</code> in a <code>WeakMap</code> keyed on the config object, so many
+fields checking their own formula in one render pass share a single scope build.</p>
+<hr>
+<h2 id="7-layer-5-control-parameters-the-knobs">7. Layer 5: Control parameters (the knobs)</h2>
+<p>The parametric layer (§5) gives many degrees of freedom. The control layer decides
+which of them an end user should touch, and how.</p>
+<h3 id="71-the-configurator-a-curated-projection-of-variables">7.1 The configurator (a curated projection of variables)</h3>
+<pre><code class="language-json">&quot;configurator&quot;: {
+  &quot;inputs&quot;: [
+    { &quot;target&quot;: &quot;bay&quot;,        &quot;label&quot;: &quot;Room width&quot;, &quot;control&quot;: &quot;slider&quot;,
+      &quot;unit&quot;: &quot;ft&quot;, &quot;min&quot;: 90, &quot;max&quot;: 150, &quot;step&quot;: 5 },
+    { &quot;target&quot;: &quot;roof_style&quot;, &quot;label&quot;: &quot;Roof&quot;,       &quot;control&quot;: &quot;select&quot;,
+      &quot;options&quot;: [ {&quot;value&quot;:0,&quot;label&quot;:&quot;Flat&quot;}, {&quot;value&quot;:3,&quot;label&quot;:&quot;Hip&quot;} ] }
+  ]
+}
+</code></pre>
+<p>Each input targets a variable (or a point coordinate via the synonyms) and declares
+its presentation (<code>slider | number | select | toggle</code>), range, step, and label. The
+configurator is pure metadata: the resolver and every geometry consumer ignore it.
+Turning a knob does one thing, write a number into a variable, and then the normal
+resolve, expand, and render pass produces a new model.</p>
+<blockquote>
+<p>Design rule. The set of knobs is an authored, curated surface, not the raw variable
+list. The template author (the domain expert) decides what a downstream user may
+vary and within what bounds. This is what lets a non-expert safely customise an
+expert&#39;s design.</p>
+</blockquote>
+<h3 id="72-presence-switches-enabled">7.2 Presence switches (<code>enabled</code>)</h3>
+<p>The second control primitive is the boolean/number <code>enabled</code> field on every object,
+itself formula-drivable. Two idioms fall out of it:</p>
+<ul>
+<li>Optional parts: <code>&quot;formulas&quot;: { &quot;enabled&quot;: &quot;= has_pooja&quot; }</code>. A variable toggles a
+whole room in or out, and the rest of the model re-flows around it.</li>
+<li>Mutually-exclusive variants: four roof objects, each gated
+<code>&quot;= 1 - min(1, abs(roof_style - N))&quot;</code>, so exactly one is enabled for a given
+<code>roof_style</code>. A <code>select</code> knob then swaps whole sub-assemblies with no new code.</li>
+</ul>
+<p>Disabled objects are dropped centrally at expansion (§9), so every renderer honours
+them without extra code.</p>
+<hr>
+<h2 id="8-layer-6-components-reusable-parametric-sub-assemblies">8. Layer 6: Components (reusable parametric sub-assemblies)</h2>
+<p>When a domain has repeated sub-assemblies, promote them to components. A component is
+a mini-model stored once and instantiated many times.</p>
+<ul>
+<li>A definition (<code>components: { id → ComponentDef }</code>) has its own
+<code>variables</code> / <code>points</code> / <code>objects</code>, authored in local coordinates (origin 0,0), and
+declares which variables are its public <code>params</code> (label + default).</li>
+<li>An instance (<code>{ &quot;type&quot;: &quot;component&quot;, &quot;ref&quot;: &quot;id&quot;, &quot;params&quot;: {...}, &quot;x&quot;, &quot;y&quot;, &quot;z_offset&quot; }</code>) overrides the public params (numbers, or formulas evaluated in the
+host&#39;s scope) and places the body at an offset.</li>
+</ul>
+<p>At expansion the instance is flattened: resolve the component with the override params
+and origin, recurse (components may nest), then offset every produced object into the
+host frame. No renderer needs to know <code>component</code> exists. This is ordinary procedural
+abstraction, a parameterised function call expressed in data.</p>
+<hr>
+<h2 id="9-layer-7-expansion-and-renderers-one-model-many-outputs">9. Layer 7: Expansion and renderers (one model, many outputs)</h2>
+<p>Between the resolved parametric model and the outputs sits one derivation step
+(<code>expandRoomWalls</code>). This is the seam that keeps every renderer simple. In one pass it:</p>
+<ul>
+<li>grows centreline footprints to outer faces (per <code>coord_convention</code>);</li>
+<li>expands components into concrete objects;</li>
+<li>expands multi-flight staircases into plain flights plus landings;</li>
+<li>trims walls where pillars overlap;</li>
+<li>anchors room-nested furniture to the (possibly resized) room footprint;</li>
+<li>drops disabled objects (<code>enabled=false/0</code>) so nothing downstream sees them;</li>
+<li>degrades on bad input by skipping a malformed object with a warning rather than
+producing a blank model.</li>
+</ul>
+<p>The output is a concrete, low-level model that every consumer reads:</p>
+<ul>
+<li>3-D (<code>react-three-fiber</code> / Three.js): solids, CSG openings, materials;</li>
+<li>2-D SVG: floor plans, elevations, roof details, a filtered &quot;layout&quot; sheet;</li>
+<li>Quantities: a wall-area / bill-of-materials estimator;</li>
+<li>Export and share: GLB, a URL-encoded share link, a native <code>.wadi</code> file.</li>
+</ul>
+<blockquote>
+<p>Design rule. Do the derivation once, centrally, and let every output consume the
+simplified result. Renderers should be simple mappers from the concrete model to
+their medium. If two renderers each re-derive geometry, they will drift.</p>
+</blockquote>
+<hr>
+<h2 id="10-cross-cutting-concerns">10. Cross-cutting concerns</h2>
+<h3 id="101-validation-and-forward-compatibility">10.1 Validation and forward-compatibility</h3>
+<ul>
+<li>The schema is a strict typed contract (Zod discriminated unions, optional fields,
+<code>.strict()</code> objects). A bad document is rejected with field-level errors, not a
+silent misrender.</li>
+<li>Additive-optional evolution: new capabilities are added as optional fields, so an
+old document still validates (missing fields take defaults).</li>
+<li>Tolerant load for forward-compat: when a document authored by a newer build carries
+keys this build does not know, the loader iteratively strips exactly those
+<code>unrecognized_keys</code> (at any depth) and retries, reporting what it dropped. A newer
+share link then opens on an older engine, minus the features it cannot render,
+instead of hard-failing.</li>
+</ul>
+<h3 id="102-non-geometry-metadata-is-quarantined">10.2 Non-geometry metadata is quarantined</h3>
+<p>Concerns that must not affect geometry live in their own blocks that the resolver
+ignores: <code>layers</code> (visibility groups), <code>units</code> (display labelling), <code>thumbnails</code>
+(preview snapshots), and <code>configurator</code> (control metadata). Keeping them out of the
+geometry path means they cannot perturb the model.</p>
+<h3 id="103-the-extensibility-registry-adding-a-new-primitive">10.3 The extensibility registry (adding a new primitive)</h3>
+<p>New primitives plug into a registry so you do not edit N dispatchers. A
+<code>NodeDefinition</code> bundles everything one primitive needs in one module:</p>
+<pre><code class="language-ts">interface NodeDefinition {
+  type: string;                         // discriminator it handles
+  label: string;                        // menu / tree label
+  addable?: boolean;                    // offer in &quot;+ Add&quot; menu
+  makeDefault?(cfg, existing): Object;  // a sensible new instance
+  fields?: FieldSpec[];                 // → schema / form / docs / DSL
+  Form?: Component;                     // bespoke property-panel editor (else AutoForm from fields)
+  layerRole?: string | (obj,floor) =&gt; string;   // default layer/role
+  render3D?(obj, ctx): { layerId, node } | null;   // 3-D output
+  planFootprint?(obj): { cx, cy, w, d, rot, label } | null;  // 2-D footprint
+  expand?(obj, ctx): Object[];          // optional decomposition into simpler objects
+  constraints?: Constraint[];           // per-primitive structural rules (merged into the linter)
+}
+</code></pre>
+<p>Dispatchers (3-D scene, 2-D plan, property panel, add-menu, layers) consult the
+registry first, falling back to legacy per-type switches. A new primitive is one
+self-contained file, not an edit spread across the renderers.</p>
+<hr>
+<h2 id="11-the-principles-distilled">11. The principles, distilled</h2>
+<p>Strip away houses and this is the transferable core:</p>
+<ol>
+<li>Three tiers, kept separate: vocabulary (primitives), assembly (a relational model),
+control (curated knobs). Never merge them.</li>
+<li>Primitives are typed records: a <code>type</code> discriminator, a flat set of scalar
+parameters, optional nesting, and a shared envelope (<code>name</code>, <code>formulas</code>, <code>enabled</code>,
+<code>layer</code>, placement).</li>
+<li>The model is a single declarative document, not code: inspectable, diffable,
+shareable, runtime-agnostic, and authorable by human, form, or AI.</li>
+<li>Keep intrinsic fields as plain numbers and attach formulas beside them. The number
+is always a valid fallback; the formula is an overlay.</li>
+<li>A parametric layer over the primitives: named variables, named anchors (points),
+structural scaffolds (grids), and a per-field formula map.</li>
+<li>A small, total, side-effect-free formula language: arithmetic plus a few pure
+domain functions, no <code>eval</code>, no control flow. Emulate branching with arithmetic and
+track dependencies.</li>
+<li>A resolver that is a pure <code>model → model</code> function: collect symbols, topologically
+order (detect cycles), evaluate to a flat scope, publish scaffold symbols, write
+numbers into fields. One-directional dataflow, not a constraint solver. Never
+throws; fast-path; idempotent; immutable.</li>
+<li>Control is a curated projection of variables into UI knobs (bounds, steps, widget),
+authored by the domain expert. Add presence switches for optional and
+mutually-exclusive parts.</li>
+<li>Reusable sub-assemblies as components: mini-models with public params, instantiated
+with overrides and placement, flattened at expansion. Procedural abstraction in
+data.</li>
+<li>One central expansion step produces a concrete low-level model for many renderers.
+Derive once; consumers stay simple and do not drift.</li>
+<li>Conventions that delete arithmetic (centrelines, grids). Push structure into the
+model so authors write intent, not offsets.</li>
+<li>Quarantine non-geometry metadata (visibility, display units, previews, control) so
+it cannot perturb geometry.</li>
+<li>Evolve additively and load tolerantly. Optional new fields plus strip-unknown on
+load give forward and backward compatibility for shared documents.</li>
+<li>Extensibility via a registry: one new primitive is one module that declares how it
+is created, edited, and rendered.</li>
+</ol>
+<hr>
+<h2 id="12-the-recipe-applying-the-method-to-a-new-domain">12. The recipe (applying the method to a new domain)</h2>
+<p>Work top-down through these steps. Each maps to a Wadi layer.</p>
+<p><strong>Step 1. Enumerate the primitives.</strong> List the irreducible parts of a design in your
+domain. For each one: choose a <code>type</code> name, list its intrinsic scalar parameters, note
+any nested sub-structure, and mark which fields are authored and which are derived.</p>
+<p><strong>Step 2. Fix the placement frame and conventions.</strong> Define the coordinate and
+stacking frame and the meaning of position and size. Then find the arithmetic your
+authors would otherwise repeat and design a convention (like centrelines) or a
+scaffold (like grids) to delete it.</p>
+<p><strong>Step 3. Define the assembly container.</strong> Choose the scoping and stacking bucket
+(floor, page, stage, row) and how buckets order.</p>
+<p><strong>Step 4. Serialise as one strict document.</strong> Pick JSON and write a strict,
+discriminated, optional-friendly schema. This is your wire format and source of truth.</p>
+<p><strong>Step 5. Add the parametric layer.</strong> Add <code>variables</code>, named <code>points</code> or anchors, any
+<code>grids</code> or scaffolds, and a per-field <code>formulas</code> map on every container.</p>
+<p><strong>Step 6. Implement the formula engine.</strong> Arithmetic plus your domain&#39;s pure
+functions, the leading-<code>=</code> convention, dependency extraction, and never throws.</p>
+<p><strong>Step 7. Implement the resolver.</strong> Collect symbols, topo-order (with cycle
+detection), evaluate to a flat scope, publish scaffold symbols, write fields.
+Fast-path, immutable, idempotent, and warning-not-exception.</p>
+<p><strong>Step 8. Choose control parameters.</strong> Expose a curated subset of variables as a
+<code>configurator</code> (widget, bounds, step, label). Add <code>enabled</code> presence switches for
+optional and variant parts.</p>
+<p><strong>Step 9. Add components</strong> if the domain repeats sub-assemblies.</p>
+<p><strong>Step 10. Implement one expansion step</strong> that produces a concrete model for your
+renderers and exporters. Derive once; keep outputs simple.</p>
+<p><strong>Step 11. Add a registry</strong> so new primitives are one module.</p>
+<p><strong>Step 12. Add validation, tolerant load, and quarantined metadata</strong> (visibility,
+units, previews).</p>
+<hr>
+<h2 id="13-worked-second-domain-a-parametric-solar-pv-farm">13. Worked second domain: a parametric solar-PV farm</h2>
+<p>To show the method is domain-agnostic, here is the same architecture applied to
+utility-scale solar. Nothing about houses carries over except the structure.</p>
+<p><strong>Step 1. Primitives.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Primitive</th>
+<th>Intrinsic parameters</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>panel</code></td>
+<td><code>w, h, wattage</code></td>
+</tr>
+<tr>
+<td><code>table</code> (a rack of panels)</td>
+<td><code>panels_x, panels_y, tilt, x, y</code></td>
+</tr>
+<tr>
+<td><code>inverter</code></td>
+<td><code>x, y, rated_kw</code></td>
+</tr>
+<tr>
+<td><code>combiner_box</code></td>
+<td><code>x, y, inputs</code></td>
+</tr>
+<tr>
+<td><code>cable_run</code></td>
+<td><code>path[], gauge</code></td>
+</tr>
+<tr>
+<td><code>access_road</code></td>
+<td><code>path[], width</code></td>
+</tr>
+<tr>
+<td><code>block</code> (component)</td>
+<td>a reusable pod of <code>table</code>×N + one <code>inverter</code></td>
+</tr>
+</tbody></table>
+<p>Each gets the same envelope: <code>type, name, formulas, enabled, layer</code>.</p>
+<p><strong>Step 2. Frame and convention.</strong> Ground plane, X east and Y north, metres. The
+arithmetic tax here is row pitch versus ground-coverage ratio (GCR): authors should
+not hand-place every row. So introduce a field grid whose lines are the row and column
+centrelines.</p>
+<p><strong>Step 3. Container.</strong> A <code>sections[]</code> array (fenced parcels), analogous to floors.</p>
+<p><strong>Steps 4 to 5. Document and parametric layer:</strong></p>
+<pre><code class="language-json">{
+  &quot;variables&quot;: {
+    &quot;plot_w&quot;: 20000, &quot;plot_d&quot;: 12000,
+    &quot;gcr&quot;: 40,                         // ground-coverage ratio, %
+    &quot;table_len&quot;: 340,                  // one table, cm
+    &quot;row_pitch&quot;: &quot;= table_len * 100 / gcr&quot;,
+    &quot;n_rows&quot;: &quot;= floor(plot_d / row_pitch)&quot;,
+    &quot;target_kw&quot;: 5000
+  },
+  &quot;grids&quot;: {
+    &quot;field&quot;: {
+      &quot;x&quot;: [ {&quot;name&quot;:&quot;C1&quot;,&quot;at&quot;:0}, {&quot;name&quot;:&quot;C2&quot;,&quot;at&quot;:&quot;= table_len&quot;}, {&quot;name&quot;:&quot;C3&quot;,&quot;at&quot;:&quot;= 2*table_len&quot;} ],
+      &quot;y&quot;: [ {&quot;name&quot;:&quot;R1&quot;,&quot;at&quot;:0}, {&quot;name&quot;:&quot;R2&quot;,&quot;at&quot;:&quot;= row_pitch&quot;}, {&quot;name&quot;:&quot;R3&quot;,&quot;at&quot;:&quot;= 2*row_pitch&quot;} ]
+    }
+  },
+  &quot;configurator&quot;: {
+    &quot;inputs&quot;: [
+      { &quot;target&quot;: &quot;gcr&quot;,       &quot;label&quot;: &quot;Ground coverage&quot;, &quot;control&quot;: &quot;slider&quot;, &quot;unit&quot;: &quot;percent&quot;, &quot;min&quot;: 30, &quot;max&quot;: 55, &quot;step&quot;: 1 },
+      { &quot;target&quot;: &quot;target_kw&quot;, &quot;label&quot;: &quot;Target capacity&quot;,  &quot;control&quot;: &quot;number&quot;, &quot;unit&quot;: &quot;count&quot; }
+    ]
+  },
+  &quot;sections&quot;: [
+    { &quot;name&quot;: &quot;Array A&quot;, &quot;objects&quot;: [
+      { &quot;type&quot;: &quot;table&quot;, &quot;name&quot;: &quot;T-R1C1&quot;, &quot;x&quot;: 0, &quot;y&quot;: 0, &quot;panels_x&quot;: 4, &quot;panels_y&quot;: 2, &quot;tilt&quot;: 20,
+        &quot;formulas&quot;: { &quot;x&quot;: &quot;= field.xC1&quot;, &quot;y&quot;: &quot;= field.yR1&quot; } },
+      { &quot;type&quot;: &quot;table&quot;, &quot;name&quot;: &quot;T-R2C1&quot;, &quot;x&quot;: 0, &quot;y&quot;: 0, &quot;panels_x&quot;: 4, &quot;panels_y&quot;: 2, &quot;tilt&quot;: 20,
+        &quot;formulas&quot;: { &quot;x&quot;: &quot;= field.xC1&quot;, &quot;y&quot;: &quot;= field.yR2&quot; } },
+      { &quot;type&quot;: &quot;inverter&quot;, &quot;name&quot;: &quot;INV-1&quot;, &quot;x&quot;: 0, &quot;y&quot;: 0, &quot;rated_kw&quot;: 1250,
+        &quot;formulas&quot;: { &quot;enabled&quot;: &quot;= 1 - min(1, abs(0 - 0))&quot; } }
+    ] }
+  ]
+}
+</code></pre>
+<p><strong>Steps 6 to 7. Formula engine and resolver:</strong> identical to Wadi&#39;s. <code>field.yR2</code>
+resolves to the row-2 centreline. Every table binds to a grid node and re-flows when
+<code>gcr</code> changes (which changes <code>row_pitch</code>, which moves every <code>R*</code> line).</p>
+<p><strong>Step 8. Control:</strong> the two knobs above. Adjusting Ground coverage re-pitches every
+row live. Target capacity could gate whole <code>block</code> components on via <code>enabled</code>
+formulas (add tables until <code>n_tables * table_kw ≥ target_kw</code>).</p>
+<p><strong>Step 9. Components:</strong> a <code>block</code> is tables plus an inverter, instantiated per parcel
+with param overrides, exactly like Wadi&#39;s <code>component</code>.</p>
+<p><strong>Step 10. Expansion and outputs:</strong> one expansion (grid to table positions, disabled
+dropped, blocks flattened) feeds a 3-D site view, a 2-D layout drawing, a quantities
+output (panel count, cable length, projected kW, the domain&#39;s bill of materials), and
+a share link.</p>
+<h3 id="131-the-mapping-is-mechanical">13.1 The mapping is mechanical</h3>
+<table>
+<thead>
+<tr>
+<th>Generic role</th>
+<th>Wadi (houses)</th>
+<th>Solar PV farm</th>
+<th>Data-centre floor</th>
+<th>Garden design</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Primitive</td>
+<td>room, wall, roof</td>
+<td>table, inverter</td>
+<td>rack, CRAC, PDU</td>
+<td>bed, path, tree</td>
+</tr>
+<tr>
+<td>Container</td>
+<td>floor</td>
+<td>section/parcel</td>
+<td>room / row</td>
+<td>zone</td>
+</tr>
+<tr>
+<td>Scaffold (grid)</td>
+<td>bay/axis grid</td>
+<td>row × column pitch</td>
+<td>floor-tile grid</td>
+<td>plot grid</td>
+</tr>
+<tr>
+<td>Key variables</td>
+<td>bay, depth, roof_style</td>
+<td>gcr, target_kw</td>
+<td>rack_count, redundancy</td>
+<td>sun_exposure, bed_w</td>
+</tr>
+<tr>
+<td>Control knobs</td>
+<td>plot size, roof, rooms</td>
+<td>GCR, capacity</td>
+<td>racks, N+1 vs 2N</td>
+<td>sunlight, spacing</td>
+</tr>
+<tr>
+<td>Component</td>
+<td>stair pod, bay</td>
+<td>array block</td>
+<td>cooling pod</td>
+<td>planting module</td>
+</tr>
+<tr>
+<td>Presence switch</td>
+<td>optional pooja room</td>
+<td>spare string</td>
+<td>redundant CRAC</td>
+<td>seasonal bed</td>
+</tr>
+<tr>
+<td>Expansion output</td>
+<td>plans, 3-D, quantities</td>
+<td>layout, kW, cable BOM</td>
+<td>rack elevation, kW/cooling load</td>
+<td>plan, plant list</td>
+</tr>
+</tbody></table>
+<p>Every column is the same seven layers with different nouns. The architecture is the
+reusable asset, not the primitives.</p>
+<hr>
+<h2 id="14-anti-patterns-things-this-method-deliberately-avoids">14. Anti-patterns (things this method deliberately avoids)</h2>
+<ul>
+<li>A constraint solver. Bidirectional constraints (&quot;keep these two walls aligned&quot;) need
+a fixpoint engine, are slow, and fail unpredictably. One-directional dataflow
+(spreadsheet, not solver) is predictable and fast. If you need a constraint, model
+it as a formula that computes one side from the other.</li>
+<li>Formulas that reference other objects. Objects reference scaffolds
+(variables/points/grids), never each other, so there is no inter-object ordering.
+Shared quantities live in a variable both objects read.</li>
+<li><code>eval</code> or a Turing-complete embedded language. A total, branch-free arithmetic
+language keeps the dependency graph static and the model safe to share.</li>
+<li>Re-deriving geometry in each renderer. Derive once at expansion; consumers map the
+concrete model. Two derivations drift.</li>
+<li>Letting display concerns touch geometry. Units, layers, colours, previews are
+quarantined metadata the resolver ignores.</li>
+<li>Editing N dispatchers to add a primitive. Use a registry; one primitive is one
+module.</li>
+</ul>
+<hr>
+<h2 id="15-summary">15. Summary</h2>
+<p>Model a design domain as a small typed vocabulary of primitives, composed into a
+single declarative document, made parametric by a layer of named variables, anchors,
+and grids wired through a small safe formula language, and collapsed into concrete
+geometry by a pure, one-directional, cycle-safe resolver followed by a single
+expansion step that feeds many simple renderers. Expose a curated subset of the
+variables as control knobs, gate optional parts with presence switches, factor
+repetition into reusable components, keep non-geometry concerns quarantined, evolve the
+schema additively, and load tolerantly. Make the whole thing extensible through a
+registry. With that structure, &quot;choose a design and vary it for your use case&quot; works in
+any domain, because the reusable asset is the architecture, not the house.</p>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

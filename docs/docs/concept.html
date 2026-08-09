@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>What Wadi is, and why it is designed for AI · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a class="active" href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#what-wadi-is">What Wadi is</a><a href="#why-wadi-uses-a-design-language">Why Wadi uses a design language</a><a href="#writing-and-checking-designs">Writing and checking designs</a><a href="#what-each-persona-does">What each persona does</a><a href="#why-wadi-is-built-to-extend">Why Wadi is built to extend</a><a href="#how-it-works-wdl-and-wadi">How it works: .wdl and .wadi</a><a href="#the-form-editor">The form editor</a><a href="#where-to-go-from-here">Where to go from here</a><a href="#where-things-live">Where things live</a></nav>
+    <article class="md"><h1>What Wadi is, and why it is designed for AI</h1>
+<blockquote>
+<p>Part of the <a href="index.html">Wadi documentation</a>. This is the first chapter. It covers
+what Wadi is, why it is built to be used with an AI assistant, and why that shapes
+the architecture. No prior knowledge is assumed.</p>
+</blockquote>
+<h2 id="what-wadi-is">What Wadi is</h2>
+<p>Wadi is a parametric home designer. It is also an example of an AI-native product: it
+is designed to be operated with an AI coding assistant, not only through a user
+interface.</p>
+<p>You describe a house to an AI assistant in plain language. The assistant writes the
+design in Wadi&#39;s design language, a text format saved as a <code>.wdl</code> file. Wadi compiles
+that file and renders it live: a 3D model together with dimensioned floor plans,
+elevations, roof details, and a wall-area estimate. You review the result and refine
+it by continuing the conversation. Every output is generated from the same <code>.wdl</code>
+file, so one change to the design updates all of them.</p>
+<p>A domain expert (an architect) can read and edit the <code>.wdl</code> directly once familiar
+with the syntax, and co-edit it alongside the assistant. A home-owner can take a
+finished design and personalize it through a set of controls, without reading the
+language at all.</p>
+<p>It runs in the browser and on the desktop.</p>
+<h2 id="why-wadi-uses-a-design-language">Why Wadi uses a design language</h2>
+<p>The reason Wadi has its own language is to let an AI author designs.</p>
+<p>An AI coding assistant is good at writing text that follows a grammar. Wadi&#39;s design
+language is text with a formal grammar and a compiler that reports errors by line and
+column. So an assistant can write a design, run the checker, read the errors, and
+correct them, the same way it writes and fixes code. Describing a house becomes a
+conversation: you state what you want, the assistant writes the <code>.wdl</code>, Wadi renders
+it, and you both refine it.</p>
+<p>The same file is readable by a person. An architect who learns the syntax can edit it
+directly, review what the assistant wrote, and change it. The language is the shared
+artifact: the assistant and the expert edit the same file.</p>
+<p>This is what &quot;AI-native&quot; means here. The primary way to create and change a design is
+through an assistant working in the language. A form-based editor exists for people
+who prefer to edit by hand (see below), but the product is built around the language,
+and the language is built for an AI to write.</p>
+<p>The language also gives a design three properties a picture or a raw data file cannot:</p>
+<ul>
+<li>Version control. A <code>.wdl</code> file goes in git, so you can see what changed between two
+revisions. Floor-plan images cannot be diffed this way.</li>
+<li>Parametric templates. Variables, a structural grid, and formulas let the house
+re-flow when one number changes, so a design can be a resizable template rather than
+a one-off.</li>
+<li>Bounded personalization. An architect can expose a configurator over the parametric
+model, so a home-owner adjusts a design within set limits and never edits geometry.</li>
+</ul>
+<h2 id="writing-and-checking-designs">Writing and checking designs</h2>
+<p>An assistant that writes a design also needs to know whether the design is correct.
+Wadi gives it a way to check, so the loop is write, check, fix, not just write. This is
+the QA side of the product, and it is as important as the language itself.</p>
+<p>There are two kinds of check today:</p>
+<ul>
+<li>Automated checks. One command parses the <code>.wdl</code>, resolves its formulas, validates it
+against the schema, checks the wall and roof geometry, and applies a set of
+structural conventions (for example: a floor with no slab must declare it, a room
+must wall its exterior sides, openings must not overlap). The assistant reads the
+result and fixes what failed. Because the check reuses the app&#39;s own code, it reports
+exactly what the app would.</li>
+<li>Visual inspection. The assistant renders the design to images (floor plans,
+elevations, 3D) and reads them back, so it can judge whether the result matches the
+brief.</li>
+</ul>
+<p>Most of the functional testing today is visual: the assistant looks at the rendered
+design. Planned work adds explicit functional tests for common design rules, checked
+automatically, for example: furniture is not placed too close to a door, every room
+has a path to the main entrance, and a staircase does not overlap a door or window. As
+these are added, more of the checking becomes automatic rather than visual.</p>
+<p>So the assistant can write designs that are syntactically correct, and verify that they
+function. The set of things it can verify grows over time.</p>
+<h2 id="what-each-persona-does">What each persona does</h2>
+<p>Wadi serves four kinds of user. This is what each one does; the
+<a href="personas.html">personas chapter</a> covers how in detail.</p>
+<table>
+<thead>
+<tr>
+<th>Persona</th>
+<th>What they do</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>AI coding assistant</td>
+<td>Write and revise the <code>.wdl</code> design from a written brief or a sketch, then check and preview it. The primary author.</td>
+</tr>
+<tr>
+<td>Architect</td>
+<td>Describe a building to the assistant and co-edit the <code>.wdl</code> it writes, or edit by hand. Make the design parametric (a grid with formulas) and expose a configurator so an owner can adjust it.</td>
+</tr>
+<tr>
+<td>Home-owner</td>
+<td>Pick a finished design and adjust a few controls (plot size, roof style, room options). No language and no AI needed.</td>
+</tr>
+<tr>
+<td>Developer</td>
+<td>Add new kinds of building elements, and apply the same engine to other domains.</td>
+</tr>
+</tbody></table>
+<h2 id="why-wadi-is-built-to-extend">Why Wadi is built to extend</h2>
+<p>For an AI-native product, the reference material the assistant writes against matters
+as much as the language. If the schema, the documentation, and the grammar are
+maintained separately, they drift apart, and an assistant writing against out-of-date
+material produces invalid designs.</p>
+<p>Wadi avoids this. Each object type is declared once, by listing its fields. From that
+one declaration, Wadi generates the schema, the property forms, the documentation, and
+the syntax in the design language. The four stay consistent because they come from one
+source (a test checks this on every change). So the material an assistant reads is
+always current, and adding a new object type is about two files rather than edits
+spread across five subsystems. As the set of object types grows, the range of designs
+an assistant can author grows with it.</p>
+<p>The generation machinery does not refer to houses. It can be applied to a different
+domain: a solar-farm layout, an interiors tool, a factory floor, a PCB. The AI-native
+pattern, a domain expressed as a language an assistant can write, is reusable. The
+home designer is the first application of it, not the only possible one.</p>
+<p>Two later chapters cover these two activities: <a href="extending.html">extending the DSL</a>
+(adding a type) and <a href="method.html">the method</a> (applying the engine to another
+domain).</p>
+<h2 id="how-it-works-wdl-and-wadi">How it works: <code>.wdl</code> and <code>.wadi</code></h2>
+<p>A <code>.wdl</code> file is the design. Here is a complete one:</p>
+<pre><code class="language-wdl">house MyFirstHouse {
+  convention center
+  units feet_inches per_unit 10
+  site { plot (300, 300) }
+  defaults { floor_height 116 wall_height 108 slab_thickness 8 wall_thickness 8 }
+
+  floor 1 &quot;Ground&quot; {
+    room Living at (0, 0) size (240, 200) {
+      wall north east south west
+    }
+  }
+}
+</code></pre>
+<p>That is a valid house: one 24 ft by 20 ft room, walled on all four sides, on one
+floor. It reads like a description a person would write, and an assistant can produce
+it from a sentence.</p>
+<p>There are two file formats:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>.wdl</code>, the language</th>
+<th><code>.wadi</code>, the model</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>What it is</td>
+<td>the source an assistant or a person writes</td>
+<td>the compiled model, plain JSON</td>
+</tr>
+<tr>
+<td>Who writes it</td>
+<td>the AI assistant, or an architect</td>
+<td>the compiler (rarely touched by hand)</td>
+</tr>
+<tr>
+<td>Used for</td>
+<td>authoring, diffing, formulas, reuse</td>
+<td>feeding the renderer; publishing a template</td>
+</tr>
+</tbody></table>
+<p>The relationship is compile-and-render:</p>
+<pre><code>   authored             compiler              renderer
+   ----------      -------------------      -----------------------------
+   house.wdl   --&gt;   parse -&gt; resolve   --&gt;   3D model
+   (the DSL)         formulas -&gt; .wadi        floor plans (per floor)
+                     (the JSON model)         elevations (front/back/left/right)
+                                              roof drawings
+                                              quantities (wall areas)
+                                              a property-panel editor
+</code></pre>
+<p>The Wadi editor compiles the <code>.wdl</code> to a <code>.wadi</code> model and renders every output from
+that model, live. You can download the <code>.wadi</code> to publish it as a template, and you
+can import a <code>.wadi</code> back into editable <code>.wdl</code>. The two directions round-trip.</p>
+<p>The compile step and the extension model are the same mechanism seen from two sides. A
+type is declared once by its fields. From that declaration, Wadi generates the schema,
+the forms, the documentation, and the language syntax. That is what lets a <code>.wdl</code> file
+render as a full house, and it is what makes adding a new type about two files.</p>
+<h2 id="the-form-editor">The form editor</h2>
+<p>Wadi also has a form-based editor, called studio mode. It presents the design as an
+object tree with property panels: you add and edit rooms, walls, openings, structure,
+a roof, and furniture through forms, and the 3D and 2D views update as you make each
+change. It is the by-hand alternative to authoring in the language. See
+<a href="personas.html">personas</a>.</p>
+<h2 id="where-to-go-from-here">Where to go from here</h2>
+<p>Everything in this folder supports one of two activities:</p>
+<ol>
+<li><p>Author houses with the language. See who does what in
+<a href="personas.html">personas</a>, then the hands-on <a href="authoring.html">authoring guide</a>
+and <a href="components.html">components &amp; libraries</a>.</p>
+</li>
+<li><p>Extend the language. Add new object types in
+<a href="extending.html">extending the DSL</a>, or apply the engine to another
+domain in <a href="method.html">the method</a>.</p>
+</li>
+</ol>
+<p>Most readers want the first. Continue to <a href="personas.html">personas</a>.</p>
+<h2 id="where-things-live">Where things live</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>wadi-dsl/</code></td>
+<td>the DSL: grammar, compiler, decompiler, and the in-browser DSL editor</td>
+</tr>
+<tr>
+<td><code>wadi-dsl/examples/*.wdl</code></td>
+<td>validated sample houses (start with <code>minimal.wdl</code>)</td>
+</tr>
+<tr>
+<td><code>editor/</code></td>
+<td>the app: the 3D and 2D renderer, the studio UI, and the <code>.wadi</code> schema</td>
+</tr>
+<tr>
+<td><code>wadi-skill/architect/</code></td>
+<td>the agent-neutral AI skill (instructions, references, scripts)</td>
+</tr>
+<tr>
+<td><code>wadi-mcp/</code></td>
+<td>the MCP server: the skill&#39;s tooling, runnable without the repo</td>
+</tr>
+<tr>
+<td><code>documentation/</code></td>
+<td>this folder</td>
+</tr>
+</tbody></table>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

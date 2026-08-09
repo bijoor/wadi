@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wadi documentation · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a class="active" href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-chapters">The chapters</a><a href="#reading-paths">Reading paths</a><a href="#reference">Reference</a></nav>
+    <article class="md"><h1>Wadi documentation</h1>
+<p>Wadi is a parametric home designer, and an example of an AI-native product: it is
+designed to be operated with an AI coding assistant. You describe a house to the
+assistant; the assistant writes the design in the Wadi Design Language (a <code>.wdl</code>
+file); Wadi compiles it and renders a 3D model plus every 2D drawing, all kept in
+sync. An architect can co-edit the same file, and a home-owner can personalize a
+finished design through a set of controls. This folder covers what Wadi is, who it is
+for, how to design with it, and how to extend it.</p>
+<p>New here? Read <a href="concept.html">01, what Wadi is and why it is designed for AI</a> first.
+It covers the product, why it is built to be used with an AI assistant, the personas,
+and the reason for the architecture, then points you to the next chapter.</p>
+<h2 id="the-chapters">The chapters</h2>
+<p>Read in order for a full tour, or jump using the <a href="#reading-paths">reading paths</a>.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Chapter</th>
+<th>What it covers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>01</td>
+<td><a href="concept.html">What Wadi is, and why it is designed for AI</a></td>
+<td>The product, why the DSL exists so an AI assistant can author designs, what each persona does, and why the system is built to add object types at low cost. Start here.</td>
+</tr>
+<tr>
+<td>02</td>
+<td><a href="personas.html">Personas</a></td>
+<td>Who uses Wadi and how: AI coding assistant, architect, home-owner, developer.</td>
+</tr>
+<tr>
+<td>03</td>
+<td><a href="authoring.html">Authoring guide</a></td>
+<td>The step-by-step guide to writing a house in <code>.wdl</code>, from the first room to a parametric, configurable template.</td>
+</tr>
+<tr>
+<td>04</td>
+<td><a href="components.html">Components &amp; libraries</a></td>
+<td>Reuse: define a part once and place it many times; share parts across files.</td>
+</tr>
+<tr>
+<td>05</td>
+<td><a href="extending.html">Extending the DSL</a></td>
+<td>Advanced. Add a new object type in about two files: the componentization framework and its kernel.</td>
+</tr>
+<tr>
+<td>06</td>
+<td><a href="method.html">The method</a></td>
+<td>Advanced. The general recipe for building a parametric DSL like this in another domain.</td>
+</tr>
+</tbody></table>
+<h2 id="reading-paths">Reading paths</h2>
+<ul>
+<li>Home-owner (personalize a ready-made home): you mostly use the app, not the docs.
+Skim <a href="concept.html">the concept</a>, then the Home-owner section of
+<a href="personas.html#home-owner">personas</a>.</li>
+<li>Architect (design and detail a building): <a href="concept.html">concept</a>, then
+<a href="personas.html#architect">personas, Architect</a>, then the full
+<a href="authoring.html">authoring guide</a>, then <a href="components.html">components &amp; libraries</a>.</li>
+<li>Using an AI coding tool (have an agent write the design): <a href="concept.html">concept</a>,
+then <a href="personas.html#ai-coding-assistant">personas, AI coding assistant</a> for setup, then let
+the agent read the <a href="#reference">reference</a> below.</li>
+<li>Developer (add object types, or reuse the engine): <a href="concept.html">concept</a>, then
+<a href="extending.html">extending the DSL</a>, then <a href="method.html">the method</a>.</li>
+</ul>
+<h2 id="reference">Reference</h2>
+<p>These are the reference docs. They live under <code>wadi-skill/architect/reference/</code>
+because the AI skill and MCP server load them too. They are the source of truth for
+syntax and semantics.</p>
+<ul>
+<li><a href="dsl.html"><code>dsl.md</code></a>: the complete <code>.wdl</code> syntax
+reference (denser than the authoring guide).</li>
+<li><a href="data-model.html"><code>data-model.md</code></a>: the <code>.wadi</code> JSON
+schema, field by field. It is generated from the code, so it does not drift.</li>
+<li><a href="coordinate-system.html"><code>coordinate-system.md</code></a>:
+axes, units, and the centreline convention.</li>
+<li><a href="parametric-conventions.html"><code>parametric-conventions.md</code></a>:
+the grid-first recipe for a reusable, resizable template.</li>
+<li><a href="conventions.html"><code>conventions.md</code></a>: the C1 to C7
+structural conventions the <code>check.sh</code> linter enforces.</li>
+<li><a href="roof-v2-guide.html"><code>roof-v2-guide.md</code></a>: roof
+semantics.</li>
+</ul>
+<p>Examples: validated sample houses are in <a href="../wadi-dsl/examples/"><code>wadi-dsl/examples/</code></a>.
+Start with <code>minimal.wdl</code>, then <code>coastal.wdl</code> (grid-driven) and <code>complete.wdl</code> (every
+construct at once).</p>
+<p>Related READMEs: the root <a href="index.html"><code>README.md</code></a> (running, building, and
+deploying Wadi), <a href="index.html"><code>wadi-dsl/README.md</code></a> (the grammar and
+compiler internals), and <a href="index.html"><code>wadi-mcp/README.md</code></a> (the MCP
+server).</p>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

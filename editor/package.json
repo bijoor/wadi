@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "gen-conventions-doc": "tsx scripts/gen-conventions-doc.mjs",
-    "gen-conventions-doc:check": "tsx scripts/gen-conventions-doc.mjs --check"
+    "gen-conventions-doc:check": "tsx scripts/gen-conventions-doc.mjs --check",
+    "gen-docs-site": "node scripts/gen-docs-site.mjs"
   },
   "dependencies": {
     "@flatten-js/core": "^1.6.13",
@@ -50,6 +51,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^6.0.3",
+    "marked": "^18.0.9",
     "oxlint": "^1.71.0",
     "tailwindcss": "^4.3.2",
     "tsx": "^4.23.0",

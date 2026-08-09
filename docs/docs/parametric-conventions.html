@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Parametric model conventions (reusable house templates) · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a class="active" href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#0-the-one-big-idea-the-grid-is-the-parametric-layer">0. The one big idea: the GRID is the parametric layer</a><a href="#1-set-the-centreline-convention">1. Set the centreline convention</a><a href="#2-variables-the-knobs">2. Variables — the knobs</a><a href="#3-the-grid-named-lines-as-formulas">3. The grid — named lines as formulas</a><a href="#4-rooms-slabs-plinth-reference-the-grid-nothing-else">4. Rooms, slabs, plinth — reference the grid, nothing else</a><a href="#5-pillars-corner-anchored-centre-on-a-node-by-subtracting-half-the-width">5. Pillars — corner-anchored; centre on a node by subtracting half the width</a><a href="#6-openings">6. Openings</a><a href="#7-konkan-layout-conventions">7. Konkan layout conventions</a><a href="#8-build-amp-verify-the-loop">8. Build & verify — the loop</a></nav>
+    <article class="md"><h1>Parametric model conventions (reusable house templates)</h1>
+<p>How to author a <strong>fully-parametric</strong> <code>.wadi</code> — a template that stays valid under <em>any</em>
+knob change (resize the plot, widen a room, add a floor) instead of a one-off with
+baked-in numbers. Use it when building a <strong>template</strong> for the library / picker; skip it
+for a quick fixed sketch.</p>
+<p>The canonical worked example is <strong><code>examples/coastal_konkan.wadi</code></strong> — read it alongside
+this. The engine: <code>variables</code> → <code>grids</code> → per-object <code>formulas</code>, resolved
+topologically by <code>editor/src/param/resolve.ts</code>. Formula ops: <code>+ - * /</code>, <code>min</code>, <code>max</code>,
+<code>clamp</code>, <code>round</code>, <code>floor</code>, <code>ceil</code>, <code>abs</code> (no <code>eval</code>, no comparisons/ternary).</p>
+<h2 id="0-the-one-big-idea-the-grid-is-the-parametric-layer">0. The one big idea: the GRID is the parametric layer</h2>
+<p>A <strong>grid</strong> is a set of named wall-<strong>centreline</strong> lines — X (west→east: <code>1,2,3…</code>) and Y
+(north→south: <code>A,B,C…</code>). Each line&#39;s position (<code>at</code>) is a formula of the house size and
+your knobs. <strong>Rooms don&#39;t compute their own geometry — they name grid lines.</strong> Move a
+line (or the knob its <code>at</code> depends on) and every room, slab and column on it follows.</p>
+<pre><code>House size + knobs  ──▶  grid line `at` formulas  ──▶  rooms/pillars reference lines
+        (variables)            (the grids block)              (= main.x1, …)
+</code></pre>
+<p>This one-directional flow is the whole recipe. There is <strong>no</strong> room-corner point layer
+and <strong>no</strong> per-room wall math (both existed in the old convention — don&#39;t use them).</p>
+<h2 id="1-set-the-centreline-convention">1. Set the centreline convention</h2>
+<p>At the top of the house set:</p>
+<pre><code class="language-jsonc">&quot;coord_convention&quot;: &quot;center&quot;
+</code></pre>
+<p>Then a rect object&#39;s <code>x, y, width, length</code> are wall <strong>centrelines</strong>, and <strong>two rooms
+that share a wall just ABUT on the shared line</strong> — room A spans X <code>[x1,x4]</code>, room B
+spans <code>[x4,x8]</code>, the wall is centred on <code>x4</code> and shared. No overlap, no <code>wallT</code> math;
+the renderer grows each footprint to the outer face automatically. See
+<code>coordinate-system.md</code> → &quot;the centreline convention&quot;.</p>
+<h2 id="2-variables-the-knobs">2. Variables — the knobs</h2>
+<ul>
+<li><strong>Base dims:</strong> <code>wallT</code> (wall thickness), <code>floorH</code>, <code>slabH</code>, plus derived helpers
+(<code>wallH = &quot;=floorH-slabH&quot;</code>).</li>
+<li><strong>Column sizes + inset:</strong> <code>pillarW</code> (and <code>pillarL</code> if rectangular), and
+<strong><code>pilInset = &quot;= (pillarW - wallT) / 2&quot;</code></strong> — the amount a perimeter column must move
+inward to sit flush with the facade (see §5).</li>
+<li><strong>Opening sizes:</strong> <code>doorW/doorH</code>, <code>winW/winH/winSill</code>, <code>entranceW</code>, <code>doorMargin</code> — never
+inline literals.</li>
+<li><strong>Room-proportion knobs:</strong> <code>pct&lt;Room&gt;&lt;W/L&gt;</code> + <code>min&lt;Room&gt;&lt;W/L&gt;</code> (see §3).</li>
+</ul>
+<p>Variables may reference only other variables (they resolve before the grid).</p>
+<h2 id="3-the-grid-named-lines-as-formulas">3. The grid — named lines as formulas</h2>
+<p>Define <code>grids.main</code> with X and Y lines. The <strong>outer</strong> lines anchor to the plinth edge;
+<strong>interior</strong> lines carry the room-proportion logic:</p>
+<pre><code class="language-jsonc">&quot;grids&quot;: { &quot;main&quot;: {
+  &quot;x&quot;: [
+    { &quot;name&quot;: &quot;1&quot;, &quot;at&quot;: &quot;= wallT / 2&quot; },                                   // left outer face at 0
+    { &quot;name&quot;: &quot;2&quot;, &quot;at&quot;: &quot;= max(minBedW, round(pctBedW * House.W)) + 3*wallT/2&quot; },
+    { &quot;name&quot;: &quot;8&quot;, &quot;at&quot;: &quot;= House.W - wallT / 2&quot; }                          // right outer face at House.W
+  ],
+  &quot;y&quot;: [ { &quot;name&quot;: &quot;A&quot;, &quot;at&quot;: &quot;= wallT / 2&quot; }, { &quot;name&quot;: &quot;F&quot;, &quot;at&quot;: &quot;= House.L - wallT / 2&quot; } ]
+} }
+</code></pre>
+<ul>
+<li><strong>Outer lines:</strong> <code>1</code>/<code>A</code> at <code>wallT/2</code>, the last at <code>House.dim − wallT/2</code>. A wall
+centred on <code>wallT/2</code> has its outer face at <code>0</code>; on <code>House.W − wallT/2</code>, at <code>House.W</code>.
+So the building fills the plot exactly.</li>
+<li><strong>Interior lines — where pct/min lives.</strong> Either a fixed <strong>fraction</strong> of the span
+(<code>round(wallT/2 + frac*(House.W - wallT))</code>, pure proportional — the coastal style) or
+a <strong><code>max(min, pct*House.dim)</code></strong> offset (keeps a room from getting unusably small on a
+tight plot — the cottage/family style). Because a room&#39;s clear interior is
+<code>(line-to-line) − wallT</code>, add <code>+ 3*wallT/2</code> to a <code>max(min, pct*…)</code> size so the KNOB
+equals the clear interior.</li>
+<li>Each grid line is published as a formula <strong>symbol</strong> <code>main.x&lt;name&gt;</code> / <code>main.y&lt;name&gt;</code>
+(<code>main.x1</code>, <code>main.yA</code>). Positions are conserved automatically — the lines partition
+the span, so there are no gaps/overlaps to reconcile.</li>
+</ul>
+<h2 id="4-rooms-slabs-plinth-reference-the-grid-nothing-else">4. Rooms, slabs, plinth — reference the grid, nothing else</h2>
+<pre><code class="language-jsonc">{ &quot;type&quot;:&quot;room&quot;, &quot;name&quot;:&quot;Hall&quot;,
+  &quot;formulas&quot;: { &quot;x&quot;:&quot;= main.x1&quot;, &quot;y&quot;:&quot;= main.yA&quot;,
+                &quot;width&quot;:&quot;= main.x4 - main.x1&quot;, &quot;length&quot;:&quot;= main.yC - main.yA&quot; } }
+</code></pre>
+<ul>
+<li><code>x</code>/<code>y</code> = the room&#39;s top-left grid node; <code>width</code>/<code>length</code> = the span to another node.</li>
+<li>Adjacent rooms use the <strong>same</strong> line for their shared edge (room A <code>…x4</code>, room B
+<code>x:&quot;= main.x4&quot;</code>) → they abut and share one wall.</li>
+<li>The floor slab / plinth span the outermost lines (<code>main.x1 → main.x8</code>,
+<code>main.yA → main.yF</code>).</li>
+<li><strong>Keep valid placeholder literals</strong> on <code>x/y/width/length</code> (positive numbers) — the
+strict schema checks stored literals <em>before</em> resolve. The resolver overwrites them.</li>
+</ul>
+<h2 id="5-pillars-corner-anchored-centre-on-a-node-by-subtracting-half-the-width">5. Pillars — corner-anchored; centre on a node by subtracting half the width</h2>
+<p>A pillar&#39;s <code>(x,y)</code> is its <strong>TOP-LEFT CORNER</strong> in <strong>both</strong> conventions (columns align
+to corners — the convention never shifts a pillar the way it grows a room). To drop a
+column <strong>centred</strong> on a grid node, subtract <strong>half its width</strong> in the formula:</p>
+<pre><code class="language-jsonc">{ &quot;type&quot;:&quot;pillar&quot;, &quot;name&quot;:&quot;P_mid&quot;,
+  &quot;formulas&quot;: { &quot;x&quot;:&quot;= main.x3 - pillarW/2&quot;, &quot;y&quot;:&quot;= main.yF - pillarW/2&quot;,
+                &quot;width&quot;:&quot;= pillarW&quot;, &quot;length&quot;:&quot;= pillarW&quot; } }
+</code></pre>
+<ul>
+<li><strong>Interior columns</strong> centre on their node: <code>&quot;= main.x3 - pillarW/2&quot;</code>.</li>
+<li><strong>Perimeter columns</strong> are wider than the wall, so centred on an outer line they&#39;d jut
+past the plinth. Inset by <code>pilInset</code> first, <strong>then</strong> subtract <code>pillarW/2</code> — the net
+effect puts the column&#39;s OUTER face flush with the wall&#39;s outer face:<ul>
+<li>on the <strong>min</strong> line (<code>x1</code>, <code>yA</code>): <code>&quot;= (main.x1) + pilInset - pillarW/2&quot;</code></li>
+<li>on the <strong>max</strong> line (<code>x8</code>, <code>yF</code>): <code>&quot;= (main.x8) - pilInset - pillarW/2&quot;</code></li>
+<li>a corner column does both axes; a front-row column that&#39;s interior in X only insets Y.</li>
+</ul>
+</li>
+<li>Because <code>pilInset = (pillarW − wallT)/2</code> and <code>pillarW</code> are formulas, columns stay flush
+when you resize the plot, the wall, or the column.</li>
+<li><strong>Colonnade columns</strong> between nodes: <code>&quot;= (main.x1 + main.x2)/2 - pillarW/2&quot;</code> (centre on
+the midpoint); still inset the axis that sits on an outer line.</li>
+<li><strong>Freehand (no grid):</strong> put <code>at (x,y)</code> where the column&#39;s <strong>corner</strong> should sit — it
+lands there exactly, so you can butt a column against a room corner or wall junction.</li>
+</ul>
+<h2 id="6-openings">6. Openings</h2>
+<ul>
+<li>Opening sizes are <strong>variables</strong>; every opening is <strong>positioned by formula</strong> from its
+room&#39;s line span.</li>
+<li><strong>Windows / wide entrances are CENTRED:</strong> offset <code>= ((span) − w)/2</code>.</li>
+<li><strong>Internal doors tuck into a corner</strong> (<code>doorMargin</code> from one end) to keep a
+continuous wall run for furniture.</li>
+<li><strong>A shared wall is declared once</strong> — the room with the door declares that side&#39;s
+opening; the neighbour omits the side (the coincident wall is already there).</li>
+<li><strong>Validate every opening:</strong> <code>0 ≤ offset &amp;&amp; offset + width ≤ wallSpan</code>, or
+<code>expandRoomWalls</code> throws. This inequality assumes a <strong>start-anchored</strong> offset
+(<code>from start</code>, the default). <code>from center</code> and <code>from end</code> re-reference the offset
+(a <code>center</code> offset is a signed shift from the wall midpoint and may be negative),
+so the fit is checked on the <strong>resolved</strong> placement, not the raw <code>offset</code>.</li>
+</ul>
+<h2 id="7-konkan-layout-conventions">7. Konkan layout conventions</h2>
+<ul>
+<li><strong>Central hall (Majghar) is the circulation hub</strong> — rooms open into it, not into each
+other. Preserves privacy and frees wall runs.</li>
+<li><strong>Consolidate wet services</strong> — kitchen + bathroom share a wall so plumbing runs
+together.</li>
+<li><strong>Front verandah</strong> (full-width, pillared) + <strong>rear Padvi</strong> (rear verandah).</li>
+<li>Give fixed rooms a comfortable <strong>minimum</strong> (a 6&#39;×6&#39; bathroom reads cramped; ~7&#39;×7&#39; is
+better) — raise the <code>min</code>, not just the <code>pct</code>.</li>
+</ul>
+<h2 id="8-build-amp-verify-the-loop">8. Build &amp; verify — the loop</h2>
+<ol>
+<li><strong>Author</strong> the grid + formulas with valid placeholder literals.</li>
+<li><strong>Validate:</strong> <code>cd editor &amp;&amp; npx tsx ../wadi-skill/architect/scripts/validate.mjs &lt;ABS_PATH&gt;</code>
+— resolves, schema-checks, and runs the wall/roof pipeline. Exit 0 = good.</li>
+<li><strong>Render + read:</strong> <code>wadi-skill/architect/scripts/preview.sh &lt;ABS_PATH&gt;</code> → look at the
+plans (rooms in place, columns flush, roof over the plinth).</li>
+<li><strong>Scale sweep — the whole point.</strong> Resolve + render at a <strong>small</strong>, a <strong>large</strong>, and
+an <strong>off-aspect</strong> plot (change <code>House.W</code>/<code>House.L</code> or the plot). Confirm: no negative
+rooms, rooms fill the plot exactly, every opening fits, <strong>no column juts past the
+plinth</strong>, no pillar/door overlap. A change that only works at the default size isn&#39;t
+done.</li>
+<li>In the app: the <strong>Geometry-issues panel says &quot;No geometry issues&quot;</strong>, and the live 3D
+model updates on save.</li>
+</ol>
+<p>See also <code>coordinate-system.md</code> (Y is DOWN, 10 units = 1 ft, the centreline rule),
+<code>data-model.md</code> (every field), and <code>examples/coastal_konkan.wadi</code> (the reference).</p>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

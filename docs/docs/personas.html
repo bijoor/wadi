@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Who uses the Wadi DSL · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a class="active" href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#architect">Architect</a><a href="#ai-coding-assistant">AI coding assistant</a><a href="#home-owner">Home-owner</a><a href="#developer">Developer</a></nav>
+    <article class="md"><h1>Who uses the Wadi DSL</h1>
+<blockquote>
+<p>Part of the <a href="index.html">Wadi documentation</a>. Read the <a href="concept.html">concept</a>
+first. This chapter describes who works with Wadi and how, so you can go to the
+chapter that fits you.</p>
+</blockquote>
+<p>Wadi is designed to be used with an AI assistant. The primary way to create a design
+is an architect working with an AI coding assistant in the design language: the
+assistant writes the <code>.wdl</code> file, and the architect steers the work and co-edits the
+file. Around that, a home-owner personalizes finished designs, and a developer extends
+the system. The <code>.wdl</code> and <code>.wadi</code> model is the format they all share.</p>
+<table>
+<thead>
+<tr>
+<th>Persona</th>
+<th>Role</th>
+<th>Works in</th>
+<th>Touches the DSL?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>AI coding assistant</td>
+<td>writes the design from a brief</td>
+<td>any coding agent</td>
+<td>yes; authors the <code>.wdl</code></td>
+</tr>
+<tr>
+<td>Architect</td>
+<td>describes the building and co-edits</td>
+<td>a chat, the DSL editor, or studio forms</td>
+<td>yes; co-authors <code>.wdl</code>, or edits by hand</td>
+</tr>
+<tr>
+<td>Home-owner</td>
+<td>personalizes a finished design</td>
+<td>the app (browser or phone)</td>
+<td>no; adjusts controls</td>
+</tr>
+<tr>
+<td>Developer</td>
+<td>extends Wadi or reuses the engine</td>
+<td>the codebase</td>
+<td>builds the language</td>
+</tr>
+</tbody></table>
+<h2 id="architect">Architect</h2>
+<p>The architect designs and details the building. The primary method is to work with an
+AI assistant: describe the house, let the assistant write the <code>.wdl</code>, review the
+rendered result, and refine it in conversation. The architect also edits the file
+directly once familiar with the syntax. The next section covers the AI setup.</p>
+<p>The architect can also work by hand, in three places. All of them drive the same
+model.</p>
+<ol>
+<li><p>In the DSL editor, writing <code>.wdl</code> directly (browser: <a href="https://wadi.house/dsl">https://wadi.house/dsl</a>;
+desktop: press ⌘⇧D). It is an editor for the language, with completion, hover,
+go-to-definition, rename, and a live preview pane. This is where you define the
+house on a structural grid with formulas so it stays valid when the plot is
+resized, then expose a configurator. The result is a reusable template for the
+owner gallery.</p>
+</li>
+<li><p>In studio mode, a form-based editor at <a href="https://wadi.house/app?mode=studio">https://wadi.house/app?mode=studio</a>. It
+presents the design as an object tree with property panels. You add and edit every
+element through forms: rooms (with per-side walls, doors, and windows),
+free-standing walls, a roof (hip, gable, shed, or flat), columns, beams, slabs,
+staircases, kitchen platforms, and furniture. Tabs give per-floor plans, a filtered
+composite sheet, elevations, roof views, and a wall-area estimate, all dimensioned
+and all updating as you edit.</p>
+</li>
+<li><p>On the desktop, editing a file. The Wadi desktop app watches a <code>.wadi</code> file on
+disk, so you can edit it in any tool and see the 3D model update within about a
+second.</p>
+</li>
+</ol>
+<p>The step-by-step guide to writing <code>.wdl</code> is the <a href="authoring.html">authoring guide</a>.
+Reuse across a project (components and libraries) is
+<a href="components.html">components &amp; libraries</a>.</p>
+<p>The architect-to-owner handoff: the architect ships a parametric template with a
+configurator; the owner opens it and adjusts the controls. Same file, two audiences.</p>
+<h2 id="ai-coding-assistant">AI coding assistant</h2>
+<p>A <code>.wdl</code> file is text with a grammar and a compiler, so an AI coding assistant can
+author the design. You describe a house in plain language and the assistant writes and
+revises the <code>.wdl</code> while Wadi renders it. This is the method Wadi is built around.</p>
+<p>The <code>.wdl</code> is one file that you and the assistant both edit. The assistant writes the
+language, not raw <code>.wadi</code> JSON, because the editor does that conversion, and the
+language expresses formulas, grids, and the configurator directly while its grammar
+catches structural mistakes.</p>
+<p>The work starts one of two ways:</p>
+<ul>
+<li>Brief to house. You describe the house (&quot;a 3-bed L-shaped bungalow, hip roof, about
+1500 sq ft&quot;). The assistant drafts a <code>.wdl</code>, checks it, and you steer with
+follow-ups.</li>
+<li>Drawings to house. You give the assistant a sketch or photo of a plan; it recreates
+it as a <code>.wdl</code> and asks about anything ambiguous.</li>
+</ul>
+<p>The loop: keep the <code>.wdl</code> open in the DSL editor (browser or desktop). The assistant
+edits and saves; the model rebuilds in the pane beside you; you respond in chat; the
+assistant patches. Small, checkable steps.</p>
+<p>The assistant does not only write the design, it verifies it. Verification has two
+parts today. Automated checks (<code>check.sh</code>, or <code>wadi_check</code> over MCP) parse the <code>.wdl</code>,
+resolve its formulas, validate the schema, check the wall and roof geometry, and apply
+the structural conventions, then report what failed. Visual inspection: the assistant
+renders the design to images (<code>preview.sh</code> or <code>wadi_preview</code>) and reads them to judge
+whether it matches the brief. Most functional testing today is visual. Planned work
+adds explicit functional tests for common patterns, for example furniture placed too
+close to a door, a room with no path to the main entrance, or a staircase overlapping a
+door or window. As those are added, more of the checking becomes automatic.</p>
+<h3 id="two-ways-to-give-an-assistant-the-skill">Two ways to give an assistant the skill</h3>
+<p>The instructions, the data model, the reference docs, and the check/preview tooling
+are packaged as an agent-neutral skill (<code>wadi-skill/architect/</code>): plain instructions,
+docs, and scripts, usable by any coding agent. There are two delivery paths.</p>
+<p>With the repo checked out, thin per-agent adapters point at the skill:</p>
+<ul>
+<li>Claude Code discovers it from <code>.claude/skills/</code> when run inside the repo. Ask
+naturally, or invoke <code>/wadi-architect</code>. It creates the <code>.wdl</code>, tells you the path,
+and runs <code>check.sh</code> after every edit.</li>
+<li>Google Antigravity, Cursor, and other <code>AGENTS.md</code>-aware agents read the repo-root
+<code>AGENTS.md</code>, which routes to the same skill.</li>
+</ul>
+<p>Both the assistant and you can verify with two scripts that reuse the app&#39;s own
+generators, so they match it byte for byte:</p>
+<pre><code class="language-bash"># parse + resolve + schema/geometry + structural conventions (writes no .wadi)
+wadi-skill/architect/scripts/check.sh   &lt;ABS_PATH_TO.wdl&gt;
+# render floor plans, elevations, and roof to PNGs the assistant can read
+wadi-skill/architect/scripts/preview.sh &lt;ABS_PATH_TO.wdl&gt;
+</code></pre>
+<p>Without a repo, over MCP. <code>wadi-mcp</code> is an MCP server that bundles the whole pipeline
+(DSL compiler, schema, geometry, conventions, 2D renderers) and the examples and
+reference docs into one self-contained file. It is published to npm, so there is
+nothing to build or clone; <code>npx</code> fetches it on first run.</p>
+<p>Install it in Claude Code:</p>
+<pre><code class="language-bash">claude mcp add wadi -- npx -y wadi-mcp
+</code></pre>
+<p>For any other MCP client (Cursor, Windsurf, Claude Desktop), add the same command and
+args to the client&#39;s MCP config:</p>
+<pre><code class="language-json">{ &quot;mcpServers&quot;: { &quot;wadi&quot;: { &quot;command&quot;: &quot;npx&quot;, &quot;args&quot;: [&quot;-y&quot;, &quot;wadi-mcp&quot;] } } }
+</code></pre>
+<p>To run a local build instead of the npm package, build it once (<code>cd wadi-mcp &amp;&amp; npm install &amp;&amp; npm run build</code>) and point the client at the bundle by path:</p>
+<pre><code class="language-json">{ &quot;mcpServers&quot;: { &quot;wadi&quot;: { &quot;command&quot;: &quot;node&quot;, &quot;args&quot;: [&quot;/abs/path/to/wadi-mcp/dist/server.mjs&quot;] } } }
+</code></pre>
+<p>Once registered, the server exposes these tools:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>wadi_check</code></td>
+<td>parse + resolve + schema/geometry + structural conventions</td>
+</tr>
+<tr>
+<td><code>wadi_preview</code></td>
+<td>render plans, elevations, and roof to PNG images the assistant reads</td>
+</tr>
+<tr>
+<td><code>wadi_examples</code></td>
+<td>the embedded <code>examples/*.wdl</code></td>
+</tr>
+<tr>
+<td><code>wadi_reference</code></td>
+<td>the embedded reference docs (syntax, data model, conventions)</td>
+</tr>
+<tr>
+<td><code>wadi_modules</code> / <code>wadi_module</code></td>
+<td>discover importable component and furniture libraries</td>
+</tr>
+<tr>
+<td><code>wadi_view_3d</code> / <code>wadi_capture_3d</code></td>
+<td>with the desktop app open, load a design into the live 3D view, or return a 3D image</td>
+</tr>
+</tbody></table>
+<p>No clone and no local build are needed. The live 3D preview still comes from the DSL
+editor if you want it.</p>
+<p>In both paths the assistant authors <code>.wdl</code> using the references and examples, and
+verifies with check and preview. See <code>README.md</code> (the section on the AI architect
+skill) and <code>wadi-mcp/README.md</code> for setup detail.</p>
+<h2 id="home-owner">Home-owner</h2>
+<p>The home-owner does not see the language. They see a home and a set of controls.</p>
+<p>Everything runs in the browser. There is nothing to install, and it works on a phone.</p>
+<ol>
+<li>Open the app at <a href="https://wadi.house/app">https://wadi.house/app</a> (Home-owner view).</li>
+<li>Choose a home. Browse a gallery of ready-made designs, such as Konkan cottages and
+family homes, each with 3D previews and a floor plan. Pick the closest one.</li>
+<li>Adjust it. A set of controls (plot size, roof style, room options) reshapes the
+house, and the 3D model updates as you change them. Orbit, zoom, and look around.</li>
+<li>See the plans. Switch to the floor-plan view for room sizes and layout.</li>
+<li>Share it. The Share button copies a link that contains the whole design. Send it to
+family or an architect and they see what you see. No account, nothing uploaded.</li>
+</ol>
+<p>Those controls are the configurator that an architect built into the template: a set
+of labelled sliders, toggles, and selects, each bounded so the house stays valid.
+Adjusting a control changes a number, and the parametric model re-flows around it. The
+underlying template is a parametric <code>.wdl</code> / <code>.wadi</code> design; the owner is driving the
+<a href="authoring.html#13-the-configurator">configurator</a> that an architect exposed.</p>
+<h2 id="developer">Developer</h2>
+<p>The developer extends Wadi itself: adds a new kind of object, improves a renderer, or
+reuses the engine for a different domain.</p>
+<ul>
+<li>Run and build locally. All app code is under <code>editor/</code>. Use <code>npm --prefix editor run dev</code> for a hot-reload dev server, <code>npm --prefix editor test</code> for the tests, and <code>npm --prefix editor run build</code> to produce the deployed bundles. The desktop app is Tauri
+(<code>src-tauri/</code>). See the root <code>README.md</code>, section &quot;Run &amp; develop locally&quot;.</li>
+<li>Add a new object type. A wall, a beam, and a spiral staircase are each declared once
+and projected onto the schema, forms, docs, and DSL. Adding one is about two files.
+This is <a href="extending.html">extending the DSL</a>.</li>
+<li>Reuse the engine for another domain. The projection machinery and parametric layer
+do not refer to houses. The recipe for retargeting is <a href="method.html">the method</a>.</li>
+</ul>
+<p>Next: the <a href="authoring.html">authoring guide</a>, which covers writing a house in <code>.wdl</code>
+from the first room to a parametric, configurable template.</p>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

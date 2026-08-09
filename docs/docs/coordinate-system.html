@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Coordinate system & units · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a class="active" href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#axes-inkscape-frame-y-is-down">Axes — Inkscape frame (Y is DOWN)</a><a href="#units-10-project-units-1-foot">Units — 10 project units = 1 foot</a><a href="#rooms-walls-and-the-centreline-convention">Rooms, walls, and the centreline convention</a><a href="#vertical-z-fields-recap">Vertical (Z) fields recap</a><a href="#sloping-tops">Sloping tops</a><a href="#quick-self-check-before-saving">Quick self-check before saving</a></nav>
+    <article class="md"><h1>Coordinate system &amp; units</h1>
+<p>This is the #1 source of mistakes. Read it before placing anything.</p>
+<h2 id="axes-inkscape-frame-y-is-down">Axes — Inkscape frame (Y is DOWN)</h2>
+<p>The config uses an <strong>Inkscape-style 2D frame</strong>, the same one the SVG floor plans
+use directly:</p>
+<pre><code>   origin (0,0) ── X increases →  (east / right)
+     │
+     │  Y increases ↓  (south / DOWN)
+     ▼
+</code></pre>
+<ul>
+<li><strong>X</strong> → right (east).</li>
+<li><strong>Y</strong> → <strong>DOWN</strong> (south). This is NOT the math/Blender convention. A room &quot;to
+the <strong>north</strong>&quot; of another has a <strong>smaller</strong> Y. Moving something &quot;up&quot; on the plan
+= <strong>decreasing</strong> Y.</li>
+<li><strong>Z</strong> → up (height), in the 3D model. Z isn&#39;t in the 2D placement fields; it&#39;s
+derived from <code>height</code>/floor stacking. <code>sill_height</code>, <code>z_offset</code>, <code>base_z</code>,
+<code>plinth.height</code>, wall <code>height</code> are vertical (Z) measures.</li>
+</ul>
+<p>Every position field is the object&#39;s <strong>top-left corner</strong> in this frame:
+<code>x</code>/<code>y</code> (rooms, slabs, beams, pillars), <code>start_x</code>/<code>start_y</code> + <code>end_x</code>/<code>end_y</code>
+(walls, staircases), <code>path: [[x,y],…]</code> (kitchen platforms), roof segment
+<code>start</code>/<code>end</code> (<code>[x, y]</code>).</p>
+<p>Because Y points down:</p>
+<ul>
+<li><code>plinth.length</code> runs along <strong>X</strong>; <code>plinth.width</code> runs along <strong>Y</strong>.</li>
+<li>A room&#39;s <code>width</code> runs along <strong>X</strong>; its <code>length</code> runs along <strong>Y</strong>.</li>
+<li>A north-up architect&#39;s sketch has its <strong>Y flipped</strong> when you transcribe it: the
+top of the drawing (north) maps to small Y, the bottom (south) to large Y.</li>
+</ul>
+<h2 id="units-10-project-units-1-foot">Units — 10 project units = 1 foot</h2>
+<p>All lengths/coordinates are <strong>project units</strong>. The display/dimension convention is
+<strong><code>unit_conversion = 10</code> → 10 units = 1 ft</strong>. So:</p>
+<table>
+<thead>
+<tr>
+<th>The user says</th>
+<th>Config value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 ft</td>
+<td>10</td>
+</tr>
+<tr>
+<td>12 ft (a 12-foot room)</td>
+<td>120</td>
+</tr>
+<tr>
+<td>45 ft (plot)</td>
+<td>450</td>
+</tr>
+<tr>
+<td>6 in (0.5 ft)</td>
+<td>5</td>
+</tr>
+</tbody></table>
+<p>Always <strong>multiply feet by 10</strong>. <code>plot_length: 450</code> displays as <code>45&#39;</code>.</p>
+<blockquote>
+<p>Aside you don&#39;t need for authoring: a separate Blender path uses
+<code>units_to_meters_ratio = 0.1</code> (1 unit = 0.1 m) for the 3D export, so the same
+<code>450</code> is treated as 45 m in Blender. The two constants serve different pipelines;
+for authoring the config, <strong>only the 10-units-per-foot rule matters.</strong></p>
+</blockquote>
+<h3 id="changing-how-dimensions-are-labelled">Changing how dimensions are <em>labelled</em></h3>
+<p>The <code>10-units-per-foot</code> rule above is only the <strong>default label</strong>. The optional
+top-level <code>units</code> block changes the drawing labels <strong>without touching geometry</strong> —
+coordinates you write stay in project units either way:</p>
+<pre><code class="language-jsonc">&quot;units&quot;: { &quot;system&quot;: &quot;meters&quot;, &quot;per_unit&quot;: 100, &quot;precision&quot;: 2 }
+</code></pre>
+<ul>
+<li><code>system</code> ∈ <code>feet_inches</code> (default), <code>feet</code>, <code>meters</code>, <code>centimeters</code>, <code>millimeters</code>.</li>
+<li><code>per_unit</code> = project units per one display unit (the label divisor). Default <code>10</code>.</li>
+<li><code>precision</code> = decimals for the decimal systems (default <code>2</code>; <code>feet_inches</code> ignores it).</li>
+</ul>
+<p>So a 120-unit wall labels as <code>12&#39;</code> by default, or <code>1.20 m</code> with the block above.
+Never change coordinates to switch units — only add/edit this block.</p>
+<h3 id="label-font-sizes-auto-scale-no-config-needed">Label font sizes auto-scale (no config needed)</h3>
+<p>Dimension and room-label font sizes are <strong>derived automatically</strong> from the house&#39;s
+physical span (larger of <code>plinth.length</code>/<code>plinth.width</code>), so text stays legible at
+fit-to-view whether the house is tiny or huge. There is <strong>no font-size field</strong> to
+set — don&#39;t try to add one. A house at the reference span (450 units ≈ 45 ft)
+renders at the baseline sizes; larger/smaller houses scale proportionally (clamped
+0.6×–6×).</p>
+<h2 id="rooms-walls-and-the-centreline-convention">Rooms, walls, and the centreline convention</h2>
+<p>Set <strong><code>&quot;coord_convention&quot;: &quot;center&quot;</code></strong> at the top of the house (the canonical mode).
+Then a rect object&#39;s <code>x, y, width, length</code> are <strong>wall CENTRELINES</strong> — the line each
+wall is centred on, <em>not</em> the outer face.</p>
+<p><strong>Two rooms that share a wall simply ABUT on the shared centreline</strong> — no overlap, no
+wall math:</p>
+<ul>
+<li>Room A spans X <code>[0, 150]</code>, room B spans X <code>[150, 300]</code>. They meet at <code>150</code>; the wall
+is centred on <code>150</code> and belongs to both → <strong>one shared wall.</strong> Done.</li>
+<li>The clear interior of a room is <code>width − t</code> × <code>length − t</code> (half a wall on each side);
+its outer extent is <code>width + t</code> × <code>length + t</code>. The system grows each footprint to the
+outer face automatically at render time (<code>expandRoomWalls</code>), so you never write <code>t</code>.</li>
+</ul>
+<p>That&#39;s the whole rule. No &quot;overlap by <code>wall_thickness</code>,&quot; no directional offsets.</p>
+<h3 id="placing-a-plan-on-a-grid-rooms-reference-the-grid-directly">Placing a plan on a grid — rooms reference the grid directly</h3>
+<p>Because room coords <em>are</em> wall centrelines and a <strong>grid</strong> (<code>grids</code> block) is a set of
+named wall centrelines, a room is just the rectangle between four grid lines — with
+<strong>no arithmetic</strong>:</p>
+<pre><code class="language-jsonc">&quot;grids&quot;: { &quot;main&quot;: { &quot;x&quot;: [ {&quot;name&quot;:&quot;1&quot;,&quot;at&quot;:&quot;= wallT/2&quot;}, {&quot;name&quot;:&quot;2&quot;,&quot;at&quot;:&quot;= House.W - wallT/2&quot;} ],
+                     &quot;y&quot;: [ {&quot;name&quot;:&quot;A&quot;,&quot;at&quot;:0}, {&quot;name&quot;:&quot;B&quot;,&quot;at&quot;:&quot;= House.L - wallT/2&quot;} ] } }
+</code></pre>
+<pre><code class="language-jsonc">{ &quot;type&quot;:&quot;room&quot;, &quot;name&quot;:&quot;Hall&quot;,
+  &quot;formulas&quot;: { &quot;x&quot;:&quot;= main.x1&quot;, &quot;y&quot;:&quot;= main.yA&quot;,
+                &quot;width&quot;:&quot;= main.x2 - main.x1&quot;, &quot;length&quot;:&quot;= main.yB - main.yA&quot; } }
+</code></pre>
+<p>Each grid line is published as a formula <strong>symbol</strong> <code>&lt;gridId&gt;.x&lt;name&gt;</code> / <code>&lt;gridId&gt;.y&lt;name&gt;</code>
+(e.g. <code>main.x1</code>, <code>main.yA</code>), so rooms, slabs and the plinth all place themselves off the
+same lines. Move a grid line (or the <code>House</code> knobs its <code>at</code> depends on) and every room on
+it follows. The <strong>grid is the single parametric layer</strong> — <code>House</code> + knobs → grid lines →
+rooms; nothing flows the other way. See <code>parametric-conventions.md</code>.</p>
+<p>(Legacy files without <code>coord_convention</code> are read as <code>&quot;outer&quot;</code>: coords are the OUTER
+face and adjacent rooms must <strong>overlap</strong> by <code>wall_thickness</code>. New work uses <code>&quot;center&quot;</code>.)</p>
+<h2 id="vertical-z-fields-recap">Vertical (Z) fields recap</h2>
+<ul>
+<li><code>plinth.height</code> — how high the base sits above ground.</li>
+<li>floor <code>height</code> — floor-to-floor rise; floors stack on top of each other by these.</li>
+<li>floor <code>wall_height</code> — standing wall height on that floor.</li>
+<li><code>slab_thickness</code> — RCC deck between a floor and the one above.</li>
+<li>opening <code>sill_height</code> — window sill height above its floor.</li>
+<li><code>beam.z_offset</code>, <code>kitchen_platform.base_z</code> — vertical offsets.</li>
+</ul>
+<h2 id="sloping-tops">Sloping tops</h2>
+<p>A wall (or room wall side) with a sloping top sets both <code>height</code> (at the start)
+and <code>height_end</code> (at the end). Full gable/hip geometry, though, comes from the
+<code>roof</code> object, not from wall slopes — see <code>roof-v2-guide.md</code>.</p>
+<h2 id="quick-self-check-before-saving">Quick self-check before saving</h2>
+<ul>
+<li>Did I treat &quot;north/up&quot; as <strong>smaller</strong> Y?</li>
+<li>Are all my numbers in <strong>project units</strong> (feet × 10)?</li>
+<li>Is <code>&quot;coord_convention&quot;: &quot;center&quot;</code> set, so room coords are wall centrelines and adjacent
+rooms <strong>abut</strong> on the shared line (no overlap, no <code>t</code> math)?</li>
+<li>Does the plinth rectangle (<code>length</code>×<code>width</code>) contain all my rooms?</li>
+<li>Does the roof footprint cover the plinth?</li>
+</ul>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>
