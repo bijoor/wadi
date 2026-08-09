@@ -53,11 +53,15 @@ One `.wdl` file exercises every construct:
 - **domain vocabulary — every object type is first-class** (no `raw` needed):
   `ground`, `plinth`, `floor_slab`, `beam`, `room` (with `wall`/`door`/`window`
   openings + anchored `item`s), free-standing `wall`, `pillar`, `staircase`,
-  `kitchen`, `item` (furniture), `component` (library `def` + `use` instance),
-  and the `roof` (flat / shed / gable / hip via `roof_type` + per-segment
-  endpoints, with nested `segment`/`slope`/`truss`);
+  `spiral_staircase`, `kitchen`, `item` (furniture), `model` (a rigged GLB with
+  named-node ops), `component` (library `def` + `use` instance), and the `roof`
+  (flat / shed / gable / hip via `roof_type` + per-segment endpoints, with nested
+  `segment`/`slope`/`truss`);
 - a shared **attribute tail** on every object — `z_offset`, `layer`, `material`,
-  and `enabled <expr>` (the on/off gate, e.g. `enabled 1 - min(1, abs(roof_style - 3))`).
+  and `enabled <expr>` (the on/off gate, e.g. `enabled 1 - min(1, abs(roof_style - 3))`);
+- **template + promotion metadata** — a `template { … }` block self-describes a
+  template on the file, and `component … expose as pack.type` promotes a component
+  to a runtime typed primitive; both are in the grammar.
 
 ## Samples (`examples/*.wdl`)
 
@@ -234,12 +238,12 @@ formula language, the control knobs — transfers without change.
 This is a spike sized to *prove representability*, not a production front-end:
 
 - **Coverage.** Complete. Both tiers are done: the core tier (var/point/grid/
-  formula/configurator/raw) and the domain tier — **all 14 object types** in the
+  formula/configurator/raw) and the domain tier — **all 16 object types** in the
   model's discriminated union have ergonomic first-class syntax (ground, plinth,
-  floor_slab, beam, room, wall, pillar, staircase, kitchen_platform, item,
-  component, roof; `door`/`window` are authored as first-class room/wall
-  `opening`s, the model's canonical form). The `components` library and per-house
-  `layers` are first-class too. `raw` remains only as a deliberate escape hatch;
+  floor_slab, beam, room, wall, pillar, staircase, spiral_staircase,
+  kitchen_platform, item, model, component, roof; `door`/`window` are authored as
+  first-class room/wall `opening`s, the model's canonical form). The `components`
+  library and per-house `layers` are first-class too. `raw` remains only as a deliberate escape hatch;
   no shipped example uses it (`complete.wdl` asserts this).
 - **References are textual, not yet linked.** `main.x1`, `bay`, `House.W` parse
   as dotted refs and serialize correctly, but are not yet Langium cross-

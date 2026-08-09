@@ -133,7 +133,10 @@ column **centred** on a grid node, subtract **half its width** in the formula:
 - **A shared wall is declared once** — the room with the door declares that side's
   opening; the neighbour omits the side (the coincident wall is already there).
 - **Validate every opening:** `0 ≤ offset && offset + width ≤ wallSpan`, or
-  `expandRoomWalls` throws.
+  `expandRoomWalls` throws. This inequality assumes a **start-anchored** offset
+  (`from start`, the default). `from center` and `from end` re-reference the offset
+  (a `center` offset is a signed shift from the wall midpoint and may be negative),
+  so the fit is checked on the **resolved** placement, not the raw `offset`.
 
 ## 7. Konkan layout conventions
 

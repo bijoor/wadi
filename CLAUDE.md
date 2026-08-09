@@ -4,80 +4,136 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Purpose
 
-Procedurally generate 3D house models (Blender) plus 2D floor plans, elevations, and dimensioned SVGs from a single Python configuration. Output is published to `docs/` for GitHub Pages (interactive GLB viewer + SVGs).
+Procedurally author, edit, and render houses: 3D models plus 2D floor plans,
+elevations, and dimensioned SVGs. A house is authored either as a `.wdl` DSL file
+or directly as a `.wadi` config, and rendered by a TypeScript + Three.js pipeline.
+Output is published to `docs/` for GitHub Pages (an interactive viewer + the DSL
+playground), and shipped as a Tauri desktop app and an MCP server.
+
+**The TypeScript code in `editor/src` is the source of truth.** The old
+Python/Blender pipeline is **retired** — `python/` and `archive/` are kept for
+history only; do not import from them or treat them as live.
 
 ## How things run
 
-Two very different execution environments share the same library code — this shapes every design decision in the repo:
-
-- **Inside Blender**: `wadi_config.py` is loaded into Blender's Text Editor and run with Alt+P. It imports `blender_3d.py` (which requires `bpy`) and drives the full pipeline: clear scene → build geometry → generate SVGs → `export_to_web()` writing `docs/wadi.glb`.
-- **Standalone (no Blender)**: SVG-only helpers like `generate_floor_plans.py` and `regenerate_combined_svgs.py` import only `config.py` + `svg_2d.py` and `exec()` the `HOUSE_CONFIG` dict out of `house_config.py` while stripping the `wadi_lib` import. This avoids pulling in `bpy`. If you add bpy usage, keep it in `blender_3d.py` — never in `svg_2d.py` or `config.py`.
-- **Blender CLI** (headless): `Blender <file> --python <script>` — the pattern used by earlier material/texture experiments now archived under `archive/`. If you resurrect one, note it will `exec(open('wadi_config.py').read())` to build the model, then mutate the scene.
-- **Browser editor** (`editor/`, published to `docs/editor/`): a React + Three.js SPA that reads and writes `house_config.json`, ports `svg_2d.py` / `house_expand.py` / `roof_geometry.py` to TypeScript for byte-identical live SVG previews, and renders a live 3D preview with CSG openings. `house_config.py` is now a thin loader that reads `house_config.json` — JSON is the source of truth for both Python and the browser. See `editor/README.md` for the workflow.
-
-Because scripts are typically pasted into Blender's editor across sessions, `wadi_config.py` and `wadi_lib.py` aggressively `importlib.reload()` their dependencies. When editing library modules, preserve the reload order (`config` → `svg_2d` → `blender_3d` → `wadi_lib` → `house_config`) or stale code will run.
+- **The editor / viewer** (`editor/`) — a React + Three.js app. `editor/src` holds
+  the whole pipeline: the Zod schema, the parametric resolver, geometry expansion,
+  the 2D SVG engine, and the 3D renderer. Two Vite bundles are built from it: the
+  **viewer** ("the app", source `editor/viewer.html` → `docs/app/`) and the editor
+  SPA. `npm --prefix editor run build` builds both; `vite build` alone leaves the
+  viewer stale (see the "two Vite bundles" gotcha).
+- **The `.wdl` DSL** (`wadi-dsl/`) — a Langium grammar + generators. It compiles a
+  `.wdl` to a `.wadi` HouseConfig through the REAL pipeline (`resolveParametric` +
+  `expandRoomWalls` from `editor/src`), and decompiles `.wadi` back to `.wdl`. It
+  ships a browser playground (published to `docs/dsl/`, the WDL editor) and an
+  in-process Langium LSP.
+- **The MCP server** (`wadi-mcp/`) — bundles the compiler, the reference docs, and a
+  rasteriser so an agent can check / preview / reference `.wdl` without the repo. It
+  is a self-contained esbuild bundle; `npm --prefix wadi-mcp publish` is a manual step.
+- **The desktop app** (`src-tauri/`) — a Tauri shell around the viewer (`docs/app`),
+  with native file-open, a live config-file watcher, and a templates folder.
 
 ## Architecture
 
-Repo layout (only the top level shown):
+Repo layout (top level):
 ```
-python/     — core library (all *.py the pipeline imports)
-scripts/    — thin helper scripts + shell wrappers (regenerate_*, generate_*, serve.sh…)
-editor/     — React + Three.js browser editor (TS port + parity harness)
-docs/       — GitHub Pages output (2d/, 3d/, editor/, GLBs)
-archive/    — legacy render/material experiments; do NOT import from here
-plans/      — planning docs (retained for history)
-schema/, assets/, textures/  — support data
-house_config.json           — single source of truth (Python + editor both read this)
-```
-
-Inside `python/` the module graph is:
-```
-config.py  ──────────────┐  (GLOBAL_CONFIG defaults; no bpy)
-                         ├──▶ wadi_lib.py  (facade that re-exports everything)
-blender_3d.py  (bpy) ────┤           ▲
-svg_2d.py  (no bpy) ─────┘           │
-                                     │
-house_config.py  ────────────────────┤  (loads HOUSE_CONFIG from ../house_config.json)
-                                     │
-wadi_config.py  ─────────────┘  (entry point: build_house, generate_*, export_to_web)
+editor/     — the TypeScript pipeline + React editor/viewer (SOURCE OF TRUTH)
+wadi-dsl/   — the .wdl DSL: Langium grammar, generators, playground, LSP
+wadi-mcp/   — MCP server (bundles the compiler + reference docs + rasteriser)
+src-tauri/  — Tauri desktop app (wraps the viewer)
+wadi-skill/ — the agent-neutral "architect" skill (SKILL.md + reference/ + scripts/)
+documentation/ — narrative docs (concept, personas, extending the DSL, the method)
+docs/       — GitHub Pages output: app/ (viewer), dsl/ (playground), templates/, GLBs
+library/    — reusable parametric .wadi models
+python/, archive/ — RETIRED Python/Blender pipeline; history only, do not import
 ```
 
-- `wadi_lib.py` is a thin facade — no logic, just re-exports. Add new public functions to `blender_3d.py` or `svg_2d.py`, then extend the `__all__` list and `from … import …` block here.
-- `house_config.py` is the user-editable house description. It overrides `GLOBAL_CONFIG` at import time, so any change to keys like `floor_heights`, `wall_thickness`, `plinth_height` takes effect only if the config is re-imported (hence the reloads).
-- `wadi_config.py::build_floor()` dispatches on the `'type'` field of each object in `floors[i]['objects']` (`floor_slab`, `beam`, `room`, `wall`, `staircase`, `pillar`, `door`, `window`, `gable_roof`). Adding a new object type requires a branch here plus a `create_*` function in `blender_3d.py` and a `svg_draw_*` in `svg_2d.py` for plan/elevation rendering.
-- After all objects on a floor are placed, `apply_openings_to_walls(floor_num)` runs boolean-subtract modifiers for doors/windows. Door/window objects are created hidden and carry a `target_wall` custom property set from `room + direction` (e.g. `Verandah_North`). `export_to_web()` later applies all booleans and deletes the hidden cutters before exporting GLB — so post-export the scene is destructive.
+Inside `editor/src` the key subsystems:
+```
+schema/        — the Zod HouseConfig schema (schema/houseConfig.ts = source of truth);
+                 primitive `fields` under schema/fields generate schema + form + docs
+registry/      — NodeDefinition per primitive (registry/nodes/*): one file owns a
+                 primitive's whole surface (schema, form, 3D/2D render, expand,
+                 facets, and per-primitive constraints). getNode/allNodes/facetsFor
+param/         — parametric layer: variables/points/grid + formula resolver (resolve.ts)
+svg2d/         — 2D SVG engine + geometry expansion (expand.ts = expandRoomWalls, the
+                 per-renderer chokepoint that flattens rooms/stairs/components/openings)
+three/         — 3D renderer (coords.ts = the world→Three coordinate mapping)
+model/         — spatial query layer (geom.ts adapter over @flatten-js/core;
+                 spatialModel.ts = buildSpatialModel + overlap/near/within/distance)
+lint/          — structural conventions: a declarative per-constraint registry under
+                 lint/constraints/ (C1-C10 + a spiral SP1); structural.ts is a thin loop
+pipeline/, viewer/, forms/, io/, estimate/, templates/ — compositor, viewer shell,
+                 property forms, file IO, quantity estimates, template catalog
+```
+
+- **Adding an object type** = one file under `editor/src/registry/nodes/` exporting a
+  `NodeDefinition` (schema, `fields`, render hooks, `expand`, `facets`, optional
+  `constraints`), registered in `registry/registry.ts`. `item`, `model`, and
+  `spiral_staircase` are fully registry-driven. Legacy types still dispatch through
+  `svg2d`/`three` with a registry-consult-first fallback.
+- **The `.wdl` DSL is the authored source**; it compiles to a `.wadi` HouseConfig.
+  `house_config.json` (and any `.wadi`) is a config INSTANCE, not the schema.
 
 ## Coordinate system & units (important — easy to get wrong)
 
-- **Input is Inkscape-style**: origin top-left, X right, Y *down*. SVG floor plans use these coordinates directly.
-- **Blender conversion** (`inkscape_to_blender`): flips Y and recenters at plinth center (`set_model_origin_from_plinth` sets `model_origin_offset_x/y` before building). SVG output does *not* apply the centering — it keeps raw coordinates.
-- **Units are ambiguous by design.** `house_config.py` sets `units_to_meters_ratio: 0.1` (1 unit = 0.1 m), while dimension display uses `unit_conversion: 10.0` (10 units = 1 foot). Comments in configs saying "feet" usually mean "the display value after dividing by 10" — e.g. `plot_length: 450` renders as "45'" but is 45 m in Blender. Don't "fix" this without understanding both paths; SVG dimensioning and 3D geometry pull from different constants.
-- Sloping walls: supply `height_end` in addition to `height` on a `wall` object. Gable geometry uses the dedicated `gable_roof` type.
+- **Input is Inkscape-style**: origin top-left, X right, Y *down*. SVG output uses
+  these coordinates directly.
+- **3D conversion** lives in `editor/src/three/coords.ts`: it maps world (X east,
+  Y south, Z up) to Three.js and recenters the model at the plot midpoint.
+- **Units are ambiguous by design.** A config sets `units` (`system` + `per_unit`,
+  e.g. `feet_inches` with `per_unit 10` = 10 units per foot). Dimension display and
+  metric conversions pull from different constants; do not "fix" one path without
+  understanding both.
+- Sloping walls: supply `height_end` alongside `height` on a `wall`. Roofs use the
+  unified `roof` object (segments + slope + endpoint style); the old `gable_roof`
+  type is gone.
 
 ## Common commands
 
 ```bash
-# Regenerate combined SVGs without Blender (fast iteration on 2D output).
-# All helper scripts live under scripts/ but must be invoked from repo root
-# so their internal chdir/sys.path setup resolves — the wrappers already
-# handle both.
-python scripts/regenerate_combined_svgs.py
-python scripts/generate_floor_plans.py
+# Fast TS iteration (no build): typecheck + tests + the geometry parity gate
+npx --prefix editor tsc --noEmit
+npm --prefix editor run test -- run
+npm --prefix editor run parity-render         # 6 configs must stay byte-identical
 
-# Generic Blender CLI invocation pattern (headless)
-/Applications/Blender.app/Contents/MacOS/Blender house-model.blend --python scripts/<script>.py
+# Regenerate the .wdl parser after a grammar change (generated files are gitignored)
+npm --prefix wadi-dsl run langium:generate
+npm --prefix wadi-dsl test
+
+# Generated reference docs (do NOT hand-edit the outputs)
+node wadi-skill/architect/scripts/gen-schema-doc.mjs editor/src/schema/houseConfig.ts \
+  wadi-skill/architect/reference/data-model.md      # data-model.md from the Zod schema
+npm --prefix editor run gen-conventions-doc         # conventions.md from lint/constraints/*
+
+# Check / preview a .wdl (the architect skill's CLI)
+wadi-skill/architect/scripts/check.sh house.wdl
+wadi-skill/architect/scripts/preview.sh house.wdl
+
+# Build the viewer + desktop app (see the Tauri-release-build notes in memory)
+npm --prefix editor run build                       # editor + viewer bundles
 ```
-
-For the full 3D build + GLB export, open `wadi_config.py` in Blender's Text Editor and press Alt+P. The bottom of that file toggles which outputs are produced (`generate_all_floor_plans`, `generate_all_elevations`, `generate_combined_*`, `export_to_web`) — comment lines to skip stages.
 
 ## Output / deployment
 
-`docs/` is the GitHub Pages root. `index.html` (checked in) is the viewer; it loads `wadi.glb` (gitignored — regenerate via `export_to_web()`). SVG floor plans, elevations, and combined views are committed. `objects_debug_*.json` are diagnostic dumps from elevation generation and are gitignored.
+`docs/` is the GitHub Pages root. `docs/app/` is the built viewer ("the app"), source
+`editor/viewer.html`; `docs/dsl/` is the WDL playground; `docs/index.html` is the
+hand-authored marketing landing page (edit directly). GLBs and diagnostic dumps are
+gitignored.
 
 ## Gotchas
 
-- `house-model.blend` is gitignored; the source of truth is the Python config, not the .blend file. Material edits done in the Blender UI are lost when the script rebuilds the scene (`init_scene()` → `clear_scene()`).
-- Anything under `archive/` (including the legacy `konkan_house_lib_old.py` monolith and the material/texture render experiments) is kept for reference only — do not import from there.
-- `build_floor()` still has a backward-compat branch for an older schema with `floor_slab`/`rooms`/`walls` keys. New configs should always use the unified `objects: [...]` list.
-- The `sys.path.insert(0, '/Users/ashutoshbijoor/…/blender')` lines in several scripts are absolute paths for this machine. If the repo is moved, update those paths or replace with `os.path.dirname(__file__)`.
+- **Generated docs — never hand-edit the output.** `reference/data-model.md` is
+  generated from the Zod schema; `reference/conventions.md` is generated from the
+  constraint modules + `conventions.preamble.md`. Edit the source + regenerate.
+- **Parity gate.** `npm --prefix editor run parity-render` must stay 6/6 byte-identical;
+  regenerate the golden only for an intentional geometry change
+  (`npx tsx scripts/parity-render.mjs --update`).
+- **Two Vite bundles.** The editor and the viewer are separate bundles; use
+  `npm run build`, not a bare `vite build`, or the viewer at `docs/app` goes stale.
+- **Templates** live in `editor/public/templates/` (source) with build-output mirrors
+  under `docs/templates/` and `docs/editor/templates/`; edit the source.
+- **Do not import from `python/` or `archive/`** — the Python/Blender pipeline is
+  retired; those are history only.
+- **`build_floor`/`bpy` are gone.** If a doc or script still references them, it is
+  stale and should be updated to the TS registry / `expandRoomWalls` path.

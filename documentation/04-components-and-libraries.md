@@ -38,7 +38,7 @@ An optional `goal "…"` documents intent and is the discovery key for module se
 ```wdl
 component Stairwell goal "climb to the next floor" {
   param rise = 116
-  staircase name "Stair" at (0, 0) step (7, 11, 44) direction south total_height rise
+  staircase name "Stair" at (0, 0) step (7, 11, 44) direction south climb up total_height rise
 }
 ```
 
@@ -79,6 +79,23 @@ floor 1 "Ground" {
   `depth`, `height`, `size`, …). Use `across` / `deep` / `tall`, etc.
 - **Furniture too.** A component can place `item` furniture (see the furniture
   section of the DSL reference).
+
+### Promote a component to a primitive (`expose as`)
+
+A component can be **promoted to a runtime typed primitive**, so it reads and behaves
+like a built-in object type (`pack.type`) instead of a `use` instance:
+
+```wdl
+component Bench goal "a place to sit" expose as garden.bench [layer "id"] [label "…"] {
+  param length = 60
+  beam name "Seat" at (0, 0) size (length, 18) height 6
+}
+```
+
+`expose as <pack>.<type>` names the promoted primitive (a dotted `pack.type` id);
+optional `layer "id"` and `label "…"` set its default layer and menu label. Once
+exposed, `pack.type` is a first-class object type throughout the model, its `param`s
+becoming that type's fields, so authors place it directly rather than through `use`.
 
 ---
 

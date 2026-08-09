@@ -255,6 +255,30 @@ anchor top-center` needs no rotation. An explicit `rotation` always overrides,
 and the derived value is written into the resolved model, so the plan notch and
 the 3D view show it — anchoring never changes facing silently.
 
+## Objects — GLB models (`model`)
+
+A `model` places a **GLB at real metre scale** and manipulates it through a **rig**
+of named-node operations. It is distinct from `item` (catalog furniture): `model`
+targets the GLB's internal node graph, so you can hide, move, recolour, or array
+sub-parts of one asset.
+
+```wdl
+model [name "N"] <asset> at (x,y) [rotation <deg>] [scale <s>] {
+  translate "nodeName" (x,y,z)          // move a named node
+  rotate    "nodeName" (x,y,z)          // rotate it (degrees)
+  scale     "nodeName" (x,y,z)          // scale it
+  visible   "nodeName" false            // hide a node
+  material  "nodeName" color "#rrggbb"  // recolour a node
+  array     "nodeName" count N step (dx,dy,dz) { … nested rig ops … }
+}
+```
+
+`<asset>` names the GLB the same three ways as `item` (module `ns."id"`, bare
+`"id"`, or an inline `asset { … }` block). The rig ops run against the GLB's named
+nodes; `array` replicates a node `count` times along `step`, and its nested block
+applies further ops per copy. Use `model` for a rigged mechanism (a fan, a louvre
+bank, a spiral of balusters); use `item` for a plain piece of furniture.
+
 ## Imports & modules (reusable `.wdl` libraries)
 
 A `.wdl` file can be a **module** — top-level declarations (no `house` needed) —
@@ -274,7 +298,7 @@ house Home {
 }
 ```
 
-A module file itself is just top-level `asset` (later: `component`) decls:
+A module file itself is just top-level `asset` and `component` decls:
 
 ```wdl
 // my-furniture.wdl — a house-less module (a reusable library)
@@ -410,6 +434,46 @@ component** (items/free walls rotate to any angle); a free angle on a component
 that contains a room/pillar/beam/slab/staircase is a compile error (arbitrary
 structural rotation is a future feature).
 
+### Promote a component to a primitive (`expose as`)
+
+A component can be **promoted to a runtime typed primitive** with `expose as`, so it
+reads and behaves like a built-in object type (`pack.type`) rather than a `use`
+instance:
+
+```wdl
+component Bench goal "a place to sit" expose as garden.bench [layer "id"] [label "…"] {
+  param length = 60
+  beam name "Seat" at (0,0) size (length, 18) height 6
+}
+```
+
+`expose as <pack>.<type>` names the promoted primitive (a dotted `pack.type` id);
+optional `layer "id"` and `label "…"` set its default layer and menu label. Once
+exposed, the component is available as a first-class object type named `pack.type`
+throughout the model, its `param`s becoming that type's fields.
+
+## Template metadata (`template`)
+
+A `template { … }` block **self-describes a template** on its `.wdl` / `.wadi`, so a
+gallery can index the file without a separate catalog. It carries display metadata
+only (no geometry):
+
+```wdl
+template {
+  title       "Coastal Cottage"
+  description "A compact single-storey Konkan home."
+  style       "konkan"
+  roof        "gable"
+  tags        ("coastal", "1BHK", "compact")
+  thumbnails  ("thumb-iso.png", "thumb-plan.png")
+  min_plot    (340, 400)
+}
+```
+
+Fields: `title`, `description`, `style`, `roof`, `tags` (a list), `thumbnails` (a
+list of image paths), `min_plot` (the minimum plot the template needs). The folder
+of self-describing files IS the catalog.
+
 ## The `raw` escape (rarely needed)
 
 Anything the first-class syntax doesn't cover can be written as literal JSON per
@@ -435,8 +499,11 @@ raw "type" { "field": 1, "formulas": { "field": "= expr" } }
 - **Free-standing walls don't auto-mitre at corners** — extend endpoints so the wall
   bodies overlap (≥ ½·`wall_thickness` past the shared point), or the corner is left
   as a gap.
-- **Staircases are top-anchored** — put them on the UPPER floor; they descend to the
-  floor below (`check.sh` C5 flags one that lands below ground). See the staircase note.
+- **Prefer `climb up` — it's bottom-anchored.** Put the stair on the LOWER floor it
+  rises FROM; `at` is the bottom step and the flight ascends into `direction`.
+  Top-anchored is the legacy `climb down` (default only for older configs): the stair
+  sits on the UPPER floor and descends. `check.sh` C5 flags a stair that lands below
+  ground. See the staircase note.
 - **Structural conventions are enforced** — `check.sh` fails on floating floors
   (plinth-floor `height` ≠ plinth block height; a no-slab floor with nonzero
   `slab_thickness`) and warns on exterior room sides left open. See

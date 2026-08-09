@@ -1,15 +1,18 @@
 # Wadi Editor
 
-A standalone browser-based editor for `house_config.json` — the JSON that
-drives both the Blender 3D pipeline and the SVG floor plan / elevation
-generators in the parent repo. Ships to `docs/editor/` on the same
-GitHub Pages site as the model viewer.
+The browser-based editor and the whole rendering pipeline for Wadi houses.
+`editor/src` is the **source of truth**: the Zod schema, the parametric
+resolver, geometry expansion, the 2D SVG engine, and the 3D renderer all live
+here. (The old Python/Blender pipeline is retired.) Two Vite bundles ship from
+this package: the editor SPA (`docs/editor/`) and the viewer / "app"
+(`docs/app/`, source `viewer.html`).
 
 ## What it does
 
-- **Load / edit / download** `house_config.json` entirely in the browser
-- **Live SVG previews** of floor plans and elevations, byte-identical to
-  the Python `svg_2d.py` output (42/42 parity checks pass)
+- **Load / edit / download** a `.wadi` house config (`house_config.json`)
+  entirely in the browser
+- **Live SVG previews** of floor plans and elevations, produced by the TS 2D
+  engine (`src/svg2d/`); a golden parity harness keeps them byte-stable
 - **Live 3D preview** (React Three Fiber) with CSG openings, hip roof,
   staircase, section cutter, layer toggles, camera presets, and
   postprocessing (SSAO + ACES tone mapping + SMAA)
@@ -26,14 +29,12 @@ picker to load and the download API to save. To iterate on a design:
    there's usually no manual load step.
 2. **Edit** — click any object in the left sidebar tree, tweak fields
    in the right panel, watch the SVG and 3D previews update live.
-3. **Download** — ⌘/Ctrl+S or the top-bar button saves the JSON.
-4. **Drop it into the repo** — replace `blender/house_config.json` with
-   the downloaded file.
-5. **Regenerate outputs**:
-   - `python3 regenerate_combined_svgs.py` for SVG floor plans /
-     elevations (no Blender needed)
-   - Open `wadi_config.py` in Blender's Text Editor and press
-     Alt+P for the full GLB + material build
+3. **Download** — ⌘/Ctrl+S or the top-bar button saves the `.wadi` JSON.
+4. **Drop it into the repo** — replace `house_config.json` (or a template
+   under `public/templates/`) with the downloaded file.
+5. **Rebuild** — `npm run build` produces the editor + viewer bundles under
+   `../docs/`. The 3D model, floor plans, and elevations are all rendered by the
+   TypeScript pipeline; there is no separate Python/Blender build step.
 
 ## Local development
 
@@ -45,18 +46,16 @@ npm run build      # Production build → ../docs/editor/ + copies
                    # ../house_config.json to ../docs/house_config.json
 ```
 
-### Parity harnesses (verify TS ports match Python)
+### Parity harness (guards geometry against regressions)
 
 ```bash
-npm run parity-primitives   # 34 shape / dimension / expand checks
-npm run parity-floorplans   # 3 whole-SVG byte diffs
-npm run parity-elevations   # 5 whole-SVG byte diffs
-npm run parity-all          # all of the above
+npm run parity-render        # 6 configs → SVG/geometry surfaces, byte-identical
+npm run parity-primitives    # per-primitive shape / dimension / expand checks
 ```
 
-Each byte-diff compares the TS `svg2d/` output against the Python
-output already sitting in `../docs/`. If the Python output is stale,
-regenerate it first with `python3 ../regenerate_combined_svgs.py`.
+`parity-render` compares the current TS output against a committed golden
+(`scripts/parity-golden.json`); it must stay 6/6. Regenerate the golden only for
+an intentional geometry change: `npx tsx scripts/parity-render.mjs --update`.
 
 ### Schema validation
 
@@ -93,7 +92,7 @@ editor/src/
 ├── io/fileIO.ts                pickAndLoadConfig / downloadConfig
 ├── schema/houseConfig.ts       Zod schema (mirrors JSON Schema)
 ├── state/configStore.ts        Zustand + zundo undo/redo
-├── svg2d/                      TypeScript port of svg_2d.py
+├── svg2d/                      2D SVG engine (plans, elevations, dimensions, expand)
 │   ├── expand.ts               house_expand.py port
 │   ├── format.ts               f() / fFloat() numeric helpers
 │   ├── shapes.ts               svg_draw_wall / room / door / …
@@ -126,10 +125,10 @@ editor/src/
 
 ## Numeric formatting convention
 
-The parity harnesses require byte-identical output vs. Python. Python
-distinguishes `int` (`"110"`) from `float` (`"110.0"`); JavaScript has
-one `Number` type. `svg2d/format.ts` provides two formatters used
-throughout the port:
+The SVG output must stay byte-identical to the committed golden. The original
+generator distinguished `int` (`"110"`) from `float` (`"110.0"`); JavaScript has
+one `Number` type, so `svg2d/format.ts` provides two formatters that reproduce
+that distinction and keep the output byte-stable:
 
 - `f(n)` — bare rendering (`"110"` for whole numbers)
 - `fFloat(n)` — Python-float rendering (`"110.0"` for whole numbers)
@@ -258,9 +257,6 @@ Every v2 roof adds rows to:
   (`Roof (v2)`) is the recommended path for new configs.
 - Standalone walls with diagonal geometry render with a bounding-box
   approximation in the 3D preview (axis-aligned walls are exact).
-- The `GLOBAL_CONFIG.update({...})` block in `house_config.py`
-  (materials palette, layer definitions, floor heights) is hard-coded
-  in `svg2d/config.ts` — if you change it in Python, update
-  `config.ts` in lockstep.
-- The Blender / Python pipeline does not yet know about the v2 roof
-  type — GLB export and Blender rendering only handle legacy roofs.
+- Global defaults (materials palette, layer definitions, floor heights) live in
+  `svg2d/config.ts` (`DEFAULT_GLOBAL_CONFIG`); a house overrides them via its own
+  `defaults`.

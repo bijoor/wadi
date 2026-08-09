@@ -108,6 +108,14 @@ registry "who handles this type?" first, and fall back to the legacy per-type
 switch for not-yet-migrated types. A new type is one registry entry, nothing
 scattered.
 
+The structural-conventions linter is another such surface. It is now a declarative
+per-constraint registry (`editor/src/lint/constraints/`, currently C1-C10 plus the
+spiral's SP1), each rule a self-contained module (check + doc + fixtures) built on a
+spatial query layer (`editor/src/model/`, a `@flatten-js/core` adapter). `structural.ts`
+is a thin loop over `allConstraints()`, and `conventions.md` is generated from those
+modules, so the linter, its docs, and per-primitive rules (`NodeDefinition.constraints`)
+all fall out of one declaration each, the same as the four surfaces above.
+
 The two-tier structure that keeps this open: field kinds are presets (Tier 2)
 composed from a small closed set of atoms plus constraints (Tier 1). Adding a kind is
 data, not an engine release, the same way Zod, JSON-Schema, and protobuf treat
@@ -155,7 +163,7 @@ dependency and the app keeps a single zod instance in its schema union.)
 ### 3.2 Two registries
 
 - Primitive registry: type → `NodeDefinition` (`fields`, `schema`, `render3D`,
-  `planFootprint`, `expand`, `layerRole`, `makeDefault`). The socket a new object
+  `planFootprint`, `expand`, `layerRole`, `makeDefault`, `constraints`). The socket a new object
   plugs into. Dispatchers consult-first, fall-back, so migration never breaks the
   app mid-flight.
 - Stage registry: the compositor is a DAG of pure
@@ -255,6 +263,12 @@ export const spiralStaircaseNode: NodeDefinition = {
 ```
 
 Register the node, and the 3D scene, 2D plan, add-menu, and layers all pick it up.
+
+File 3 (optional), a per-primitive structural constraint. A primitive can also ship
+its own rule by setting `NodeDefinition.constraints?: Constraint[]`, which the
+structural-conventions linter merges into `allConstraints()`. The spiral staircase
+does exactly this: `editor/src/registry/nodes/spiralStaircase.constraints.ts` supplies
+`SP1`, so the primitive carries its own validation alongside the shared C1-C10 rules.
 
 In the WDL playground, `spiral_staircase "Stair" at (120, 120)
 radius 45 total_height 110 turns 1.75` renders as wooden treads

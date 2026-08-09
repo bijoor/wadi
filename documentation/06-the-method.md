@@ -500,10 +500,13 @@ interface NodeDefinition {
   label: string;                        // menu / tree label
   addable?: boolean;                    // offer in "+ Add" menu
   makeDefault?(cfg, existing): Object;  // a sensible new instance
-  Form?: Component;                     // property-panel editor
-  defaultLayerId?: string | (obj,floor) => string;
+  fields?: FieldSpec[];                 // → schema / form / docs / DSL
+  Form?: Component;                     // bespoke property-panel editor (else AutoForm from fields)
+  layerRole?: string | (obj,floor) => string;   // default layer/role
   render3D?(obj, ctx): { layerId, node } | null;   // 3-D output
   planFootprint?(obj): { cx, cy, w, d, rot, label } | null;  // 2-D footprint
+  expand?(obj, ctx): Object[];          // optional decomposition into simpler objects
+  constraints?: Constraint[];           // per-primitive structural rules (merged into the linter)
 }
 ```
 
