@@ -488,8 +488,9 @@ evaluate its <code>formulas</code> map against <code>Scope</code> and write the 
 fields. Recurse one level into nested structures that carry their own formulas
 (wall and room openings; roof segments whose <code>start_x/start_y/end_x/end_y</code> map into
 coordinate arrays; truss <code>pos&lt;i&gt;</code> positions; the roof slope).</li>
-<li>Certain fields are semantically integers (<code>num_steps</code>, <code>tie_beam_count</code>), and the
-resolver rounds them at the single write point rather than in each consumer.</li>
+<li>Certain fields are semantically integers (<code>steps</code>, <code>tie_beam_count</code>), and the
+resolver rounds them at the single write point rather than in each consumer.
+(A staircase&#39;s step count is itself derived: <code>round(rise_height / step_rise)</code>.)</li>
 </ol>
 <p>The dataflow is one-directional: <code>knobs → variables → points → grids → object fields</code>.
 Objects reference the scaffolds, never each other, so objects need no ordering among

@@ -362,8 +362,9 @@ flowchart TD
    fields. Recurse one level into nested structures that carry their own formulas
    (wall and room openings; roof segments whose `start_x/start_y/end_x/end_y` map into
    coordinate arrays; truss `pos<i>` positions; the roof slope).
-6. Certain fields are semantically integers (`num_steps`, `tie_beam_count`), and the
+6. Certain fields are semantically integers (`steps`, `tie_beam_count`), and the
    resolver rounds them at the single write point rather than in each consumer.
+   (A staircase's step count is itself derived: `round(rise_height / step_rise)`.)
 
 The dataflow is one-directional: `knobs → variables → points → grids → object fields`.
 Objects reference the scaffolds, never each other, so objects need no ordering among

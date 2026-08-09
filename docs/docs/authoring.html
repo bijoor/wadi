@@ -713,10 +713,13 @@ handle corners themselves.</li>
 <li><strong>Furniture dims are metres</strong>; geometry is project units (10 = 1 ft). Don&#39;t mix.</li>
 <li><strong>A house-less library</strong> shows a &quot;no floors&quot; notice in the preview; that is
 expected; give it a demo <code>house</code> if you want to preview its components.</li>
-<li><strong>Structural conventions (the built-in linter).</strong> The editor&#39;s status pill flags
-a few conventions: a plinth floor&#39;s <code>height</code> should equal its <code>plinth</code> object&#39;s
-height (<strong>C1</strong>); exterior room sides should carry a <code>wall</code> (<strong>C2</strong>); a floor with
-no slab should set <code>slab_thickness 0</code> (<strong>C3</strong>). These are guidance, not errors.</li>
+<li><strong>Structural conventions (the built-in linter).</strong> The editor&#39;s status pill and
+<code>check.sh</code> flag a growing set of conventions (C1-C10, plus per-primitive rules) —
+for example a plinth floor&#39;s <code>height</code> should equal its <code>plinth</code> object&#39;s height
+(<strong>C1</strong>); exterior room sides should carry a <code>wall</code> (<strong>C2</strong>); a floor with no slab
+should set <code>slab_thickness 0</code> (<strong>C3</strong>). <strong>Errors</strong> (e.g. C1, C3) fail <code>check.sh</code>;
+<strong>warnings</strong> (e.g. C2, an intentional verandah) are advisory. The full, generated
+list is in <code>reference/conventions.md</code>.</li>
 </ul>
 <hr>
 <h2 id="19-quick-reference">19. Quick reference</h2>

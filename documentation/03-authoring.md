@@ -761,10 +761,13 @@ the folder.
 - **Furniture dims are metres**; geometry is project units (10 = 1 ft). Don't mix.
 - **A house-less library** shows a "no floors" notice in the preview; that is
   expected; give it a demo `house` if you want to preview its components.
-- **Structural conventions (the built-in linter).** The editor's status pill flags
-  a few conventions: a plinth floor's `height` should equal its `plinth` object's
-  height (**C1**); exterior room sides should carry a `wall` (**C2**); a floor with
-  no slab should set `slab_thickness 0` (**C3**). These are guidance, not errors.
+- **Structural conventions (the built-in linter).** The editor's status pill and
+  `check.sh` flag a growing set of conventions (C1-C10, plus per-primitive rules) —
+  for example a plinth floor's `height` should equal its `plinth` object's height
+  (**C1**); exterior room sides should carry a `wall` (**C2**); a floor with no slab
+  should set `slab_thickness 0` (**C3**). **Errors** (e.g. C1, C3) fail `check.sh`;
+  **warnings** (e.g. C2, an intentional verandah) are advisory. The full, generated
+  list is in `reference/conventions.md`.
 
 ---
 

@@ -118,11 +118,13 @@ Each floor holds an `objects` list; every object has a `type`:
 | `floor_slab` | RCC slab under a floor |
 | `plinth` / `ground` | Raised base + ground plane (on the Plinth floor) |
 | `beam` | Horizontal beam |
-| `pillar` | Column (centre-placed under the centreline convention) |
-| `staircase` | Multi-flight staircase (auto switchback flights) |
+| `pillar` | Column (`x/y` = top-left corner) |
+| `staircase` | Multi-flight staircase (auto switchback flights; `climb up/down`) |
+| `spiral_staircase` | A helical stair around a central pole |
 | `kitchen_platform` | Polyline kitchen counter |
 | `roof` | Unified roof: hip / gable / shed / flat, per segment |
 | `item` | A GLB furniture piece |
+| `model` | A GLB at real scale, posed by a named-node `rig` |
 | `component` | An instance of an in-file reusable component |
 
 ## Coordinates, units & conventions
@@ -132,7 +134,8 @@ Each floor holds an `objects` list; every object has a `type`:
   without changing geometry).
 - **Centreline convention** (`"coord_convention": "center"`): a rect object's
   `x/y/width/length` are wall **centrelines**, so adjacent rooms simply **abut** on the
-  shared line (no overlap, no wall math), and a pillar's `x/y` is its **centre**.
+  shared line (no overlap, no wall math). (A pillar's `x/y` is its **top-left corner**,
+  like a room's — centre a column on a node by subtracting half its width.)
 - **Grids:** a parametric template defines named grid lines whose positions are formulas
   of the plot size; rooms and columns reference them (`"= main.x1"`), so the whole plan
   re-flows when you resize.
