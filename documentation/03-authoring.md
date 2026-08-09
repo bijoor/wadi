@@ -207,10 +207,16 @@ Openings live inside a wall's block:
 
 ```wdl
 wall south { door Main at 120 size (36, 84) [open] }
-wall west  { window W1  at 100 size (60, 50) sill 35 [open] }
+wall west  { window W1  at 100 from end size (60, 50) sill 35 [open] }
 ```
 
 - `at <offset>` is the distance along the wall to the opening.
+- `from start|center|end` (default `start`) picks which end `<offset>` is
+  measured from, so the opening keeps its place when the wall or room scales — no
+  formula needed. `start`: from the wall start to the near edge (the default).
+  `end`: from the wall end to the far edge (`at 0 from end` = flush to the end).
+  `center`: a signed shift of the opening centre from the wall midpoint (`at 0
+  from center` = centred; the offset may be negative).
 - `size (width, height)` is the hole.
 - `sill <s>` (windows) is the height of the sill above the floor.
 - `open` marks it as an actual opening (a doorway or opening with no leaf) vs a
@@ -780,8 +786,8 @@ floor 1 "Ground" [height N] [wall_height N] [slab_thickness N] { …objects… }
 
 room Name at (x,y) size (w,l) [height h] [enabled <e>] [layer "id"] {   // room tail: BEFORE the block
   wall east west north                           // plain sides (list several)
-  wall south { door  D at <off> size (w,h) [open] }
-  wall west  { window W at <off> size (w,h) [sill s] [open] }
+  wall south { door  D at <off> [from start|center|end] size (w,h) [open] }
+  wall west  { window W at <off> [from start|center|end] size (w,h) [sill s] [open] }
   item asset { … } anchor center [gap (gx,gy)]
 }
 wall Name from (x1,y1) to (x2,y2) [height h] [height_end h2] [facing dir] { …openings… }

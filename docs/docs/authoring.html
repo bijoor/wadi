@@ -257,10 +257,15 @@ sit-out.</li>
 <h3 id="doors-amp-windows">Doors &amp; windows</h3>
 <p>Openings live inside a wall&#39;s block:</p>
 <pre><code class="language-wdl">wall south { door Main at 120 size (36, 84) [open] }
-wall west  { window W1  at 100 size (60, 50) sill 35 [open] }
+wall west  { window W1  at 100 from end size (60, 50) sill 35 [open] }
 </code></pre>
 <ul>
 <li><code>at &lt;offset&gt;</code> is the distance along the wall to the opening.</li>
+<li><code>from start|center|end</code> (default <code>start</code>) picks which end <code>&lt;offset&gt;</code> is
+measured from, so the opening keeps its place when the wall or room scales — no
+formula needed. <code>start</code>: from the wall start to the near edge (the default).
+<code>end</code>: from the wall end to the far edge (<code>at 0 from end</code> = flush to the end).
+<code>center</code>: a signed shift of the opening centre from the wall midpoint (<code>at 0 from center</code> = centred; the offset may be negative).</li>
 <li><code>size (width, height)</code> is the hole.</li>
 <li><code>sill &lt;s&gt;</code> (windows) is the height of the sill above the floor.</li>
 <li><code>open</code> marks it as an actual opening (a doorway or opening with no leaf) vs a
@@ -731,8 +736,8 @@ floor 1 &quot;Ground&quot; [height N] [wall_height N] [slab_thickness N] { …ob
 
 room Name at (x,y) size (w,l) [height h] [enabled &lt;e&gt;] [layer &quot;id&quot;] {   // room tail: BEFORE the block
   wall east west north                           // plain sides (list several)
-  wall south { door  D at &lt;off&gt; size (w,h) [open] }
-  wall west  { window W at &lt;off&gt; size (w,h) [sill s] [open] }
+  wall south { door  D at &lt;off&gt; [from start|center|end] size (w,h) [open] }
+  wall west  { window W at &lt;off&gt; [from start|center|end] size (w,h) [sill s] [open] }
   item asset { … } anchor center [gap (gx,gy)]
 }
 wall Name from (x1,y1) to (x2,y2) [height h] [height_end h2] [facing dir] { …openings… }
