@@ -17,7 +17,9 @@
     "parity-render": "tsx scripts/parity-render.mjs",
     "parity-all": "npm run parity-render",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen-conventions-doc": "tsx scripts/gen-conventions-doc.mjs",
+    "gen-conventions-doc:check": "tsx scripts/gen-conventions-doc.mjs --check"
   },
   "dependencies": {
     "@flatten-js/core": "^1.6.13",
