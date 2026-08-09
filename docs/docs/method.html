@@ -253,7 +253,7 @@ discriminated union keyed on <code>type</code>:</p>
 <tr>
 <td><code>pillar</code></td>
 <td>a structural column</td>
-<td><code>x, y, width, length, height</code> (x,y = <strong>centre</strong>)</td>
+<td><code>x, y, width, length, height</code> (x,y = <strong>top-left corner</strong>)</td>
 </tr>
 <tr>
 <td><code>beam</code></td>
@@ -268,7 +268,12 @@ discriminated union keyed on <code>type</code>:</p>
 <tr>
 <td><code>staircase</code></td>
 <td>a flight (auto-splits into switchbacks)</td>
-<td><code>start_x, start_y, step_rise, step_tread, step_width, direction, max_run, rise_height</code></td>
+<td><code>start_x, start_y, step_rise, step_tread, step_width, direction, climb{up,down}, max_run, rise_height, turn</code></td>
+</tr>
+<tr>
+<td><code>spiral_staircase</code></td>
+<td>a helical stair around a central pole</td>
+<td><code>x, y, radius, total_height, turns, steps, pole_radius, tread_thickness</code></td>
 </tr>
 <tr>
 <td><code>roof</code></td>
@@ -276,9 +281,9 @@ discriminated union keyed on <code>type</code>:</p>
 <td><code>segments[], slope, trusses[], default_endpoint</code></td>
 </tr>
 <tr>
-<td><code>door</code> / <code>window</code> (or nested <code>openings[]</code>)</td>
+<td><code>door</code> / <code>window</code> (nested in <code>openings[]</code>)</td>
 <td>a hole cut in a wall</td>
-<td><code>x, y, width, height, sill_height, direction</code></td>
+<td><code>offset, anchor{start,center,end}, width, height, sill_height, direction, open</code></td>
 </tr>
 <tr>
 <td><code>kitchen_platform</code></td>
@@ -294,6 +299,11 @@ discriminated union keyed on <code>type</code>:</p>
 <td><code>item</code></td>
 <td>a GLB furniture / décor instance</td>
 <td><code>asset{src, dimensions[w,h,d]}, x, y, rotation, scale</code></td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>a GLB at real scale, posed by a named-node <code>rig</code></td>
+<td><code>asset, x, y, rotation, scale, rig[translate/rotate/scale/visible/material/array]</code></td>
 </tr>
 <tr>
 <td><code>component</code></td>

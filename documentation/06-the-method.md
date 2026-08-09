@@ -131,15 +131,17 @@ Each carries:
 |-----------|-----------|--------------------------|
 | `room` | a rectangular space that grows its own walls | `x, y, width, length, walls{north,south,east,west}, wall_heights, items[]` |
 | `wall` | a free-standing wall segment | `start_x, start_y, end_x, end_y, height, height_end, openings[]` |
-| `pillar` | a structural column | `x, y, width, length, height` (x,y = **centre**) |
+| `pillar` | a structural column | `x, y, width, length, height` (x,y = **top-left corner**) |
 | `beam` | a horizontal member | `x, y, …, height, height_end` |
 | `floor_slab` | an RCC deck | `x, y, width, length, thickness` |
-| `staircase` | a flight (auto-splits into switchbacks) | `start_x, start_y, step_rise, step_tread, step_width, direction, max_run, rise_height` |
+| `staircase` | a flight (auto-splits into switchbacks) | `start_x, start_y, step_rise, step_tread, step_width, direction, climb{up,down}, max_run, rise_height, turn` |
+| `spiral_staircase` | a helical stair around a central pole | `x, y, radius, total_height, turns, steps, pole_radius, tread_thickness` |
 | `roof` | unified segment roof (hip/gable/shed/flat) | `segments[], slope, trusses[], default_endpoint` |
-| `door` / `window` (or nested `openings[]`) | a hole cut in a wall | `x, y, width, height, sill_height, direction` |
+| `door` / `window` (nested in `openings[]`) | a hole cut in a wall | `offset, anchor{start,center,end}, width, height, sill_height, direction, open` |
 | `kitchen_platform` | a polyline countertop | `path[], side, depth, height` |
 | `plinth` / `ground` | the base / terrain of a floor | `x, y, width, length, height` |
 | `item` | a GLB furniture / décor instance | `asset{src, dimensions[w,h,d]}, x, y, rotation, scale` |
+| `model` | a GLB at real scale, posed by a named-node `rig` | `asset, x, y, rotation, scale, rig[translate/rotate/scale/visible/material/array]` |
 | `component` | an **instance** of a reusable sub-assembly | `ref, params{}, x, y, z_offset` |
 
 ### 3.2 Universal fields (the primitive envelope)

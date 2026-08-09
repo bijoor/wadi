@@ -309,13 +309,18 @@ sits on. Put both on the floor-0 &quot;Plinth&quot; floor.</li>
 <hr>
 <h2 id="7-circulation-amp-fittings">7. Circulation &amp; fittings</h2>
 <h3 id="staircase">Staircase</h3>
-<pre><code class="language-wdl">staircase name &quot;Stair&quot; at (208, 64) step (7, 11, 44) direction south
+<pre><code class="language-wdl">staircase name &quot;Stair&quot; at (208, 64) step (7, 11, 44) direction south climb up
   total_height 116 max_run 90 turn clockwise
 </code></pre>
 <ul>
-<li><code>at (start_x, start_y)</code>: the bottom of the stair.</li>
+<li><code>at (start_x, start_y)</code>: with <code>climb up</code>, the <strong>bottom</strong> of the stair.</li>
 <li><code>step (rise, tread, width)</code>: one step&#39;s dimensions.</li>
 <li><code>direction north|south|east|west</code>: the way it climbs.</li>
+<li><code>climb up|down</code> (default <code>down</code>): where the stair is anchored. <strong><code>climb up</code></strong>
+(recommended) is bottom-anchored — put the stair on the <strong>lower</strong> floor it
+rises FROM, <code>at</code> is the bottom step, and it ascends into <code>direction</code>. <code>climb down</code> (the legacy default) is top-anchored — put it on the <strong>upper</strong> floor and
+<code>at</code> is the top; it descends. (See convention C5: a <code>climb down</code> stair on the
+wrong floor can land below ground.)</li>
 <li><code>total_height &lt;h&gt;</code>: the height to climb (usually the floor height); Wadi
 computes the number of steps.</li>
 <li><code>max_run &lt;r&gt;</code>: optional. If set, the stair auto-switchbacks into multiple

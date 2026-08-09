@@ -271,13 +271,19 @@ ground name "Ground" at (0, 0) size (600, 700)                              // t
 ### Staircase
 
 ```wdl
-staircase name "Stair" at (208, 64) step (7, 11, 44) direction south
+staircase name "Stair" at (208, 64) step (7, 11, 44) direction south climb up
   total_height 116 max_run 90 turn clockwise
 ```
 
-- `at (start_x, start_y)`: the bottom of the stair.
+- `at (start_x, start_y)`: with `climb up`, the **bottom** of the stair.
 - `step (rise, tread, width)`: one step's dimensions.
 - `direction north|south|east|west`: the way it climbs.
+- `climb up|down` (default `down`): where the stair is anchored. **`climb up`**
+  (recommended) is bottom-anchored — put the stair on the **lower** floor it
+  rises FROM, `at` is the bottom step, and it ascends into `direction`. `climb
+  down` (the legacy default) is top-anchored — put it on the **upper** floor and
+  `at` is the top; it descends. (See convention C5: a `climb down` stair on the
+  wrong floor can land below ground.)
 - `total_height <h>`: the height to climb (usually the floor height); Wadi
   computes the number of steps.
 - `max_run <r>`: optional. If set, the stair auto-switchbacks into multiple
