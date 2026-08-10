@@ -25,8 +25,13 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 
-DO_LINUX=0
-[ "${1:-}" = "--linux" ] && DO_LINUX=1
+DO_LINUX=0; DO_MAC=1
+case "${1:-}" in
+  --linux)       DO_LINUX=1 ;;                 # macOS + Linux
+  --linux-only)  DO_LINUX=1; DO_MAC=0 ;;       # Linux only (macOS already built)
+  "" )           ;;                             # macOS only
+  * ) echo "usage: release-desktop.sh [--linux | --linux-only]" >&2; exit 2 ;;
+esac
 
 VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
 echo "▶ Wadi desktop release build — v${VERSION}"
@@ -34,51 +39,74 @@ echo "▶ Wadi desktop release build — v${VERSION}"
 # 1. Build BOTH frontend surfaces that live under docs/ (the app bundles docs/).
 #    build:tauri rebuilds docs/app (the viewer); build:playground rebuilds docs/dsl.
 #    emptyOutDir is false on both, so they don't wipe each other or the templates.
-echo "▶ [1/3] Building frontend (viewer + DSL playground) into docs/…"
-npm --prefix editor run build:tauri
-npm --prefix wadi-dsl run build:playground
+#    This runs on the HOST so the Linux container can reuse the built docs/ as-is
+#    (it must NOT rebuild the frontend — the host's editor/node_modules holds
+#    macOS-native binaries that fail to load under Linux).
+if [ "$DO_MAC" = "1" ]; then
+  echo "▶ [1/3] Building frontend (viewer + DSL playground) into docs/…"
+  npm --prefix editor run build:tauri
+  npm --prefix wadi-dsl run build:playground
 
-# 2. macOS universal bundle.
-#    Ensure both apple-darwin targets exist (universal needs Intel + Apple Silicon).
-#    We build the frontend ourselves above and pass an EMPTY beforeBuildCommand, because
-#    `cargo tauri build`'s hook can run from the wrong cwd (a known repo gotcha).
-echo "▶ [2/3] Building macOS universal .app + .dmg…"
-rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null 2>&1 || true
-cargo tauri build --target universal-apple-darwin \
-  --config '{"build":{"beforeBuildCommand":""}}'
+  # 2. macOS universal bundle.
+  #    Ensure both apple-darwin targets exist (universal needs Intel + Apple Silicon).
+  #    We build the frontend ourselves above and pass an EMPTY beforeBuildCommand, because
+  #    `cargo tauri build`'s hook can run from the wrong cwd (a known repo gotcha).
+  echo "▶ [2/3] Building macOS universal .app + .dmg…"
+  rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null 2>&1 || true
+  cargo tauri build --target universal-apple-darwin \
+    --config '{"build":{"beforeBuildCommand":""}}'
 
-DMG_MAC="src-tauri/target/universal-apple-darwin/release/bundle/dmg/Wadi_${VERSION}_universal.dmg"
-if [ -f "$DMG_MAC" ]; then
-  echo "  ✓ $DMG_MAC ($(du -h "$DMG_MAC" | cut -f1))"
+  DMG_MAC="src-tauri/target/universal-apple-darwin/release/bundle/dmg/Wadi_${VERSION}_universal.dmg"
+  if [ -f "$DMG_MAC" ]; then
+    echo "  ✓ $DMG_MAC ($(du -h "$DMG_MAC" | cut -f1))"
+  else
+    echo "  ✗ expected DMG not found at $DMG_MAC" >&2
+    exit 1
+  fi
 else
-  echo "  ✗ expected DMG not found at $DMG_MAC" >&2
-  exit 1
+  echo "▶ [1-2/3] Skipping macOS (--linux-only); reusing the docs/ built by a prior run."
 fi
 
 # 3. Linux (optional) — Tauri needs Linux system libs, so build in a container.
 #    On Apple Silicon this runs x86_64 under emulation (slow but works); drop the
 #    --platform line to produce an arm64 Linux build instead.
+#
+#    Key points learned the hard way:
+#    - The container does NOT rebuild the frontend. docs/ is already built on the host,
+#      and reusing the host's editor/node_modules (macOS-native binaries) fails under
+#      Linux. So node/npm are not installed here — we just bundle the existing docs/.
+#    - CARGO_TARGET_DIR points at a container-local path (NOT the mounted target/), so
+#      Linux object files never mix with the host's macOS build and nothing is left in
+#      the repo except the finished installers we copy back.
 if [ "$DO_LINUX" = "1" ]; then
-  echo "▶ [3/3] Building Linux .AppImage/.deb in Docker (ubuntu 22.04)…"
+  echo "▶ [3/3] Building Linux .deb/.AppImage in Docker (ubuntu 22.04, no frontend rebuild)…"
   if ! docker info >/dev/null 2>&1; then
-    echo "  ✗ Docker daemon not running — start Docker Desktop and retry with --linux" >&2
+    echo "  ✗ Docker daemon not running — start Docker Desktop and retry" >&2
     exit 1
   fi
+  # Clear any stale bundles from a previous run so we only publish fresh ones.
+  rm -rf src-tauri/target/release/bundle/appimage src-tauri/target/release/bundle/deb
   docker run --rm --platform linux/amd64 -v "$REPO":/w -w /w ubuntu:22.04 bash -euo pipefail -c '
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
     apt-get install -y -qq curl build-essential libwebkit2gtk-4.1-dev \
-      libappindicator3-dev librsvg2-dev patchelf libssl-dev file
-    curl -fsSL https://sh.rustup.rs | sh -s -- -y >/dev/null
+      libappindicator3-dev librsvg2-dev patchelf libssl-dev file >/dev/null
+    curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal >/dev/null 2>&1
     . "$HOME/.cargo/env"
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null 2>&1
-    apt-get install -y -qq nodejs
     cargo install tauri-cli --version "^2" --locked >/dev/null 2>&1 || cargo install tauri-cli --locked
-    npm --prefix editor run build:tauri
-    npm --prefix wadi-dsl run build:playground
+    export CARGO_TARGET_DIR=/tmp/lxtarget
+    # docs/ is already built on the host; empty beforeBuildCommand → just bundle it.
     cargo tauri build --config "{\"build\":{\"beforeBuildCommand\":\"\"}}"
+    # Copy the finished installers back into the repo where publish-release.sh looks.
+    for kind in appimage deb; do
+      if compgen -G "/tmp/lxtarget/release/bundle/$kind/*" >/dev/null; then
+        mkdir -p "/w/src-tauri/target/release/bundle/$kind"
+        cp -f /tmp/lxtarget/release/bundle/$kind/* "/w/src-tauri/target/release/bundle/$kind/"
+      fi
+    done
   '
-  echo "  ✓ Linux bundles under src-tauri/target/release/bundle/{appimage,deb}/"
+  ls src-tauri/target/release/bundle/deb/*.deb src-tauri/target/release/bundle/appimage/*.AppImage 2>/dev/null \
+    | sed "s/^/  ✓ /" || echo "  ⚠ no Linux bundles were produced (see output above)"
 else
   echo "▶ [3/3] Skipping Linux (pass --linux to build it in Docker)."
 fi
