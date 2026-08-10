@@ -27,6 +27,23 @@ console.error("check — a parse error:");
 const parseRes = checkWdl("house { this is not valid");
 ok(!parseRes.ok && parseRes.errors.length > 0, `caught: ${parseRes.errors[0]?.message?.slice(0, 60)}`);
 
+console.error("check — an unresolved reference (a bad grid line is an ERROR, not a silent drop):");
+const badRef = `house H {
+  site { plot (300, 300) }
+  grid main {
+    x: 1 @ 0, 2 @ 150
+    y: A @ 0, B @ 150
+  }
+  floor 1 "G" slab_thickness 0 {
+    pillar P at (main.x9, main.yA) size (9, 9) height 100
+  }
+}`;
+const refRes = checkWdl(badRef);
+ok(
+  !refRes.ok && refRes.errors.some((e) => e.rule === "formula" && /unresolved/i.test(e.message)),
+  `caught unresolved ref: ${refRes.errors.find((e) => e.rule === "formula")?.message?.slice(0, 70) ?? refRes.errors[0]?.message?.slice(0, 70)}`,
+);
+
 console.error("render — coastal plans + roof → PNG:");
 const svgs = renderSvgs(EXAMPLES.coastal, ["plans", "roof"]);
 ok(svgs.length === 2, `rendered ${svgs.map((s) => s.view).join(", ")}`);

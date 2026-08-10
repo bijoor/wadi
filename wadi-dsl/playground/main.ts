@@ -42,6 +42,7 @@ import { initPublishPanel, type PublishResult } from "./publishPanel";
 import type { TemplatePackage } from "../../editor/src/templatePackage/assemble";
 import { localTemplatesDir, setTemplateSource } from "../../editor/src/io/templateSource";
 import { resolveParametric } from "../../editor/src/param/resolve";
+import { isFormulaError } from "../../editor/src/param/warnings";
 import { buildRefsView, formatRefValue, type RefsView } from "../../editor/src/param/refsView";
 import {
   lintStructure,
@@ -436,8 +437,25 @@ function unresolvedImports(src: string): string[] {
 // findings — the point is to SHOW the unsound bits, not block the preview.
 function lintCurrent(config: Record<string, unknown>): LintFinding[] {
   try {
-    const { config: resolved } = resolveParametric(config as never);
-    return lintStructure(resolved as never);
+    const { config: resolved, warnings } = resolveParametric(config as never);
+    // An unresolved reference (a mistyped grid line, a bad = formula) is an ERROR:
+    // it collapses to 0 and silently corrupts the model. Surface it in the pill,
+    // deduped so one root cause reports once. Structural conventions come after.
+    const seen = new Set<string>();
+    const formulaErrors: LintFinding[] = [];
+    for (const w of warnings) {
+      if (!isFormulaError(w)) continue;
+      const key = `${w.where}|${w.message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      formulaErrors.push({
+        rule: "formula",
+        level: "error",
+        message: w.formula ? `${w.message} (in ${w.formula})` : w.message,
+        where: w.where,
+      });
+    }
+    return [...formulaErrors, ...lintStructure(resolved as never)];
   } catch {
     return [];
   }
@@ -453,7 +471,7 @@ function applyRenderedStatus(findings: LintFinding[]): void {
   }
   const { errors, warnings } = partitionFindings(findings);
   const parts: string[] = [];
-  if (errors.length) parts.push(`✖ ${errors.length} structural error${errors.length === 1 ? "" : "s"}`);
+  if (errors.length) parts.push(`✖ ${errors.length} error${errors.length === 1 ? "" : "s"}`);
   if (warnings.length) parts.push(`⚠ ${warnings.length} warning${warnings.length === 1 ? "" : "s"}`);
   setStatus(`✓ rendered · ${parts.join(" · ")}`, errors.length > 0);
   statusEl.title = findings.map(formatFinding).join("\n");

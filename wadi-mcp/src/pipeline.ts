@@ -5,6 +5,7 @@
 
 import { compileDsl } from "../../wadi-dsl/src/generator/toHouseConfig";
 import { resolveParametric } from "../../editor/src/param/resolve";
+import { isFormulaError, type FormulaWarning } from "../../editor/src/param/warnings";
 import { buildRefsView, type RefsView } from "../../editor/src/param/refsView";
 import { validate } from "../../editor/src/schema/houseConfig";
 import { registerExposedComponents } from "../../editor/src/registry/promote";
@@ -38,13 +39,48 @@ export interface CheckResult {
 
 type Cfg = Record<string, unknown>;
 
-/** Compile .wdl → resolved HouseConfig (formulas folded to numbers). Throws on parse error. */
-export function compileConfig(wdl: string): Cfg {
+/** Compile + resolve, keeping the formula diagnostics (unresolved refs etc.). */
+function compileWithWarnings(wdl: string): { config: Cfg; warnings: FormulaWarning[] } {
   const compiled = compileDsl(wdl, { resolveModule: stdResolveModule }); // throws on syntax/import error
   // Register any exposed components as typed primitives before validate/expand.
   registerExposedComponents(compiled as never);
-  const { config } = resolveParametric(compiled as never);
-  return config as Cfg;
+  const { config, warnings } = resolveParametric(compiled as never);
+  return { config: config as Cfg, warnings };
+}
+
+/** Formula diagnostics that must FAIL a check — an unresolved reference (e.g. a
+ *  mistyped grid line `main.x1`), a circular reference, or a non-numeric formula.
+ *  Deduped by location+message so one root cause (a bad grid rename touching 294
+ *  pillars) reports once, not 588 times. */
+function formulaErrorFindings(warnings: FormulaWarning[]): Finding[] {
+  const seen = new Set<string>();
+  const out: Finding[] = [];
+  for (const w of warnings) {
+    if (!isFormulaError(w)) continue;
+    const key = `${w.where}|${w.message}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      rule: "formula",
+      level: "error",
+      message: w.formula ? `${w.message} (in \`${w.formula}\`)` : w.message,
+      where: w.where,
+    });
+  }
+  return out;
+}
+
+/** Compile .wdl → resolved HouseConfig (formulas folded to numbers). Throws on a
+ *  parse error OR an unresolved reference — a bad reference is a hard error, so
+ *  preview/render/3D refuse a broken design instead of silently rendering it with
+ *  the reference collapsed to 0. */
+export function compileConfig(wdl: string): Cfg {
+  const { config, warnings } = compileWithWarnings(wdl);
+  const errs = formulaErrorFindings(warnings);
+  if (errs.length) {
+    throw new Error(errs.map((e) => `${e.where}: ${e.message}`).join("; "));
+  }
+  return config;
 }
 
 /** The resolved variables, points, and grid lines an author can reference in
@@ -59,10 +95,19 @@ export function scopeWdl(wdl: string): RefsView {
 /** Full check: parse + resolve + schema + wall/roof geometry + structural conventions. */
 export function checkWdl(wdl: string): CheckResult {
   let config: Cfg;
+  let formulaWarnings: FormulaWarning[];
   try {
-    config = compileConfig(wdl);
+    ({ config, warnings: formulaWarnings } = compileWithWarnings(wdl));
   } catch (e) {
     return { ok: false, errors: [{ level: "error", message: (e as Error).message }], warnings: [] };
+  }
+
+  // A bad reference is an error, not a silent fallback. Report it BEFORE schema /
+  // geometry — the config downstream has the reference collapsed to 0, so those
+  // stages would either pass misleadingly or fail with a confusing symptom.
+  const formulaErrors = formulaErrorFindings(formulaWarnings);
+  if (formulaErrors.length) {
+    return { ok: false, errors: formulaErrors, warnings: [] };
   }
 
   const res = validate(config);

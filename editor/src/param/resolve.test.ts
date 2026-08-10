@@ -99,6 +99,29 @@ describe("resolveParametric", () => {
     expect(obj0(out.config).x).toBe(42);
   });
 
+  it("tags an unresolved reference as an ERROR-severity warning (checkers fail on it)", () => {
+    // Mirrors the real bug: grid lines named `1`/`15` but a pillar referencing
+    // `main.x1`/`main.y15` (which never exist) — the ref collapses to 0 and every
+    // such object stacks at the origin. This must be a hard error, not a silent drop.
+    const cfg = mkConfig({
+      objects: [{ type: "pillar", name: "C", x: 0, y: 0, width: 9, length: 9, formulas: { x: "= main.x1" } }],
+    });
+    const out = resolveParametric(cfg);
+    const w = out.warnings.find((w) => w.where === "floor0/obj0/x");
+    expect(w).toBeTruthy();
+    expect(w!.severity).toBe("error"); // the whole point of this change
+    expect(/unknown or unresolved/i.test(w!.message)).toBe(true);
+    // Still resilient: the model resolves (unchanged field), it does NOT throw.
+    expect(obj0(out.config).x).toBe(0);
+  });
+
+  it("marks a circular reference as ERROR severity too", () => {
+    const cfg = mkConfig({ variables: { a: "= b", b: "= a" } });
+    const out = resolveParametric(cfg);
+    const cyc = out.warnings.find((w) => /circular/i.test(w.message));
+    expect(cyc?.severity).toBe("error");
+  });
+
   it("is idempotent", () => {
     const cfg = mkConfig({
       variables: { colA: 0, bay: 150, colB: "= colA + bay" },

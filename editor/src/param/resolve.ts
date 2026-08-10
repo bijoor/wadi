@@ -189,7 +189,7 @@ function resolveSegment(
   for (const [field, src] of Object.entries(fm)) {
     const r = evalFormula(src, scope);
     if (r.value === null) {
-      warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula" });
+      warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula", severity: "error" });
       continue;
     }
     const pc = SEGMENT_POINT_KEYS[field];
@@ -224,7 +224,7 @@ function resolveTruss(
   for (const [field, src] of Object.entries(fm)) {
     const r = evalFormula(src, scope);
     if (r.value === null) {
-      warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula" });
+      warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula", severity: "error" });
       continue;
     }
     const m = /^pos(\d+)$/.exec(field);
@@ -339,7 +339,7 @@ function applyContainerFormulas<T>(
   for (const [field, src] of Object.entries(fm)) {
     const r = evalFormula(src, scope);
     if (r.value === null) {
-      warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula" });
+      warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula", severity: "error" });
       continue;
     }
     const resolved = INTEGER_FIELDS.has(field) ? Math.round(r.value) : r.value;
@@ -363,17 +363,17 @@ export function buildScope(config: HouseConfig): { scope: Scope; warnings: Formu
   const { order, cyclic } = topoOrder(syms);
   for (const s of order) {
     if (cyclic.has(s.key)) {
-      warnings.push({ where: s.where, formula: s.src ?? "", message: "circular reference" });
+      warnings.push({ where: s.where, formula: s.src ?? "", message: "circular reference", severity: "error" });
       continue;
     }
     if (s.src === null) {
       if (s.literal !== null) scope[s.key] = s.literal;
-      else warnings.push({ where: s.where, formula: "", message: "not a number or formula" });
+      else warnings.push({ where: s.where, formula: "", message: "not a number or formula", severity: "error" });
       continue;
     }
     const r = evalFormula(s.src, scope);
     if (r.value === null) {
-      warnings.push({ where: s.where, formula: s.src, message: r.error ?? "invalid formula" });
+      warnings.push({ where: s.where, formula: s.src, message: r.error ?? "invalid formula", severity: "error" });
     } else {
       scope[s.key] = r.value;
     }
@@ -489,7 +489,7 @@ function resolveGrids(
     if (isFormula(v)) {
       const r = evalFormula(v, scope);
       if (r.value === null) {
-        warnings.push({ where, formula: v, message: r.error ?? "invalid formula" });
+        warnings.push({ where, formula: v, message: r.error ?? "invalid formula", severity: "error" });
         return null;
       }
       return r.value;

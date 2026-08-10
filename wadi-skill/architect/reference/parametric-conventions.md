@@ -80,6 +80,13 @@ Define `grids.main` with X and Y lines. The **outer** lines anchor to the plinth
 - Each grid line is published as a formula **symbol** `main.x<name>` / `main.y<name>`
   (`main.x1`, `main.yA`). Positions are conserved automatically — the lines partition
   the span, so there are no gaps/overlaps to reconcile.
+- **The axis letter is auto-prepended — do NOT bake it into the line name.** Name lines
+  with a bare label (`x: 1 @ …`, `y: A @ …`) and reference them as `main.x1` / `main.yA`.
+  If you name a line `x1` and then reference `main.x1`, the resolver looks for `main.xx1`
+  and finds nothing. An **unresolved reference is a hard error** (the check fails):
+  the field would otherwise collapse to `0` and every object using it stacks at the
+  origin. `wadi_check` / `check.sh` report it as `unknown or unresolved 'main.x1'` —
+  fix the name mismatch, do not ignore it.
 
 ## 4. Rooms, slabs, plinth — reference the grid, nothing else
 

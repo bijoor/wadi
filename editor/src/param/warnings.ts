@@ -9,6 +9,18 @@ export interface FormulaWarning {
   where: string;
   formula: string;
   message: string;
+  // "error" = the formula could not be resolved to a real value (unknown/unresolved
+  // reference, circular reference, parse error, non-numeric). The model silently
+  // falls back (to 0 or a prior value), so these are DEFECTS the author must fix —
+  // the checkers (wadi_check, check.sh, the DSL-editor pill) fail on them. "warn"
+  // is reserved for advisory-only formula problems (none today). Defaults to "error"
+  // when omitted, so a producer that forgets is treated as the safe (failing) case.
+  severity?: "error" | "warn";
+}
+
+/** True for a formula diagnostic that must fail a check (its default when unset). */
+export function isFormulaError(w: FormulaWarning): boolean {
+  return (w.severity ?? "error") === "error";
 }
 
 declare global {

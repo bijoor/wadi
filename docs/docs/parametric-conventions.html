@@ -152,6 +152,13 @@ equals the clear interior.</li>
 <li>Each grid line is published as a formula <strong>symbol</strong> <code>main.x&lt;name&gt;</code> / <code>main.y&lt;name&gt;</code>
 (<code>main.x1</code>, <code>main.yA</code>). Positions are conserved automatically — the lines partition
 the span, so there are no gaps/overlaps to reconcile.</li>
+<li><strong>The axis letter is auto-prepended — do NOT bake it into the line name.</strong> Name lines
+with a bare label (<code>x: 1 @ …</code>, <code>y: A @ …</code>) and reference them as <code>main.x1</code> / <code>main.yA</code>.
+If you name a line <code>x1</code> and then reference <code>main.x1</code>, the resolver looks for <code>main.xx1</code>
+and finds nothing. An <strong>unresolved reference is a hard error</strong> (the check fails):
+the field would otherwise collapse to <code>0</code> and every object using it stacks at the
+origin. <code>wadi_check</code> / <code>check.sh</code> report it as <code>unknown or unresolved &#39;main.x1&#39;</code> —
+fix the name mismatch, do not ignore it.</li>
 </ul>
 <h2 id="4-rooms-slabs-plinth--reference-the-grid-nothing-else">4. Rooms, slabs, plinth — reference the grid, nothing else</h2>
 <pre><code class="language-jsonc">{ &quot;type&quot;:&quot;room&quot;, &quot;name&quot;:&quot;Hall&quot;,
