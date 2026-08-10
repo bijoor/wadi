@@ -26,7 +26,7 @@ This page is the step-by-step setup. For the "who and why" see
 
 > **Download the desktop app** from the **"Prefer a desktop app?"** section on
 > <https://wadi.house>, or directly from the releases page:
-> <https://github.com/bijoor/wadi/releases> (macOS `.dmg`, Linux `.AppImage`; Windows
+> <https://github.com/bijoor/wadi/releases> (macOS `.dmg`, Linux `.deb`; Windows
 > coming soon). Install it
 > and open it once before you start. Without it, the assistant can still check and draw
 > 2-D previews, but you will not get the live 3-D model that updates as it works.

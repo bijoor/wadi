@@ -8,7 +8,7 @@
 #
 # Produces:
 #   - macOS universal .dmg  (Apple Silicon + Intel)          [always, needs a Mac]
-#   - Linux .AppImage/.deb  (x86_64, via Docker)             [with --linux, needs Docker]
+#   - Linux .deb            (x86_64, via Docker)             [with --linux, needs Docker]
 #
 # Windows is deferred for now (Tauri can't cross-compile Windows from macOS/Linux;
 # it needs a Windows machine or a self-hosted Windows runner).
@@ -79,7 +79,7 @@ fi
 #      Linux object files never mix with the host's macOS build and nothing is left in
 #      the repo except the finished installers we copy back.
 if [ "$DO_LINUX" = "1" ]; then
-  echo "▶ [3/3] Building Linux .deb/.AppImage in Docker (ubuntu 22.04, no frontend rebuild)…"
+  echo "▶ [3/3] Building Linux .deb in Docker (ubuntu 22.04, no frontend rebuild)…"
   if ! docker info >/dev/null 2>&1; then
     echo "  ✗ Docker daemon not running — start Docker Desktop and retry" >&2
     exit 1
@@ -101,17 +101,18 @@ if [ "$DO_LINUX" = "1" ]; then
     [ -x "$HOME/.cargo/bin/cargo-tauri" ] || cargo install tauri-cli --version "^2" --locked
     export CARGO_TARGET_DIR=/tmp/lxtarget
     # docs/ is already built on the host; empty beforeBuildCommand → just bundle it.
-    cargo tauri build --config "{\"build\":{\"beforeBuildCommand\":\"\"}}"
-    # Copy the finished installers back into the repo where publish-release.sh looks.
-    for kind in appimage deb; do
-      if compgen -G "/tmp/lxtarget/release/bundle/$kind/*" >/dev/null; then
-        mkdir -p "/w/src-tauri/target/release/bundle/$kind"
-        cp -f /tmp/lxtarget/release/bundle/$kind/* "/w/src-tauri/target/release/bundle/$kind/"
-      fi
-    done
+    # We build ONLY the .deb: AppImage bundling needs linuxdeploy, which does not run
+    # reliably in an emulated x86_64 container (FUSE), and .deb already covers
+    # Debian/Ubuntu/Mint/Pop. AppImage can be added later on a native Linux runner.
+    cargo tauri build --bundles deb --config "{\"build\":{\"beforeBuildCommand\":\"\"}}"
+    # Copy the finished .deb back into the repo where publish-release.sh looks.
+    if compgen -G "/tmp/lxtarget/release/bundle/deb/*.deb" >/dev/null; then
+      mkdir -p /w/src-tauri/target/release/bundle/deb
+      cp -f /tmp/lxtarget/release/bundle/deb/*.deb /w/src-tauri/target/release/bundle/deb/
+    fi
   '
-  ls src-tauri/target/release/bundle/deb/*.deb src-tauri/target/release/bundle/appimage/*.AppImage 2>/dev/null \
-    | sed "s/^/  ✓ /" || echo "  ⚠ no Linux bundles were produced (see output above)"
+  ls src-tauri/target/release/bundle/deb/*.deb 2>/dev/null \
+    | sed "s/^/  ✓ /" || echo "  ⚠ no Linux .deb was produced (see output above)"
 else
   echo "▶ [3/3] Skipping Linux (pass --linux to build it in Docker)."
 fi
