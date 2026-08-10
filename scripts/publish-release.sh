@@ -13,6 +13,7 @@
 # Run scripts/release-desktop.sh first so the artifacts exist.
 
 set -euo pipefail
+shopt -s nullglob   # unmatched globs (e.g. no .AppImage) expand to nothing, not a literal
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
@@ -21,8 +22,9 @@ TAG="${1:?usage: publish-release.sh <tag>  e.g. v0.1.0}"
 VERSION="${TAG#v}"
 
 # Collect whatever installers were built (macOS always; Linux if --linux was used).
+# `add` must always return 0 so `set -e` doesn't abort when a file is absent.
 ASSETS=()
-add() { [ -f "$1" ] && ASSETS+=("$1") && echo "  + $1"; }
+add() { if [ -f "$1" ]; then ASSETS+=("$1"); echo "  + $1"; fi; return 0; }
 echo "▶ Collecting installers for ${TAG}…"
 add "src-tauri/target/universal-apple-darwin/release/bundle/dmg/Wadi_${VERSION}_universal.dmg"
 # Fallback: an Apple-Silicon-only DMG, if that's all you built.
