@@ -1,26 +1,40 @@
 name: Release desktop app
 
-# Build and publish the Wadi desktop installers (macOS .dmg, Windows .msi,
-# Linux .AppImage/.deb) whenever a version tag is pushed, e.g.:
+# PARKED (2026-08): this account's GitHub Actions compute is billing-locked
+# (GitHub disabled recurring card payments for India-based accounts), so every
+# run of this workflow fails instantly with "the job was not started because your
+# account is locked due to a billing issue." The trigger is therefore switched
+# from tag-push to MANUAL (workflow_dispatch) so pushing a version tag no longer
+# spawns a guaranteed-failing run.
 #
-#   git tag v0.1.0 && git push origin v0.1.0
+# Until Actions is restored, releases are built LOCALLY and published to GitHub
+# Releases (which are NOT billing-locked):
+#   scripts/release-desktop.sh [--linux]   # build macOS universal (+ Linux via Docker)
+#   scripts/publish-release.sh v0.1.0      # upload to a draft GitHub Release
+# The website deploys to Cloudflare Pages instead of GitHub Pages:
+#   scripts/deploy-site.sh
+# See RELEASING.md for the full runbook.
+#
+# The job below is kept intact (and Windows-capable) so it can be revived by
+# restoring the tag trigger once the billing lock is cleared.
 #
 # tauri-action runs `tauri build` on each OS (which runs the repo's
 # beforeBuildCommand — `npm run build:tauri` from editor/ — to build the
 # frontend into docs/, then bundles the native app) and uploads the
 # installers to a GitHub Release. The release is created as a DRAFT so you
-# can review the assets and edit notes before publishing; the download
-# links on the landing page (github.com/bijoor/wadi/releases) go live once
-# you publish it.
+# can review the assets and edit notes before publishing.
 #
 # NOTE: builds are UNSIGNED. macOS users open via right-click → Open (once);
 # Windows users click "More info → Run anyway" on SmartScreen. Add signing
 # secrets later if you want to remove those prompts.
 
 on:
-  push:
-    tags:
-      - 'v*'
+  # Parked: manual-only. To revive tag-triggered releases once Actions billing is
+  # restored, uncomment the `push:`/`tags:` block below.
+  workflow_dispatch:
+  # push:
+  #   tags:
+  #     - 'v*'
 
 jobs:
   release:

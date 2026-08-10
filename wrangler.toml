@@ -1,0 +1,11 @@
+# Cloudflare Pages config for the Wadi website (wadi.house).
+#
+# The site under docs/ is fully PRE-BUILT static (the viewer, the DSL playground,
+# the docs site, the marketing landing, GLBs). There is no build step — Cloudflare
+# just serves the folder. Deploy with scripts/deploy-site.sh (wrangler direct upload).
+#
+# This replaces GitHub Pages, whose deploy is tied to the GitHub account that is
+# currently billing-locked. Cloudflare Pages' free tier needs no card.
+
+name = "wadi"
+pages_build_output_dir = "docs"
