@@ -278,21 +278,26 @@ pub fn run() {
     })
     .build(tauri::generate_context!())
     .expect("error while running tauri application")
-    .run(|app, event| {
+    .run(|_app, _event| {
       // macOS: Finder "Open" / `open file.wadi` (and, later, wadi:// deep
       // links) arrive here as URLs — both on cold start and while running.
       // Stash the path so a not-yet-ready webview can drain it on boot, and
       // emit an event so an already-running webview loads it live.
-      if let RunEvent::Opened { urls } = event {
+      //
+      // `RunEvent::Opened` is a macOS-only variant, so gate the whole handler:
+      // on Linux/Windows there is no file-open run event to handle, and
+      // referencing the variant would not compile.
+      #[cfg(target_os = "macos")]
+      if let RunEvent::Opened { urls } = _event {
         for url in urls {
           let path = url
             .to_file_path()
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|_| url.to_string());
-          if let Some(state) = app.try_state::<PendingOpen>() {
+          if let Some(state) = _app.try_state::<PendingOpen>() {
             *state.0.lock().unwrap() = Some(path.clone());
           }
-          let _ = app.emit("wadi://open-file", path);
+          let _ = _app.emit("wadi://open-file", path);
         }
       }
     });

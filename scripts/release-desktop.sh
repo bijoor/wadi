@@ -86,14 +86,19 @@ if [ "$DO_LINUX" = "1" ]; then
   fi
   # Clear any stale bundles from a previous run so we only publish fresh ones.
   rm -rf src-tauri/target/release/bundle/appimage src-tauri/target/release/bundle/deb
-  docker run --rm --platform linux/amd64 -v "$REPO":/w -w /w ubuntu:22.04 bash -euo pipefail -c '
+  # Named volumes persist the Rust toolchain, the cargo registry, and the build
+  # cache across runs, so a re-build (e.g. after a source fix) is fast instead of
+  # recompiling every dependency from scratch under emulation.
+  docker run --rm --platform linux/amd64 -v "$REPO":/w \
+    -v wadi-lxcargo:/root/.cargo -v wadi-lxrustup:/root/.rustup -v wadi-lxtarget:/tmp/lxtarget \
+    -w /w ubuntu:22.04 bash -euo pipefail -c '
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
     apt-get install -y -qq curl build-essential libwebkit2gtk-4.1-dev \
       libappindicator3-dev librsvg2-dev patchelf libssl-dev file >/dev/null
-    curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal >/dev/null 2>&1
+    [ -x "$HOME/.cargo/bin/rustc" ] || curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal >/dev/null 2>&1
     . "$HOME/.cargo/env"
-    cargo install tauri-cli --version "^2" --locked >/dev/null 2>&1 || cargo install tauri-cli --locked
+    [ -x "$HOME/.cargo/bin/cargo-tauri" ] || cargo install tauri-cli --version "^2" --locked
     export CARGO_TARGET_DIR=/tmp/lxtarget
     # docs/ is already built on the host; empty beforeBuildCommand → just bundle it.
     cargo tauri build --config "{\"build\":{\"beforeBuildCommand\":\"\"}}"
