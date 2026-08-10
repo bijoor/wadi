@@ -47,6 +47,13 @@ const GROUPS = [
       { src: "wadi-skill/architect/reference/conventions.md", slug: "conventions", nav: "Structural conventions" },
     ],
   },
+  {
+    title: "References",
+    pages: [
+      { src: "documentation/grammar-and-data-model.md", slug: "grammar-and-data-model", nav: "Grammar & data model" },
+      { src: "documentation/applying-the-method-to-saas.md", slug: "applying-the-method-to-saas", nav: "Applying the method to SaaS" },
+    ],
+  },
 ];
 
 const allPages = GROUPS.flatMap((g) => g.pages);

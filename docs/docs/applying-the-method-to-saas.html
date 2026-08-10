@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Applying the Wadi method: making SaaS platform capabilities agent-usable over MCP · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="ai-assistants.html">Using an AI assistant</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div>
+<div class="grp"><div class="grp-t">References</div><a href="grammar-and-data-model.html">Grammar & data model</a>
+<a class="active" href="applying-the-method-to-saas.html">Applying the method to SaaS</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-core-idea-the-mental-model-to-sell">The core idea (the mental model to sell)</a><a href="#when-to-apply-it-qualify-first">When to apply it (qualify first)</a><a href="#the-steps">The steps</a><a href="#design-principles-that-make-agents-reliable">Design principles that make agents reliable</a><a href="#a-concrete-first-engagement">A concrete first engagement</a><a href="#wadi-to-saas-mapping-hand-this-to-an-engineer">Wadi to SaaS mapping (hand this to an engineer)</a><a href="#pitfalls-to-avoid">Pitfalls to avoid</a><a href="#further-reading-in-this-repo">Further reading in this repo</a></nav>
+    <article class="md"><h1 id="applying-the-wadi-method-making-saas-platform-capabilities-agent-usable-over-mcp">Applying the Wadi method: making SaaS platform capabilities agent-usable over MCP</h1>
+<p>A playbook for architects. Wadi turned a hard, expert domain (parametric house
+design) into something an AI agent can operate reliably through an MCP server. The
+same method applies to a B2B SaaS platform: take the customer&#39;s existing capabilities
+and expose them so an agent can use them safely and correctly. This document explains
+the mental model, when it applies, and the step-by-step.</p>
+<p>Audience: our architects working with SaaS product customers. The customer already has
+a platform with capabilities (APIs, workflows, configuration). The goal is to let AI
+agents drive those capabilities on behalf of the customer&#39;s users.</p>
+<h2 id="the-core-idea-the-mental-model-to-sell">The core idea (the mental model to sell)</h2>
+<p>The obvious approach is to wrap each API endpoint as an MCP tool and hope the agent
+orchestrates them. This mostly fails on real workflows. Agents flail when they have to
+call many imperative endpoints in the right order, hold partial state in their head,
+and discover errors only after side effects have happened.</p>
+<p>Wadi does something different, and this is the transferable insight:</p>
+<blockquote>
+<p>Give the agent a <strong>domain model</strong>, a <strong>declarative artifact to author</strong> in that
+model, a <strong>compiler</strong> that turns the artifact into validated actions, and tight
+<strong>check / preview / reference</strong> feedback loops. The agent authors desired-state,
+checks it cheaply, previews the result without committing, iterates, and only then
+applies. That loop is what makes an agent reliable in a complex domain.</p>
+</blockquote>
+<p>In Wadi terms: the agent writes a <code>.wdl</code> file (desired state), runs <code>wadi_check</code>
+(validate), reads <code>wadi_preview</code> (see it), fixes what is wrong, and repeats. It is not
+calling &quot;add wall&quot;, &quot;add window&quot;, &quot;recompute roof&quot; as 40 imperative tools.</p>
+<p>The transferable pattern, end to end:</p>
+<pre><code>Domain model  →  Authoring surface  →  Compiler/planner  →  Feedback loop  →  MCP server  →  Agent skill
+ (schema)         (spec or DSL)         (plan, not apply)    (check/preview/ref)  (self-contained)  (the loop)
+                                                                                        ↕
+                                                                                 Human co-edit + approval
+</code></pre>
+<h2 id="when-to-apply-it-qualify-first">When to apply it (qualify first)</h2>
+<p>This is a spectrum, not one size. Place each use case on it deliberately.</p>
+<ul>
+<li><strong>A single simple action</strong> (create a ticket, look up a record): just expose an MCP
+tool. No model, no DSL. Do not over-engineer.</li>
+<li><strong>A composable, multi-step, review-worthy workflow</strong> (design a customer journey,
+build a pricing plan, configure a data pipeline, author an access policy): this is
+where the Wadi method pays off.</li>
+</ul>
+<p>Good-fit signals:</p>
+<ul>
+<li>The domain has <strong>composable objects</strong> that combine (steps, rules, segments, nodes).</li>
+<li><strong>Desired-state is meaningful</strong>: the customer can describe &quot;what they want&quot; and the
+platform can realize it.</li>
+<li><strong>Mistakes are costly or hard to reverse</strong>, so cheap validation and preview matter.</li>
+<li>Today the work is <strong>manual and expert-driven</strong>, and the customer wants to scale it.</li>
+<li>Humans will want to <strong>review and co-edit</strong> what the agent produced.</li>
+</ul>
+<p>Poor-fit signals: one-shot CRUD, read-only lookups, or anything where a plain tool call
+is already reliable.</p>
+<h2 id="the-steps">The steps</h2>
+<h3 id="step-0--qualify-the-use-case">Step 0 — Qualify the use case</h3>
+<p>Pick one high-value workflow that scores well on the signals above. Resist starting
+with the whole platform. Wadi started as one thing (a house model) and grew coverage
+later; a SaaS engagement should start as one artifact and one loop.</p>
+<h3 id="step-1--find-the-artifact-the-domain-model">Step 1 — Find the artifact (the domain model)</h3>
+<p>Identify the central thing the agent will author or edit: the customer&#39;s equivalent of
+Wadi&#39;s <code>HouseConfig</code>. It is almost always a <strong>desired-state description</strong> of a
+workflow, configuration, or plan. Examples by SaaS category:</p>
+<table>
+<thead>
+<tr>
+<th>SaaS category</th>
+<th>The &quot;artifact&quot; the agent authors</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Marketing automation</td>
+<td>a campaign / journey spec (triggers, steps, audiences, content)</td>
+</tr>
+<tr>
+<td>CRM / sales</td>
+<td>a workflow / automation / segment definition</td>
+</tr>
+<tr>
+<td>Analytics / BI</td>
+<td>a dashboard / metric / pipeline spec</td>
+</tr>
+<tr>
+<td>Billing / fintech</td>
+<td>a pricing plan / rule set / entitlement config</td>
+</tr>
+<tr>
+<td>Support / ITSM</td>
+<td>a routing / SLA / macro policy</td>
+</tr>
+<tr>
+<td>Data platform</td>
+<td>a transformation / pipeline / model spec</td>
+</tr>
+<tr>
+<td>Access / IAM</td>
+<td>a role / policy / entitlement set</td>
+</tr>
+</tbody></table>
+<p>If you cannot name a single artifact, the use case is probably several; split it.</p>
+<h3 id="step-2--make-the-schema-the-single-source-of-truth">Step 2 — Make the schema the single source of truth</h3>
+<p>Define the artifact as a <strong>typed, validated schema</strong> (Zod, JSON Schema, protobuf, your
+choice). Use a <strong>discriminated union</strong> for the different capability types the artifact
+can contain, exactly as Wadi&#39;s object union is discriminated on <code>type</code>. This schema is
+the contract every surface agrees on: the agent, the compiler, the UI, the docs.</p>
+<p>Everything downstream derives from this. Do not let the API shape, the UI, and the
+agent tools each carry their own private idea of the model.</p>
+<h3 id="step-3--componentize-capabilities-one-declaration-many-projections">Step 3 — Componentize capabilities (one declaration, many projections)</h3>
+<p>This is Wadi&#39;s <code>fields</code> pattern, and it is what lets coverage grow as data instead of
+code. In Wadi a primitive declares its shape once as <code>FieldSpec[]</code>, and a neutral
+engine projects that one declaration onto the schema, the docs, the form, and the DSL.
+Adding a capability is one file, not edits across five surfaces.</p>
+<p>For a SaaS platform: model each <strong>capability</strong> (each thing the platform can do) as one
+declarative descriptor, and project it to the schema, the reference docs, and the
+agent-facing surface from that single source. When the customer ships a new platform
+feature, exposing it to agents should be adding a descriptor, not a bespoke integration.</p>
+<p>Field types map to your domain&#39;s value kinds. Wadi&#39;s presets (coord, extent, nonneg,
+int, text, flag, enum) are house-flavoured; yours might be <code>money</code>, <code>duration</code>,
+<code>percentage</code>, <code>entity-ref</code>, <code>enum</code>, <code>expression</code>. The point is a <strong>small closed set of
+value kinds</strong> plus <strong>named presets</strong> composed from them, so a new kind is data.</p>
+<h3 id="step-4--choose-the-authoring-surface-spec-vs-dsl">Step 4 — Choose the authoring surface (spec vs DSL)</h3>
+<p>The agent needs a concrete thing to write. Two options:</p>
+<ul>
+<li><strong>A structured spec (JSON/YAML)</strong> the agent edits directly. Enough for most SaaS use
+cases. Lower effort, and agents are good at structured editing when the schema and
+errors are clear.</li>
+<li><strong>A text DSL</strong> (like Wadi&#39;s <code>.wdl</code>) that compiles to the spec. Worth it when
+composition is rich, when humans will co-author, or when a terse ergonomic surface
+materially helps. A DSL is more work (grammar, parser, compiler, decompiler).</li>
+</ul>
+<p>Either way, borrow Wadi&#39;s <strong>two-tier split</strong>:</p>
+<ul>
+<li>A <strong>domain-neutral core</strong>: variables, references, parameterization, conditionals,
+reusable components. This is reusable across every use case you build.</li>
+<li>A <strong>domain vocabulary</strong>: the customer&#39;s specific capability nouns. This is the only
+part you rewrite per customer.</li>
+</ul>
+<p>Keep an <strong>escape hatch</strong> to the raw underlying model (Wadi&#39;s <code>raw</code> rule), so the agent
+is never blocked when a capability has no ergonomic form yet.</p>
+<h3 id="step-5--build-the-compilerplanner-and-separate-plan-from-apply">Step 5 — Build the compiler/planner, and separate plan from apply</h3>
+<p>Turn the authored artifact into <strong>a validated plan of platform actions</strong>, then apply
+that plan as a separate step. Wadi separates compile (produce the model), resolve
+(fold formulas to numbers), and render (produce output). The equivalent for a SaaS:</p>
+<ul>
+<li><strong>Compile / plan</strong>: artifact → a concrete, validated set of API calls / state
+changes, with no side effects. This is what enables dry-run.</li>
+<li><strong>Apply / commit</strong>: execute the plan against the tenant, idempotently, with a diff.</li>
+</ul>
+<p>Keeping these separate is what gives you a trustworthy preview and a safe apply. Make
+compile <strong>deterministic</strong>: the same artifact always plans the same way.</p>
+<h3 id="step-6--build-the-feedback-loop-tools-the-heart-of-it">Step 6 — Build the feedback-loop tools (the heart of it)</h3>
+<p>These MCP tools are what make the agent competent. Wadi&#39;s set maps almost one to one:</p>
+<table>
+<thead>
+<tr>
+<th>Wadi tool</th>
+<th>Purpose</th>
+<th>SaaS equivalent</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>wadi_check</code></td>
+<td>validate: schema + structural rules → typed errors</td>
+<td><code>validate</code>: schema + business rules → typed errors</td>
+</tr>
+<tr>
+<td><code>wadi_preview</code></td>
+<td>render to an image the agent reads</td>
+<td><code>preview</code> / <code>plan</code>: dry-run diff or simulation</td>
+</tr>
+<tr>
+<td><code>wadi_reference</code></td>
+<td>embedded reference docs</td>
+<td><code>reference</code>: schema, capability catalog, policies</td>
+</tr>
+<tr>
+<td><code>wadi_examples</code></td>
+<td>known-good samples to copy</td>
+<td><code>examples</code>: validated example artifacts</td>
+</tr>
+<tr>
+<td><code>wadi_scope</code></td>
+<td>resolve variables/values</td>
+<td><code>resolve</code> / <code>query</code>: inspect current tenant state</td>
+</tr>
+<tr>
+<td>(n/a)</td>
+<td></td>
+<td><code>apply</code> / <code>commit</code>: the side-effectful action, gated</td>
+</tr>
+</tbody></table>
+<p>The two that agents cannot work without are <strong>check</strong> and <strong>preview</strong>. Check must
+return <strong>typed, located, actionable errors</strong> (not a stack trace, not a boolean). Fail
+fast: an unresolved reference or a broken rule must be an <strong>error the check fails on</strong>,
+not a silent partial success. (Wadi learned this the hard way: a mistyped reference
+used to collapse silently to zero and produce a wrong-but-valid model; now it is a hard
+error the checkers report.)</p>
+<h3 id="step-7--encode-constraints-and-guardrails-declaratively">Step 7 — Encode constraints and guardrails declaratively</h3>
+<p>Wadi has a structural-conventions layer (C1 to C10 plus per-primitive rules) checked by
+a linter over a spatial query model. For a B2B SaaS this is where <strong>business rules,
+policy, and compliance</strong> live: budget caps, approval thresholds, data-residency rules,
+segmentation limits, entitlement boundaries. Express them as a <strong>declarative,
+checkable layer over a query model of the artifact + tenant state</strong>, run inside
+<code>validate</code>. This is how you encode expert and policy knowledge so the agent cannot
+propose something the customer would never allow. For B2B trust, this layer is not
+optional.</p>
+<h3 id="step-8--package-a-self-contained-authenticated-mcp-server">Step 8 — Package a self-contained, authenticated MCP server</h3>
+<p>Wadi&#39;s MCP server bundles the compiler, the reference docs, and a rasteriser into one
+self-contained artifact that runs repo-free. For a SaaS the same server wraps
+<code>validate</code> / <code>preview</code> / <code>reference</code> / <code>examples</code> / <code>resolve</code> / <code>apply</code>, plus two
+things Wadi did not need:</p>
+<ul>
+<li><strong>Multi-tenant authentication</strong>: every call is scoped to the customer&#39;s tenant and
+the acting user&#39;s permissions. The agent never gets more authority than the user.</li>
+<li><strong>Audit</strong>: every <code>apply</code> is logged with the plan it executed and who approved it.</li>
+</ul>
+<p>Run it where the agent runs (the customer&#39;s stack, or your managed layer in front of
+their APIs).</p>
+<h3 id="step-9--write-the-agent-skill-teach-the-loop">Step 9 — Write the agent skill (teach the loop)</h3>
+<p>Wadi ships an agent-neutral skill (SKILL.md) that teaches the workflow: read the
+reference, author the artifact, check after every edit, preview, iterate, then apply.
+Write the equivalent for the customer&#39;s domain, and keep it <strong>agent-neutral</strong> so it
+works across Claude, Cursor, and any MCP client. The skill is where you encode the
+discipline: &quot;always <code>validate</code> after an edit&quot;, &quot;never <code>apply</code> without a preview and an
+approval&quot;.</p>
+<h3 id="step-10--keep-humans-in-the-loop">Step 10 — Keep humans in the loop</h3>
+<p>The artifact is human-readable and human-editable on purpose. The customer&#39;s own staff
+review and adjust what the agent produced, in a UI or the raw spec. Put <strong>approval
+gates on side effects</strong>: irreversible or high-impact <code>apply</code> operations require a human
+yes. The agent proposes and validates; the human commits.</p>
+<h2 id="design-principles-that-make-agents-reliable">Design principles that make agents reliable</h2>
+<p>These are the reasons the method works. Lead with them when convincing a skeptical
+customer.</p>
+<ol>
+<li><strong>Desired-state over imperative verbs.</strong> Let the agent describe the end state and
+have the platform realize it. This is the single biggest lever.</li>
+<li><strong>One source of truth, many projections.</strong> The schema drives the agent tools, the
+docs, and the UI. Nothing drifts.</li>
+<li><strong>Fail fast with typed errors.</strong> A broken artifact must fail <code>validate</code> loudly.
+Silent partial success is how agents produce confidently wrong results.</li>
+<li><strong>Deterministic compile; plan is not apply.</strong> Dry-run/preview is the trust
+mechanism. Never let apply be the only way to find out what happens.</li>
+<li><strong>Idempotency and diffs on apply.</strong> Re-applying the same artifact does nothing new;
+changes show as a diff the human can read.</li>
+<li><strong>Constraints encode expertise and policy.</strong> The guardrail layer is where the
+customer&#39;s rules live, checked before anything happens.</li>
+<li><strong>Start narrow, prove the loop, then grow as data.</strong> One artifact, one loop, real
+value. Componentize to expand coverage without re-architecting.</li>
+</ol>
+<h2 id="a-concrete-first-engagement">A concrete first engagement</h2>
+<p>A shape that de-risks the sale and proves the loop in weeks, not quarters:</p>
+<ol>
+<li>Pick <strong>one</strong> high-value, composable, review-worthy workflow (Step 0/1).</li>
+<li>Define the schema for <strong>that one artifact</strong> (Step 2), with two or three capability
+types, componentized (Step 3).</li>
+<li>Ship <code>validate</code> + <code>preview</code> + <code>reference</code> + a handful of <code>examples</code> (Step 6), and a
+single <code>apply</code> behind human approval (Step 5/10).</li>
+<li>Add the three or four most important <strong>business-rule checks</strong> (Step 7).</li>
+<li>Package the authenticated MCP server (Step 8) and the skill (Step 9).</li>
+<li>Demo the agent authoring the artifact, catching its own errors on <code>validate</code>,
+showing the <code>preview</code>, and applying once approved.</li>
+</ol>
+<p>Then expand: more capability types (as descriptors), more constraints, and a text DSL
+only if composition and human co-authoring justify it.</p>
+<h2 id="wadi-to-saas-mapping-hand-this-to-an-engineer">Wadi to SaaS mapping (hand this to an engineer)</h2>
+<table>
+<thead>
+<tr>
+<th>Wadi</th>
+<th>Your SaaS platform</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>HouseConfig</code> Zod schema</td>
+<td>the desired-state artifact schema</td>
+</tr>
+<tr>
+<td><code>.wdl</code> DSL</td>
+<td>the authoring format (structured spec, or a DSL)</td>
+</tr>
+<tr>
+<td><code>fields</code> + kernel engine</td>
+<td>capability descriptors, projected to every surface</td>
+</tr>
+<tr>
+<td>discriminated union on <code>type</code></td>
+<td>discriminated union of capability types</td>
+</tr>
+<tr>
+<td><code>resolveParametric</code></td>
+<td>the compiler/planner (artifact → plan)</td>
+</tr>
+<tr>
+<td><code>render</code> / <code>wadi_preview</code></td>
+<td>dry-run / simulation / diff</td>
+</tr>
+<tr>
+<td>lint constraints (C1 to C10)</td>
+<td>business-rule and policy engine</td>
+</tr>
+<tr>
+<td>spatial query model</td>
+<td>query model over artifact + tenant state</td>
+</tr>
+<tr>
+<td><code>wadi-mcp</code> server</td>
+<td>the authenticated, self-contained MCP server</td>
+</tr>
+<tr>
+<td>architect skill (SKILL.md)</td>
+<td>the agent skill teaching the loop</td>
+</tr>
+<tr>
+<td>architect / owner personas</td>
+<td>the builder vs the reviewer/approver</td>
+</tr>
+</tbody></table>
+<h2 id="pitfalls-to-avoid">Pitfalls to avoid</h2>
+<ul>
+<li><strong>Do not expose raw CRUD as dozens of tools.</strong> That is the failure mode this method
+replaces. Give the agent an artifact and a compiler.</li>
+<li><strong>Do not make apply the only feedback.</strong> Without cheap <code>validate</code> and <code>preview</code>, the
+agent learns nothing until it has already caused a side effect.</li>
+<li><strong>Do not skip tenancy, permissions, and audit.</strong> For B2B this is the whole ballgame.</li>
+<li><strong>Do not hardcode each capability across five surfaces.</strong> Componentize, or coverage
+becomes a maintenance sink.</li>
+<li><strong>Do not make validation errors advisory.</strong> If a rule can be broken silently, the
+agent will break it.</li>
+<li><strong>Do not boil the ocean.</strong> One artifact, one loop, real value, then grow.</li>
+</ul>
+<h2 id="further-reading-in-this-repo">Further reading in this repo</h2>
+<ul>
+<li><code>documentation/06-the-method.md</code> — the general recipe for building a parametric DSL
+in another domain (the method Wadi demonstrates).</li>
+<li><code>documentation/grammar-and-data-model.md</code> — how the <code>.wdl</code> grammar relates to the
+<code>.wadi</code> schema, field types, and composition rules.</li>
+<li><code>documentation/05-extending-the-dsl.md</code> — adding a capability as one declarative unit.</li>
+<li><code>wadi-mcp/</code> — a real, self-contained MCP server bundling compiler, reference, and
+renderer.</li>
+</ul>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>

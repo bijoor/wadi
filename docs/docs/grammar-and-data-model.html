@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>From the .wadi data model to the .wdl grammar · Wadi Docs</title>
+<link rel="icon" href="/favicon.svg" />
+<style>
+:root{--bg:#faf7f2;--surface:#fff;--text:#23201c;--muted:#6d655b;--border:#e7ded1;--accent:#c2683a;--accent-soft:#f4e5da;--code:#f3ede4;--radius:14px}
+:root[data-theme="dark"],:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}}
+:root[data-theme="dark"]{--bg:#16130f;--surface:#1f1b16;--text:#f3ede4;--muted:#a89c8c;--border:#322b23;--accent:#e08a54;--accent-soft:#2c2118;--code:#241f19}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.brand{font-weight:700;color:var(--text)}
+.crumb{color:var(--muted);font-weight:600}
+.top-links{margin-left:auto;display:flex;gap:16px;font-size:.92rem}
+.top-links a{color:var(--muted)}
+.menu{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;padding:4px 10px;cursor:pointer}
+.shell{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1180px;margin:0 auto;gap:0}
+.side{position:sticky;top:57px;align-self:start;height:calc(100vh - 57px);overflow:auto;padding:24px 18px 60px;border-right:1px solid var(--border)}
+.grp{margin-bottom:22px}
+.grp-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 8px 8px}
+.side a{display:block;padding:6px 10px;border-radius:8px;color:var(--text);font-size:.93rem}
+.side a:hover{background:var(--surface);text-decoration:none}
+.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.content{min-width:0;padding:34px 40px 90px;max-width:860px}
+.toc{float:right;margin:0 0 18px 26px;max-width:230px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:.86rem}
+.toc-t{font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:6px}
+.toc a{display:block;padding:2px 0;color:var(--muted)}
+.toc a:hover{color:var(--accent)}
+.md{overflow-wrap:break-word}
+.md h1{font-size:2rem;line-height:1.2;margin:.2em 0 .5em}
+.md h2{font-size:1.4rem;margin:1.8em 0 .5em;padding-top:.4em;border-top:1px solid var(--border)}
+.md h3{font-size:1.12rem;margin:1.4em 0 .4em}
+.md h2:first-of-type{border-top:none}
+.md p,.md li{color:var(--text)}
+.md code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.08em .38em;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.md pre{background:var(--code);border:1px solid var(--border);border-radius:12px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:.86em}
+.md blockquote{margin:1em 0;padding:.4em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+.md table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;margin:1em 0;font-size:.92rem}
+.md th,.md td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.md th{background:var(--surface)}
+.md hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.md img{max-width:100%}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .menu{display:block}
+  .top-links{display:none}
+  .side{position:fixed;top:57px;left:0;width:280px;background:var(--bg);transform:translateX(-102%);transition:transform .2s;z-index:15}
+  body.nav-open .side{transform:none}
+  .content{padding:24px 20px 80px}
+  .toc{float:none;margin:0 0 20px;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Wadi</a>
+  <span class="crumb">Docs</span>
+  <nav class="top-links">
+    <a href="/app/">Open the app</a>
+    <a href="/dsl/">DSL playground</a>
+    <a href="https://github.com/bijoor/wadi">GitHub</a>
+  </nav>
+  <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+</header>
+<div class="shell">
+  <aside class="side"><div class="grp"><div class="grp-t">Guide</div><a href="index.html">Overview</a>
+<a href="concept.html">The concept</a>
+<a href="personas.html">Who it's for</a>
+<a href="authoring.html">Authoring a house</a>
+<a href="ai-assistants.html">Using an AI assistant</a>
+<a href="components.html">Components & libraries</a>
+<a href="extending.html">Extending the DSL</a>
+<a href="method.html">The method</a></div>
+<div class="grp"><div class="grp-t">DSL reference</div><a href="dsl.html">DSL syntax (.wdl)</a>
+<a href="data-model.html">Data model (.wadi)</a>
+<a href="coordinate-system.html">Coordinates & units</a>
+<a href="parametric-conventions.html">Parametric templates</a>
+<a href="roof-v2-guide.html">The roof object</a>
+<a href="conventions.html">Structural conventions</a></div>
+<div class="grp"><div class="grp-t">References</div><a class="active" href="grammar-and-data-model.html">Grammar & data model</a>
+<a href="applying-the-method-to-saas.html">Applying the method to SaaS</a></div></aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-two-artifacts-and-where-truth-lives">The two artifacts, and where truth lives</a><a href="#step-1--the-data-model-the-wadi-json-as-a-zod-schema">Step 1 — The data model: the .wadi JSON as a Zod schema</a><a href="#step-2--the-fields-spine-one-declaration-many-projections">Step 2 — The fields spine: one declaration, many projections</a><a href="#step-3--the-grammar-two-tiers">Step 3 — The grammar: two tiers</a><a href="#step-4--composition-rules-how-the-grammar-nests">Step 4 — Composition rules (how the grammar nests)</a><a href="#step-5--the-expr-sublanguage-and-the-shared-common-tail">Step 5 — The Expr sublanguage and the shared Common tail</a><a href="#step-6--bespoke-rules-vs-the-generic-objectdecl">Step 6 — Bespoke rules vs the generic ObjectDecl</a><a href="#step-7--compile-wdl-to-wadi-and-decompile">Step 7 — Compile (.wdl to .wadi) and decompile</a><a href="#so-in-what-sense-does-it-start-from-the-wadi-json">So in what sense does it &quot;start from the WADI JSON&quot;?</a><a href="#file-map">File map</a></nav>
+    <article class="md"><h1 id="from-the-wadi-data-model-to-the-wdl-grammar">From the <code>.wadi</code> data model to the <code>.wdl</code> grammar</h1>
+<p>How the Wadi Design Language (<code>.wdl</code>) grammar relates to the Wadi data model
+(<code>.wadi</code> JSON), step by step: what is generated, what is hand-written, the field
+types, and the composition rules.</p>
+<p>The headline, stated plainly first: <strong>the grammar is not auto-generated from the
+<code>.wadi</code> JSON.</strong> It is a hand-written Langium grammar, designed against the JSON&#39;s
+shape, with one shared declarative layer (<code>fields</code>) that keeps the JSON schema, the
+docs, the forms, and the generic DSL path in sync. The sections below trace the whole
+chain against the real files.</p>
+<h2 id="the-two-artifacts-and-where-truth-lives">The two artifacts, and where truth lives</h2>
+<ul>
+<li><strong><code>.wadi</code></strong> is the data-model instance. Its shape is defined by the Zod
+<code>HouseConfig</code> schema in <code>editor/src/schema/houseConfig.ts</code>. This is the source of
+truth for <em>what a house is</em>.</li>
+<li><strong><code>.wdl</code></strong> is the authored source. Its shape is defined by the Langium grammar in
+<code>wadi-dsl/src/language/wadi.langium</code>. It is ergonomic syntax for producing a
+<code>.wadi</code>.</li>
+<li>The bridge is the <strong>compiler</strong> <code>wadi-dsl/src/generator/toHouseConfig.ts</code>
+(<code>.wdl</code> AST to <code>.wadi</code> JSON) and its inverse <strong>decompiler</strong>
+<code>wadi-dsl/src/generator/fromHouseConfig.ts</code>.</li>
+</ul>
+<p>The flow:</p>
+<pre><code>.wdl  --parse--&gt;  AST  --compile--&gt;  .wadi JSON  --validate--&gt;  Zod
+                                            --resolve--&gt;  numbers  --&gt;  render
+</code></pre>
+<p>The grammar exists to emit ASTs that map cleanly onto the JSON.</p>
+<h2 id="step-1--the-data-model-the-wadi-json-as-a-zod-schema">Step 1 — The data model: the <code>.wadi</code> JSON as a Zod schema</h2>
+<p>A <code>.wadi</code> is a <code>HouseConfig</code>: a top-level object with <code>units</code>, <code>site</code>,
+<code>houseDefaults</code>, <code>variables</code>, <code>points</code>, <code>grids</code>, <code>configurator</code>, <code>layers</code>,
+<code>components</code>, and <code>floors</code>. Each floor holds an <code>objects</code> array, and every object is
+one branch of a <strong>discriminated union on <code>type</code></strong>
+(<code>editor/src/schema/houseConfig.ts</code>):</p>
+<pre><code class="language-ts">export const object = z.discriminatedUnion(&quot;type&quot;, [ room, wall, pillar, beam, … ]);
+export const objectSchema = z.union([object, registeredObjectFallback]);
+</code></pre>
+<p>The union has two halves: hand-written branches (room, wall, roof, and so on) and
+<strong>generated branches</strong> imported from <code>schema/generated/objects.generated.ts</code>. That
+generated file is where the <code>fields</code> layer feeds the JSON schema.</p>
+<h2 id="step-2--the-fields-spine-one-declaration-many-projections">Step 2 — The <code>fields</code> spine: one declaration, many projections</h2>
+<p>This is the part that literally starts from a single declaration and fans out. A
+primitive declares its shape once as <code>FieldSpec[]</code>. Example,
+<code>editor/src/schema/fields/beam.ts</code>:</p>
+<pre><code class="language-ts">export const beamFields: FieldSpec[] = [
+  { name: &quot;name&quot;,     kind: &quot;text&quot;,   required: false, doc: &quot;Label&quot; },
+  { name: &quot;x&quot;,        kind: &quot;coord&quot;,  doc: &quot;Top-left X&quot;, unit: &quot;project units&quot; },
+  { name: &quot;width&quot;,    kind: &quot;extent&quot;, doc: &quot;X extent&quot;,  unit: &quot;project units&quot; },
+  { name: &quot;height&quot;,   kind: &quot;extent&quot;, required: false, doc: &quot;Vertical thickness&quot; },
+  { name: &quot;z_offset&quot;, kind: &quot;coord&quot;,  required: false },
+];
+</code></pre>
+<p>The domain-neutral engine in <code>kernel/fieldSchema.ts</code> <strong>projects</strong> each field onto
+four surfaces:</p>
+<ol>
+<li><strong>Zod source</strong> (<code>fieldsToZodSource</code>). A codegen script,
+<code>editor/scripts/gen-primitives.mjs</code>, writes it into <code>objects.generated.ts</code>, which
+houseConfig imports into the union. This is how <code>fields</code> becomes the JSON
+validator and the <code>z.infer</code> TypeScript type.</li>
+<li><strong>Docs</strong> (<code>fieldsToDocRows</code>), producing the generated <code>data-model.md</code>.</li>
+<li><strong>Form control</strong> (<code>fieldToFormControl</code>), producing the property-editor widget.</li>
+<li><strong>DSL descriptor</strong> (via <code>wadi-dsl/src/generator/descriptors.ts</code>), driving the
+generic grammar path (Step 6).</li>
+</ol>
+<p>One declaration, and the schema/docs/form/DSL cannot drift, because they are all
+derived from it. A parity test asserts <code>fieldsToZod</code> equals the generated schema.</p>
+<p>The registry of which primitives are generated this way is
+<code>editor/src/schema/fields/index.ts</code> (<code>PRIMITIVE_FIELD_DECLS</code>).</p>
+<h3 id="field-types-the-kind-presets">Field types (the <code>kind</code> presets)</h3>
+<p>Field types are two-tier (<code>kernel/fieldSchema.ts</code>):</p>
+<ul>
+<li><strong>Tier 1 (closed):</strong> atoms <code>number | string | boolean | literal</code>; combinators
+<code>union</code>, <code>list</code>, <code>optional</code>; constraints
+<code>positive | nonneg | int | min | max | pattern</code>. This is the only part that is
+engine code.</li>
+<li><strong>Tier 2 (open, data):</strong> named <strong>presets</strong> composed from Tier 1:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><code>kind</code></th>
+<th>resolves to</th>
+<th>used for</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>coord</code></td>
+<td>number</td>
+<td>x, y, z_offset</td>
+</tr>
+<tr>
+<td><code>extent</code></td>
+<td>number &gt; 0</td>
+<td>width, length, height</td>
+</tr>
+<tr>
+<td><code>nonneg</code></td>
+<td>number ≥ 0</td>
+<td>thickness</td>
+</tr>
+<tr>
+<td><code>int</code></td>
+<td>integer</td>
+<td>step counts</td>
+</tr>
+<tr>
+<td><code>text</code></td>
+<td>string</td>
+<td>name, label</td>
+</tr>
+<tr>
+<td><code>flag</code></td>
+<td>boolean or number</td>
+<td>enabled-like switches</td>
+</tr>
+<tr>
+<td><code>enum</code></td>
+<td>literal union (values from the spec)</td>
+<td>direction, roof_type</td>
+</tr>
+</tbody></table>
+<p>A <code>FieldSpec</code> carries <code>name</code>, <code>kind</code>, <code>required</code> (default true; false makes it
+<code>.optional()</code>), <code>values</code> (for enum), plus doc-only <code>doc</code>/<code>unit</code>/<code>label</code>. Adding a new
+field type is data (a new preset), not an engine change.</p>
+<h2 id="step-3--the-grammar-two-tiers">Step 3 — The grammar: two tiers</h2>
+<p>The grammar is deliberately split by a banner into two tiers
+(<code>wadi-dsl/src/language/wadi.langium</code>):</p>
+<ul>
+<li><strong>Parametric core (domain-neutral):</strong> <code>Var</code>, <code>Point</code>, <code>Grid</code>/<code>GridLine</code>, the <code>Expr</code>
+formula sublanguage, <code>Configurator</code>, <code>TemplateMeta</code>, and the <code>Raw</code> JSON escape.
+Nothing here mentions a house. To formalize a different domain you keep this tier
+verbatim.</li>
+<li><strong>Wadi vocabulary (the domain):</strong> <code>Units</code>, <code>Site</code>, <code>Defaults</code>, <code>Floor</code>, <code>Room</code>,
+<code>Wall</code>, <code>Pillar</code>, <code>Beam</code>, <code>Roof</code>, and the rest. This is the only tier you rewrite to
+retarget the method.</li>
+</ul>
+<h2 id="step-4--composition-rules-how-the-grammar-nests">Step 4 — Composition rules (how the grammar nests)</h2>
+<p>The entry rule mirrors the JSON&#39;s containment:</p>
+<pre><code>Model:  (Import | AssetDecl | Var | Point | Grid | Configurator | LayerDecl | ComponentDef)*
+        (&#39;house&#39; ID &#39;{&#39; … (… | Floor)* &#39;}&#39;)?
+</code></pre>
+<p>Two composition facts fall out of this:</p>
+<ul>
+<li><strong>A <code>.wdl</code> file is a module.</strong> The same top-level declarations are legal both
+outside and inside <code>house { … }</code>, and they merge into the same arrays. A file with
+no <code>house</code> block is a pure asset/component library (the unit of reuse and import).</li>
+<li><strong>Containment matches the JSON:</strong> <code>house</code> to <code>floors</code> to <code>Floor</code> to <code>FloorObject*</code>.
+A <code>Floor</code> contains a <code>FloorObject</code>, which is the grammar&#39;s mirror of the object
+union:</li>
+</ul>
+<pre><code>FloorObject: Room | Wall | Pillar | Beam | FloorSlab | Plinth | Ground
+           | Staircase | SpiralStaircase | KitchenPlatform | Item | GlbModel
+           | Component | Roof | Raw | ObjectDecl;
+</code></pre>
+<p>Deeper nesting is itself compositional:</p>
+<ul>
+<li><strong>Room to walls to openings.</strong> <code>Room</code> optionally contains <code>RoomWall</code> and <code>RoomItem</code>;
+a <code>RoomWall</code> optionally contains <code>Opening</code> (door/window). So
+<code>room … { wall north east { window … } item … }</code> nests three levels.</li>
+<li><strong>Components.</strong> <code>ComponentDef</code> is a mini-house in local coordinates; <code>Component</code>
+(<code>use Comp at (…)</code>) stamps it onto a floor. <code>use target=[ComponentDef:QualifiedName]</code>
+is a real Langium <strong>cross-reference</strong>, resolved by the Wadi scope provider across
+imported-module documents (in-file <code>Comp</code> or namespaced <code>ns.Comp</code>). Asset references
+for furniture (<code>item f.&quot;bed_double&quot;</code>) work the same way.</li>
+<li><strong>Grid.</strong> <code>Grid</code> contains <code>GridLine</code>s (<code>1 @ 60 thick 9 role structural</code>), a
+first-class parametric scaffold that rooms and pillars reference by name.</li>
+</ul>
+<h2 id="step-5--the-expr-sublanguage-and-the-shared-common-tail">Step 5 — The <code>Expr</code> sublanguage and the shared <code>Common</code> tail</h2>
+<p>Two grammar features cut across every primitive:</p>
+<ul>
+<li><strong><code>Expr</code></strong> is a small expression sublanguage: <code>+ - * /</code>, unary minus, the pure
+functions <code>min/max/clamp/round/floor/ceil/abs</code>, and dotted references
+(<code>bay</code>, <code>main.x1</code>, <code>House.W</code>). It is a faithful port of the runtime evaluator in
+<code>editor/src/param/formula.ts</code>. Any numeric field that can be parametric is typed
+<code>= Expr</code> in the grammar. At compile time each <code>Expr</code> is serialized back to a
+<code>&quot;= …&quot;</code> string (or a bare number when it is a literal); see Step 7.</li>
+<li><strong><code>fragment Common</code></strong> is the optional attribute tail
+(<code>z_offset</code>, <code>enabled</code>, <code>layer</code>) that every object carries. It is a Langium
+<em>fragment</em>, so it inlines into each rule with no wrapper AST node, and it mirrors the
+common tail the field engine appends to every generated Zod object
+(<code>COMMON_SOURCE_LINES</code> in <code>kernel/fieldSchema.ts</code>).</li>
+</ul>
+<h2 id="step-6--bespoke-rules-vs-the-generic-objectdecl">Step 6 — Bespoke rules vs the generic <code>ObjectDecl</code></h2>
+<p>Every shipped object type has an <strong>ergonomic, keyword-led rule</strong> (for example
+<code>Room</code>, <code>Wall</code>, <code>SpiralStaircase</code>): <code>at (x, y)</code> placement plus named clauses, tuned to
+read well. These are sugar.</p>
+<p>Underneath sits one <strong>generic rule</strong>, <code>ObjectDecl</code>, the last branch of <code>FloorObject</code>:</p>
+<pre><code>ObjectDecl:
+    type=QualifiedName name=NameRef?
+    (&#39;(&#39; args+=Value (&#39;,&#39; args+=Value)* &#39;)&#39;)?
+    (&#39;{&#39; fields+=FieldAssign* &#39;}&#39;)?
+    Common;
+</code></pre>
+<p>It parses <em>any</em> primitive by name; the semantics (positional-arg order, valid field
+names) come from the descriptor manifest (<code>descriptors.ts</code>), which reads the very same
+<code>fields</code> from Step 2. The consequence: a new primitive can be added and used from the
+DSL with <strong>zero grammar edits and no <code>langium generate</code></strong>. Keyword-led rules win when
+they match; a non-keyword type name falls through to <code>ObjectDecl</code>.</p>
+<p>One lexer detail makes this work: field-name keywords (<code>radius</code>, <code>direction</code>,
+<code>total_height</code>, and so on) are made <strong>soft</strong> by the token builder
+(<code>wadi-token-builder.ts</code>), so they lex as <code>ID</code> and match <code>FieldKey</code> without being
+enumerated. Only a key that collides with a <em>hard</em> leader keyword (<code>at</code>, <code>size</code>, an
+object type) needs quoting (<code>&quot;height&quot; 8</code>).</p>
+<h2 id="step-7--compile-wdl-to-wadi-and-decompile">Step 7 — Compile (<code>.wdl</code> to <code>.wadi</code>) and decompile</h2>
+<p><code>compileDsl(wdl)</code> (<code>toHouseConfig.ts</code>) does three things: <strong>parse</strong> with Langium,
+<strong>link</strong> cross-references (<code>use</code> targets, asset refs), then <strong>map</strong> the AST onto the
+<code>HouseConfig</code> JSON. The parametric layer is preserved rather than evaluated:</p>
+<pre><code class="language-ts">// exprToValue: a literal number stays a number; anything else becomes a formula string
+exprToValue(e) =&gt; isNum(e) ? e.value : `= ${exprToFormula(e)}`
+</code></pre>
+<p>So <code>width (House.W / 2)</code> compiles to <code>&quot;formulas&quot;: { &quot;width&quot;: &quot;= House.W / 2&quot; }</code> with a
+numeric placeholder, exactly the shape the Zod schema expects. Folding those formulas
+to final numbers is a <strong>separate</strong> step, <code>resolveParametric</code> (<code>editor/src/param/</code>),
+run by the app, the MCP server, and <code>check.sh</code>. Keeping compile and resolve separate
+is what lets the editor show a partial model when a formula fails, while the checkers
+still flag it.</p>
+<p>The <strong>decompiler</strong> <code>fromHouseConfig.ts</code> (<code>emitWdl</code>) is the inverse: it turns a
+<code>.wadi</code> back into an editable <code>.wdl</code>, re-lifting <code>&quot;= …&quot;</code> strings into <code>Expr</code> syntax and
+reconstructing the parametric layer (variables, points, grids, components, configurator).
+A round-trip test asserts <code>compile(emit(cfg))</code> deep-equals <code>cfg</code>.</p>
+<h2 id="so-in-what-sense-does-it-start-from-the-wadi-json">So in what sense does it &quot;start from the WADI JSON&quot;?</h2>
+<p>Two senses, and it helps to keep them separate:</p>
+<ul>
+<li><strong>Conceptually / by design:</strong> the JSON (the Zod <code>HouseConfig</code>) is the target. The
+grammar is authored so its AST maps onto that JSON, and the compiler is the explicit
+mapping. Change the JSON&#39;s meaning and you change the grammar and compiler to match.</li>
+<li><strong>Mechanically, for one path:</strong> the <code>fields</code> layer <em>is</em> generated-from-once. A
+primitive&#39;s <code>fields</code> produce the JSON schema (via codegen), the docs, the form, and
+the generic DSL descriptor together. For a generic (<code>ObjectDecl</code>) primitive, the DSL
+surface really is derived from the same declaration as the JSON schema. For the
+keyword-sugared primitives, the bespoke grammar rule is hand-written, but its
+<em>meaning</em> still bottoms out in the same <code>fields</code>.</li>
+</ul>
+<p>That two-tier split (a neutral parametric core plus a domain vocabulary, over a
+declarative field engine) is the reusable method; see <code>documentation/06-the-method.md</code>
+and <code>documentation/05-extending-the-dsl.md</code>.</p>
+<h2 id="file-map">File map</h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Data model (source of truth)</td>
+<td><code>editor/src/schema/houseConfig.ts</code></td>
+</tr>
+<tr>
+<td>Per-primitive field declarations</td>
+<td><code>editor/src/schema/fields/*.ts</code> (+ <code>index.ts</code>)</td>
+</tr>
+<tr>
+<td>Field engine (kinds, projections)</td>
+<td><code>kernel/fieldSchema.ts</code></td>
+</tr>
+<tr>
+<td>Codegen: fields to Zod</td>
+<td><code>editor/scripts/gen-primitives.mjs</code> to <code>schema/generated/objects.generated.ts</code></td>
+</tr>
+<tr>
+<td>Grammar</td>
+<td><code>wadi-dsl/src/language/wadi.langium</code></td>
+</tr>
+<tr>
+<td>Generic-path descriptors</td>
+<td><code>wadi-dsl/src/generator/descriptors.ts</code></td>
+</tr>
+<tr>
+<td>Formula runtime (grammar mirror)</td>
+<td><code>editor/src/param/formula.ts</code></td>
+</tr>
+<tr>
+<td>Compiler (<code>.wdl</code> to <code>.wadi</code>)</td>
+<td><code>wadi-dsl/src/generator/toHouseConfig.ts</code></td>
+</tr>
+<tr>
+<td>Decompiler (<code>.wadi</code> to <code>.wdl</code>)</td>
+<td><code>wadi-dsl/src/generator/fromHouseConfig.ts</code></td>
+</tr>
+</tbody></table>
+</article>
+  </main>
+</div>
+<script>
+  // Respect the site theme toggle if present; default follows the OS.
+  try { const t = localStorage.getItem('wadi-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  document.querySelectorAll('.side a, .toc a').forEach(a => a.addEventListener('click', () => document.body.classList.remove('nav-open')));
+</script>
+</body>
+</html>
