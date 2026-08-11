@@ -41,11 +41,24 @@ fi
 
 NOTES="Desktop builds of Wadi ${TAG}.
 
-These builds are unsigned:
-- macOS: right-click the app → Open (once) to get past Gatekeeper.
+These builds are not yet signed with a developer certificate, so the OS shows a
+one-time warning on first open. This is expected; the app is not malware.
 
-Built locally (GitHub Actions is currently unavailable on this account); Windows is
-not included yet."
+macOS (first open):
+1. Move Wadi into your Applications folder.
+2. Double-click it. When 'Apple could not verify Wadi...' appears, click Done (NOT Move to Bin).
+3. Open System Settings > Privacy & Security, scroll to the Security section, and click
+   'Open Anyway' next to Wadi. Authenticate, then click Open.
+   If 'Open Anyway' is missing, open Terminal and run:
+       xattr -dr com.apple.quarantine /Applications/Wadi.app
+   then reopen Wadi.
+
+Linux: install the .deb, e.g.  sudo dpkg -i Wadi_${VERSION}_amd64.deb  (or open it with
+your software installer).
+
+Windows: not included in this release (coming soon).
+
+Built locally (GitHub Actions is currently unavailable on this account)."
 
 # Create the draft release (idempotent: reuse if the tag's release already exists).
 if gh release view "$TAG" >/dev/null 2>&1; then

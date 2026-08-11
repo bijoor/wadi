@@ -24,9 +24,10 @@ name: Release desktop app
 # installers to a GitHub Release. The release is created as a DRAFT so you
 # can review the assets and edit notes before publishing.
 #
-# NOTE: builds are UNSIGNED. macOS users open via right-click → Open (once);
-# Windows users click "More info → Run anyway" on SmartScreen. Add signing
-# secrets later if you want to remove those prompts.
+# NOTE: builds are UNSIGNED. On first open, macOS users go to System Settings >
+# Privacy & Security > "Open Anyway" (the old right-click → Open no longer overrides
+# on macOS Sequoia); Windows users click "More info → Run anyway" on SmartScreen. Add
+# Apple Developer ID signing + notarization secrets to remove the macOS prompt.
 
 on:
   # Parked: manual-only. To revive tag-triggered releases once Actions billing is
@@ -97,8 +98,10 @@ jobs:
           releaseBody: |
             Desktop builds of Wadi.
 
-            These builds are unsigned:
-            - macOS: right-click the app → Open (once) to get past Gatekeeper.
+            These builds are unsigned, so the OS shows a one-time warning on first open:
+            - macOS: click Done, then open System Settings → Privacy & Security and click
+              "Open Anyway" next to Wadi. If that option is missing, run
+              `xattr -dr com.apple.quarantine /Applications/Wadi.app` and reopen.
             - Windows: on the SmartScreen prompt, click "More info" → "Run anyway".
           releaseDraft: true
           prerelease: false
