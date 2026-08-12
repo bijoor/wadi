@@ -55,9 +55,21 @@ with an Apple Developer ID certificate and notarize:
    in `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (an **app-specific**
    password from appleid.apple.com), and `APPLE_TEAM_ID`.
 3. Check it: `scripts/check-signing.sh` prints whether signing + notarization are ready.
-4. Build as usual: `scripts/release-desktop.sh` picks up the secrets and
-   `cargo tauri build` signs + notarizes + staples the app automatically (notarization
-   adds a few minutes). Unsigned builds still work when `.signing.env` is absent.
+4. Build as usual: `scripts/release-desktop.sh` picks up the secrets and produces a
+   fully clean DMG. tauri signs + notarizes + staples the `.app`; the script then also
+   signs, **notarizes, and staples the DMG itself** (tauri does not notarize the DMG, and
+   an un-notarized DMG still trips Gatekeeper on download). Unsigned builds still work
+   when `.signing.env` is absent.
+
+Two gotchas the script now handles:
+- **Flaky timestamp server.** DMG signing needs a secure timestamp from
+  `timestamp.apple.com` (HTTPS). On some networks that is intermittently blocked, and
+  codesign fails with *"A timestamp was expected but was not found."* The script retries
+  the DMG signing a few times; if it still fails, use a more reliable network (the
+  notarization endpoint is separate and usually fine). Check with
+  `curl -sI https://timestamp.apple.com/ts01`.
+- **DMG notarization.** The script uploads the DMG to Apple and staples the ticket, so
+  `spctl -a -t open ... Wadi_<v>_universal.dmg` reports **Notarized Developer ID**.
 
 Once you ship a signed release, drop the macOS "first open" warning wording from the
 release notes and the website, since it no longer applies.

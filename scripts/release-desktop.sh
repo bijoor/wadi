@@ -70,16 +70,47 @@ if [ "$DO_MAC" = "1" ]; then
     echo "  signing:     none (unsigned build; fill scripts/.signing.env to sign — see check-signing.sh)"
   fi
   rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null 2>&1 || true
+  # tauri signs + notarizes + staples the .app, then signs the .dmg. That final DMG
+  # signing can fail transiently on Apple's timestamp server; do NOT abort on it — the
+  # .app is already notarized by then, and we finish the DMG ourselves below.
   cargo tauri build --target universal-apple-darwin \
-    --config '{"build":{"beforeBuildCommand":""}}'
+    --config '{"build":{"beforeBuildCommand":""}}' \
+    || echo "  ⚠ tauri build returned non-zero (often only the DMG signing) — finishing the DMG below"
 
+  APP_MAC="src-tauri/target/universal-apple-darwin/release/bundle/macos/Wadi.app"
   DMG_MAC="src-tauri/target/universal-apple-darwin/release/bundle/dmg/Wadi_${VERSION}_universal.dmg"
-  if [ -f "$DMG_MAC" ]; then
-    echo "  ✓ $DMG_MAC ($(du -h "$DMG_MAC" | cut -f1))"
-  else
-    echo "  ✗ expected DMG not found at $DMG_MAC" >&2
-    exit 1
+  [ -f "$DMG_MAC" ] || { echo "  ✗ expected DMG not found at $DMG_MAC" >&2; exit 1; }
+
+  # When signing is configured, make the DMG fully distributable: SIGNED (with a
+  # timestamp), NOTARIZED, and STAPLED. tauri notarizes only the .app, so an
+  # un-notarized DMG would still trip Gatekeeper on download (spctl: "Unnotarized").
+  if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+    # The .app MUST be notarized (the expensive step). If not, the build truly failed.
+    if ! spctl -a "$APP_MAC" >/dev/null 2>&1; then
+      echo "  ✗ the .app is not notarized — the build failed (see output above)" >&2; exit 1
+    fi
+    # 1. Ensure the DMG is signed with a timestamp. Apple's timestamp server is flaky
+    #    on some networks (HTTPS to timestamp.apple.com), so retry a few times.
+    if ! codesign -dv --verbose=4 "$DMG_MAC" 2>&1 | grep -q "^Timestamp="; then
+      echo "  signing the DMG (retrying if Apple's timestamp server is flaky)…"
+      for i in 1 2 3 4 5 6; do
+        if codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$DMG_MAC" 2>/dev/null; then break; fi
+        echo "    timestamp attempt $i failed; retrying…"
+      done
+      codesign -dv --verbose=4 "$DMG_MAC" 2>&1 | grep -q "^Timestamp=" \
+        || { echo "  ✗ could not timestamp-sign the DMG — check the network to timestamp.apple.com (port 443)" >&2; exit 1; }
+    fi
+    # 2. Notarize + staple the DMG (notarytool uses a different endpoint than the timestamp server).
+    if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+      if ! xcrun stapler validate "$DMG_MAC" >/dev/null 2>&1; then
+        echo "  notarizing the DMG (uploads to Apple; a few minutes)…"
+        xcrun notarytool submit "$DMG_MAC" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" --wait
+        xcrun stapler staple "$DMG_MAC"
+      fi
+    fi
+    echo "  Gatekeeper: $(spctl -a -t open --context context:primary-signature "$DMG_MAC" 2>&1)"
   fi
+  echo "  ✓ $DMG_MAC ($(du -h "$DMG_MAC" | cut -f1))"
 else
   echo "▶ [1-2/3] Skipping macOS (--linux-only); reusing the docs/ built by a prior run."
 fi
@@ -110,8 +141,10 @@ if [ "$DO_LINUX" = "1" ]; then
     -v wadi-lxcargo:/root/.cargo -v wadi-lxrustup:/root/.rustup -v wadi-lxtarget:/tmp/lxtarget \
     -w /w ubuntu:22.04 bash -euo pipefail -c '
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -y -qq curl build-essential libwebkit2gtk-4.1-dev \
+    # Retry apt fetches: some networks intermittently 403/timeout on archive.ubuntu.com.
+    APT_OPTS="-o Acquire::Retries=6 -o Acquire::http::Timeout=30"
+    apt-get $APT_OPTS update -qq
+    apt-get $APT_OPTS install -y -qq --fix-missing curl build-essential libwebkit2gtk-4.1-dev \
       libappindicator3-dev librsvg2-dev patchelf libssl-dev file >/dev/null
     [ -x "$HOME/.cargo/bin/rustc" ] || curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal >/dev/null 2>&1
     . "$HOME/.cargo/env"

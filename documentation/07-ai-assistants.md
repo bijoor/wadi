@@ -30,12 +30,6 @@ This page is the step-by-step setup. For the "who and why" see
 > coming soon). Install it
 > and open it once before you start. Without it, the assistant can still check and draw
 > 2-D previews, but you will not get the live 3-D model that updates as it works.
->
-> **First open on macOS:** these builds are not signed yet, so macOS shows a one-time
-> warning. Click **Done**, then open **System Settings → Privacy & Security**, scroll to
-> the Security section, and click **Open Anyway** next to Wadi. If that option is not
-> there, run `xattr -dr com.apple.quarantine /Applications/Wadi.app` in Terminal and
-> reopen the app.
 
 ## Step by step
 

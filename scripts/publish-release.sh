@@ -29,8 +29,10 @@ echo "▶ Collecting installers for ${TAG}…"
 add "src-tauri/target/universal-apple-darwin/release/bundle/dmg/Wadi_${VERSION}_universal.dmg"
 # Fallback: an Apple-Silicon-only DMG, if that's all you built.
 [ ${#ASSETS[@]} -eq 0 ] && add "src-tauri/target/release/bundle/dmg/Wadi_${VERSION}_aarch64.dmg"
-for f in src-tauri/target/release/bundle/appimage/*.AppImage \
-         src-tauri/target/release/bundle/deb/*.deb; do
+# Version-specific globs, so a stale installer from a previous version is never
+# attached to this release by mistake.
+for f in src-tauri/target/release/bundle/appimage/Wadi_${VERSION}_*.AppImage \
+         src-tauri/target/release/bundle/deb/Wadi_${VERSION}_*.deb; do
   add "$f"
 done
 
@@ -41,24 +43,13 @@ fi
 
 NOTES="Desktop builds of Wadi ${TAG}.
 
-These builds are not yet signed with a developer certificate, so the OS shows a
-one-time warning on first open. This is expected; the app is not malware.
-
-macOS (first open):
-1. Move Wadi into your Applications folder.
-2. Double-click it. When 'Apple could not verify Wadi...' appears, click Done (NOT Move to Bin).
-3. Open System Settings > Privacy & Security, scroll to the Security section, and click
-   'Open Anyway' next to Wadi. Authenticate, then click Open.
-   If 'Open Anyway' is missing, open Terminal and run:
-       xattr -dr com.apple.quarantine /Applications/Wadi.app
-   then reopen Wadi.
+macOS: signed with a Developer ID and notarized by Apple. Open the .dmg and drag Wadi
+into your Applications folder. It opens with no security warning.
 
 Linux: install the .deb, e.g.  sudo dpkg -i Wadi_${VERSION}_amd64.deb  (or open it with
 your software installer).
 
-Windows: not included in this release (coming soon).
-
-Built locally (GitHub Actions is currently unavailable on this account)."
+Windows: not included in this release (coming soon)."
 
 # Create the draft release (idempotent: reuse if the tag's release already exists).
 if gh release view "$TAG" >/dev/null 2>&1; then
