@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Wadi",
-  "version": "0.1.1",
-  "identifier": "house.wadi.app",
+  "version": "0.1.2",
+  "identifier": "house.wadi.desktop",
   "build": {
     "frontendDist": "../docs",
     "devUrl": "http://localhost:1420",
