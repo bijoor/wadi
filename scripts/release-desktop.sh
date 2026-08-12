@@ -25,6 +25,12 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 
+# Optional Apple signing/notarization secrets (gitignored). When present, the macOS
+# `cargo tauri build` below auto-signs + notarizes from these env vars. Absent → the
+# build is unsigned (still works; users clear Gatekeeper manually). See
+# scripts/.signing.env.example and scripts/check-signing.sh.
+[ -f "$REPO/scripts/.signing.env" ] && { set -a; . "$REPO/scripts/.signing.env"; set +a; }
+
 DO_LINUX=0; DO_MAC=1
 case "${1:-}" in
   --linux)       DO_LINUX=1 ;;                 # macOS + Linux
@@ -52,6 +58,17 @@ if [ "$DO_MAC" = "1" ]; then
   #    We build the frontend ourselves above and pass an EMPTY beforeBuildCommand, because
   #    `cargo tauri build`'s hook can run from the wrong cwd (a known repo gotcha).
   echo "▶ [2/3] Building macOS universal .app + .dmg…"
+  # Signing/notarization status (tauri reads the APPLE_* env vars during the bundle step).
+  if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+    echo "  signing as: ${APPLE_SIGNING_IDENTITY}"
+    if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+      echo "  notarizing:  yes (Apple ID ${APPLE_ID}, team ${APPLE_TEAM_ID}) — this adds a few minutes"
+    else
+      echo "  notarizing:  NO — set APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID to notarize"
+    fi
+  else
+    echo "  signing:     none (unsigned build; fill scripts/.signing.env to sign — see check-signing.sh)"
+  fi
   rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null 2>&1 || true
   cargo tauri build --target universal-apple-darwin \
     --config '{"build":{"beforeBuildCommand":""}}'

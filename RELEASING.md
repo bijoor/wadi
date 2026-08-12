@@ -41,6 +41,27 @@ The download links on the landing page go live once the release is public.
 Bump the version in `src-tauri/tauri.conf.json` before building a new version; the
 scripts read the version from there and name the tag/assets to match.
 
+## Signed + notarized macOS builds
+
+Without signing, macOS shows a Gatekeeper warning on first open. To remove it, sign
+with an Apple Developer ID certificate and notarize:
+
+1. One-time: create + install a **Developer ID Application** certificate (Keychain
+   Access → Certificate Assistant → request a cert, create it on developer.apple.com
+   using the **G2 Sub-CA**, download + double-click to install, then install the
+   `DeveloperIDG2CA.cer` intermediate from apple.com/certificateauthority if the cert
+   shows "not trusted"). Confirm with `security find-identity -v -p codesigning`.
+2. Copy `scripts/.signing.env.example` to `scripts/.signing.env` (gitignored) and fill
+   in `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (an **app-specific**
+   password from appleid.apple.com), and `APPLE_TEAM_ID`.
+3. Check it: `scripts/check-signing.sh` prints whether signing + notarization are ready.
+4. Build as usual: `scripts/release-desktop.sh` picks up the secrets and
+   `cargo tauri build` signs + notarizes + staples the app automatically (notarization
+   adds a few minutes). Unsigned builds still work when `.signing.env` is absent.
+
+Once you ship a signed release, drop the macOS "first open" warning wording from the
+release notes and the website, since it no longer applies.
+
 ## Deploy the website
 
 ```bash
