@@ -20,10 +20,15 @@
 // Scope limits which PAGES it controls — not which requests it sees — so it
 // still intercepts the page's root-absolute and cross-origin fetches.
 
-const VERSION = "98ef003b";
+const VERSION = "7a3eae4b";
 const SHELL_CACHE = `wadi-shell-${VERSION}`;
 const RUNTIME_CACHE = `wadi-runtime-${VERSION}`;
-const PRECACHE = ["./","./index.html","./assets/viewer-CI5XQIwH.js","./assets/viewer-QTnfLwEv.js","./assets/viewer-DBRtTYU9.css","./assets/viewer-CxKSkZN3.js","./assets/viewer-BS78n_7P.js","./assets/viewer-BymiK9as.js","./assets/viewer-s_7dLOsV.js","./assets/viewer-0-trPDS4.js","./assets/viewer-Ds4qhVmH.js","./assets/viewer-DYdYCEq0.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.json","./templates/family_home.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
+const PRECACHE = ["./","./index.html","./assets/viewer-BsfAZkPj.js","./assets/viewer-QTnfLwEv.js","./assets/viewer-DBRtTYU9.css","./assets/viewer-BKyky5ca.js","./assets/viewer-BoGj8fWf.js","./assets/viewer-BSPpRCzO.js","./assets/viewer-s_7dLOsV.js","./assets/viewer-CTB53OAJ.js","./assets/viewer-Bk5SRl4z.js","./assets/viewer-BRlilh2g.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.json","./templates/family_home.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
+
+// Web Share Target inbox: a shared .wadi file is stashed here (UNVERSIONED, so it
+// survives a worker update) for the app to pick up on its next boot.
+const SHARE_INBOX = "wadi-share-inbox";
+const SHARE_INBOX_KEY = "/__shared_wadi__";
 
 // Absolute URL of the app-shell document, used as the navigation fallback.
 const SHELL_URL = new URL("index.html", self.registration.scope).href;
@@ -53,7 +58,7 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((k) => k !== SHELL_CACHE && k !== RUNTIME_CACHE)
+          .filter((k) => k !== SHELL_CACHE && k !== RUNTIME_CACHE && k !== SHARE_INBOX)
           .map((k) => caches.delete(k)),
       );
       await self.clients.claim();
@@ -68,6 +73,38 @@ function isHashedAsset(url) {
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
+
+  // Web Share Target: when the OS shares a file INTO Wadi, it POSTs it to
+  // <scope>share-target (declared in the manifest). Stash the file and redirect to
+  // the app, which loads it on boot. This is what makes a .wadi shared from another
+  // app (WhatsApp, Files, …) open in the installed Wadi PWA on Android.
+  if (req.method === "POST" && new URL(req.url).pathname.endsWith("/share-target")) {
+    event.respondWith(
+      (async () => {
+        try {
+          const form = await req.formData();
+          const file =
+            form.get("wadi") ||
+            [...form.values()].find((v) => v && typeof v.arrayBuffer === "function");
+          if (file) {
+            const cache = await caches.open(SHARE_INBOX);
+            await cache.put(
+              SHARE_INBOX_KEY,
+              new Response(file, { headers: { "content-type": "application/json" } }),
+            );
+          }
+        } catch (_e) {
+          /* ignore — the app shows the default house if nothing was stashed */
+        }
+        // 303 → the client GETs the shell; boot reads the stashed file.
+        return Response.redirect(
+          new URL("index.html?shared=1", self.registration.scope).href,
+          303,
+        );
+      })(),
+    );
+    return;
+  }
 
   // Only handle GET over http(s); leave POST/PUT, range media, extensions, etc.
   if (req.method !== "GET") return;

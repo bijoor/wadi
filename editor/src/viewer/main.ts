@@ -55,6 +55,8 @@ import {
   saveAsWadi,
   saveText,
   saveBinary,
+  serializeConfig,
+  toWadiName,
 } from "../io/fileIO";
 import {
   encodeConfigToHash,
@@ -243,7 +245,36 @@ async function bootViewer(): Promise<void> {
   // TELL the recipient instead of silently showing the default house (which
   // looks like the link "worked" but with the wrong design).
   let shareLinkError: string | null = null;
-  if (!loadedFromOpenFile && location.hash.length > 1) {
+
+  // Web Share Target: a .wadi shared INTO the installed PWA is stashed by the service
+  // worker (see pwa/sw.js), which redirects here with ?shared=1. Load it (consumed
+  // once) before the hash/default. This is how a file shared from WhatsApp/Files opens
+  // in Wadi on Android without a link.
+  if (
+    !loadedFromOpenFile &&
+    new URLSearchParams(location.search).has("shared") &&
+    typeof caches !== "undefined"
+  ) {
+    try {
+      const inbox = await caches.open("wadi-share-inbox");
+      const res = await inbox.match("/__shared_wadi__");
+      if (res) {
+        await inbox.delete("/__shared_wadi__");
+        const parsed = validate(JSON.parse(await res.text()), { tolerant: true });
+        if (parsed.ok && parsed.data) {
+          useConfigStore.getState().loadConfig(parsed.data, "shared file");
+          loadedFromHash = true; // a specific design is loaded — skip the default auto-load
+        } else {
+          shareLinkError =
+            "This shared design couldn't be opened — it may be from a newer version of Wadi.";
+        }
+      }
+    } catch {
+      /* ignore — fall through to the normal load */
+    }
+  }
+
+  if (!loadedFromOpenFile && !loadedFromHash && location.hash.length > 1) {
     const looksLikeShareLink = /^#w1=/.test(location.hash);
     const raw = await decodeConfigFromHash(location.hash);
     if (raw) {
@@ -1672,18 +1703,36 @@ function wireHeaderButtons(): void {
     if (!cfg) return;
     try {
       const url = buildShareUrl(await encodeConfigToHash(cfg));
-      const copied = await copyText(url);
+
+      // Large design: the link is too long to open reliably on some phones. Prefer
+      // sharing the .wadi FILE through the OS share sheet (works at any size; the
+      // recipient opens it via Wadi's share target or the 📂 Load button). Fall back
+      // to the link when the platform can't share files (e.g. desktop).
       if (url.length > SHARE_URL_WARN_LEN) {
-        // Big design: warn regardless of copy success. The link still works on
-        // computers/iPad, so we keep it copied and point large shares at file export.
+        const name = toWadiName(useConfigStore.getState().filename ?? undefined);
+        const file = new File([serializeConfig(cfg)], name, { type: "application/json" });
+        if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: name, text: "A Wadi home design" });
+            return; // shared as a file
+          } catch (e) {
+            if ((e as Error).name === "AbortError") return; // user cancelled the sheet
+            /* otherwise fall through to the link */
+          }
+        }
+        const copied = await copyText(url);
         alert(
-          `This design makes a long share link (${url.length.toLocaleString()} characters).\n\n` +
-            `It opens on computers and iPad, but some phones (especially Android) limit link ` +
-            `length and may show "corrupt or truncated". For a large design, use "Export .wadi" ` +
-            `and share the file instead.` +
-            (copied ? "\n\nThe link has still been copied to your clipboard." : ""),
+          `This design is large (a ${url.length.toLocaleString()}-character link).\n\n` +
+            `Some phones (especially Android) may not open such a link. This device can't share ` +
+            `the file directly, so use "Export .wadi" and send the file instead.` +
+            (copied ? "\n\nThe link has still been copied." : ""),
         );
-      } else if (copied) {
+        return;
+      }
+
+      // Small design: copy the link — the recipient opens it in one tap, no install.
+      const copied = await copyText(url);
+      if (copied) {
         flashSaved(btnShare, "✓ Link copied");
       } else {
         // Extremely rare (both clipboard paths failed). Don't use
