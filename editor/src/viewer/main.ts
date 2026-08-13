@@ -1661,12 +1661,29 @@ function wireHeaderButtons(): void {
   // backend); if they have the desktop app we can later offer to hand
   // off to it. Falls back to a manual-copy prompt where the async
   // clipboard API is blocked (e.g. non-secure / file:// contexts).
+  // Some phones (notably Android) and messaging apps truncate very long URLs, which
+  // makes a large share link fail to open ("corrupt or truncated") even though the same
+  // link works on computers and iPad. Warn past this length so the sender can hand over
+  // the .wadi file instead. Tunable: an observed Android failure was ~5,600 chars, so
+  // this leaves margin without crying wolf on medium designs.
+  const SHARE_URL_WARN_LEN = 4000;
   btnShare?.addEventListener("click", async () => {
     const cfg = useConfigStore.getState().config;
     if (!cfg) return;
     try {
       const url = buildShareUrl(await encodeConfigToHash(cfg));
-      if (await copyText(url)) {
+      const copied = await copyText(url);
+      if (url.length > SHARE_URL_WARN_LEN) {
+        // Big design: warn regardless of copy success. The link still works on
+        // computers/iPad, so we keep it copied and point large shares at file export.
+        alert(
+          `This design makes a long share link (${url.length.toLocaleString()} characters).\n\n` +
+            `It opens on computers and iPad, but some phones (especially Android) limit link ` +
+            `length and may show "corrupt or truncated". For a large design, use "Export .wadi" ` +
+            `and share the file instead.` +
+            (copied ? "\n\nThe link has still been copied to your clipboard." : ""),
+        );
+      } else if (copied) {
         flashSaved(btnShare, "✓ Link copied");
       } else {
         // Extremely rare (both clipboard paths failed). Don't use
