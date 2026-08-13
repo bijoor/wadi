@@ -14,6 +14,7 @@
 //     store the bytes uncompressed; decode sniffs the gzip magic
 //     (1f 8b) and only inflates when present, so both forms round-trip.
 
+import { gzipSync, gunzipSync } from "fflate";
 import type { HouseConfig } from "../schema/houseConfig";
 
 const TAG = "w1";
@@ -34,22 +35,38 @@ function b64urlToBytes(s: string): Uint8Array {
   return out;
 }
 
+// Prefer the native (De)CompressionStream; fall back to fflate (pure JS) when it is
+// missing OR throws. Some Android WebViews / older browsers lack DecompressionStream,
+// which used to make a gzipped share link undecodable there ("corrupt or truncated").
+// The fflate fallback makes every valid link open on every browser.
 async function gzip(bytes: Uint8Array): Promise<Uint8Array> {
-  if (typeof CompressionStream === "undefined") return bytes;
-  const cs = new CompressionStream("gzip");
-  const buf = await new Response(
-    new Blob([new Uint8Array(bytes)]).stream().pipeThrough(cs),
-  ).arrayBuffer();
-  return new Uint8Array(buf);
+  if (typeof CompressionStream !== "undefined") {
+    try {
+      const cs = new CompressionStream("gzip");
+      const buf = await new Response(
+        new Blob([new Uint8Array(bytes)]).stream().pipeThrough(cs),
+      ).arrayBuffer();
+      return new Uint8Array(buf);
+    } catch {
+      /* fall through to the pure-JS path */
+    }
+  }
+  return gzipSync(bytes);
 }
 
 async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
-  if (typeof DecompressionStream === "undefined") return bytes;
-  const ds = new DecompressionStream("gzip");
-  const buf = await new Response(
-    new Blob([new Uint8Array(bytes)]).stream().pipeThrough(ds),
-  ).arrayBuffer();
-  return new Uint8Array(buf);
+  if (typeof DecompressionStream !== "undefined") {
+    try {
+      const ds = new DecompressionStream("gzip");
+      const buf = await new Response(
+        new Blob([new Uint8Array(bytes)]).stream().pipeThrough(ds),
+      ).arrayBuffer();
+      return new Uint8Array(buf);
+    } catch {
+      /* fall through to the pure-JS path */
+    }
+  }
+  return gunzipSync(bytes);
 }
 
 /** Pack a config into the `w1=…` fragment payload (no leading '#'). */
