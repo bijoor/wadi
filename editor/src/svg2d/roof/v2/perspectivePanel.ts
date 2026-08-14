@@ -145,6 +145,31 @@ function buildFrameDimensions(spec: RoofSpec): { lines: WLine[]; labels: WLabel[
   return { lines, labels };
 }
 
+// A dimension label with a white "halo" for legibility over the frame lines.
+// Emitted as TWO stacked <text> elements — white stroke behind, coloured fill on
+// top — NOT via paint-order:stroke. svg2pdf (the PDF export) ignores paint-order
+// and paints the halo stroke OVER the glyph, so a paint-order label renders
+// white-on-white (invisible) in the PDF. Stacking two texts respects painter
+// order and works in the browser, the raster, and the PDF alike.
+function haloText(
+  x: number,
+  y: number,
+  text: string,
+  opts: { fill: string; size?: number; weight?: number; middle?: boolean; rotate?: number; halo?: number },
+): string {
+  const size = opts.size ?? 10;
+  const weight = opts.weight ?? 600;
+  const halo = opts.halo ?? 3;
+  const xf = x.toFixed(1), yf = y.toFixed(1);
+  const rot = opts.rotate != null ? ` transform="rotate(${opts.rotate.toFixed(1)} ${xf} ${yf})"` : "";
+  const mid = opts.middle ? ` dominant-baseline="middle"` : "";
+  const base = `x="${xf}" y="${yf}" text-anchor="middle"${mid} font-size="${size}" font-weight="${weight}"${rot}`;
+  return (
+    `<text ${base} fill="none" stroke="#fdfcfa" stroke-width="${halo}" stroke-linejoin="round">${text}</text>\n` +
+    `<text ${base} fill="${opts.fill}">${text}</text>\n`
+  );
+}
+
 export function v2PerspectivePanel(
   x0: number,
   y0: number,
@@ -234,7 +259,7 @@ export function v2PerspectivePanel(
       let dx = mx - pc[0], dy = my - pc[1];
       const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
       const lx = mx + dx * 12, ly = my + dy * 12;
-      svg += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${DIM_COLOR}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round">${lb.text}</text>\n`;
+      svg += haloText(lx, ly + 3, lb.text, { fill: DIM_COLOR, size: 11, weight: 700 });
     }
 
     // Per-SEGMENT cut lengths on the ridge / hips / valleys. A ridge/hip is
@@ -300,7 +325,7 @@ export function v2PerspectivePanel(
         const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
         if (ny > 0) { nx = -nx; ny = -ny; }
         const lx = mx + nx * 8, ly = my + ny * 8;
-        svg += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="600" fill="${col}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round" transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})">${formatDimension(segLen)}</text>\n`;
+        svg += haloText(lx, ly, formatDimension(segLen), { fill: col, size: 10, weight: 600, middle: true, rotate: deg });
       }
     }
 
@@ -330,7 +355,7 @@ export function v2PerspectivePanel(
         if (deg > 90) deg -= 180; else if (deg < -90) deg += 180;
         let tx = mx - pc[0], ty = my - pc[1]; const tl = Math.hypot(tx, ty) || 1;
         const lx = mx - (tx / tl) * 12, ly = my - (ty / tl) * 12;
-        svg += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="700" fill="${EAVE}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round" transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})">eave ${formatDimension(L)}</text>\n`;
+        svg += haloText(lx, ly, `eave ${formatDimension(L)}`, { fill: EAVE, size: 10, weight: 700, middle: true, rotate: deg });
 
         // --- Overhang: horizontal gap from the eave to the wall face. ---
         const vertical = Math.abs(m.start[0] - m.end[0]) < 1; // constant X → runs along Y
@@ -353,7 +378,7 @@ export function v2PerspectivePanel(
         const [wx, wy] = toSvg([inward[0], inward[1], wallTopZ]);
         svg += `<line x1="${ix.toFixed(1)}" y1="${iy.toFixed(1)}" x2="${wx.toFixed(1)}" y2="${wy.toFixed(1)}" stroke="${EAVE}" stroke-width="0.5" stroke-dasharray="2 2"/>\n`;
         const omx = (ex + ix) / 2, omy = (ey + iy) / 2;
-        svg += `<text x="${omx.toFixed(1)}" y="${(omy - 4).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="${EAVE}" paint-order="stroke" stroke="#fdfcfa" stroke-width="2.5" stroke-linejoin="round">↤ ${formatDimension(oh)}</text>\n`;
+        svg += haloText(omx, omy - 4, `↤ ${formatDimension(oh)}`, { fill: EAVE, size: 9, weight: 600, halo: 2.5 });
       }
     }
 

@@ -218,12 +218,15 @@ export function renderTopViewPanel(
       const lx = mx - dy * 11, ly = my + dx * 11; // nudge perpendicular to the ridge
       let deg = Math.atan2(dy, dx) * 180 / Math.PI;
       if (deg > 90) deg -= 180; else if (deg < -90) deg += 180;
-      body.push(
-        `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" ` +
-        `font-size="10" font-weight="700" fill="#b91c1c" paint-order="stroke" stroke="#ffffff" ` +
-        `stroke-width="3" stroke-linejoin="round" ` +
-        `transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})">ridge ${escapeXml(formatDimension(lenW))}</text>`,
-      );
+      // White halo drawn as a separate stroke-only text BEHIND the fill (not
+      // paint-order:stroke — svg2pdf ignores that and would hide the label in
+      // the PDF export by painting the halo over the glyph).
+      const ridgeCommon =
+        `x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" ` +
+        `font-size="10" font-weight="700" transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})"`;
+      const ridgeLabel = `ridge ${escapeXml(formatDimension(lenW))}`;
+      body.push(`<text ${ridgeCommon} fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">${ridgeLabel}</text>`);
+      body.push(`<text ${ridgeCommon} fill="#b91c1c">${ridgeLabel}</text>`);
     }
   } else {
     body.push(`<text x="${(width / 2).toFixed(1)}" y="${(height / 2).toFixed(1)}" text-anchor="middle" font-size="11" fill="#94a3b8">(empty roof spec)</text>`);
