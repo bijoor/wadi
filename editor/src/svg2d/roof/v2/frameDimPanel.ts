@@ -48,6 +48,7 @@ export function v2FrameDimPanel(
   const ridges = spec.members.filter((m) => m.role === "ridge");
   const hips = spec.members.filter((m) => m.role === "hip");
   const ties = spec.members.filter((m) => m.role === "tie_beam");
+  const eaves = spec.members.filter((m) => m.role === "pani_patti"); // roof edge
   const trusses = spec.trusses;
 
   // Datum = the ring beam's plan extent (what the dimensions measure). Fall back
@@ -61,7 +62,7 @@ export function v2FrameDimPanel(
   // Fit the FULL frame — ring + hips (which run out to the eave corners) + ridge
   // — so the hip diagonals draw full-length to the eaves rather than clipped at
   // the ring. The ring stays the measured datum; it just sits inset.
-  const fit = membersBounds([...ring, ...hips, ...ridges, ...ties]) ?? datum;
+  const fit = membersBounds([...ring, ...hips, ...ridges, ...ties, ...eaves]) ?? datum;
   const fSpanX = (fit.maxX - fit.minX) || 1;
   const fSpanY = (fit.maxY - fit.minY) || 1;
   const scale = Math.min(drawW / fSpanX, drawH / fSpanY);
@@ -92,6 +93,9 @@ export function v2FrameDimPanel(
   const rectW = Math.abs(c1[0] - c0[0]), rectH = Math.abs(c1[1] - c0[1]);
   svg += `<rect x="${rectX.toFixed(1)}" y="${rectY.toFixed(1)}" width="${rectW.toFixed(1)}" height="${rectH.toFixed(1)}" fill="#ecfdf5" stroke="none"/>\n`;
   for (const m of ring) svg += line(toSvg(m.start), toSvg(m.end), "#16a34a", 3);
+  // Eave perimeter — the actual roof edge, joining the hip tips so the overall
+  // roof footprint (walls + overhang) reads at a glance.
+  for (const m of eaves) svg += line(toSvg(m.start), toSvg(m.end), "#94a3b8", 1.2);
   // Hips run full-length to the eave corners (welded ring-corner → eave tip).
   for (const m of hips) svg += line(toSvg(m.start), toSvg(m.end), "#ea580c", 1.4, "5 3");
   for (const m of ridges) svg += line(toSvg(m.start), toSvg(m.end), "#dc2626", 2, "6 3");
@@ -194,7 +198,7 @@ export function v2FrameDimPanel(
   if (ridgeSec) parts.push(`ridge ${ridgeSec}`);
   parts.push(`${stations.length} truss station${stations.length === 1 ? "" : "s"}`);
   svg += `<text x="${(x0 + 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="start" font-size="10" fill="#475569">${escapeXml(parts.join("  ·  "))}</text>\n`;
-  svg += `<text x="${(x0 + width - 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="end" font-size="9" fill="#16a34a">green = wall ring beam (datum)</text>\n`;
+  svg += `<text x="${(x0 + width - 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="end" font-size="9" fill="#475569"><tspan fill="#16a34a">green = wall ring beam</tspan> · grey = roof edge (eave)</text>\n`;
 
   svg += `</g>\n`;
   return svg;
