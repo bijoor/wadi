@@ -50,18 +50,23 @@ export function v2FrameDimPanel(
   const ties = spec.members.filter((m) => m.role === "tie_beam");
   const trusses = spec.trusses;
 
-  // Datum = the ring beam's plan extent. Fall back to the whole frame if a roof
-  // has no explicit ring (shouldn't happen for pitched/shed).
-  const bounds = membersBounds(ring.length ? ring : spec.members);
-  if (!bounds) return panelFrame(x0, y0, width, height, titleH, "Main frame — dimensions", "v2-frame-dim") + "</g>\n";
-  const { minX, maxX, minY, maxY } = bounds;
+  // Datum = the ring beam's plan extent (what the dimensions measure). Fall back
+  // to the whole frame if a roof has no explicit ring (shouldn't happen).
+  const datum = membersBounds(ring.length ? ring : spec.members);
+  if (!datum) return panelFrame(x0, y0, width, height, titleH, "Main frame — dimensions", "v2-frame-dim") + "</g>\n";
+  const { minX, maxX, minY, maxY } = datum;
   const spanX = maxX - minX || 1;
   const spanY = maxY - minY || 1;
 
-  const scale = Math.min(drawW / spanX, drawH / spanY);
-  // Center the framed content in the draw area.
-  const offX = x0 + padL + (drawW - spanX * scale) / 2 - minX * scale;
-  const offY = y0 + padT + (drawH - spanY * scale) / 2 - minY * scale;
+  // Fit the FULL frame — ring + hips (which run out to the eave corners) + ridge
+  // — so the hip diagonals draw full-length to the eaves rather than clipped at
+  // the ring. The ring stays the measured datum; it just sits inset.
+  const fit = membersBounds([...ring, ...hips, ...ridges, ...ties]) ?? datum;
+  const fSpanX = (fit.maxX - fit.minX) || 1;
+  const fSpanY = (fit.maxY - fit.minY) || 1;
+  const scale = Math.min(drawW / fSpanX, drawH / fSpanY);
+  const offX = x0 + padL + (drawW - fSpanX * scale) / 2 - fit.minX * scale;
+  const offY = y0 + padT + (drawH - fSpanY * scale) / 2 - fit.minY * scale;
   const toSvg = (p: Point3D | readonly [number, number]): [number, number] => [
     offX + p[0] * scale,
     offY + p[1] * scale,
@@ -73,20 +78,22 @@ export function v2FrameDimPanel(
   const line = (a: [number, number], b: [number, number], stroke: string, w: number, dash?: string) =>
     `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${stroke}" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ""} stroke-linecap="round"/>\n`;
 
-  // --- Ring beam datum: light fill + bold green outline of its plan extent ---
+  // Ring-datum corners (measured) + full-extent corners (for the dim chains,
+  // which sit BEYOND the hips so they don't collide with them).
   const c0 = toSvg([minX, minY]);
   const c1 = toSvg([maxX, maxY]);
+  const f0 = toSvg([fit.minX, fit.minY]);
+  const f1 = toSvg([fit.maxX, fit.maxY]);
+  const ringBottom = Math.max(c0[1], c1[1]), ringLeft = Math.min(c0[0], c1[0]);
+  const fullBottom = Math.max(f0[1], f1[1]), fullLeft = Math.min(f0[0], f1[0]);
+
+  // --- Ring beam datum: light fill + bold green outline of its plan extent ---
   const rectX = Math.min(c0[0], c1[0]), rectY = Math.min(c0[1], c1[1]);
   const rectW = Math.abs(c1[0] - c0[0]), rectH = Math.abs(c1[1] - c0[1]);
-  const clipId = `frame-clip-${Math.round(x0)}-${Math.round(y0)}`;
-  svg += `<clipPath id="${clipId}"><rect x="${rectX.toFixed(1)}" y="${rectY.toFixed(1)}" width="${rectW.toFixed(1)}" height="${rectH.toFixed(1)}"/></clipPath>\n`;
   svg += `<rect x="${rectX.toFixed(1)}" y="${rectY.toFixed(1)}" width="${rectW.toFixed(1)}" height="${rectH.toFixed(1)}" fill="#ecfdf5" stroke="none"/>\n`;
   for (const m of ring) svg += line(toSvg(m.start), toSvg(m.end), "#16a34a", 3);
-  // Hips run to the eave corners (outside the datum); clip them to the ring so
-  // they terminate cleanly at the corners they weld to. Ridge + ties on top.
-  svg += `<g clip-path="url(#${clipId})">\n`;
+  // Hips run full-length to the eave corners (welded ring-corner → eave tip).
   for (const m of hips) svg += line(toSvg(m.start), toSvg(m.end), "#ea580c", 1.4, "5 3");
-  svg += `</g>\n`;
   for (const m of ridges) svg += line(toSvg(m.start), toSvg(m.end), "#dc2626", 2, "6 3");
   for (const m of ties) svg += line(toSvg(m.start), toSvg(m.end), "#0ea5e9", 1.2, "3 3");
 
@@ -123,8 +130,8 @@ export function v2FrameDimPanel(
     svg += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="#7c2d12">T${k + 1}</text>\n`;
   });
 
-  // --- Running dimension chain along the distribution axis (below the frame) ---
-  const chainY = Math.max(c0[1], c1[1]) + 26;
+  // --- Running dimension chain along the distribution axis (beyond the eaves) ---
+  const chainY = fullBottom + 20;
   const edgeLo = distAxis === 0 ? minX : minY;
   const edgeHi = distAxis === 0 ? maxX : maxY;
   const svgOf = (pos: number): number =>
@@ -138,18 +145,18 @@ export function v2FrameDimPanel(
       if (gap < 0.5) continue;
       svg += dimLineH(svgOf(marks[j]), svgOf(marks[j + 1]), chainY, formatDimension(gap));
     }
-    // witness ticks
+    // witness ticks from the ring station out to the chain
     for (const mk of marks) {
       const sx = svgOf(mk);
-      svg += line([sx, Math.max(c0[1], c1[1])], [sx, chainY], "#94a3b8", 0.5, "2 2");
+      svg += line([sx, ringBottom], [sx, chainY], "#94a3b8", 0.5, "2 2");
     }
     // overall ring width, one line lower
     svg += dimLineH(svgOf(edgeLo), svgOf(edgeHi), chainY + 22, `RING WIDTH ${formatDimension(spanX)}`);
-    // overall ring length on the left
-    svg += dimLineV(Math.min(c0[1], c1[1]), Math.max(c0[1], c1[1]), Math.min(c0[0], c1[0]) - 24, `RING LENGTH ${formatDimension(spanY)}`);
+    // overall ring length on the left, beyond the eaves
+    svg += dimLineV(Math.min(c0[1], c1[1]), Math.max(c0[1], c1[1]), fullLeft - 24, `RING LENGTH ${formatDimension(spanY)}`);
   } else {
-    // Stations distributed along Y → vertical chain on the left.
-    const chainX = Math.min(c0[0], c1[0]) - 26;
+    // Stations distributed along Y → vertical chain on the left, beyond the eaves.
+    const chainX = fullLeft - 20;
     const marks = [edgeLo, ...stations.map((s) => s.pos), edgeHi];
     for (let j = 0; j + 1 < marks.length; j++) {
       const gap = Math.abs(marks[j + 1] - marks[j]);
@@ -158,10 +165,10 @@ export function v2FrameDimPanel(
     }
     for (const mk of marks) {
       const sy = svgOf(mk);
-      svg += line([Math.min(c0[0], c1[0]), sy], [chainX, sy], "#94a3b8", 0.5, "2 2");
+      svg += line([ringLeft, sy], [chainX, sy], "#94a3b8", 0.5, "2 2");
     }
     svg += dimLineV(svgOf(edgeLo), svgOf(edgeHi), chainX - 22, `RING LENGTH ${formatDimension(spanY)}`);
-    svg += dimLineH(Math.min(c0[0], c1[0]), Math.max(c0[0], c1[0]), Math.max(c0[1], c1[1]) + 26, `RING WIDTH ${formatDimension(spanX)}`);
+    svg += dimLineH(Math.min(c0[0], c1[0]), Math.max(c0[0], c1[0]), fullBottom + 20, `RING WIDTH ${formatDimension(spanX)}`);
   }
 
   // --- Representative truss clear span (ring-to-ring the truss must fit) ---
