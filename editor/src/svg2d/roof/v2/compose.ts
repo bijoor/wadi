@@ -17,6 +17,8 @@ import { v2PerspectivePanel } from "./perspectivePanel";
 import { v2SectionPanel } from "./sectionPanel";
 import { v2FacePanel, groupFaces } from "./facePanel";
 import { v2TrussPanel, groupTrusses } from "./trussPanel";
+import { v2FrameDimPanel } from "./frameDimPanel";
+import { v2EavePanel } from "./eavePanel";
 import { roofMaxZ } from "./projections";
 import type { RoofSpec } from "./model";
 
@@ -92,6 +94,7 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
         cutAxis: "x",
         cutCoord: cutX,
         wallTopZ,
+        overlayTruss: true,
       }),
     },
     {
@@ -102,7 +105,18 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
         cutAxis: "y",
         cutCoord: cutY,
         wallTopZ,
+        overlayTruss: true,
       }),
+    },
+    {
+      id: "frame_dims",
+      title: "Main frame — fabrication dimensions",
+      render: (x0, y0, w, h) => v2FrameDimPanel(x0, y0, w, h, spec),
+    },
+    {
+      id: "eave_detail",
+      title: "Eave — cross-section detail",
+      render: (x0, y0, w, h) => v2EavePanel(x0, y0, w, h, spec),
     },
   ];
 

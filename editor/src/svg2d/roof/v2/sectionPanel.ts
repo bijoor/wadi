@@ -11,7 +11,8 @@
 //                axis whose coord is fixed). "y" cut → horizontal is Y.
 //   vertical   = Z (world height).
 
-import type { Point3D, RoofPlane, RoofSpec } from "./model";
+import type { Point3D, RoofPlane, RoofSpec, StraightMember, TrussTriangle } from "./model";
+import { buildFinkTrussMembers, buildMonoPitchTrussMembers } from "./truss";
 
 export type SectionAxis = "x" | "y";   // the axis whose coord is FIXED
 
@@ -74,6 +75,33 @@ interface SectionOpts {
   cutCoord: number;
   wallTopZ?: number;
   groundZ?: number;
+  // When true, overlay the profile of the truss that spans along this
+  // section's horizontal axis, so the cut reads as a truss profile (the
+  // classic "Section A-A = truss" drawing).
+  overlayTruss?: boolean;
+}
+
+// Members of a truss: pre-populated set, else rebuild by kind.
+function trussMembers(t: TrussTriangle): StraightMember[] {
+  if (t.members && t.members.length) return t.members;
+  return (t.kind === "mono_pitch" ? buildMonoPitchTrussMembers : buildFinkTrussMembers)(t);
+}
+
+// Pick the truss whose bottom chord runs most closely ALONG the section's
+// horizontal axis (so its elevation projects cleanly onto the section view).
+// Returns null when no truss is well-aligned.
+function trussForSection(spec: RoofSpec, cutAxis: SectionAxis): TrussTriangle | null {
+  const horIdx = cutAxis === "x" ? 1 : 0;
+  let best: TrussTriangle | null = null;
+  let bestScore = 0.7; // require a decent alignment
+  for (const t of spec.trusses) {
+    const dx = t.bottom_right[0] - t.bottom_left[0];
+    const dy = t.bottom_right[1] - t.bottom_left[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const along = Math.abs((horIdx === 0 ? dx : dy) / len);
+    if (along > bestScore) { bestScore = along; best = t; }
+  }
+  return best;
 }
 
 const PLANE_STROKES: Record<string, string> = {
@@ -184,6 +212,23 @@ export function v2SectionPanel(
     // Small square (~ member depth) centered on the crossing.
     const half = 3;
     svg += `<rect x="${(sx - half).toFixed(2)}" y="${(sy - half).toFixed(2)}" width="${(half * 2).toFixed(2)}" height="${(half * 2).toFixed(2)}" fill="${color}" stroke="#111" stroke-width="0.4"/>\n`;
+  }
+
+  // Truss profile overlay — the truss that spans along this section's
+  // horizontal axis, drawn as a dashed reference profile so the cut reads
+  // as a truss elevation. Chords bold, webs light.
+  if (opts.overlayTruss) {
+    const t = trussForSection(spec, opts.cutAxis);
+    if (t) {
+      const kindLabel = (t.kind ?? "fink") === "mono_pitch" ? "mono-pitch" : "fink";
+      for (const m of trussMembers(t)) {
+        const isChord = m.role === "truss_top_chord" || m.role === "truss_bottom_chord";
+        const [x1, y1] = toSvg(m.start);
+        const [x2, y2] = toSvg(m.end);
+        svg += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${isChord ? "#7c2d12" : "#b45309"}" stroke-width="${isChord ? 1.8 : 1}" stroke-dasharray="${isChord ? "6 3" : "3 3"}" stroke-linecap="round"/>\n`;
+      }
+      svg += `<text x="${(x0 + width - 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="end" font-size="9" fill="#7c2d12">— — ${kindLabel} truss profile at this bay (see truss drawing for member lengths)</text>\n`;
+    }
   }
 
   svg += `</g>\n`;
