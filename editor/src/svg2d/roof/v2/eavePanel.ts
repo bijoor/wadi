@@ -1,48 +1,108 @@
-// V2 eave cross-section detail — a dimensioned section through a typical eave,
-// showing how the roof frame lands on the wall ring beam: wall, ring beam,
+// V2 eave cross-section detail — a dimensioned section through ONE eave,
+// showing how the roof frame lands on the wall: masonry wall, steel ring beam,
 // rafter with its overhang, purlin, and the tile line above.
 //
-// Everything is derived from the RoofSpec (member sections, rafter pitch,
-// overhang measured from the ring datum), so the detail tracks the model.
+// Member SECTIONS come from the roof's `framing` config carried on the spec
+// (spec.framing) — the SAME sizes the materials take-off / BOM uses — so the
+// detail is consistent with the rest of the drawings, not per-member guesses.
+//
+// A hip roof's eaves are NOT identical: the main slopes and the two hip ends
+// have different pitches and overhangs, so `groupEaves` returns one entry per
+// DISTINCT eave and the sheet draws a detail for each.
+//
 // Drawn in a local section frame: h runs horizontally (exterior on the LEFT,
 // building interior on the RIGHT), z is height. Units are project units
-// (10u = 1ft); labels use feet-inches.
+// (10u = 1ft); linear dims use feet-inches, sections use inches.
 
-import type { Point3D, RoofSpec, StraightMember } from "./model";
+import type { Point3D, RoofPlane, RoofSpec } from "./model";
 import { formatDimension } from "../../format";
-import { dimLineH, dimLineV, escapeXml, panelFrame, sectionFtLabel } from "./panelDraw";
+import { dimLineH, escapeXml, panelFrame } from "./panelDraw";
 
-const lenPlan = (m: StraightMember): number =>
-  Math.hypot(m.end[0] - m.start[0], m.end[1] - m.start[1]);
-const rise = (m: StraightMember): number => Math.abs(m.end[2] - m.start[2]);
+const IN_TO_U = 10 / 12; // project units per inch (10u = 1ft)
+const sub = (a: Point3D, b: Point3D): Point3D => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const cross = (a: Point3D, b: Point3D): Point3D =>
+  [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = (a: Point3D): number => Math.hypot(a[0], a[1], a[2]);
+const secInLabel = (s: [number, number]): string =>
+  `${Math.round(s[0] * 10) / 10}"×${Math.round(s[1] * 10) / 10}"`;
 
-interface Bounds { minX: number; maxX: number; minY: number; maxY: number; }
-function ringBounds(ring: StraightMember[]): Bounds | null {
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (const m of ring) for (const p of [m.start, m.end]) {
-    if (p[0] < minX) minX = p[0];
-    if (p[0] > maxX) maxX = p[0];
-    if (p[1] < minY) minY = p[1];
-    if (p[1] > maxY) maxY = p[1];
-  }
-  return isFinite(minX) ? { minX, maxX, minY, maxY } : null;
+// Angle (deg) between a plane and horizontal, from its unit normal.
+function planePitch(vs: Point3D[]): number {
+  if (vs.length < 3) return 0;
+  // Use the widest-spread triple to avoid a degenerate normal.
+  const n = cross(sub(vs[1], vs[0]), sub(vs[2], vs[0]));
+  const nl = norm(n) || 1;
+  const nz = Math.abs(n[2] / nl);
+  return (Math.acos(Math.min(1, nz)) * 180) / Math.PI;
 }
 
-// Representative eave overhang: how far a rafter's low (eave) end projects
-// beyond the ring beam datum edge, in plan. Uses the MEDIAN of the positive
-// projections so a diagonal corner rafter (which sticks out furthest) doesn't
-// overstate the typical cross-eave overhang.
-function deriveOverhang(rafters: StraightMember[], b: Bounds | null): number {
-  if (!b) return 0;
-  const outs: number[] = [];
-  for (const m of rafters) {
-    const low: Point3D = m.start[2] <= m.end[2] ? m.start : m.end;
-    const outside = Math.max(b.minX - low[0], low[0] - b.maxX, b.minY - low[1], low[1] - b.maxY);
-    if (outside > 0.5) outs.push(outside);
+// Midpoint of a plane's lowest (eave) edge.
+function lowEdgeMid(vs: Point3D[]): Point3D | null {
+  const minZ = Math.min(...vs.map((v) => v[2]));
+  const low = vs.filter((v) => Math.abs(v[2] - minZ) < 1);
+  if (low.length < 2) return null;
+  return [(low[0][0] + low[1][0]) / 2, (low[0][1] + low[1][1]) / 2, minZ];
+}
+
+export interface EaveGroup {
+  signature: string;
+  roleLabel: string; // "Main slope" | "Hip end" | "Eave"
+  pitchDeg: number;
+  overhang: number; // project units
+  count: number;
+  sides: string[]; // compass hints, e.g. ["W", "E"]
+}
+
+// One entry per DISTINCT eave (role + pitch + overhang), so the sheet shows a
+// detail for the main slopes and for each hip end.
+export function groupEaves(spec: RoofSpec): EaveGroup[] {
+  const eaves = spec.members.filter((m) => m.role === "pani_patti");
+  if (!eaves.length) return [];
+
+  // Ring beam plan datum.
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const m of spec.members) if (m.role === "ring_beam") for (const p of [m.start, m.end]) {
+    if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+    if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
   }
-  if (!outs.length) return 0;
-  outs.sort((p, q) => p - q);
-  return outs[Math.floor(outs.length / 2)];
+  if (!isFinite(minX)) return [];
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+
+  const facePlanes = spec.planes.filter((p) => p.role === "slope" || p.role === "hip_face");
+  const faceInfo = facePlanes
+    .map((p) => ({ role: p.role, pitch: planePitch(p.vertices), mid: lowEdgeMid(p.vertices) }))
+    .filter((f): f is { role: RoofPlane["role"]; pitch: number; mid: Point3D } => f.mid != null);
+
+  const groups = new Map<string, EaveGroup>();
+  for (const e of eaves) {
+    const emid: Point3D = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
+    // Overhang: axis-aligned distance from the eave to the parallel ring edge.
+    const vertical = Math.abs(e.start[0] - e.end[0]) < 1; // constant X → runs along Y
+    let overhang: number, side: string;
+    if (vertical) {
+      const X = e.start[0]; const wallX = X > cx ? maxX : minX;
+      overhang = Math.abs(X - wallX); side = X > cx ? "E" : "W";
+    } else {
+      const Y = e.start[1]; const wallY = Y > cy ? maxY : minY;
+      overhang = Math.abs(Y - wallY); side = Y > cy ? "S" : "N";
+    }
+    // Nearest face plane by low-edge midpoint → its role + pitch.
+    let best: { role: RoofPlane["role"]; pitch: number } | null = null;
+    let bestD = Infinity;
+    for (const f of faceInfo) {
+      const d = Math.hypot(f.mid[0] - emid[0], f.mid[1] - emid[1]);
+      if (d < bestD) { bestD = d; best = { role: f.role, pitch: f.pitch }; }
+    }
+    const roleLabel = best?.role === "hip_face" ? "Hip end" : best?.role === "slope" ? "Main slope" : "Eave";
+    const pitchDeg = best?.pitch ?? 0;
+    const sig = `${roleLabel}|${Math.round(pitchDeg)}|${Math.round(overhang)}`;
+    const existing = groups.get(sig);
+    if (existing) { existing.count += 1; if (!existing.sides.includes(side)) existing.sides.push(side); }
+    else groups.set(sig, { signature: sig, roleLabel, pitchDeg, overhang, count: 1, sides: [side] });
+  }
+  // Main slopes first, then hip ends; larger overhang first within a role.
+  return [...groups.values()].sort((a, b) =>
+    (a.roleLabel === b.roleLabel ? b.overhang - a.overhang : a.roleLabel < b.roleLabel ? -1 : 1));
 }
 
 export function v2EavePanel(
@@ -51,60 +111,41 @@ export function v2EavePanel(
   width: number,
   height: number,
   spec: RoofSpec,
+  group: EaveGroup,
 ): string {
   const titleH = 40;
-  const title = "EAVE — Cross-section detail (typical)";
+  const sidesStr = group.sides.length ? ` (${group.sides.join(", ")})` : "";
+  const title = `EAVE — ${group.roleLabel}${group.count > 1 ? ` × ${group.count}` : ""}${sidesStr}`;
   let svg = panelFrame(x0, y0, width, height, titleH, title, "v2-eave");
 
-  const ring = spec.members.filter((m) => m.role === "ring_beam");
-  const rafters = spec.members.filter((m) => m.role === "rafter");
-  const purlins = spec.members.filter((m) => m.role === "purlin");
+  // --- Sections from the framing config (inches → project units). ---
+  const ringIn = (spec.framing?.ring_beam_size_in ?? [4, 2]) as [number, number];
+  const rafterIn = (spec.framing?.rafter_size_in ?? [2, 4]) as [number, number];
+  const purlinIn = (spec.framing?.purlin_size_in ?? [2, 1]) as [number, number];
+  const ringW = ringIn[0] * IN_TO_U;     // ring beam width (along the section)
+  const ringD = ringIn[1] * IN_TO_U;     // ring beam depth (height)
+  const rafterD = rafterIn[1] * IN_TO_U; // rafter depth (perpendicular band)
+  const purlinD = purlinIn[1] * IN_TO_U;
+  const wallT = spec.framing?.wall_thickness_u ?? 7.5; // masonry wall thickness
 
-  // --- Derive sizes (feet) then convert to project units for drawing. ---
-  const FT = 10; // project units per foot
-  const ringSec = (ring[0]?.section_size ?? [0.75, 0.75]) as [number, number];
-  const rafterSec = (rafters[0]?.section_size ?? [0.17, 0.33]) as [number, number];
-  const purlinSec = (purlins[0]?.section_size ?? [0.17, 0.25]) as [number, number];
-  const wallT = ringSec[0] * FT;        // ring width ≈ wall thickness (datum)
-  const ringD = ringSec[1] * FT;        // ring beam depth
-  const rafterD = rafterSec[1] * FT;    // rafter depth (perpendicular band)
-
-  // Pitch from a rafter (fallback to a truss top-chord, else 25°).
-  let pitchDeg = 25;
-  const pr = rafters.find((m) => lenPlan(m) > 1 && rise(m) > 0.1);
-  if (pr) pitchDeg = (Math.atan2(rise(pr), lenPlan(pr)) * 180) / Math.PI;
-  else if (spec.trusses[0]) {
-    const t = spec.trusses[0];
-    const run = Math.hypot(t.apex[0] - t.bottom_left[0], t.apex[1] - t.bottom_left[1]) || 1;
-    pitchDeg = (Math.atan2(t.apex[2] - t.bottom_left[2], run) * 180) / Math.PI;
-  }
+  const pitchDeg = group.pitchDeg || 25;
   const th = (pitchDeg * Math.PI) / 180;
   const cos = Math.cos(th), sin = Math.sin(th), tan = Math.tan(th);
-
-  const overhang = deriveOverhang(rafters, ringBounds(ring)) || 2 * FT;
-  const wallH = Math.max(ringD * 2.4, 24);   // shown length of wall below
-  // Zoom into the eave junction: overhang + ring + only a short rafter stub
-  // inboard of the wall (fixed, so a large overhang doesn't shrink the detail).
-  const interiorRun = wallT + Math.max(wallT * 1.2, 12);
+  const overhang = group.overhang || 2 * 10;
+  const wallH = Math.max(ringD * 4, 20);                 // shown wall stub below
+  const interiorRun = wallT + Math.max(wallT * 1.2, 12); // rafter stub inboard
   const battenGap = Math.max(rafterD * 0.35, 2);
 
-  // --- Key points in local (h, z). Outer wall face at h=0; z=0 = ring top. ---
-  // Rafter bottom edge passes through the outer top corner of the ring beam
-  // (0, 0), sloping up to the right (interior). Tail droops out-left.
+  // --- Key points in local (h, z): outer wall face at h=0; z=0 = ring top. ---
   const bottomAt = (h: number): [number, number] => [h, h * tan];
-  const perpUp: [number, number] = [-sin, cos];        // normal, up-left of slope
+  const perpUp: [number, number] = [-sin, cos];
   const top = (p: [number, number]): [number, number] => [p[0] + perpUp[0] * rafterD, p[1] + perpUp[1] * rafterD];
-
   const tailB = bottomAt(-overhang);
   const inB = bottomAt(interiorRun);
-  const tailT = top(tailB);
-  const inT = top(inB);
-  // Tile line = rafter top edge lifted by battenGap, extended a touch past the tail.
+  const tailT = top(tailB), inT = top(inB);
   const tileOff: [number, number] = [perpUp[0] * battenGap, perpUp[1] * battenGap];
   const tileTail: [number, number] = [tailT[0] + tileOff[0] - cos * 2, tailT[1] + tileOff[1] - sin * 2];
   const tileIn: [number, number] = [inT[0] + tileOff[0], inT[1] + tileOff[1]];
-  // Purlin square sitting on the rafter top, a bit inboard of the wall.
-  const purlinD = purlinSec[1] * FT;
   const pAlong = wallT + Math.max(wallT * 0.5, 8);
   const pOnTop = top(bottomAt(pAlong));
 
@@ -118,7 +159,7 @@ export function v2EavePanel(
     if (h < minH) minH = h; if (h > maxH) maxH = h;
     if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
   }
-  const padL = 60, padR = 70, padT = titleH + 26, padB = 54;
+  const padL = 60, padR = 74, padT = titleH + 26, padB = 54;
   const drawW = width - padL - padR, drawH = height - padT - padB;
   const spanH = maxH - minH || 1, spanZ = maxZ - minZ || 1;
   const scale = Math.min(drawW / spanH, drawH / spanZ);
@@ -137,22 +178,22 @@ export function v2EavePanel(
     return `<text x="${q[0].toFixed(1)}" y="${q[1].toFixed(1)}" text-anchor="${anchor}" font-size="10" fill="${fill}">${escapeXml(text)}</text>\n`;
   };
 
-  // --- Wall below (hatched block) ---
+  // --- Wall (hatched masonry block) ---
   svg += poly([[0, 0], [wallT, 0], [wallT, -wallH], [0, -wallH]], "#efe7db", "#8a6a3f", 1);
   for (let hh = 1; hh < 6; hh++) {
     const zc = -wallH * (hh / 6);
-    svg += seg([0, zc], [wallT, zc], "#d9c9ad", 0.5);
+    if (zc < -ringD) svg += seg([0, zc], [wallT, zc], "#d9c9ad", 0.5);
   }
-  // --- Ring beam (the ring on the wall) ---
-  svg += poly([[0, 0], [wallT, 0], [wallT, -ringD], [0, -ringD]], "#dcfce7", "#16a34a", 1.6);
-  // --- Level datum at ring top ---
+  // --- Ring beam (steel, on the wall's outer edge) ---
+  svg += poly([[0, 0], [ringW, 0], [ringW, -ringD], [0, -ringD]], "#dcfce7", "#16a34a", 1.6);
+  // --- Wall-top / eave datum ---
   svg += seg([Math.min(minH, -overhang), 0], [maxH, 0], "#94a3b8", 0.6, "5 3");
 
   // --- Rafter band ---
   svg += poly([tailB, inB, inT, tailT], "#e2e8f0", "#475569", 1.4);
-  // --- Fascia at the tail (plumb) ---
+  // --- Fascia at the tail ---
   svg += seg(tailB, [tailB[0], tailB[1] - rafterD * 1.1], "#475569", 1.4);
-  // --- Purlin square on the rafter top ---
+  // --- Purlin on the rafter top ---
   const pHalf = purlinD / 2;
   svg += poly([
     [pOnTop[0] - pHalf * cos, pOnTop[1] - pHalf * sin],
@@ -164,32 +205,26 @@ export function v2EavePanel(
   svg += seg(tileTail, tileIn, "#b45309", 2);
 
   // --- Callout labels ---
-  svg += label([wallT / 2, -wallH * 0.62], "WALL", "middle", "#8a6a3f");
-  svg += label([wallT + 2, -ringD / 2], `RING BEAM ${sectionFtLabel(ringSec)}`, "start", "#16a34a");
+  svg += label([wallT / 2, -wallH * 0.66], "WALL", "middle", "#8a6a3f");
+  svg += label([ringW + 1.5, -ringD / 2], `RING BEAM ${secInLabel(ringIn)}`, "start", "#16a34a");
   svg += label(inT, "RAFTER", "start", "#475569");
   svg += label([pOnTop[0], pOnTop[1] + 1], "PURLIN", "middle", "#334155");
   svg += label(tileIn, "TILE", "start", "#b45309");
 
   // --- Dimensions ---
-  // Overhang (horizontal, below the tail).
   const dimY = S([0, minZ])[1] + 22;
   svg += dimLineH(S(tailB)[0], S([0, 0])[0], dimY, `overhang ${formatDimension(overhang)}`);
   svg += seg(tailB, [tailB[0], minZ - overhang * 0.02], "#94a3b8", 0.4, "2 2");
-  // Wall thickness (horizontal, lower).
   svg += dimLineH(S([0, -wallH])[0], S([wallT, -wallH])[0], S([0, -wallH])[1] + 16, `wall ${formatDimension(wallT)}`);
-  // Ring beam depth (vertical, right of the beam).
-  svg += dimLineV(S([wallT, 0])[1], S([wallT, -ringD])[1], S([wallT, 0])[0] + 30, `${formatDimension(ringD)}`);
-  // Pitch angle arc near the ring top corner.
+  // Pitch arc at the outer ring corner.
   const o = S([0, 0]);
   const r = 26;
-  const ax = o[0] + r, ay = o[1];
-  const bx = o[0] + r * cos, by = o[1] - r * sin;
-  svg += `<path d="M ${ax.toFixed(1)} ${ay.toFixed(1)} A ${r} ${r} 0 0 0 ${bx.toFixed(1)} ${by.toFixed(1)}" fill="none" stroke="#8B4513" stroke-width="1"/>\n`;
+  svg += `<path d="M ${(o[0] + r).toFixed(1)} ${o[1].toFixed(1)} A ${r} ${r} 0 0 0 ${(o[0] + r * cos).toFixed(1)} ${(o[1] - r * sin).toFixed(1)}" fill="none" stroke="#8B4513" stroke-width="1"/>\n`;
   svg += `<text x="${(o[0] + r + 4).toFixed(1)}" y="${(o[1] - 6).toFixed(1)}" text-anchor="start" font-size="11" font-weight="600" fill="#8B4513">${pitchDeg.toFixed(1)}°</text>\n`;
 
-  // --- Footer note ---
+  // --- Footer ---
   const footY = y0 + height - 12;
-  svg += `<text x="${(x0 + 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="start" font-size="9" fill="#475569">rafter ${sectionFtLabel(rafterSec)} · purlin ${sectionFtLabel(purlinSec)} · sizes + pitch from model</text>\n`;
+  svg += `<text x="${(x0 + 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="start" font-size="9" fill="#475569">rafter ${secInLabel(rafterIn)} · purlin ${secInLabel(purlinIn)} · sizes from the roof framing</text>\n`;
 
   svg += `</g>\n`;
   return svg;

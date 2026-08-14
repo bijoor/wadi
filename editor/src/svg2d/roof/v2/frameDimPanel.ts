@@ -175,8 +175,12 @@ export function v2FrameDimPanel(
   }
 
   // --- Notes: member sections + datum reminder ---
-  const ringSec = sectionFtLabel(ring[0]?.section_size);
-  const ridgeSec = sectionFtLabel(ridges[0]?.section_size);
+  // Ring beam / ridge sections come from the authoritative framing config (in
+  // inches), the SAME source the BOM uses — not per-member fallbacks.
+  const inLabel = (s?: [number, number]): string | null =>
+    s ? `${Math.round(s[0] * 10) / 10}"×${Math.round(s[1] * 10) / 10}"` : null;
+  const ringSec = inLabel(spec.framing?.ring_beam_size_in) ?? sectionFtLabel(ring[0]?.section_size);
+  const ridgeSec = inLabel(spec.framing?.ridge_size_in) ?? sectionFtLabel(ridges[0]?.section_size);
   const footY = y0 + height - 12;
   const parts: string[] = [];
   if (ringSec) parts.push(`ring beam ${ringSec}`);

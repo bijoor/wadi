@@ -20,10 +20,10 @@
 // Scope limits which PAGES it controls — not which requests it sees — so it
 // still intercepts the page's root-absolute and cross-origin fetches.
 
-const VERSION = "228c15a4";
+const VERSION = "a6f88029";
 const SHELL_CACHE = `wadi-shell-${VERSION}`;
 const RUNTIME_CACHE = `wadi-runtime-${VERSION}`;
-const PRECACHE = ["./","./index.html","./assets/viewer-DQYeb_yh.js","./assets/viewer-QTnfLwEv.js","./assets/viewer-Dy5_a4fu.css","./assets/viewer-CaUspqic.js","./assets/viewer-CVh3_zVs.js","./assets/viewer-Bf1B9igQ.js","./assets/viewer-s_7dLOsV.js","./assets/viewer-Cs19c5kK.js","./assets/viewer-gTVVoCi4.js","./assets/viewer-BzgO076N.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.json","./templates/family_home.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
+const PRECACHE = ["./","./index.html","./assets/viewer-B4XyjBSh.js","./assets/viewer-QTnfLwEv.js","./assets/viewer-DBRtTYU9.css","./assets/viewer-BkLbTukK.js","./assets/viewer-okuOsM-E.js","./assets/viewer-BuoE8e28.js","./assets/viewer-s_7dLOsV.js","./assets/viewer-Du7K9dFn.js","./assets/viewer-kzNTcDam.js","./assets/viewer-C_sLJwJG.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.json","./templates/family_home.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
 
 // Web Share Target inbox: a shared .wadi file is stashed here (UNVERSIONED, so it
 // survives a worker update) for the app to pick up on its next boot.

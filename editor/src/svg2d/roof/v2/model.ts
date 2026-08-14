@@ -280,11 +280,25 @@ export interface TrussTriangle {
   members?: StraightMember[];        // populated by buildTrussMembers
 }
 
+// Authoritative member section sizes (INCHES) carried on the spec so the
+// fabrication panels (eave detail, frame plan) show the SAME sizes as the BOM
+// — the roof's `framing` config, not per-member fallbacks. Plus the masonry
+// wall thickness (project units) for the eave section.
+export interface RoofSpecFraming {
+  ring_beam_size_in?: [number, number];
+  ridge_size_in?: [number, number];
+  rafter_size_in?: [number, number];
+  purlin_size_in?: [number, number];
+  wall_thickness_u?: number;
+}
+
 // The universal output shape. Every derive*(cfg) returns this.
 export interface RoofSpec {
   members: StraightMember[];
   planes: RoofPlane[];
   trusses: TrussTriangle[];
+  // The roof's framing sizes (from `roof.framing`), for the detail panels.
+  framing?: RoofSpecFraming;
   // Per-roof derivation failures that were skipped (one bad roof must not take
   // out the whole pipeline). Populated by computeMergedV2Spec so callers — the
   // viewer banner, wadi_check — can surface them instead of the old silent

@@ -18,7 +18,7 @@ import { v2SectionPanel } from "./sectionPanel";
 import { v2FacePanel, groupFaces } from "./facePanel";
 import { v2TrussPanel, groupTrusses } from "./trussPanel";
 import { v2FrameDimPanel } from "./frameDimPanel";
-import { v2EavePanel } from "./eavePanel";
+import { v2EavePanel, groupEaves } from "./eavePanel";
 import { roofMaxZ } from "./projections";
 import type { RoofSpec } from "./model";
 
@@ -113,12 +113,19 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
       title: "Main frame — fabrication dimensions",
       render: (x0, y0, w, h) => v2FrameDimPanel(x0, y0, w, h, spec),
     },
-    {
-      id: "eave_detail",
-      title: "Eave — cross-section detail",
-      render: (x0, y0, w, h) => v2EavePanel(x0, y0, w, h, spec),
-    },
   ];
+
+  // One eave cross-section per DISTINCT eave (main slopes + each hip end differ
+  // in pitch and overhang). Falls back to nothing if the roof has no eaves.
+  const eaveGroups = groupEaves(spec);
+  eaveGroups.forEach((g, idx) => {
+    const sides = g.sides.length ? ` (${g.sides.join("")})` : "";
+    defs.push({
+      id: `eave_${idx}`,
+      title: `Eave — ${g.roleLabel}${g.count > 1 ? ` × ${g.count}` : ""}${sides}`,
+      render: (x0, y0, w, h) => v2EavePanel(x0, y0, w, h, spec, g),
+    });
+  });
 
   // Add one panel per UNIQUE face shape (main slopes, hip ends, and
   // any extension polygons deduplicated by shape signature).

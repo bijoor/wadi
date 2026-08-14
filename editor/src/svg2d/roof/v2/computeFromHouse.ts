@@ -68,6 +68,16 @@ export function computeMergedV2Spec(
         merged.members.push(...spec.members);
         merged.planes.push(...spec.planes);
         merged.trusses.push(...spec.trusses);
+        // Carry the authoritative framing sizes (the SAME cfg the BOM uses) so
+        // the detail panels don't fall back to per-member guesses. Last roof
+        // wins on a multi-roof house (the panels are per-roof-ambiguous anyway).
+        merged.framing = {
+          ring_beam_size_in: framing.ring_beam_size_in,
+          ridge_size_in: framing.ridge_size_in,
+          rafter_size_in: framing.rafter_size_in,
+          purlin_size_in: framing.purlin_size_in,
+          wall_thickness_u: wallThickness,
+        };
       } catch (e) {
         const name = (obj as { name?: string }).name;
         const label = name ? `roof "${name}"` : "roof";
