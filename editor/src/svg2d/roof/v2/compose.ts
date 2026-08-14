@@ -16,6 +16,7 @@ import { renderTopViewPanel } from "./topViewPanel";
 import { v2PerspectivePanel } from "./perspectivePanel";
 import { v2SectionPanel } from "./sectionPanel";
 import { v2FacePanel, groupFaces } from "./facePanel";
+import { v2TrussPanel, groupTrusses } from "./trussPanel";
 import { roofMaxZ } from "./projections";
 import type { RoofSpec } from "./model";
 
@@ -119,6 +120,16 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
       id,
       title: nice,
       render: (x0, y0, w, h) => v2FacePanel(x0, y0, w, h, group),
+    });
+  });
+
+  // Add one dimensioned elevation per UNIQUE truss (fabrication drawing). Identical
+  // trusses are grouped and labelled "× N identical".
+  groupTrusses(spec).forEach((group, idx) => {
+    defs.push({
+      id: `truss_${idx}`,
+      title: `${group.geom.kind === "mono_pitch" ? "Mono-pitch" : "Fink"} truss ${idx + 1} (elevation${group.count > 1 ? `, × ${group.count}` : ""})`,
+      render: (x0, y0, w, h) => v2TrussPanel(x0, y0, w, h, group),
     });
   });
 
