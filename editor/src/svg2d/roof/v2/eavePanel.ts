@@ -59,13 +59,17 @@ export function groupEaves(spec: RoofSpec): EaveGroup[] {
   const eaves = spec.members.filter((m) => m.role === "pani_patti");
   if (!eaves.length) return [];
 
-  // Ring beam plan datum.
+  // Wall OUTER face = ring beam (on the wall centreline) grown by half the wall
+  // thickness. Overhang is the rafter projection beyond the WALL FACE, so we
+  // measure to this, not to the ring centreline.
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (const m of spec.members) if (m.role === "ring_beam") for (const p of [m.start, m.end]) {
     if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
     if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
   }
   if (!isFinite(minX)) return [];
+  const halfWall = (spec.framing?.wall_thickness_u ?? 0) / 2;
+  minX -= halfWall; maxX += halfWall; minY -= halfWall; maxY += halfWall;
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
 
   const facePlanes = spec.planes.filter((p) => p.role === "slope" || p.role === "hip_face");
@@ -184,8 +188,9 @@ export function v2EavePanel(
     const zc = -wallH * (hh / 6);
     if (zc < -ringD) svg += seg([0, zc], [wallT, zc], "#d9c9ad", 0.5);
   }
-  // --- Ring beam (steel, on the wall's outer edge) ---
-  svg += poly([[0, 0], [ringW, 0], [ringW, -ringD], [0, -ringD]], "#dcfce7", "#16a34a", 1.6);
+  // --- Ring beam (steel), CENTRED on the wall (h=0 is the outer wall face) ---
+  const ringH0 = Math.max(0, (wallT - ringW) / 2);
+  svg += poly([[ringH0, 0], [ringH0 + ringW, 0], [ringH0 + ringW, -ringD], [ringH0, -ringD]], "#dcfce7", "#16a34a", 1.6);
   // --- Wall-top / eave datum ---
   svg += seg([Math.min(minH, -overhang), 0], [maxH, 0], "#94a3b8", 0.6, "5 3");
 

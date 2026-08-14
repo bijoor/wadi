@@ -27,10 +27,6 @@ function membersBounds(members: StraightMember[]): Bounds | null {
   return { minX, maxX, minY, maxY };
 }
 
-// True plan (horizontal) length of a member.
-const planLen = (m: StraightMember): number =>
-  Math.hypot(m.end[0] - m.start[0], m.end[1] - m.start[1]);
-
 export function v2FrameDimPanel(
   x0: number,
   y0: number,
@@ -73,7 +69,7 @@ export function v2FrameDimPanel(
     offY + p[1] * scale,
   ];
 
-  const title = "MAIN FRAME — Fabrication dimensions (plan, referenced to wall ring)";
+  const title = "MAIN FRAME — Fabrication dimensions (ring on wall centre · overhang from wall face)";
   let svg = panelFrame(x0, y0, width, height, titleH, title, "v2-frame-dim");
 
   const line = (a: [number, number], b: [number, number], stroke: string, w: number, dash?: string) =>
@@ -175,21 +171,28 @@ export function v2FrameDimPanel(
     svg += dimLineH(Math.min(c0[0], c1[0]), Math.max(c0[0], c1[0]), fullBottom + 20, `RING WIDTH ${formatDimension(spanX)}`);
   }
 
-  // --- Eave (roof edge) overall + per-side overhang, to compare with the iso ---
+  // --- Wall outer face + eave overall + per-side overhang (compare with iso) ---
   if (eaves.length) {
-    const eW = fit.maxX - fit.minX, eL = fit.maxY - fit.minY;
-    const ringL = Math.min(c0[0], c1[0]), ringR = Math.max(c0[0], c1[0]);
-    const ringT = Math.min(c0[1], c1[1]), ringBot = Math.max(c0[1], c1[1]);
-    const midXsvg = (ringL + ringR) / 2, midYsvg = (ringT + ringBot) / 2;
+    // Walls are centred on the ring (grid), so the wall OUTER face is the ring
+    // grown by half the wall thickness. Overhang is measured from the wall face.
+    const half = (spec.framing?.wall_thickness_u ?? 0) / 2;
+    const wfMinX = minX - half, wfMaxX = maxX + half, wfMinY = minY - half, wfMaxY = maxY + half;
+    const w0 = toSvg([wfMinX, wfMinY]), w1 = toSvg([wfMaxX, wfMaxY]);
+    const wfL = Math.min(w0[0], w1[0]), wfR = Math.max(w0[0], w1[0]);
+    const wfT = Math.min(w0[1], w1[1]), wfB = Math.max(w0[1], w1[1]);
+    const midXsvg = (wfL + wfR) / 2, midYsvg = (wfT + wfB) / 2;
+    // Wall outer face (light brown) — the ring sits centred inside it.
+    if (half > 0.01) svg += `<rect x="${wfL.toFixed(1)}" y="${wfT.toFixed(1)}" width="${(wfR - wfL).toFixed(1)}" height="${(wfB - wfT).toFixed(1)}" fill="none" stroke="#8a6a3f" stroke-width="0.9"/>\n`;
     // Overall eave dimensions — the outermost lines (roof footprint incl overhang).
+    const eW = fit.maxX - fit.minX, eL = fit.maxY - fit.minY;
     svg += dimLineH(f0[0], f1[0], fullBottom + 42, `EAVE WIDTH ${formatDimension(eW)}`);
     svg += dimLineV(f0[1], f1[1], fullLeft - 66, `EAVE LENGTH ${formatDimension(eL)}`);
-    // Per-side overhang (ring edge → eave edge), mid of each side.
-    const ohL = minX - fit.minX, ohR = fit.maxX - maxX, ohT = minY - fit.minY, ohB = fit.maxY - maxY;
-    if (ohL > 0.5) svg += dimLineH(f0[0], ringL, midYsvg, formatDimension(ohL));
-    if (ohR > 0.5) svg += dimLineH(ringR, f1[0], midYsvg, formatDimension(ohR));
-    if (ohT > 0.5) svg += dimLineV(f0[1], ringT, midXsvg, formatDimension(ohT));
-    if (ohB > 0.5) svg += dimLineV(ringBot, f1[1], midXsvg, formatDimension(ohB));
+    // Per-side overhang (wall face → eave edge), mid of each side.
+    const ohL = wfMinX - fit.minX, ohR = fit.maxX - wfMaxX, ohT = wfMinY - fit.minY, ohB = fit.maxY - wfMaxY;
+    if (ohL > 0.5) svg += dimLineH(f0[0], wfL, midYsvg, formatDimension(ohL));
+    if (ohR > 0.5) svg += dimLineH(wfR, f1[0], midYsvg, formatDimension(ohR));
+    if (ohT > 0.5) svg += dimLineV(f0[1], wfT, midXsvg, formatDimension(ohT));
+    if (ohB > 0.5) svg += dimLineV(wfB, f1[1], midXsvg, formatDimension(ohB));
   }
 
   // --- Representative truss clear span (ring-to-ring the truss must fit) ---
@@ -215,7 +218,7 @@ export function v2FrameDimPanel(
   if (ridgeSec) parts.push(`ridge ${ridgeSec}`);
   parts.push(`${stations.length} truss station${stations.length === 1 ? "" : "s"}`);
   svg += `<text x="${(x0 + 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="start" font-size="10" fill="#475569">${escapeXml(parts.join("  ·  "))}</text>\n`;
-  svg += `<text x="${(x0 + width - 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="end" font-size="9" fill="#475569"><tspan fill="#16a34a">green = wall ring beam</tspan> · grey = roof edge (eave)</text>\n`;
+  svg += `<text x="${(x0 + width - 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="end" font-size="9" fill="#475569"><tspan fill="#16a34a">green = ring beam (wall centre)</tspan> · <tspan fill="#8a6a3f">brown = wall face</tspan> · grey = roof edge (eave)</text>\n`;
 
   svg += `</g>\n`;
   return svg;

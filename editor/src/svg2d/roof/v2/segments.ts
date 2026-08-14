@@ -131,6 +131,31 @@ export function isLeafEndpoint(
   return !entry.isJoint;
 }
 
+// Shrink a convex quad toward its centroid by `d` along each of its own two
+// edge axes (so an axis-aligned rectangle insets `d` on every side).
+function insetQuad(
+  rect: readonly [Point2D, Point2D, Point2D, Point2D],
+  d: number,
+): [Point2D, Point2D, Point2D, Point2D] {
+  if (!(d > 0)) return [rect[0], rect[1], rect[2], rect[3]];
+  const cx = (rect[0][0] + rect[1][0] + rect[2][0] + rect[3][0]) / 4;
+  const cy = (rect[0][1] + rect[1][1] + rect[2][1] + rect[3][1]) / 4;
+  const ax = [rect[1][0] - rect[0][0], rect[1][1] - rect[0][1]];
+  const bx = [rect[3][0] - rect[0][0], rect[3][1] - rect[0][1]];
+  const al = Math.hypot(ax[0], ax[1]) || 1, bl = Math.hypot(bx[0], bx[1]) || 1;
+  const ua: Point2D = [ax[0] / al, ax[1] / al];
+  const ub: Point2D = [bx[0] / bl, bx[1] / bl];
+  const move = (p: Point2D): Point2D => {
+    const dx = p[0] - cx, dy = p[1] - cy;
+    let a = dx * ua[0] + dy * ua[1];
+    let b = dx * ub[0] + dy * ub[1];
+    a -= Math.sign(a) * Math.min(d, Math.abs(a));
+    b -= Math.sign(b) * Math.min(d, Math.abs(b));
+    return [cx + a * ua[0] + b * ub[0], cy + a * ua[1] + b * ub[1]];
+  };
+  return [move(rect[0]), move(rect[1]), move(rect[2]), move(rect[3])];
+}
+
 // One StraightMember per edge of the CCW-ordered segment rectangle,
 // at the given Z. Emits 4 members per rectangle. Multi-segment
 // callers can compose these; Step 6 (joint resolution) will trim
@@ -141,6 +166,7 @@ export function ringBeamMembersForRect(
   rect: readonly [Point2D, Point2D, Point2D, Point2D],
   z: number,
   segmentId: string,
+  inset = 0,
 ): Array<{
   id: string;
   start: [number, number, number];
@@ -159,9 +185,15 @@ export function ringBeamMembersForRect(
   const labels: Array<"right" | "front" | "left" | "back"> = [
     "right", "front", "left", "back",
   ];
+  // The segment rectangle is grown to the OUTER wall face (expand.ts center-
+  // convention). `inset` (typically half the wall thickness) pulls the ring
+  // beam back onto the wall centreline so it sits CENTRED on the wall — while
+  // the rafters/eaves keep reaching the outer face. Inset toward the centroid
+  // along the rectangle's own two axes.
+  const r = insetQuad(rect, inset);
   for (let i = 0; i < 4; i++) {
-    const a = rect[i];
-    const b = rect[(i + 1) % 4];
+    const a = r[i];
+    const b = r[(i + 1) % 4];
     out.push({
       id: `${segmentId}.ring_beam.${labels[i]}`,
       start: [a[0], a[1], z],

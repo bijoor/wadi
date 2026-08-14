@@ -247,12 +247,15 @@ export function v2SectionPanel(
       p[horIdx] = h;
       return p;
     };
-    // Horizontal: eave-to-eave (the profile) vs the wall ring beam.
+    // Horizontal: eave-to-eave (the profile) vs the WALL outer face. The ring
+    // beam sits on the wall centreline, so the wall face = ring ± half the wall
+    // thickness. Overhang and wall stubs reference the wall face.
     const ringHs: number[] = [];
     for (const m of spec.members) if (m.role === "ring_beam") ringHs.push(m.start[horIdx], m.end[horIdx]);
+    const half = (spec.framing?.wall_thickness_u ?? 0) / 2;
     const eMinH = minH, eMaxH = maxH;
-    const rMinH = ringHs.length ? Math.min(...ringHs) : eMinH;
-    const rMaxH = ringHs.length ? Math.max(...ringHs) : eMaxH;
+    const rMinH = (ringHs.length ? Math.min(...ringHs) : eMinH) - half;
+    const rMaxH = (ringHs.length ? Math.max(...ringHs) : eMaxH) + half;
     // z levels from the actual plane cuts (not padded ground/wall).
     let segMinZ = Infinity, segMaxZ = -Infinity;
     for (const { seg: [a, b] } of allSegs) for (const p of [a, b]) {

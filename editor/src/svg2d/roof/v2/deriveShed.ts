@@ -175,7 +175,8 @@ export function deriveShedRoof(
     // `.front` = end) are suppressed at open (leaf) ends — the raking
     // `gable_band` carries the band up the slope there.
     const rect = segmentRect(seg);
-    for (const rb of ringBeamMembersForRect(rect, opts.wallTopZ, seg.id)) {
+    // Centre the ring beam on the wall (rect is grown to the outer wall face).
+    for (const rb of ringBeamMembersForRect(rect, opts.wallTopZ, seg.id, (opts.wallThickness ?? 0) / 2)) {
       if (startIsLeaf && rb.id.endsWith(".back")) continue;
       if (endIsLeaf && rb.id.endsWith(".front")) continue;
       const isHighEave =

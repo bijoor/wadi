@@ -449,7 +449,11 @@ export function derivePitchedRoof(
     // flat member (the hip face sits on it). Multi-segment: Step 6 trims
     // shared edges.
     const rect = segmentRect(seg);
-    for (const rb of ringBeamMembersForRect(rect, opts.wallTopZ, seg.id)) {
+    // Centre the ring beam on the wall: the segment rect is grown to the outer
+    // wall face (expand.ts center convention), so pull the ring back by half the
+    // wall thickness. Rafters/eaves keep the outer-face position + overhang.
+    const ringInset = (opts.wallThickness ?? 0) / 2;
+    for (const rb of ringBeamMembersForRect(rect, opts.wallTopZ, seg.id, ringInset)) {
       if (startRes === "open" && rb.id.endsWith(".back")) continue;
       if (endRes === "open" && rb.id.endsWith(".front")) continue;
       members.push(rb);
