@@ -304,8 +304,61 @@ export function v2PerspectivePanel(
       }
     }
 
+    // Eave length + overhang offset from the wall, for the two FRONT
+    // (viewer-facing) eaves. The eave line is the pani-patti strip; the wall
+    // is the ring beam. Overhang = the horizontal gap between them.
+    const eaves = spec.members.filter((m) => m.role === "pani_patti");
+    if (eaves.length) {
+      let rminX = Infinity, rmaxX = -Infinity, rminY = Infinity, rmaxY = -Infinity, wallTopZ = -Infinity;
+      for (const m of spec.members) if (m.role === "ring_beam") for (const p of [m.start, m.end]) {
+        if (p[0] < rminX) rminX = p[0]; if (p[0] > rmaxX) rmaxX = p[0];
+        if (p[1] < rminY) rminY = p[1]; if (p[1] > rmaxY) rmaxY = p[1];
+        if (p[2] > wallTopZ) wallTopZ = p[2];
+      }
+      const cx0 = (rminX + rmaxX) / 2, cy0 = (rminY + rmaxY) / 2;
+      // Two front eaves = largest midpoint (x+y) → nearest the viewer in iso.
+      const front = eaves
+        .map((m) => ({ m, key: (m.start[0] + m.end[0]) / 2 + (m.start[1] + m.end[1]) / 2 }))
+        .sort((a, b) => b.key - a.key).slice(0, 2).map((s) => s.m);
+      const EAVE = "#0e7490";
+      for (const m of front) {
+        const L = Math.hypot(m.end[0] - m.start[0], m.end[1] - m.start[1], m.end[2] - m.start[2]);
+        // --- Eave length label, along the eave, nudged toward the interior. ---
+        const [x1, y1] = toSvg(m.start), [x2, y2] = toSvg(m.end);
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        let deg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+        if (deg > 90) deg -= 180; else if (deg < -90) deg += 180;
+        let tx = mx - pc[0], ty = my - pc[1]; const tl = Math.hypot(tx, ty) || 1;
+        const lx = mx - (tx / tl) * 12, ly = my - (ty / tl) * 12;
+        svg += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="700" fill="${EAVE}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round" transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})">eave ${formatDimension(L)}</text>\n`;
+
+        // --- Overhang: horizontal gap from the eave to the wall face. ---
+        const vertical = Math.abs(m.start[0] - m.end[0]) < 1; // constant X → runs along Y
+        const s = lerp(m.start, m.end, 0.28);
+        let inward: Point3D, oh: number;
+        if (vertical) {
+          const X = m.start[0]; const wallX = X > cx0 ? rmaxX : rminX; oh = Math.abs(X - wallX);
+          inward = [wallX, s[1], s[2]];
+        } else {
+          const Y = m.start[1]; const wallY = Y > cy0 ? rmaxY : rminY; oh = Math.abs(Y - wallY);
+          inward = [s[0], wallY, s[2]];
+        }
+        const [ex, ey] = toSvg(s), [ix, iy] = toSvg(inward);
+        svg += `<line x1="${ex.toFixed(1)}" y1="${ey.toFixed(1)}" x2="${ix.toFixed(1)}" y2="${iy.toFixed(1)}" stroke="${EAVE}" stroke-width="1"/>\n`;
+        for (const [tx2, ty2] of [[ex, ey], [ix, iy]] as const) {
+          let ux = ix - ex, uy = iy - ey; const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
+          svg += `<line x1="${(tx2 - uy * 3).toFixed(1)}" y1="${(ty2 + ux * 3).toFixed(1)}" x2="${(tx2 + uy * 3).toFixed(1)}" y2="${(ty2 - ux * 3).toFixed(1)}" stroke="${EAVE}" stroke-width="1"/>\n`;
+        }
+        // Witness up the wall face so the overhang clearly references the wall.
+        const [wx, wy] = toSvg([inward[0], inward[1], wallTopZ]);
+        svg += `<line x1="${ix.toFixed(1)}" y1="${iy.toFixed(1)}" x2="${wx.toFixed(1)}" y2="${wy.toFixed(1)}" stroke="${EAVE}" stroke-width="0.5" stroke-dasharray="2 2"/>\n`;
+        const omx = (ex + ix) / 2, omy = (ey + iy) / 2;
+        svg += `<text x="${omx.toFixed(1)}" y="${(omy - 4).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="${EAVE}" paint-order="stroke" stroke="#fdfcfa" stroke-width="2.5" stroke-linejoin="round">↤ ${formatDimension(oh)}</text>\n`;
+      }
+    }
+
     // Legend — clarify the units + that these are the numbers to measure.
-    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = overall (width × length × ridge height) + truss spacing · brown = ridge &amp; hip segments (hip = structural run + overhang)</text>\n`;
+    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = overall + truss spacing · brown = ridge &amp; hip segments · <tspan fill="#0e7490">teal = front eave length + overhang from wall</tspan></text>\n`;
   }
 
   svg += `</g>\n`;
