@@ -6,22 +6,22 @@
     "roof": "a7920c21a7ef0877"
   },
   "family_home": {
-    "expand": "4e48dd34b2bb8cc0",
+    "expand": "48499bd303286fbf",
     "plans": "55cff03aea7a1a23",
-    "elevations": "583c17a181e3585d",
-    "roof": "fe9d922626e1b981"
+    "elevations": "0e8927004195fa27",
+    "roof": "136215afa5e49b04"
   },
   "single_story_cottage": {
-    "expand": "018451ba2192726a",
+    "expand": "e039e67c0c6adef4",
     "plans": "70eadd8fc25b4e09",
-    "elevations": "cd7aa027e75d90f6",
-    "roof": "a597a6c40427e438"
+    "elevations": "19c5c7b4945f856f",
+    "roof": "3d63b734d578ccd1"
   },
   "lib/coastal_konkan": {
-    "expand": "d3798a3154d12224",
+    "expand": "200672a1029a0041",
     "plans": "e02e453e06dc7897",
-    "elevations": "792dcc6368d2c89b",
-    "roof": "fb11e4433e120a39"
+    "elevations": "92ec7d2e5ad29526",
+    "roof": "92b9f572d4e7bc06"
   },
   "lib/family_home": {
     "expand": "90046b2647e1cc96",

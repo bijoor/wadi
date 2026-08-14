@@ -131,6 +131,7 @@ export function v2EavePanel(
   const rafterD = rafterIn[1] * IN_TO_U; // rafter depth (perpendicular band)
   const purlinD = purlinIn[1] * IN_TO_U;
   const wallT = spec.framing?.wall_thickness_u ?? 7.5; // masonry wall thickness
+  const ringH0 = Math.max(0, (wallT - ringW) / 2);     // ring beam centred on the wall
 
   const pitchDeg = group.pitchDeg || 25;
   const th = (pitchDeg * Math.PI) / 180;
@@ -140,8 +141,11 @@ export function v2EavePanel(
   const interiorRun = wallT + Math.max(wallT * 1.2, 12); // rafter stub inboard
   const battenGap = Math.max(rafterD * 0.35, 2);
 
-  // --- Key points in local (h, z): outer wall face at h=0; z=0 = ring top. ---
-  const bottomAt = (h: number): [number, number] => [h, h * tan];
+  // --- Key points in local (h, z): outer wall face at h=0; z=0 = wall top =
+  // ring-beam underside. The ring beam sits ON the wall (z: 0 → +ringD) and the
+  // steel rafter is welded onto the ring's outer-top corner, sloping up inboard —
+  // the frame is carried by the ring, NOT resting on the masonry. ---
+  const bottomAt = (h: number): [number, number] => [h, ringD + (h - ringH0) * tan];
   const perpUp: [number, number] = [-sin, cos];
   const top = (p: [number, number]): [number, number] => [p[0] + perpUp[0] * rafterD, p[1] + perpUp[1] * rafterD];
   const tailB = bottomAt(-overhang);
@@ -155,7 +159,8 @@ export function v2EavePanel(
 
   // --- Fit local geometry into the draw area. ---
   const pts: Array<[number, number]> = [
-    [0, 0], [0, -ringD], [wallT, 0], [wallT, -ringD], [0, -wallH], [wallT, -wallH],
+    [0, 0], [wallT, 0], [0, -wallH], [wallT, -wallH],
+    [ringH0, 0], [ringH0 + ringW, 0], [ringH0, ringD], [ringH0 + ringW, ringD],
     tailB, inB, tailT, inT, tileTail, tileIn, pOnTop,
   ];
   let minH = Infinity, maxH = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -186,12 +191,11 @@ export function v2EavePanel(
   svg += poly([[0, 0], [wallT, 0], [wallT, -wallH], [0, -wallH]], "#efe7db", "#8a6a3f", 1);
   for (let hh = 1; hh < 6; hh++) {
     const zc = -wallH * (hh / 6);
-    if (zc < -ringD) svg += seg([0, zc], [wallT, zc], "#d9c9ad", 0.5);
+    svg += seg([0, zc], [wallT, zc], "#d9c9ad", 0.5);
   }
-  // --- Ring beam (steel), CENTRED on the wall (h=0 is the outer wall face) ---
-  const ringH0 = Math.max(0, (wallT - ringW) / 2);
-  svg += poly([[ringH0, 0], [ringH0 + ringW, 0], [ringH0 + ringW, -ringD], [ringH0, -ringD]], "#dcfce7", "#16a34a", 1.6);
-  // --- Wall-top / eave datum ---
+  // --- Ring beam (steel), sitting ON TOP of the wall, centred on it (z: 0→ringD) ---
+  svg += poly([[ringH0, 0], [ringH0 + ringW, 0], [ringH0 + ringW, ringD], [ringH0, ringD]], "#dcfce7", "#16a34a", 1.6);
+  // --- Wall-top datum (ring-beam seating level) ---
   svg += seg([Math.min(minH, -overhang), 0], [maxH, 0], "#94a3b8", 0.6, "5 3");
 
   // --- Rafter band ---
@@ -211,7 +215,7 @@ export function v2EavePanel(
 
   // --- Callout labels ---
   svg += label([wallT / 2, -wallH * 0.66], "WALL", "middle", "#8a6a3f");
-  svg += label([ringW + 1.5, -ringD / 2], `RING BEAM ${secInLabel(ringIn)}`, "start", "#16a34a");
+  svg += label([ringH0 + ringW + 1.5, ringD / 2], `RING BEAM ${secInLabel(ringIn)}`, "start", "#16a34a");
   svg += label(inT, "RAFTER", "start", "#475569");
   svg += label([pOnTop[0], pOnTop[1] + 1], "PURLIN", "middle", "#334155");
   svg += label(tileIn, "TILE", "start", "#b45309");
@@ -221,8 +225,8 @@ export function v2EavePanel(
   svg += dimLineH(S(tailB)[0], S([0, 0])[0], dimY, `overhang ${formatDimension(overhang)}`);
   svg += seg(tailB, [tailB[0], minZ - overhang * 0.02], "#94a3b8", 0.4, "2 2");
   svg += dimLineH(S([0, -wallH])[0], S([wallT, -wallH])[0], S([0, -wallH])[1] + 16, `wall ${formatDimension(wallT)}`);
-  // Pitch arc at the outer ring corner.
-  const o = S([0, 0]);
+  // Pitch arc at the rafter's bearing point on the ring's outer-top corner.
+  const o = S([ringH0, ringD]);
   const r = 26;
   svg += `<path d="M ${(o[0] + r).toFixed(1)} ${o[1].toFixed(1)} A ${r} ${r} 0 0 0 ${(o[0] + r * cos).toFixed(1)} ${(o[1] - r * sin).toFixed(1)}" fill="none" stroke="#8B4513" stroke-width="1"/>\n`;
   svg += `<text x="${(o[0] + r + 4).toFixed(1)}" y="${(o[1] - 6).toFixed(1)}" text-anchor="start" font-size="11" font-weight="600" fill="#8B4513">${pitchDeg.toFixed(1)}°</text>\n`;

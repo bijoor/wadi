@@ -54,6 +54,11 @@ export function v2FrameDimPanel(
   const { minX, maxX, minY, maxY } = datum;
   const spanX = maxX - minX || 1;
   const spanY = maxY - minY || 1;
+  // Wall OUTER face = ring (on the wall centreline) grown by half the wall
+  // thickness. This is the house footprint the floor plan dimensions (e.g. 27×45),
+  // so it is the frame's HEADLINE dimension; the ring beam is the inner member.
+  const half = (spec.framing?.wall_thickness_u ?? 0) / 2;
+  const wallSpanX = spanX + 2 * half, wallSpanY = spanY + 2 * half;
 
   // Fit the FULL frame — ring + hips (which run out to the eave corners) + ridge
   // — so the hip diagonals draw full-length to the eaves rather than clipped at
@@ -69,7 +74,7 @@ export function v2FrameDimPanel(
     offY + p[1] * scale,
   ];
 
-  const title = "MAIN FRAME — Fabrication dimensions (ring on wall centre · overhang from wall face)";
+  const title = "MAIN FRAME — Fabrication dimensions (wall outer face = floor plan · ring on wall centre)";
   let svg = panelFrame(x0, y0, width, height, titleH, title, "v2-frame-dim");
 
   const line = (a: [number, number], b: [number, number], stroke: string, w: number, dash?: string) =>
@@ -150,10 +155,10 @@ export function v2FrameDimPanel(
       const sx = svgOf(mk);
       svg += line([sx, ringBottom], [sx, chainY], "#94a3b8", 0.5, "2 2");
     }
-    // overall ring width, one line lower
-    svg += dimLineH(svgOf(edgeLo), svgOf(edgeHi), chainY + 22, `RING WIDTH ${formatDimension(spanX)}`);
-    // overall ring length on the left, beyond the eaves
-    svg += dimLineV(Math.min(c0[1], c1[1]), Math.max(c0[1], c1[1]), fullLeft - 24, `RING LENGTH ${formatDimension(spanY)}`);
+    // overall WALL width (outer face = house footprint, matches the floor plan)
+    svg += dimLineH(toSvg([minX - half, minY])[0], toSvg([maxX + half, minY])[0], chainY + 22, `WALL WIDTH ${formatDimension(wallSpanX)}`);
+    // overall WALL length on the left, beyond the eaves
+    svg += dimLineV(toSvg([minX, minY - half])[1], toSvg([minX, maxY + half])[1], fullLeft - 24, `WALL LENGTH ${formatDimension(wallSpanY)}`);
   } else {
     // Stations distributed along Y → vertical chain on the left, beyond the eaves.
     const chainX = fullLeft - 20;
@@ -167,8 +172,8 @@ export function v2FrameDimPanel(
       const sy = svgOf(mk);
       svg += line([ringLeft, sy], [chainX, sy], "#94a3b8", 0.5, "2 2");
     }
-    svg += dimLineV(svgOf(edgeLo), svgOf(edgeHi), chainX - 22, `RING LENGTH ${formatDimension(spanY)}`);
-    svg += dimLineH(Math.min(c0[0], c1[0]), Math.max(c0[0], c1[0]), fullBottom + 20, `RING WIDTH ${formatDimension(spanX)}`);
+    svg += dimLineV(toSvg([minX, minY - half])[1], toSvg([minX, maxY + half])[1], chainX - 22, `WALL LENGTH ${formatDimension(wallSpanY)}`);
+    svg += dimLineH(toSvg([minX - half, minY])[0], toSvg([maxX + half, minY])[0], fullBottom + 20, `WALL WIDTH ${formatDimension(wallSpanX)}`);
   }
 
   // --- Wall outer face + eave overall + per-side overhang (compare with iso) ---
@@ -214,7 +219,8 @@ export function v2FrameDimPanel(
   const ridgeSec = inLabel(spec.framing?.ridge_size_in) ?? sectionFtLabel(ridges[0]?.section_size);
   const footY = y0 + height - 12;
   const parts: string[] = [];
-  if (ringSec) parts.push(`ring beam ${ringSec}`);
+  parts.push(`ring beam ${formatDimension(spanX)} × ${formatDimension(spanY)} (wall centre)`);
+  if (ringSec) parts.push(`ring ${ringSec}`);
   if (ridgeSec) parts.push(`ridge ${ridgeSec}`);
   parts.push(`${stations.length} truss station${stations.length === 1 ? "" : "s"}`);
   svg += `<text x="${(x0 + 12).toFixed(1)}" y="${footY.toFixed(1)}" text-anchor="start" font-size="10" fill="#475569">${escapeXml(parts.join("  ·  "))}</text>\n`;
