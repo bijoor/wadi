@@ -1,6 +1,6 @@
 [package]
 name = "wadi"
-version = "0.1.3"
+version = "0.1.4"
 description = "Wadi — desktop editor for procedurally generated home designs (formerly Konkan House)."
 authors = ["Ashutosh Bijoor <bijoor@gmail.com>"]
 license = ""
