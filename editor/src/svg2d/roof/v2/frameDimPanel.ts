@@ -39,8 +39,8 @@ export function v2FrameDimPanel(
   spec: RoofSpec,
 ): string {
   const titleH = 40;
-  // Extra room on the left + bottom for the dimension chains.
-  const padL = 74, padR = 34, padT = titleH + 30, padB = 78;
+  // Extra room on the left + bottom for the ring, eave, and truss dim chains.
+  const padL = 104, padR = 40, padT = titleH + 30, padB = 96;
   const drawW = width - padL - padR;
   const drawH = height - padT - padB;
 
@@ -173,6 +173,23 @@ export function v2FrameDimPanel(
     }
     svg += dimLineV(svgOf(edgeLo), svgOf(edgeHi), chainX - 22, `RING LENGTH ${formatDimension(spanY)}`);
     svg += dimLineH(Math.min(c0[0], c1[0]), Math.max(c0[0], c1[0]), fullBottom + 20, `RING WIDTH ${formatDimension(spanX)}`);
+  }
+
+  // --- Eave (roof edge) overall + per-side overhang, to compare with the iso ---
+  if (eaves.length) {
+    const eW = fit.maxX - fit.minX, eL = fit.maxY - fit.minY;
+    const ringL = Math.min(c0[0], c1[0]), ringR = Math.max(c0[0], c1[0]);
+    const ringT = Math.min(c0[1], c1[1]), ringBot = Math.max(c0[1], c1[1]);
+    const midXsvg = (ringL + ringR) / 2, midYsvg = (ringT + ringBot) / 2;
+    // Overall eave dimensions — the outermost lines (roof footprint incl overhang).
+    svg += dimLineH(f0[0], f1[0], fullBottom + 42, `EAVE WIDTH ${formatDimension(eW)}`);
+    svg += dimLineV(f0[1], f1[1], fullLeft - 66, `EAVE LENGTH ${formatDimension(eL)}`);
+    // Per-side overhang (ring edge → eave edge), mid of each side.
+    const ohL = minX - fit.minX, ohR = fit.maxX - maxX, ohT = minY - fit.minY, ohB = fit.maxY - maxY;
+    if (ohL > 0.5) svg += dimLineH(f0[0], ringL, midYsvg, formatDimension(ohL));
+    if (ohR > 0.5) svg += dimLineH(ringR, f1[0], midYsvg, formatDimension(ohR));
+    if (ohT > 0.5) svg += dimLineV(f0[1], ringT, midXsvg, formatDimension(ohT));
+    if (ohB > 0.5) svg += dimLineV(ringBot, f1[1], midXsvg, formatDimension(ohB));
   }
 
   // --- Representative truss clear span (ring-to-ring the truss must fit) ---

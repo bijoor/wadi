@@ -95,6 +95,7 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
         cutCoord: cutX,
         wallTopZ,
         overlayTruss: true,
+        dimensions: true,
       }),
     },
     {
@@ -106,6 +107,7 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
         cutCoord: cutY,
         wallTopZ,
         overlayTruss: true,
+        dimensions: true,
       }),
     },
     {
