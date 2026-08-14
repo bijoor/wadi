@@ -237,29 +237,73 @@ export function v2PerspectivePanel(
       svg += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${DIM_COLOR}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round">${lb.text}</text>\n`;
     }
 
-    // Per-member cut lengths — the TRUE length of each central-ridge segment
-    // and each hip (and valley), labelled along the member. These are cut
-    // lengths, so every member is labelled even when several are identical.
+    // Per-SEGMENT cut lengths on the ridge / hips / valleys. A ridge/hip is
+    // one member, but a fabricator welds it in segments between the STRUCTURAL
+    // nodes that land on it (truss apexes where the ridge is spliced, and the
+    // ends where hips meet the ridge). We split at those major nodes and label
+    // each sub-segment's true length. A member with no interior node (a hip is
+    // a single run corner→apex) keeps one label = its full cut length.
+    const majorEnds: Point3D[] = [];
+    for (const t of spec.trusses) majorEnds.push(t.apex);
+    for (const mm of spec.members) {
+      if (mm.role === "ridge" || mm.role === "hip" || mm.role === "valley") {
+        majorEnds.push(mm.start); majorEnds.push(mm.end);
+      }
+    }
+    // Interior split parameters t∈(0,1) where a major node lands on member m.
+    const segNodes = (m: StraightMember): number[] => {
+      const d: Point3D = [m.end[0] - m.start[0], m.end[1] - m.start[1], m.end[2] - m.start[2]];
+      const len2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+      const len = Math.sqrt(len2);
+      if (len < 1e-6) return [0, 1];
+      const raw: number[] = [];
+      for (const p of majorEnds) {
+        const t = ((p[0] - m.start[0]) * d[0] + (p[1] - m.start[1]) * d[1] + (p[2] - m.start[2]) * d[2]) / len2;
+        if (t <= 0.02 || t >= 0.98) continue;
+        const proj: Point3D = [m.start[0] + t * d[0], m.start[1] + t * d[1], m.start[2] + t * d[2]];
+        if (Math.hypot(p[0] - proj[0], p[1] - proj[1], p[2] - proj[2]) < 1.0) raw.push(t);
+      }
+      raw.sort((a, b) => a - b);
+      const mid: number[] = [];
+      for (const t of raw) if (!mid.length || (t - mid[mid.length - 1]) * len > 2) mid.push(t);
+      return [0, ...mid, 1];
+    };
+
+    const lerp = (a: Point3D, b: Point3D, t: number): Point3D =>
+      [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+
     for (const m of spec.members) {
       if (m.role !== "ridge" && m.role !== "hip" && m.role !== "valley") continue;
       const L = Math.hypot(m.end[0] - m.start[0], m.end[1] - m.start[1], m.end[2] - m.start[2]);
       if (L < 1) continue;
-      const [x1, y1] = toSvg(m.start);
-      const [x2, y2] = toSvg(m.end);
-      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-      let deg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
-      if (deg > 90) deg -= 180; else if (deg < -90) deg += 180;
-      // Nudge the label off the member line, toward the top of the drawing.
-      let nx = -(y2 - y1), ny = x2 - x1;
-      const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
-      if (ny > 0) { nx = -nx; ny = -ny; }
-      const lx = mx + nx * 8, ly = my + ny * 8;
       const col = FRAME_STROKES[m.role] ?? "#334155";
-      svg += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="600" fill="${col}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round" transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})">${formatDimension(L)}</text>\n`;
+      const nodes = segNodes(m);
+      // Division ticks at interior nodes.
+      for (let k = 1; k < nodes.length - 1; k++) {
+        const [nx0, ny0] = toSvg(lerp(m.start, m.end, nodes[k]));
+        const [ex, ey] = toSvg(m.end); const [sx, sy] = toSvg(m.start);
+        let ux = ex - sx, uy = ey - sy; const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
+        svg += `<line x1="${(nx0 + uy * 4).toFixed(1)}" y1="${(ny0 - ux * 4).toFixed(1)}" x2="${(nx0 - uy * 4).toFixed(1)}" y2="${(ny0 + ux * 4).toFixed(1)}" stroke="${col}" stroke-width="1.2"/>\n`;
+      }
+      // One label per sub-segment.
+      for (let k = 0; k + 1 < nodes.length; k++) {
+        const segLen = (nodes[k + 1] - nodes[k]) * L;
+        if (segLen < 1) continue;
+        const [x1, y1] = toSvg(lerp(m.start, m.end, nodes[k]));
+        const [x2, y2] = toSvg(lerp(m.start, m.end, nodes[k + 1]));
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        let deg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+        if (deg > 90) deg -= 180; else if (deg < -90) deg += 180;
+        let nx = -(y2 - y1), ny = x2 - x1;
+        const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+        if (ny > 0) { nx = -nx; ny = -ny; }
+        const lx = mx + nx * 8, ly = my + ny * 8;
+        svg += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="600" fill="${col}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round" transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})">${formatDimension(segLen)}</text>\n`;
+      }
     }
 
     // Legend — clarify the units + that these are the numbers to measure.
-    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = overall (width × length × ridge height) + truss spacing · brown = ridge &amp; hip cut lengths</text>\n`;
+    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = overall (width × length × ridge height) + truss spacing · brown = ridge segment &amp; hip cut lengths</text>\n`;
   }
 
   svg += `</g>\n`;
