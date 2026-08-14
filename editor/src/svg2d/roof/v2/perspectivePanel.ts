@@ -9,12 +9,20 @@
 //   iso_y = z - (x + y) * sin30
 //
 // The result is then scaled to fit the panel and centered.
+//
+// With opts.dimensions, overall tape measurements are drawn ALONG the
+// frame's own axes (width, length, ridge height + truss spacing) so a
+// fabricator who doesn't read plans/sections can measure straight off
+// the 3D picture.
 
 import type { Point3D, RoofSpec, StraightMember } from "./model";
 import { buildTrussMembers } from "./truss";
+import { formatDimension } from "../../format";
 
 const COS30 = Math.cos((30 * Math.PI) / 180);
 const SIN30 = Math.sin((30 * Math.PI) / 180);
+const DIM_COLOR = "#b91c1c";
+const WIT_COLOR = "#e59aa0";
 
 function iso(p: Point3D): [number, number] {
   return [(p[0] - p[1]) * COS30, p[2] - (p[0] + p[1]) * SIN30];
@@ -47,20 +55,113 @@ function frameWidth(role: StraightMember["role"]): number {
   return 1.6;
 }
 
+interface WLine { a: Point3D; b: Point3D; color: string; w: number; dash?: string; tick: boolean; }
+interface WLabel { at: Point3D; text: string; }
+
+// Build overall tape-measure dimensions along the frame's axes (world space,
+// so they feed the panel's fit pass before scaling). Returns the dimension
+// lines (+ witness lines) and their labels.
+function buildFrameDimensions(spec: RoofSpec): { lines: WLine[]; labels: WLabel[] } {
+  const lines: WLine[] = [];
+  const labels: WLabel[] = [];
+
+  const ring = spec.members.filter((m) => m.role === "ring_beam");
+  const src = ring.length ? ring : spec.members;
+  if (!src.length) return { lines, labels };
+
+  let aX = Infinity, bX = -Infinity, aY = Infinity, bY = -Infinity, loZ = Infinity;
+  for (const m of src) for (const p of [m.start, m.end]) {
+    if (p[0] < aX) aX = p[0]; if (p[0] > bX) bX = p[0];
+    if (p[1] < aY) aY = p[1]; if (p[1] > bY) bY = p[1];
+    if (p[2] < loZ) loZ = p[2];
+  }
+  const baseZ = ring.length ? ring[0].start[2] : loZ;
+  let apexZ = -Infinity;
+  for (const m of spec.members) for (const p of [m.start, m.end]) if (p[2] > apexZ) apexZ = p[2];
+  for (const t of spec.trusses) if (t.apex[2] > apexZ) apexZ = t.apex[2];
+  if (!isFinite(apexZ)) apexZ = baseZ;
+
+  const boxW = bX - aX, boxL = bY - aY, rise = apexZ - baseZ;
+  const off = Math.max(0.12 * Math.max(boxW, boxL), 12);
+
+  const addDim = (a: Point3D, b: Point3D, text: string) => {
+    lines.push({ a, b, color: DIM_COLOR, w: 1, tick: true });
+    labels.push({ at: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], text });
+  };
+  const addWit = (a: Point3D, b: Point3D) =>
+    lines.push({ a, b, color: WIT_COLOR, w: 0.5, dash: "3 2", tick: false });
+
+  // WIDTH (X extent) along the front edge (y = aY), offset outward in -Y.
+  {
+    const dy = aY - off;
+    addDim([aX, dy, baseZ], [bX, dy, baseZ], formatDimension(boxW));
+    addWit([aX, aY, baseZ], [aX, dy, baseZ]);
+    addWit([bX, aY, baseZ], [bX, dy, baseZ]);
+  }
+  // LENGTH (Y extent) along the left edge (x = aX), offset outward in -X.
+  {
+    const dx = aX - off;
+    addDim([dx, aY, baseZ], [dx, bY, baseZ], formatDimension(boxL));
+    addWit([aX, aY, baseZ], [dx, aY, baseZ]);
+    addWit([aX, bY, baseZ], [dx, bY, baseZ]);
+  }
+  // RIDGE HEIGHT (rise, wall-top → ridge) — vertical at the front-left corner.
+  {
+    const cx = aX - off, cy = aY - off;
+    addDim([cx, cy, baseZ], [cx, cy, apexZ], formatDimension(rise));
+    addWit([aX, aY, baseZ], [cx, cy, baseZ]);
+  }
+  // TRUSS SPACING chain along the distribution axis, on the far (+) side.
+  if (spec.trusses.length > 1) {
+    const cen = spec.trusses.map((t): [number, number] => [
+      (t.bottom_left[0] + t.bottom_right[0]) / 2,
+      (t.bottom_left[1] + t.bottom_right[1]) / 2,
+    ]);
+    const spanX = Math.max(...cen.map((c) => c[0])) - Math.min(...cen.map((c) => c[0]));
+    const spanY = Math.max(...cen.map((c) => c[1])) - Math.min(...cen.map((c) => c[1]));
+    const axis: 0 | 1 = spanX >= spanY ? 0 : 1;
+    const pos = cen.map((c) => c[axis]).sort((p, q) => p - q);
+    if (axis === 1) {
+      const dx = bX + off;
+      const marks = [aY, ...pos, bY];
+      for (let i = 0; i + 1 < marks.length; i++) {
+        const g = Math.abs(marks[i + 1] - marks[i]);
+        if (g < 0.5) continue;
+        addDim([dx, marks[i], baseZ], [dx, marks[i + 1], baseZ], formatDimension(g));
+      }
+      for (const mk of marks) addWit([bX, mk, baseZ], [dx, mk, baseZ]);
+    } else {
+      const dy = bY + off;
+      const marks = [aX, ...pos, bX];
+      for (let i = 0; i + 1 < marks.length; i++) {
+        const g = Math.abs(marks[i + 1] - marks[i]);
+        if (g < 0.5) continue;
+        addDim([marks[i], dy, baseZ], [marks[i + 1], dy, baseZ], formatDimension(g));
+      }
+      for (const mk of marks) addWit([mk, bY, baseZ], [mk, dy, baseZ]);
+    }
+  }
+
+  return { lines, labels };
+}
+
 export function v2PerspectivePanel(
   x0: number,
   y0: number,
   width: number,
   height: number,
   spec: RoofSpec,
-  opts: { title?: string; wallTopZ?: number; groundZ?: number } = {},
+  opts: { title?: string; wallTopZ?: number; groundZ?: number; dimensions?: boolean } = {},
 ): string {
+  const doDim = opts.dimensions === true;
   const titleH = opts.title ? 40 : 0;
-  const innerPad = 20;
+  const innerPad = doDim ? 40 : 20;
   const drawW = width - 2 * innerPad;
   const drawH = height - titleH - 2 * innerPad;
 
-  // Compute iso bounds of all planes + members.
+  const dim = doDim ? buildFrameDimensions(spec) : { lines: [], labels: [] };
+
+  // Compute iso bounds of all planes + members (+ dimension lines).
   let minIx = Infinity, maxIx = -Infinity;
   let minIy = Infinity, maxIy = -Infinity;
   const consider = (p: Point3D) => {
@@ -72,6 +173,7 @@ export function v2PerspectivePanel(
   };
   for (const p of spec.planes) for (const v of p.vertices) consider(v);
   for (const m of spec.members) { consider(m.start); consider(m.end); }
+  for (const wl of dim.lines) { consider(wl.a); consider(wl.b); }
   if (!isFinite(minIx)) return "";
 
   const isoW = maxIx - minIx || 1;
@@ -109,6 +211,33 @@ export function v2PerspectivePanel(
   for (const t of spec.trusses) {
     const members = t.members ?? buildTrussMembers(t);
     for (const m of members) svg += line(m);
+  }
+
+  // Dimensions — drawn on top of the frame.
+  if (doDim) {
+    const pc: [number, number] = [x0 + width / 2, y0 + height / 2];
+    for (const wl of dim.lines) {
+      const [x1, y1] = toSvg(wl.a);
+      const [x2, y2] = toSvg(wl.b);
+      svg += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${wl.color}" stroke-width="${wl.w}"${wl.dash ? ` stroke-dasharray="${wl.dash}"` : ""} stroke-linecap="round"/>\n`;
+      if (wl.tick) {
+        let ux = x2 - x1, uy = y2 - y1;
+        const d = Math.hypot(ux, uy) || 1; ux /= d; uy /= d;
+        const px = -uy * 4, py = ux * 4;
+        for (const [tx, ty] of [[x1, y1], [x2, y2]] as const) {
+          svg += `<line x1="${(tx - px).toFixed(2)}" y1="${(ty - py).toFixed(2)}" x2="${(tx + px).toFixed(2)}" y2="${(ty + py).toFixed(2)}" stroke="${wl.color}" stroke-width="${wl.w}"/>\n`;
+        }
+      }
+    }
+    for (const lb of dim.labels) {
+      const [mx, my] = toSvg(lb.at);
+      let dx = mx - pc[0], dy = my - pc[1];
+      const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+      const lx = mx + dx * 12, ly = my + dy * 12;
+      svg += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${DIM_COLOR}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round">${lb.text}</text>\n`;
+    }
+    // Legend — clarify the units + that these are the numbers to measure.
+    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = measure these · width × length × ridge height + truss spacing</text>\n`;
   }
 
   svg += `</g>\n`;

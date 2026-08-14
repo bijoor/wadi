@@ -84,7 +84,7 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
     {
       id: "perspective",
       title: "Frame (isometric)",
-      render: (x0, y0, w, h) => v2PerspectivePanel(x0, y0, w, h, spec, { title: "Frame (isometric)" }),
+      render: (x0, y0, w, h) => v2PerspectivePanel(x0, y0, w, h, spec, { title: "Frame (isometric)", dimensions: true }),
     },
     {
       id: "section_a_a",
