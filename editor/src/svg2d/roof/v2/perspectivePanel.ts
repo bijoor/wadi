@@ -236,8 +236,30 @@ export function v2PerspectivePanel(
       const lx = mx + dx * 12, ly = my + dy * 12;
       svg += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${DIM_COLOR}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round">${lb.text}</text>\n`;
     }
+
+    // Per-member cut lengths — the TRUE length of each central-ridge segment
+    // and each hip (and valley), labelled along the member. These are cut
+    // lengths, so every member is labelled even when several are identical.
+    for (const m of spec.members) {
+      if (m.role !== "ridge" && m.role !== "hip" && m.role !== "valley") continue;
+      const L = Math.hypot(m.end[0] - m.start[0], m.end[1] - m.start[1], m.end[2] - m.start[2]);
+      if (L < 1) continue;
+      const [x1, y1] = toSvg(m.start);
+      const [x2, y2] = toSvg(m.end);
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      let deg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+      if (deg > 90) deg -= 180; else if (deg < -90) deg += 180;
+      // Nudge the label off the member line, toward the top of the drawing.
+      let nx = -(y2 - y1), ny = x2 - x1;
+      const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+      if (ny > 0) { nx = -nx; ny = -ny; }
+      const lx = mx + nx * 8, ly = my + ny * 8;
+      const col = FRAME_STROKES[m.role] ?? "#334155";
+      svg += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="600" fill="${col}" paint-order="stroke" stroke="#fdfcfa" stroke-width="3" stroke-linejoin="round" transform="rotate(${deg.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})">${formatDimension(L)}</text>\n`;
+    }
+
     // Legend — clarify the units + that these are the numbers to measure.
-    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = measure these · width × length × ridge height + truss spacing</text>\n`;
+    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = overall (width × length × ridge height) + truss spacing · brown = ridge &amp; hip cut lengths</text>\n`;
   }
 
   svg += `</g>\n`;
