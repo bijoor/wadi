@@ -834,6 +834,10 @@ declare global {
     // dialog in the desktop app.
     exportSvgElement?: (svg: SVGSVGElement, defaultName: string) => Promise<void>;
     exportSvgElementAsPdf?: (svg: SVGSVGElement, defaultName: string) => Promise<void>;
+    // Multi-page PDF of EVERY card on a drawing tab (plans / elevations / roof),
+    // one drawing per page with a title header + page footer — a print-ready
+    // sheet set to hand to a contractor. Vector via svg2pdf.
+    exportTabAsPdf?: (view: string) => Promise<void>;
     // HTML → PDF (BOM / quantities cards) — raster via html2canvas since the
     // content is HTML tables, not SVG. Same native-save path as the SVG export.
     exportHtmlElementAsPdf?: (
@@ -1231,6 +1235,100 @@ function wireExports(): void {
       await saveBinary(
         new Uint8Array(bytes),
         defaultName,
+        "PDF document",
+        ["pdf"],
+        "application/pdf",
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") alert(`PDF export failed: ${msg}`);
+    } finally {
+      hidePdfBusy();
+    }
+  };
+
+  // Multi-page PDF of every card on a drawing tab — one drawing per page, each
+  // fit to a titled A3 sheet with a page footer, for offline printing / handing
+  // to a contractor. Reuses the same vector svg2pdf path as the single-card
+  // export. Triggered from the tab's "⤓ PDF" button, so the tab is active and
+  // its cards are in the DOM with resolved computed styles.
+  window.exportTabAsPdf = async (view: string) => {
+    const tabs: Record<string, { grid: string; label: string }> = {
+      plans: { grid: "floor-plans-grid", label: "Floor Plans" },
+      elevations: { grid: "elevations-grid", label: "Elevations" },
+      roof: { grid: "roof-panels-grid", label: "Roof Details" },
+    };
+    const info = tabs[view];
+    if (!info) return;
+    const grid = document.getElementById(info.grid);
+    const cards = grid
+      ? Array.from(grid.querySelectorAll<HTMLElement>(".svg-item"))
+          .map((it) => ({
+            svg: it.querySelector<SVGSVGElement>("svg"),
+            title: (it.querySelector("h3")?.textContent ?? "").trim(),
+          }))
+          .filter((c): c is { svg: SVGSVGElement; title: string } => c.svg != null)
+      : [];
+    if (!cards.length) {
+      alert("No drawings on this tab yet. Open the tab so the drawings load, then try again.");
+      return;
+    }
+    showPdfBusy(`Preparing ${info.label} PDF…`);
+    await nextPaint();
+    try {
+      const [{ jsPDF }, { svg2pdf }] = await Promise.all([
+        import("jspdf"),
+        import("svg2pdf.js"),
+      ]);
+      let pdf: InstanceType<typeof jsPDF> | null = null;
+      const margin = 28, headerH = 24, footerH = 18;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      for (let i = 0; i < cards.length; i++) {
+        const { svg, title } = cards[i];
+        const { width, height } = svgIntrinsicSize(svg);
+        const orientation = width >= height ? "landscape" : "portrait";
+        if (!pdf) {
+          pdf = new jsPDF({ orientation, unit: "pt", format: "a3", compress: true });
+        } else {
+          pdf.addPage("a3", orientation);
+        }
+        const doc = pdf;
+        const pw = doc.internal.pageSize.getWidth();
+        const ph = doc.internal.pageSize.getHeight();
+        // Title header.
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor(30, 41, 59);
+        doc.text(title || info.label, margin, margin + 6, { baseline: "middle" });
+        // Drawing, centred in the area between header and footer.
+        const top = margin + headerH;
+        const availW = pw - margin * 2;
+        const availH = ph - margin - footerH - top;
+        const scale = Math.min(availW / width, availH / height);
+        const dw = width * scale, dh = height * scale;
+        await svg2pdf(svg, doc, {
+          x: (pw - dw) / 2,
+          y: top + (availH - dh) / 2,
+          width: dw,
+          height: dh,
+        });
+        // Footer: source + date on the left, page count on the right.
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Wadi · ${info.label} · ${dateStr}`, margin, ph - margin + 4, { baseline: "bottom" });
+        doc.text(`Page ${i + 1} / ${cards.length}`, pw - margin, ph - margin + 4, {
+          baseline: "bottom",
+          align: "right",
+        });
+      }
+      if (!pdf) return;
+      const bytes = pdf.output("arraybuffer");
+      hidePdfBusy();
+      const slug = info.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      await saveBinary(
+        new Uint8Array(bytes),
+        `${slug}.pdf`,
         "PDF document",
         ["pdf"],
         "application/pdf",

@@ -1087,6 +1087,36 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+        /* Header row: section title + per-tab "Export PDF" button. */
+        .sheet-header {
+            display: flex;
+            align-items: stretch;
+            gap: 12px;
+            margin-bottom: 2rem;
+        }
+        .sheet-header .section-header { flex: 1; margin-bottom: 0; }
+        .pdf-export-btn {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: 0 1.1rem;
+            font-size: .9rem;
+            font-weight: 600;
+            color: #fff;
+            background: #B85028;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background .15s;
+        }
+        .pdf-export-btn:hover { background: #9c3f1d; }
+        .pdf-export-btn:active { transform: translateY(1px); }
+        @media (max-width: 640px) {
+            .pdf-export-btn { padding: .7rem 1rem; }
+        }
         .svg-full-width {
             position: relative;
             width: 100%;
@@ -1161,7 +1191,7 @@
                 padding: 0;
             }
 
-            header, .tabs, .zoom-controls, .html-lightbox-controls {
+            header, .tabs, .zoom-controls, .html-lightbox-controls, .pdf-export-btn {
                 display: none !important;
             }
 
@@ -2281,7 +2311,10 @@
         <!-- Floor Plans View -->
         <div id="view-plans" class="view-container">
             <div class="svg-views-container">
-                <h2 class="section-header">Floor Plans</h2>
+                <div class="sheet-header">
+                    <h2 class="section-header">Floor Plans</h2>
+                    <button class="pdf-export-btn" title="Export every drawing on this tab as one PDF (for printing / contractors)" onclick="window.exportTabAsPdf && window.exportTabAsPdf('plans')">⤓ Export PDF</button>
+                </div>
                 <div class="svg-grid" id="floor-plans-grid">
                     <!-- Floor plans will be loaded here dynamically -->
                 </div>
@@ -2292,7 +2325,10 @@
         <!-- Elevations View -->
         <div id="view-elevations" class="view-container">
             <div class="svg-views-container">
-                <h2 class="section-header">Elevation Views</h2>
+                <div class="sheet-header">
+                    <h2 class="section-header">Elevation Views</h2>
+                    <button class="pdf-export-btn" title="Export every drawing on this tab as one PDF (for printing / contractors)" onclick="window.exportTabAsPdf && window.exportTabAsPdf('elevations')">⤓ Export PDF</button>
+                </div>
                 <div class="svg-grid" id="elevations-grid">
                     <!-- Elevations will be loaded here dynamically -->
                 </div>
@@ -2303,7 +2339,10 @@
         <!-- Roof Details View -->
         <div id="view-roof" class="view-container">
             <div class="svg-views-container">
-                <h2 class="section-header">Roof Details</h2>
+                <div class="sheet-header">
+                    <h2 class="section-header">Roof Details</h2>
+                    <button class="pdf-export-btn" title="Export every drawing on this tab as one PDF (for printing / contractors)" onclick="window.exportTabAsPdf && window.exportTabAsPdf('roof')">⤓ Export PDF</button>
+                </div>
                 <div class="svg-grid" id="roof-panels-grid">
                     <!-- Roof panels loaded here dynamically from roof_panels.json -->
                 </div>
