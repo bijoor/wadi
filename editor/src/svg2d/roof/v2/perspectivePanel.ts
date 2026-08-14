@@ -239,14 +239,16 @@ export function v2PerspectivePanel(
 
     // Per-SEGMENT cut lengths on the ridge / hips / valleys. A ridge/hip is
     // one member, but a fabricator welds it in segments between the STRUCTURAL
-    // nodes that land on it (truss apexes where the ridge is spliced, and the
-    // ends where hips meet the ridge). We split at those major nodes and label
-    // each sub-segment's true length. A member with no interior node (a hip is
-    // a single run corner→apex) keeps one label = its full cut length.
+    // nodes that land on it: truss apexes where the RIDGE is spliced, and the
+    // wall (ring-beam) corner where a HIP bears — which splits the hip into its
+    // structural run (apex→wall) and its overhang (wall→eave tip). We split at
+    // those major nodes and label each sub-segment's true length, with a
+    // division tick at each node.
     const majorEnds: Point3D[] = [];
     for (const t of spec.trusses) majorEnds.push(t.apex);
     for (const mm of spec.members) {
-      if (mm.role === "ridge" || mm.role === "hip" || mm.role === "valley") {
+      if (mm.role === "ridge" || mm.role === "hip" || mm.role === "valley"
+        || mm.role === "ring_beam") {
         majorEnds.push(mm.start); majorEnds.push(mm.end);
       }
     }
@@ -303,7 +305,7 @@ export function v2PerspectivePanel(
     }
 
     // Legend — clarify the units + that these are the numbers to measure.
-    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = overall (width × length × ridge height) + truss spacing · brown = ridge segment &amp; hip cut lengths</text>\n`;
+    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = overall (width × length × ridge height) + truss spacing · brown = ridge &amp; hip segments (hip = structural run + overhang)</text>\n`;
   }
 
   svg += `</g>\n`;
