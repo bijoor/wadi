@@ -180,12 +180,11 @@ export function toWadiName(name?: string | null): string {
 
 // Name for a shared file whose TYPE must be recognized by messengers/OS choosers.
 // A .wadi is JSON, but the unknown ".wadi" extension makes WhatsApp/Android treat
-// it as generic binary (".bin") — no Share option, no handler. The DOUBLE extension
-// ".wadi.json" is read by its LAST part (.json → application/json), so it's a
-// recognized, shareable, openable file, while still reading as a Wadi design.
-// toWadiName() strips ".wadi.json" cleanly on the way back.
+// it as generic binary. Use a SINGLE, unambiguous ".json" — a double ".wadi.json"
+// gets collapsed back to ".wadi" by some Android file managers, so drop ".wadi"
+// entirely. The content is JSON; the reader accepts .json/.wadi/.wadi.json.
 export function toShareName(name?: string | null): string {
-  return toWadiName(name).replace(/\.wadi$/i, ".wadi.json");
+  return toWadiName(name).replace(/\.wadi$/i, ".json");
 }
 
 // Generic text-save. Tauri: native save dialog + writeTextFile.

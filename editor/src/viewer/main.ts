@@ -1650,8 +1650,11 @@ function readWadiText(text: string): { data?: HouseConfig; error?: string } {
     try { obj = tryParse(atob(s.replace(/\s+/g, ""))); } catch { /* not base64 */ }
   }
   if (obj === undefined) {
-    const head = s.slice(0, 48).replace(/\s+/g, " ");
-    return { error: `Couldn't read the file as a Wadi design (not valid JSON). It begins: "${head}${s.length > 48 ? "…" : ""}" — length ${s.length}.` };
+    // Show the WHOLE content (capped so a pathological blob can't wedge the UI).
+    // A valid design parses above, so anything landing here is small/garbage.
+    const CAP = 2000;
+    const shown = s.length <= CAP ? s : `${s.slice(0, CAP)} …(+${s.length - CAP} more chars)`;
+    return { error: `Couldn't read the file as a Wadi design (not valid JSON). Length ${s.length}. Content: ${JSON.stringify(shown)}` };
   }
   const parsed = validate(obj, { tolerant: true });
   if (parsed.ok && parsed.data) return { data: parsed.data };

@@ -16,8 +16,11 @@
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
       "files": [
-        { "name": "wadi", "accept": ["application/json", "application/octet-stream", "text/plain", ".wadi", ".json"] }
+        { "name": "wadi", "accept": ["application/json", "application/octet-stream", ".wadi", ".json"] }
       ]
     }
   },
