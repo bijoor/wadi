@@ -262,19 +262,19 @@ async function bootViewer(): Promise<void> {
           if (!files || files.length === 0) return;
           try {
             const file = await files[0].getFile();
-            const parsed = validate(JSON.parse(await file.text()), { tolerant: true });
-            if (parsed.ok && parsed.data) {
-              useConfigStore.getState().loadConfig(parsed.data, file.name || "opened file");
+            const r = readWadiText(await file.text());
+            if (r.data) {
+              useConfigStore.getState().loadConfig(r.data, file.name || "opened file");
               // The launchQueue fires AFTER boot, so the owner gallery may have
               // already opened — dismiss it, otherwise the opened design sits
               // hidden behind it and the app looks like it hung.
               closeNewHouseModal();
             } else {
-              showBanner("Couldn't open that file — it isn't a valid Wadi design.");
+              showBanner(r.error ?? "Couldn't open that file.");
             }
           } catch (err) {
             console.warn("viewer: launchQueue file open failed", err);
-            showBanner("Couldn't open that file — it isn't a valid Wadi design.");
+            showBanner("Couldn't open that file: " + (err instanceof Error ? err.message : String(err)));
           }
         })();
       });
@@ -295,24 +295,12 @@ async function bootViewer(): Promise<void> {
       const res = await inbox.match("/__shared_wadi__");
       if (res) {
         await inbox.delete("/__shared_wadi__");
-        const raw = await res.text();
-        let obj: unknown = null;
-        try { obj = JSON.parse(raw); }
-        catch { obj = null; }
-        if (obj != null) {
-          const parsed = validate(obj, { tolerant: true });
-          if (parsed.ok && parsed.data) {
-            useConfigStore.getState().loadConfig(parsed.data, "shared file");
-            loadedFromHash = true; // a specific design is loaded — skip the default auto-load
-          } else {
-            shareLinkError =
-              "This shared design couldn't be opened — it may be from a newer version of Wadi.";
-          }
+        const r = readWadiText(await res.text());
+        if (r.data) {
+          useConfigStore.getState().loadConfig(r.data, "shared file");
+          loadedFromHash = true; // a specific design is loaded — skip the default auto-load
         } else {
-          // A file came through but wasn't valid Wadi JSON (wrong file, or an
-          // app re-encoded it). Tell the user instead of silently defaulting.
-          shareLinkError =
-            "The shared file wasn't a Wadi design (couldn't read it as JSON). Try sharing the .wadi/.wadi.json again, or use 📂 Load.";
+          shareLinkError = r.error ?? "The shared file couldn't be opened.";
         }
       } else {
         // The share opened the app (…?shared=1) but the file never reached the
@@ -1646,6 +1634,30 @@ function reloadActiveTab(): void {
 // A dismissible warning banner pinned top-centre. Used for problems the
 // recipient must notice (e.g. a shared link that failed to load). Auto-hides
 // after a while, or on the ✕.
+// Robustly turn the text of an opened/shared file into a HouseConfig. Handles a
+// leading BOM and stray whitespace (common when files round-trip through
+// messengers / file managers), and a base64-wrapped payload as a fallback. On
+// failure returns an error that INCLUDES the first characters of the content, so
+// a recipient can tell us exactly what arrived instead of a generic "invalid".
+function readWadiText(text: string): { data?: HouseConfig; error?: string } {
+  const s = text.replace(/^﻿/, "").trim();
+  const tryParse = (str: string): unknown | undefined => {
+    try { return JSON.parse(str); } catch { return undefined; }
+  };
+  let obj = tryParse(s);
+  if (obj === undefined && s && !/^[[{]/.test(s)) {
+    // Some transfer paths re-encode the file as base64 — try that too.
+    try { obj = tryParse(atob(s.replace(/\s+/g, ""))); } catch { /* not base64 */ }
+  }
+  if (obj === undefined) {
+    const head = s.slice(0, 48).replace(/\s+/g, " ");
+    return { error: `Couldn't read the file as a Wadi design (not valid JSON). It begins: "${head}${s.length > 48 ? "…" : ""}" — length ${s.length}.` };
+  }
+  const parsed = validate(obj, { tolerant: true });
+  if (parsed.ok && parsed.data) return { data: parsed.data };
+  return { error: "The file is JSON but not a valid Wadi design — it may be from a newer version of Wadi." };
+}
+
 function showBanner(message: string): void {
   const el = document.createElement("div");
   el.setAttribute("role", "alert");
