@@ -246,6 +246,33 @@ async function bootViewer(): Promise<void> {
   // looks like the link "worked" but with the wrong design).
   let shareLinkError: string | null = null;
 
+  // File Handling API: when the OS opens a .wadi WITH the installed PWA — desktop
+  // Chrome/Edge "Open with…", or Android where supported — the file arrives via
+  // launchQueue rather than a share POST. Consume it and load; it overrides the
+  // default house if it lands after boot. (file_handlers in the manifest is what
+  // registers Wadi as an opener for .wadi in the OS.)
+  if (typeof window !== "undefined" && "launchQueue" in window) {
+    try {
+      (window as unknown as {
+        launchQueue: { setConsumer: (cb: (p: { files?: Array<{ getFile: () => Promise<File> }> }) => void) => void };
+      }).launchQueue.setConsumer((params) => {
+        void (async () => {
+          const files = params?.files;
+          if (!files || files.length === 0) return;
+          try {
+            const file = await files[0].getFile();
+            const parsed = validate(JSON.parse(await file.text()), { tolerant: true });
+            if (parsed.ok && parsed.data) {
+              useConfigStore.getState().loadConfig(parsed.data, file.name || "opened file");
+            }
+          } catch (err) {
+            console.warn("viewer: launchQueue file open failed", err);
+          }
+        })();
+      });
+    } catch { /* launchQueue unsupported — the share-target path still works */ }
+  }
+
   // Web Share Target: a .wadi shared INTO the installed PWA is stashed by the service
   // worker (see pwa/sw.js), which redirects here with ?shared=1. Load it (consumed
   // once) before the hash/default. This is how a file shared from WhatsApp/Files opens

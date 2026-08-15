@@ -17,10 +17,20 @@
     "enctype": "multipart/form-data",
     "params": {
       "files": [
-        { "name": "wadi", "accept": ["application/json", "application/octet-stream", ".wadi", ".json"] }
+        { "name": "wadi", "accept": ["application/json", "application/octet-stream", "text/plain", ".wadi", ".json"] }
       ]
     }
   },
+  "file_handlers": [
+    {
+      "action": ".",
+      "accept": {
+        "application/json": [".wadi", ".json"],
+        "application/octet-stream": [".wadi"],
+        "text/plain": [".wadi"]
+      }
+    }
+  ],
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
