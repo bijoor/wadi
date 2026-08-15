@@ -85,16 +85,20 @@ self.addEventListener("fetch", (event) => {
           const form = await req.formData();
           const file =
             form.get("wadi") ||
-            [...form.values()].find((v) => v && typeof v.arrayBuffer === "function");
-          if (file) {
+            [...form.values()].find((v) => v && typeof v.text === "function");
+          if (file && typeof file.text === "function") {
+            // Read the file to TEXT here (reliable in the SW) and stash the text,
+            // rather than storing the File as a Response body (which some Androids
+            // fail to read back on the app side). Boot reads it via res.text().
+            const text = await file.text();
             const cache = await caches.open(SHARE_INBOX);
             await cache.put(
               SHARE_INBOX_KEY,
-              new Response(file, { headers: { "content-type": "application/json" } }),
+              new Response(text, { headers: { "content-type": "application/json" } }),
             );
           }
         } catch (_e) {
-          /* ignore — the app shows the default house if nothing was stashed */
+          /* ignore — the app shows a "couldn't read the shared file" notice */
         }
         // 303 → the client GETs the shell; boot reads the stashed file.
         return Response.redirect(

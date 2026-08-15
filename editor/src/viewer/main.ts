@@ -57,6 +57,7 @@ import {
   saveBinary,
   serializeConfig,
   toWadiName,
+  toShareName,
 } from "../io/fileIO";
 import {
   encodeConfigToHash,
@@ -287,14 +288,30 @@ async function bootViewer(): Promise<void> {
       const res = await inbox.match("/__shared_wadi__");
       if (res) {
         await inbox.delete("/__shared_wadi__");
-        const parsed = validate(JSON.parse(await res.text()), { tolerant: true });
-        if (parsed.ok && parsed.data) {
-          useConfigStore.getState().loadConfig(parsed.data, "shared file");
-          loadedFromHash = true; // a specific design is loaded — skip the default auto-load
+        const raw = await res.text();
+        let obj: unknown = null;
+        try { obj = JSON.parse(raw); }
+        catch { obj = null; }
+        if (obj != null) {
+          const parsed = validate(obj, { tolerant: true });
+          if (parsed.ok && parsed.data) {
+            useConfigStore.getState().loadConfig(parsed.data, "shared file");
+            loadedFromHash = true; // a specific design is loaded — skip the default auto-load
+          } else {
+            shareLinkError =
+              "This shared design couldn't be opened — it may be from a newer version of Wadi.";
+          }
         } else {
+          // A file came through but wasn't valid Wadi JSON (wrong file, or an
+          // app re-encoded it). Tell the user instead of silently defaulting.
           shareLinkError =
-            "This shared design couldn't be opened — it may be from a newer version of Wadi.";
+            "The shared file wasn't a Wadi design (couldn't read it as JSON). Try sharing the .wadi/.wadi.json again, or use 📂 Load.";
         }
+      } else {
+        // The share opened the app (…?shared=1) but the file never reached the
+        // service worker's inbox. Surface it rather than showing the default.
+        shareLinkError =
+          "Received the share, but the file didn't come through. Please share it again — or use the 📂 Load button to open it.";
       }
     } catch {
       /* ignore — fall through to the normal load */
@@ -1834,7 +1851,9 @@ function wireHeaderButtons(): void {
       // recipient opens it via Wadi's share target or the 📂 Load button). Fall back
       // to the link when the platform can't share files (e.g. desktop).
       if (url.length > SHARE_URL_WARN_LEN) {
-        const name = toWadiName(useConfigStore.getState().filename ?? undefined);
+        // Share as ".wadi.json" so messengers recognise the type (a bare ".wadi"
+        // is seen as generic binary and gets no Share option / no handler).
+        const name = toShareName(useConfigStore.getState().filename ?? undefined);
         const file = new File([serializeConfig(cfg)], name, { type: "application/json" });
         if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
           try {
