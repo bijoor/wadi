@@ -2515,6 +2515,10 @@
             <div class="zoom-controls">
                 <button class="zoom-btn" onclick="closeSvgLightbox()" title="Close (Esc)" aria-label="Close viewer">✕</button>
                 <div class="zoom-divider" aria-hidden="true"></div>
+                <button class="zoom-btn" id="lb-prev" onclick="lbPrev()" title="Previous diagram (←)" aria-label="Previous diagram">‹</button>
+                <div class="zoom-info" id="lb-counter" style="min-width:42px;"></div>
+                <button class="zoom-btn" id="lb-next" onclick="lbNext()" title="Next diagram (→)" aria-label="Next diagram">›</button>
+                <div class="zoom-divider" id="lb-nav-divider" aria-hidden="true"></div>
                 <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
                 <div class="zoom-info" id="svg-zoom">100%</div>
                 <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
@@ -3585,6 +3589,7 @@
 
             // Load the SVG via the pan/zoom helper.
             await setupPanZoom(filename);
+            lbUpdateNav();
         }
 
         // Open the pan/zoom lightbox from raw SVG text (used by the Layout
@@ -3593,6 +3598,9 @@
             const activeTab = document.querySelector('.tab.active');
             svgLightboxReturnTab = activeTab ? activeTab.getAttribute('onclick') : null;
             svgLightboxCurrentFile = null;
+            // Raw-content opens (Layout composite) aren't one of a card set, so
+            // there's nothing to page through — clear the nav source.
+            window.__lbCurrentItem = null;
 
             const container = document.getElementById('svg-container');
             container.style.display = 'block';
@@ -3602,6 +3610,7 @@
             // No filename → setupPanZoom wires controls to the SVG already
             // in the container.
             await setupPanZoom(null);
+            lbUpdateNav();
         }
 
         function closeSvgLightbox() {
@@ -3616,6 +3625,49 @@
             }
             svgLightboxReturnTab = null;
         }
+
+        // ---- Prev / next navigation between diagrams in the active 2D tab ----
+        // The card the lightbox was opened from. Recorded in the CAPTURE phase so
+        // it's set before the card's own click handler opens the lightbox — and
+        // it also updates when prev/next re-dispatch a click on a sibling card.
+        window.__lbCurrentItem = null;
+        document.addEventListener('click', function (e) {
+            const t = e.target;
+            const svg = t && t.closest ? t.closest('.svg-item svg') : null;
+            if (svg) window.__lbCurrentItem = svg.closest('.svg-item');
+        }, true);
+
+        // The sibling cards you can page through: only ones that open the SVG
+        // lightbox (i.e. contain an <svg>). BOM/HTML cards are skipped.
+        function lbNavCards() {
+            const item = window.__lbCurrentItem;
+            if (!item || !item.isConnected || !item.parentElement) return { cards: [], idx: -1 };
+            const cards = Array.prototype.filter.call(item.parentElement.children, function (c) {
+                return c.classList && c.classList.contains('svg-item') && c.querySelector('svg');
+            });
+            return { cards: cards, idx: cards.indexOf(item) };
+        }
+        function lbGo(delta) {
+            const nav = lbNavCards();
+            if (nav.idx < 0 || nav.cards.length < 2) return;
+            const n = (nav.idx + delta + nav.cards.length) % nav.cards.length; // wrap
+            const svg = nav.cards[n].querySelector('svg');
+            if (svg) svg.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        }
+        function lbPrev() { lbGo(-1); }
+        function lbNext() { lbGo(1); }
+        // Show/hide the nav controls + update the "n / total" counter.
+        function lbUpdateNav() {
+            const nav = lbNavCards();
+            const show = nav.idx >= 0 && nav.cards.length >= 2;
+            ['lb-prev', 'lb-next', 'lb-counter', 'lb-nav-divider'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.style.display = show ? '' : 'none';
+            });
+            const c = document.getElementById('lb-counter');
+            if (c && show) c.textContent = (nav.idx + 1) + ' / ' + nav.cards.length;
+        }
+        window.lbPrev = lbPrev; window.lbNext = lbNext;
 
         // HTML lightbox — used by the BOM cards. Simpler than the SVG
         // lightbox because HTML tables reflow naturally (no pan/zoom).
@@ -3662,15 +3714,21 @@
             }
         }
 
-        // Keyboard navigation — Esc closes whichever lightbox is open.
+        // Keyboard: Esc closes whichever lightbox is open; ← / → page between
+        // diagrams while the SVG lightbox is up.
         document.addEventListener('keydown', function(e) {
-            if (e.key !== 'Escape') return;
             const svgContainer = document.getElementById('svg-container');
             const htmlBox = document.getElementById('html-lightbox');
-            if (htmlBox && htmlBox.style.display !== 'none') {
-                closeHtmlLightbox();
-            } else if (svgContainer && svgContainer.style.display !== 'none') {
-                closeSvgLightbox();
+            const svgOpen = svgContainer && svgContainer.style.display !== 'none';
+            const htmlOpen = htmlBox && htmlBox.style.display !== 'none';
+            if (e.key === 'Escape') {
+                if (htmlOpen) closeHtmlLightbox();
+                else if (svgOpen) closeSvgLightbox();
+                return;
+            }
+            if (svgOpen && !htmlOpen) {
+                if (e.key === 'ArrowLeft') { e.preventDefault(); lbPrev(); }
+                else if (e.key === 'ArrowRight') { e.preventDefault(); lbNext(); }
             }
         });
 
