@@ -29,6 +29,7 @@ import { createRoot } from "react-dom/client";
 import { createElement } from "react";
 import { useConfigStore } from "../state/configStore";
 import { validate } from "../schema/houseConfig";
+import type { HouseConfig as ValidatedHouseConfig } from "../schema/houseConfig";
 import type { HouseConfig } from "../svg2d/expand";
 import { generateAllFloorPlans } from "../svg2d/floorPlansAll";
 import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
@@ -56,7 +57,6 @@ import {
   saveText,
   saveBinary,
   serializeConfig,
-  toWadiName,
   toShareName,
 } from "../io/fileIO";
 import {
@@ -1639,7 +1639,7 @@ function reloadActiveTab(): void {
 // messengers / file managers), and a base64-wrapped payload as a fallback. On
 // failure returns an error that INCLUDES the first characters of the content, so
 // a recipient can tell us exactly what arrived instead of a generic "invalid".
-function readWadiText(text: string): { data?: HouseConfig; error?: string } {
+function readWadiText(text: string): { data?: ValidatedHouseConfig; error?: string } {
   const s = text.replace(/^﻿/, "").trim();
   const tryParse = (str: string): unknown | undefined => {
     try { return JSON.parse(str); } catch { return undefined; }

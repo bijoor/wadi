@@ -61,6 +61,6 @@ export function resolveOpeningAnchors<T extends Record<string, unknown>>(
         Number(op.width) || 0,
         wallLength,
       ),
-    } as T;
+    } as unknown as T;
   });
 }

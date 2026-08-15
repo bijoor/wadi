@@ -115,21 +115,30 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.protocol !== "http:" && url.protocol !== "https:") return;
 
-  // Navigations → app shell (cache-first on the cached index.html so the app
-  // boots offline; refresh it in the background when online).
+  // Navigations → app shell, NETWORK-FIRST (with an offline cache fallback).
+  // Cache-first here was the "splash, no UI" bug: a cached index.html from an
+  // earlier deploy references a hashed JS chunk that a newer deploy pruned, so
+  // the entry script 404s and the app never mounts. Fetching the shell from the
+  // network first guarantees index.html + its chunks always match the CURRENT
+  // deploy. Fall back to the cached shell only when the network is unreachable
+  // (offline) or too slow, so the PWA still launches without a connection.
   if (req.mode === "navigate") {
     event.respondWith(
       (async () => {
-        const cached = await caches.match(SHELL_URL);
-        const network = fetch(req)
-          .then((res) => {
-            if (res && res.ok) {
-              caches.open(SHELL_CACHE).then((c) => c.put(SHELL_URL, res.clone()));
-            }
-            return res;
-          })
-          .catch(() => null);
-        return cached || (await network) || caches.match(SHELL_URL);
+        let res = null;
+        try {
+          res = await Promise.race([
+            fetch(req),
+            new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+          ]);
+        } catch {
+          res = null;
+        }
+        if (res && res.ok) {
+          caches.open(SHELL_CACHE).then((c) => c.put(SHELL_URL, res.clone()));
+          return res;
+        }
+        return (await caches.match(SHELL_URL)) || (res ?? Response.error());
       })(),
     );
     return;

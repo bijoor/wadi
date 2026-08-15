@@ -20,7 +20,7 @@
 // Scope limits which PAGES it controls — not which requests it sees — so it
 // still intercepts the page's root-absolute and cross-origin fetches.
 
-const VERSION = "470dca55";
+const VERSION = "e3acaf6e";
 const SHELL_CACHE = `wadi-shell-${VERSION}`;
 const RUNTIME_CACHE = `wadi-runtime-${VERSION}`;
 const PRECACHE = ["./","./index.html","./assets/viewer-nU2S0CsG.js","./assets/viewer-QTnfLwEv.js","./assets/viewer-DBRtTYU9.css","./assets/viewer-CzaEeLRs.js","./assets/viewer-D1gHfNWn.js","./assets/viewer-BFHTMPB0.js","./assets/viewer-s_7dLOsV.js","./assets/viewer-Iiq4pkbv.js","./assets/viewer-UsRHysPq.js","./assets/viewer-Du8Op3bs.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.json","./templates/family_home.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
@@ -115,21 +115,30 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.protocol !== "http:" && url.protocol !== "https:") return;
 
-  // Navigations → app shell (cache-first on the cached index.html so the app
-  // boots offline; refresh it in the background when online).
+  // Navigations → app shell, NETWORK-FIRST (with an offline cache fallback).
+  // Cache-first here was the "splash, no UI" bug: a cached index.html from an
+  // earlier deploy references a hashed JS chunk that a newer deploy pruned, so
+  // the entry script 404s and the app never mounts. Fetching the shell from the
+  // network first guarantees index.html + its chunks always match the CURRENT
+  // deploy. Fall back to the cached shell only when the network is unreachable
+  // (offline) or too slow, so the PWA still launches without a connection.
   if (req.mode === "navigate") {
     event.respondWith(
       (async () => {
-        const cached = await caches.match(SHELL_URL);
-        const network = fetch(req)
-          .then((res) => {
-            if (res && res.ok) {
-              caches.open(SHELL_CACHE).then((c) => c.put(SHELL_URL, res.clone()));
-            }
-            return res;
-          })
-          .catch(() => null);
-        return cached || (await network) || caches.match(SHELL_URL);
+        let res = null;
+        try {
+          res = await Promise.race([
+            fetch(req),
+            new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+          ]);
+        } catch {
+          res = null;
+        }
+        if (res && res.ok) {
+          caches.open(SHELL_CACHE).then((c) => c.put(SHELL_URL, res.clone()));
+          return res;
+        }
+        return (await caches.match(SHELL_URL)) || (res ?? Response.error());
       })(),
     );
     return;
