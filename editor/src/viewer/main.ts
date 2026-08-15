@@ -265,9 +265,16 @@ async function bootViewer(): Promise<void> {
             const parsed = validate(JSON.parse(await file.text()), { tolerant: true });
             if (parsed.ok && parsed.data) {
               useConfigStore.getState().loadConfig(parsed.data, file.name || "opened file");
+              // The launchQueue fires AFTER boot, so the owner gallery may have
+              // already opened — dismiss it, otherwise the opened design sits
+              // hidden behind it and the app looks like it hung.
+              closeNewHouseModal();
+            } else {
+              showBanner("Couldn't open that file — it isn't a valid Wadi design.");
             }
           } catch (err) {
             console.warn("viewer: launchQueue file open failed", err);
+            showBanner("Couldn't open that file — it isn't a valid Wadi design.");
           }
         })();
       });
@@ -1644,7 +1651,7 @@ function showBanner(message: string): void {
   el.setAttribute("role", "alert");
   el.style.cssText = [
     "position:fixed", "top:12px", "left:50%", "transform:translateX(-50%)",
-    "z-index:1000", "max-width:min(92vw,540px)", "display:flex", "gap:10px",
+    "z-index:3000", "max-width:min(92vw,540px)", "display:flex", "gap:10px",
     "align-items:flex-start", "background:#7c2d12", "color:#fff",
     "font-size:13px", "line-height:1.4", "padding:10px 12px",
     "border-radius:10px", "box-shadow:0 6px 24px rgba(0,0,0,0.35)",
