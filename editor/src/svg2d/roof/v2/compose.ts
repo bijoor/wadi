@@ -12,7 +12,7 @@
 
 import { expandRoomWalls, type HouseConfig } from "../../expand";
 import { computeMergedV2Spec } from "./computeFromHouse";
-import { renderTopViewPanel } from "./topViewPanel";
+import { renderTopViewPanel, type TopViewMarkers } from "./topViewPanel";
 import { v2PerspectivePanel } from "./perspectivePanel";
 import { v2SectionPanel } from "./sectionPanel";
 import { v2FacePanel, groupFaces } from "./facePanel";
@@ -63,16 +63,42 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
   const zMax = roofMaxZ(spec);
   const wallTopZ = inferWallTopZ(spec);
 
+  // Distinct eaves + faces are computed up front so the Top View can mark WHERE
+  // each of the other detail drawings is taken — it becomes the key plan.
+  const eaveGroups = groupEaves(spec);
+  const faceGroups = groupFaces(spec);
+
+  const markers: TopViewMarkers = {
+    sections: [
+      { label: "A", axis: "x", coord: cutX },
+      { label: "B", axis: "y", coord: cutY },
+    ],
+    // one eave callout per distinct eave, on each compass side it occurs
+    eaves: eaveGroups.map((g) => ({ sides: g.sides, label: g.roleLabel })),
+    // roof faces labelled F1.. (matches the "Face N" fabrication panels below)
+    faces: faceGroups.map((group, idx) => ({
+      label: `F${idx + 1}`,
+      planeIds: group.planes.map((p) => p.id),
+    })),
+  };
+
   const defs: PanelDef[] = [
+    // Isometric first — the at-a-glance frame — then the key plan that indexes
+    // every other view.
+    {
+      id: "perspective",
+      title: "Frame (isometric)",
+      render: (x0, y0, w, h) => v2PerspectivePanel(x0, y0, w, h, spec, { title: "Frame (isometric)", dimensions: true }),
+    },
     {
       id: "top_view",
-      title: "Top View",
+      title: "Top view — key plan",
       // renderTopViewPanel returns a full <svg> — nest it inside our
       // master via a positioned <svg> wrapper. Inner viewBox handles
       // its own scaling; outer x/y positions it in the master grid.
       render: (x0, y0, w, h) => {
         const inner = renderTopViewPanel(spec, {
-          width: w, height: h, padding: 20, title: "Top View",
+          width: w, height: h, padding: 20, title: "Top view — key plan", markers,
         });
         // Strip outer <svg ...> and </svg> so we can re-wrap.
         const stripped = inner
@@ -80,11 +106,6 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
           .replace(/<\/svg>\s*$/, "");
         return `<svg x="${x0}" y="${y0}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${stripped}</svg>`;
       },
-    },
-    {
-      id: "perspective",
-      title: "Frame (isometric)",
-      render: (x0, y0, w, h) => v2PerspectivePanel(x0, y0, w, h, spec, { title: "Frame (isometric)", dimensions: true }),
     },
     {
       id: "section_a_a",
@@ -119,7 +140,6 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
 
   // One eave cross-section per DISTINCT eave (main slopes + each hip end differ
   // in pitch and overhang). Falls back to nothing if the roof has no eaves.
-  const eaveGroups = groupEaves(spec);
   eaveGroups.forEach((g, idx) => {
     const sides = g.sides.length ? ` (${g.sides.join("")})` : "";
     defs.push({
@@ -131,8 +151,7 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
 
   // Add one panel per UNIQUE face shape (main slopes, hip ends, and
   // any extension polygons deduplicated by shape signature).
-  const groups = groupFaces(spec);
-  groups.forEach((group, idx) => {
+  faceGroups.forEach((group, idx) => {
     const id = `face_${idx}`;
     // Title lists which planes share this shape.
     const shape = group.geom.ridgeLen > 0.5 ? "trapezoid" : "triangle";
