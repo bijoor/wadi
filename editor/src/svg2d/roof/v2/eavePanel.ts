@@ -16,7 +16,7 @@
 
 import type { Point3D, RoofPlane, RoofSpec } from "./model";
 import { formatDimension } from "../../format";
-import { dimLineH, escapeXml, panelFrame } from "./panelDraw";
+import { dimLineH, escapeXml, keyPlanDisc, panelFrame } from "./panelDraw";
 
 const IN_TO_U = 10 / 12; // project units per inch (10u = 1ft)
 const sub = (a: Point3D, b: Point3D): Point3D => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -121,6 +121,10 @@ export function v2EavePanel(
   const sidesStr = group.sides.length ? ` (${group.sides.join(", ")})` : "";
   const title = `EAVE — ${group.roleLabel}${group.count > 1 ? ` × ${group.count}` : ""}${sidesStr}`;
   let svg = panelFrame(x0, y0, width, height, titleH, title, "v2-eave");
+  // Key-plan cross-reference: a teal disc per compass side (matches the Top view).
+  group.sides.forEach((side, i) => {
+    svg += keyPlanDisc(x0 + width - 24 - i * 30, y0 + 20, 12, side, "#0e7490", "#ffffff", "#ffffff");
+  });
 
   // --- Sections from the framing config (inches → project units). ---
   const ringIn = (spec.framing?.ring_beam_size_in ?? [4, 2]) as [number, number];

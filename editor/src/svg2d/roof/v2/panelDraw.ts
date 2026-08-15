@@ -45,6 +45,26 @@ export function panelFrame(
   );
 }
 
+// A key-plan cross-reference disc — mirrors the Top view (key plan) markers so
+// each detail card carries the same badge you find it by on the plan.
+export function keyPlanDisc(
+  cx: number, cy: number, r: number,
+  letter: string, fill: string, stroke: string, textColor: string,
+): string {
+  return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>` +
+    `<text x="${cx.toFixed(1)}" y="${(cy + r * 0.36).toFixed(1)}" text-anchor="middle" font-size="${Math.round(r * 1.1)}" font-weight="700" fill="${textColor}">${escapeXml(letter)}</text>`;
+}
+
+// A key-plan cross-reference tag (rounded rect) for multi-char labels like "F1".
+export function keyPlanTag(
+  xRight: number, yTop: number, label: string, fill: string, textColor: string,
+): string {
+  const w = 12 + label.length * 8;
+  const x = xRight - w;
+  return `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${w}" height="22" rx="5" fill="${fill}" stroke="#334155" stroke-width="0.9"/>` +
+    `<text x="${(x + w / 2).toFixed(1)}" y="${(yTop + 15.5).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="800" fill="${textColor}">${escapeXml(label)}</text>`;
+}
+
 // Section size ([w_ft, d_ft], project 10u = 1ft) → a compact feet-inches label
 // like 4"×6". Uses inches for anything under a foot.
 export function sectionFtLabel(s: [number, number] | undefined): string | null {

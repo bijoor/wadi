@@ -13,7 +13,7 @@
 
 import type { Point3D, RoofPlane, RoofSpec, StraightMember, TrussTriangle } from "./model";
 import { buildFinkTrussMembers, buildMonoPitchTrussMembers } from "./truss";
-import { dimLineH, dimLineV } from "./panelDraw";
+import { dimLineH, dimLineV, keyPlanDisc } from "./panelDraw";
 import { formatDimension } from "../../format";
 
 export type SectionAxis = "x" | "y";   // the axis whose coord is FIXED
@@ -84,6 +84,9 @@ interface SectionOpts {
   // When true, draw the eave datum + wall stubs and dimension the section
   // (eave-to-eave span, wall span, overhangs, ridge rise).
   dimensions?: boolean;
+  // Key-plan cross-reference letter (e.g. "A" for section A-A) — echoed as a
+  // badge so the card matches its marker on the Top view.
+  keyLabel?: string;
 }
 
 // Members of a truss: pre-populated set, else rebuild by kind.
@@ -175,6 +178,8 @@ export function v2SectionPanel(
   if (opts.title) {
     svg += `<text x="${x0 + width / 2}" y="${y0 + 24}" text-anchor="middle" font-size="14" font-weight="bold" fill="#222">${opts.title}</text>\n`;
   }
+  // Key-plan cross-reference badge (matches the section marker on the Top view).
+  if (opts.keyLabel) svg += keyPlanDisc(x0 + width - 26, y0 + 20, 13, opts.keyLabel, "#ffffff", "#7c3aed", "#7c3aed");
 
   // Optional wall-top reference line.
   if (opts.wallTopZ != null) {

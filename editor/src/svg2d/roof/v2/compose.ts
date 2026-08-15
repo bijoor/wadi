@@ -117,6 +117,7 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
         wallTopZ,
         overlayTruss: true,
         dimensions: true,
+        keyLabel: "A",
       }),
     },
     {
@@ -129,6 +130,7 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
         wallTopZ,
         overlayTruss: true,
         dimensions: true,
+        keyLabel: "B",
       }),
     },
     {
@@ -161,7 +163,7 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
     defs.push({
       id,
       title: nice,
-      render: (x0, y0, w, h) => v2FacePanel(x0, y0, w, h, group),
+      render: (x0, y0, w, h) => v2FacePanel(x0, y0, w, h, group, `F${idx + 1}`),
     });
   });
 

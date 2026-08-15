@@ -18,6 +18,7 @@
 
 import type { Point3D, RoofPlane, RoofSpec, StraightMember } from "./model";
 import { formatDimension } from "../../format";
+import { keyPlanTag } from "./panelDraw";
 
 // ------------------------------------------------------------------
 // Plane-local geometry (matches rafters.ts convention).
@@ -206,6 +207,7 @@ export function v2FacePanel(
   width: number,
   height: number,
   group: FaceGroup,
+  keyLabel?: string,
 ): string {
   const titleH = 40;
   const innerPad = 30;
@@ -231,6 +233,8 @@ export function v2FacePanel(
   svg += `<rect x="${x0}" y="${y0}" width="${width}" height="${height}" fill="#fdfcfa" stroke="#333" stroke-width="1"/>\n`;
   svg += `<rect x="${x0}" y="${y0}" width="${width}" height="${titleH}" fill="#f2ede4" stroke="#333" stroke-width="1"/>\n`;
   svg += `<text x="${x0 + width / 2}" y="${y0 + 26}" text-anchor="middle" font-size="14" font-weight="600" fill="#222">${escapeXml(title)}</text>\n`;
+  // Key-plan cross-reference tag (matches the "F#" label on the Top view).
+  if (keyLabel) svg += keyPlanTag(x0 + width - 12, y0 + 9, keyLabel, "#eef2f7", "#334155");
 
   // Face outline.
   const outlinePts = g.uv.map(toSvg).map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
