@@ -340,6 +340,13 @@ export function v2PerspectivePanel(
         if (p[1] < rminY) rminY = p[1]; if (p[1] > rmaxY) rmaxY = p[1];
         if (p[2] > wallTopZ) wallTopZ = p[2];
       }
+      // Overhang is measured to the WALL OUTER FACE, not the ring centreline, so
+      // the isometric agrees with the top view + eave cross-section (both use
+      // eavePanel.groupEaves, which grows the ring box by half the wall). The
+      // ring beam sits on the wall centreline; grow the box by half the wall so
+      // the same eave does not read half-a-wall longer here than everywhere else.
+      const halfWall = (spec.framing?.wall_thickness_u ?? 0) / 2;
+      rminX -= halfWall; rmaxX += halfWall; rminY -= halfWall; rmaxY += halfWall;
       const cx0 = (rminX + rmaxX) / 2, cy0 = (rminY + rmaxY) / 2;
       // Two front eaves = largest midpoint (x+y) → nearest the viewer in iso.
       const front = eaves
