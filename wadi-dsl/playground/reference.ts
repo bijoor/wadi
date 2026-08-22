@@ -143,8 +143,9 @@ item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
   [slope angle (&lt;left&gt;, &lt;right&gt;)]                  // asymmetric (saltbox) gable — angle pair
   [overhang &lt;o&gt;] [slab_thickness &lt;t&gt;] [parapet &lt;h&gt; x &lt;t&gt;] [gable_wall_thickness &lt;t&gt;]
   [framing { …json… }]          // advanced: structural member sizes (rafter/purlin/ridge/truss)
+  [rafter_pitch &lt;in&gt;] [purlin_pitch &lt;in&gt;]        // rafter / purlin on-centre spacing, in INCHES
   {
-    segment "id" from (x,y) to (x,y) width &lt;w&gt;
+    segment "id" from (x,y) to (x,y) (width &lt;w&gt; | widths (&lt;left&gt;, &lt;right&gt;))
       [high_side left|right] [start_endpoint …] [end_endpoint …]
       [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)]
       [overhang &lt;o&gt;]                            // uniform eave (all four sides)
@@ -165,6 +166,18 @@ is <code>(left, right)</code> by the segment's left normal (the same sides as
 <code>overhang_left</code>/<code>right</code>). A single value is symmetric; a pair is
 asymmetric — nothing else to set. Best on a single-segment gable
 (<code>endpoint open</code>).</p>
+<p class="ref-note"><b>Off-centre ridge by width.</b> Instead of a single
+<code>width</code> (ridge centred), give <code>widths (&lt;left&gt;, &lt;right&gt;)</code> to
+place the ridge off-centre: the two eaves stay at the span edges and the ridge sits at
+<code>left</code> from the left eave (<code>left</code>/<code>right</code> by the segment's
+left normal, as above). The span is <code>left + right</code>; the ridge <b>height</b>
+still comes from <code>slope height</code>, and the two slopes then follow from the two
+runs. Use this — not the angle pair — when you know where the ridge physically sits. It
+takes precedence over an asymmetric <code>slope</code> pair.</p>
+<p class="ref-note"><b>Rafter / purlin pitch.</b> <code>rafter_pitch</code> and
+<code>purlin_pitch</code> set the on-centre spacing of the rafters and purlins in
+<b>inches</b> (sugar for <code>framing.rafter_spacing_in</code> /
+<code>purlin_spacing_in</code>). Omit to keep the defaults (36" / 12").</p>
 
 <h3>Component library <span class="ref-dim">— reusable mini-house</span></h3>
 <pre>component Bench {              // define once (local coords, origin 0,0)

@@ -17,6 +17,16 @@ export interface RoofSegment {
   end: Point2D;
   width: number;
 
+  // Explicit per-side widths for an OFF-CENTRE ridge (gable). When BOTH are set,
+  // the two eaves stay at the span edges and the ridge sits at `width_left` from
+  // the left eave (by the segment's left normal — the same side convention as
+  // slope_left/right and overhang_left/right). The ridge HEIGHT still comes from
+  // `slope`; the two slopes then follow from the two runs. Their sum should equal
+  // `width`. Takes precedence over slope_left/right (which would otherwise
+  // over-determine the ridge). Omit both → symmetric, ridge centred on `width`.
+  width_left?: number;
+  width_right?: number;
+
   // Per-segment overrides — fall back to roof-level values.
   slope_override?: SlopeSpec;
   // Per-side asymmetric pitch override (see RoofConfig.slope_left/right). Both

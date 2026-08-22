@@ -589,6 +589,26 @@ function SegmentEditor({
         patch={onPatch}
         min={1} suffix="u"
       />
+      {roofType === "pitched" && (
+        <div className="grid grid-cols-2 gap-2">
+          <ObjectMeasureField
+            object={seg}
+            field="width_left"
+            label="Left width (off-centre ridge)"
+            hint="Optional. Set BOTH left + right to put the ridge off-centre — the eaves stay at the span edges and the ridge sits at 'left' from the left eave (segment's left normal). Their sum is the span; leave blank for a ridge centred on Width."
+            patch={onPatch}
+            min={1} suffix="u" allowEmpty
+          />
+          <ObjectMeasureField
+            object={seg}
+            field="width_right"
+            label="Right width"
+            hint="Optional. The run from the ridge to the right eave. Set together with Left width."
+            patch={onPatch}
+            min={1} suffix="u" allowEmpty
+          />
+        </div>
+      )}
       <ObjectMeasureField
         object={seg}
         field="min_overhang"

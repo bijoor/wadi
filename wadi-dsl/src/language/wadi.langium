@@ -483,6 +483,10 @@ Roof:
         // Detailed structural framing (rafter/purlin/ridge/truss member sizes)
         // as a raw JSON block — an advanced, rarely-hand-authored spec.
         ('framing' framing=JsonObject)?
+        // First-class rafter/purlin spacing (a.k.a. pitch), in INCHES — sugar
+        // that writes framing.rafter_spacing_in / purlin_spacing_in.
+        ('rafter_pitch' rafter_pitch=Expr)?
+        ('purlin_pitch' purlin_pitch=Expr)?
         Common ('material' material=STRING)?
         '{' (segments+=Segment | trusses+=Truss)* '}';
 // Roof pitch. A single value is a symmetric gable/hip; an ANGLE PAIR (left, right)
@@ -498,7 +502,10 @@ Slope:
 Segment:
     'segment' id=STRING
         'from' '(' sx=Expr ',' sy=Expr ')' 'to' '(' ex=Expr ',' ey=Expr ')'
-        'width' width=Expr
+        // `width` = symmetric span (ridge centred). `widths (left, right)` gives
+        // an OFF-CENTRE ridge: the two eaves stay at the span edges and the ridge
+        // sits at `left` from the left eave. Span = left + right.
+        ('width' width=Expr | 'widths' '(' width_left=Expr ',' width_right=Expr ')')
         ('high_side' shed_high_side=('left' | 'right'))?
         ('start_endpoint' start_endpoint=('open' | 'closed'))?
         ('end_endpoint' end_endpoint=('open' | 'closed'))?

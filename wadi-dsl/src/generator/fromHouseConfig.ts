@@ -292,7 +292,10 @@ function slopeText(o: Obj): string | null {
 
 function emitSegment(w: W, indent: number, s: Obj): void {
   const start = s.start ?? [0, 0], end = s.end ?? [0, 0];
-  let line = `segment ${str(s.id)} from (${fld2(s, "start", 0, start[0])}, ${fld2(s, "start", 1, start[1])}) to (${fld2(s, "end", 0, end[0])}, ${fld2(s, "end", 1, end[1])}) width ${fld(s, "width")}`;
+  const widthTok = has(s, "width_left") && has(s, "width_right")
+    ? `widths (${fld(s, "width_left")}, ${fld(s, "width_right")})`
+    : `width ${fld(s, "width")}`;
+  let line = `segment ${str(s.id)} from (${fld2(s, "start", 0, start[0])}, ${fld2(s, "start", 1, start[1])}) to (${fld2(s, "end", 0, end[0])}, ${fld2(s, "end", 1, end[1])}) ${widthTok}`;
   if (s.shed_high_side !== undefined) line += ` high_side ${s.shed_high_side}`;
   if (s.start_endpoint !== undefined) line += ` start_endpoint ${s.start_endpoint}`;
   if (s.end_endpoint !== undefined) line += ` end_endpoint ${s.end_endpoint}`;

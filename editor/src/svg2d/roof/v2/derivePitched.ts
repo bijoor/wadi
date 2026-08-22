@@ -83,6 +83,15 @@ function resolvePitch(
   cfg: RoofConfig,
   crossHalf: number,
 ): { ridgeH: number; ridgeShift: number; leftPitchTan: number; rightPitchTan: number } {
+  // Explicit per-side widths win: the two eaves stay at the span edges and the
+  // ridge sits at `width_left` from the left eave, so ridgeShift = crossHalf −
+  // width_left = (width_right − width_left)/2. Ridge HEIGHT comes from the
+  // symmetric `slope`/height; each side's pitch then follows from its own run.
+  if (seg.width_left != null && seg.width_right != null && seg.width_left > 0 && seg.width_right > 0) {
+    const L = seg.width_left, R = seg.width_right;
+    const ridgeH = resolveRise(seg.slope_override ?? cfg.slope, crossHalf);
+    return { ridgeH, ridgeShift: (R - L) / 2, leftPitchTan: ridgeH / L, rightPitchTan: ridgeH / R };
+  }
   const left = seg.slope_left_override ?? cfg.slope_left;
   const right = seg.slope_right_override ?? cfg.slope_right;
   if (left && right) {
@@ -169,7 +178,10 @@ export function derivePitchedRoof(
     const alongLen = segmentLength(seg);
     if (alongLen === 0) continue;
 
-    const crossHalf = seg.width / 2;
+    const crossHalf =
+      seg.width_left != null && seg.width_right != null
+        ? (seg.width_left + seg.width_right) / 2
+        : seg.width / 2;
     // Pitch — symmetric `slope`, or an asymmetric per-side pair that shifts the
     // ridge across the width (ridgeShift, applied via leftN below).
     const { ridgeH, ridgeShift, leftPitchTan, rightPitchTan } = resolvePitch(seg, cfg, crossHalf);

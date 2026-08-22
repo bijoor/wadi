@@ -603,6 +603,19 @@ function roof(r: ast.Roof): Record<string, unknown> {
   const gwt = put("gable_wall_thickness", r.gable_wall_thickness);
   if (gwt !== undefined) o.gable_wall_thickness = gwt;
   if (r.framing) o.framing = jsonObject(r.framing);
+  // First-class rafter/purlin pitch (inches) → merge into framing.
+  if (r.rafter_pitch !== undefined || r.purlin_pitch !== undefined) {
+    const framing = (o.framing as Record<string, unknown>) ?? {};
+    const setPitch = (key: string, e: ast.Expr | undefined, ph: number): void => {
+      if (e === undefined) return;
+      const { value, formula } = fieldAndFormula(e, ph);
+      framing[key] = value;
+      if (formula) formulas[`framing.${key}`] = formula;
+    };
+    setPitch("rafter_spacing_in", r.rafter_pitch, 36);
+    setPitch("purlin_spacing_in", r.purlin_pitch, 12);
+    o.framing = framing;
+  }
   if (r.segments.length) o.segments = r.segments.map(roofSegment);
   if (r.trusses.length) o.trusses = r.trusses.map(roofTruss);
   applyCommon(o, formulas, r);
@@ -615,8 +628,26 @@ function roofSegment(s: ast.Segment): Record<string, unknown> {
     id: unquote(s.id),
     start: [put("start_x", s.sx, 0), put("start_y", s.sy, 0)],
     end: [put("end_x", s.ex, 0), put("end_y", s.ey, 0)],
-    width: put("width", s.width, 1),
   };
+  if (s.width !== undefined) {
+    seg.width = put("width", s.width, 1);
+  } else if (s.width_left !== undefined && s.width_right !== undefined) {
+    // Off-centre ridge: store both runs, and set `width` (the span) = left + right.
+    const wl = put("width_left", s.width_left, 1) ?? 1;
+    const wr = put("width_right", s.width_right, 1) ?? 1;
+    seg.width_left = wl;
+    seg.width_right = wr;
+    seg.width = wl + wr;
+    // If either run is dynamic, the span must track it too.
+    const lf = formulas.width_left, rf = formulas.width_right;
+    if (lf || rf) {
+      const lExpr = lf ? `(${lf.replace(/^=\s*/, "")})` : String(wl);
+      const rExpr = rf ? `(${rf.replace(/^=\s*/, "")})` : String(wr);
+      formulas.width = `= ${lExpr} + ${rExpr}`;
+    }
+  } else {
+    seg.width = 1;
+  }
   if (s.shed_high_side) seg.shed_high_side = s.shed_high_side;
   if (s.start_endpoint) seg.start_endpoint = s.start_endpoint;
   if (s.end_endpoint) seg.end_endpoint = s.end_endpoint;
