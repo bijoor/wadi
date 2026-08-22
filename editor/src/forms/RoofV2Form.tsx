@@ -382,6 +382,23 @@ export function RoofV2Form({
           onChange={(v) => setAt(["framing", "purlin_size_in"], v)}
           defaultText="2 × 1"
         />
+        <div className="mt-2 text-[10px] font-semibold text-slate-400">
+          On-centre spacing (pitch) — inches
+        </div>
+        <NumberField
+          label="Rafter pitch"
+          hint="Rafter on-centre spacing, in inches. Blank = default 36."
+          value={get<number>(bag, ["framing", "rafter_spacing_in"])}
+          onCommit={(n) => setAt(["framing", "rafter_spacing_in"], n)}
+          min={1} suffix="in" allowEmpty
+        />
+        <NumberField
+          label="Purlin pitch"
+          hint="Purlin on-centre spacing, in inches. Blank = default 12."
+          value={get<number>(bag, ["framing", "purlin_spacing_in"])}
+          onCommit={(n) => setAt(["framing", "purlin_spacing_in"], n)}
+          min={1} suffix="in" allowEmpty
+        />
         {roofType === "pitched" && (
           <>
             <div className="mt-2 text-[10px] font-semibold text-slate-400">Truss</div>
