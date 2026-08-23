@@ -206,20 +206,31 @@ describe("expandStaircase — box model (pack inside the allocated rectangle)", 
     expect(() => bx({ width: 8 })).toThrow(/doesn't fit its box across/);
   });
 
-  it("a short climb is a single flight filling the full box width, no landings", () => {
+  it("a short climb is a single flight at full box width, inset with a bottom approach + top landing", () => {
     const out = bx({ rise_height: 54 }); // 3 risers → 2 treads → one flight
     expect(stairs(out)).toHaveLength(1);
     expect((stairs(out)[0] as any).step_width).toBe(190); // full box width, no lanes
-    expect(landings(out)).toHaveLength(0);
+    expect(landings(out)).toHaveLength(1); // arrival landing at the top; approach reserved at the bottom
+    // flight is inset from the near box edge by a landing depth (approach)
+    const f = stairs(out)[0] as any;
+    const y0 = f.direction === "south" ? f.start_y : f.start_y - f.num_steps * f.step_tread;
+    expect(y0).toBeCloseTo(545 + 90, 0);
   });
 
-  it("anchors the box min corner at (start) and fits, for every direction", () => {
+  it("reserves an approach at the bottom — the first flight is inset by a landing depth", () => {
+    const y0 = Math.min(
+      ...(stairs(bx()) as any[]).map((s) =>
+        s.direction === "south" ? s.start_y : s.start_y - s.num_steps * s.step_tread));
+    expect(y0).toBeCloseTo(545 + 90, 0); // inset by landing_depth from the box near edge (start_y=545)
+  });
+
+  it("fits inside [start, start+box] for every direction (anchored by the box footprint)", () => {
     for (const direction of ["south", "north", "east", "west"] as const) {
       const out = expandStaircase(
         boxBase({ direction, width: 300, length: 300, landing_depth: 60 }), 8, 300, 300);
       const b = bbox(out);
-      expect(b.x0).toBeCloseTo(10, 0);
-      expect(b.y0).toBeCloseTo(545, 0);
+      expect(b.x0).toBeGreaterThanOrEqual(10 - 0.5);
+      expect(b.y0).toBeGreaterThanOrEqual(545 - 0.5);
       expect(b.x1).toBeLessThanOrEqual(10 + 300 + 0.5);
       expect(b.y1).toBeLessThanOrEqual(545 + 300 + 0.5);
     }
