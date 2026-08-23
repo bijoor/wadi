@@ -115,8 +115,12 @@ the endpoints so the bodies <b>overlap</b> (≥ ½·wall_thickness past the shar
 fill the corner. Room walls handle their own corners.</p>
 
 <h3>Circulation &amp; fittings</h3>
-<pre>staircase [name "N"] at (start_x, start_y) step (rise, tread, width)
+<pre>staircase [name "N"] at (start_x, start_y) box (width, length) step (rise, tread)
   direction north|south|east|west  [climb up|down]
+                                //  BOX MODEL: the whole stair (flights + landings) packs INSIDE the width×length
+                                //  box; (start_x,start_y) is the box CORNER, step width DERIVED. N/S run along
+                                //  length(Y), E/W along width(X). Errors if the box is too small.
+                                //  Legacy: step (rise, tread, width) … [max_run r] (fixed width, auto switchback).
                                 //  climb up (recommended): put it on the LOWER floor; start = bottom step, ASCENDS.
                                 //  climb down (default): put it on the UPPER floor; start = top, DESCENDS. total_height defaults accordingly.
   [total_height &lt;h&gt;] [max_run &lt;r&gt;] [landing_depth …] [landing_thickness …] [flight_gap …] [turn clockwise|anticlockwise]

@@ -316,9 +316,16 @@ function staircase(s: ast.Staircase): Record<string, unknown> {
     start_y: put("start_y", s.start_y, 0),
     step_rise: put("step_rise", s.step_rise, 1),
     step_tread: put("step_tread", s.step_tread, 1),
-    step_width: put("step_width", s.step_width, 1),
     direction: s.direction,
   };
+  // Box model (preferred): the width×length rectangle the stair packs into.
+  if (s.box_width !== undefined && s.box_length !== undefined) {
+    o.width = put("width", s.box_width, 1);
+    o.length = put("length", s.box_length, 1);
+  }
+  // Legacy fixed per-step width (optional under the box model).
+  const sw = put("step_width", s.step_width, 1);
+  if (sw !== undefined) o.step_width = sw;
   if (s.name) o.name = unquote(s.name);
   if (s.climb) o.climb = s.climb;
   // Placeholder 1 (not 0): these carry a `>0` schema constraint, and when the

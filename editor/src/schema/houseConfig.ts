@@ -307,7 +307,20 @@ const staircase = z
     rise_height: positive().optional(),
     step_rise: positive(),
     step_tread: positive(),
-    step_width: positive(),
+    // BOX MODEL (preferred): give a `width` (X) × `length` (Y) rectangle and the
+    // WHOLE staircase — flights + turn landings — is packed to fit INSIDE it.
+    // (start_x,start_y) is then the box's min corner, NOT the first step, and each
+    // flight's width is DERIVED from the box: two switchback lanes =
+    // (lateral − flight_gap)/2, or the full box for a single flight. `direction`
+    // picks the run axis (N/S → run along length/Y; E/W → run along width/X). The
+    // model errors if the box is too small for even the tightest split. Omit both
+    // to use the legacy `step_width` + `max_run` form below.
+    width: positive().optional(),
+    length: positive().optional(),
+    // Legacy per-step width (required by the old form; derived from the box in the
+    // box model). The expanded single-flight staircases the renderer consumes always
+    // carry it.
+    step_width: positive().optional(),
     // The direction the stair EXTENDS from its top — the whole assembly fills the
     // allocated box from (start_x,start_y) going this way for up to `max_run`.
     direction: side,

@@ -279,7 +279,9 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `rise_height` | number > 0 |  | Total height the stair covers, top → floor below. The step COUNT is derived: num_steps = round(rise_height / step_rise). Omitted → defaults to the height of the floor immediately below this one. Formula-capable (e.g. "= floor_height"). Replaces the old explicit `num_steps`. |
 | `step_rise` | number > 0 | **yes** |  |
 | `step_tread` | number > 0 | **yes** |  |
-| `step_width` | number > 0 | **yes** |  |
+| `width` | number > 0 |  | BOX MODEL (preferred): give a `width` (X) × `length` (Y) rectangle and the WHOLE staircase — flights + turn landings — is packed to fit INSIDE it. (start_x,start_y) is then the box's min corner, NOT the first step, and each flight's width is DERIVED from the box: two switchback lanes = (lateral − flight_gap)/2, or the full box for a single flight. `direction` picks the run axis (N/S → run along length/Y; E/W → run along width/X). The model errors if the box is too small for even the tightest split. Omit both to use the legacy `step_width` + `max_run` form below. |
+| `length` | number > 0 |  |  |
+| `step_width` | number > 0 |  | Legacy per-step width (required by the old form; derived from the box in the box model). The expanded single-flight staircases the renderer consumes always carry it. |
 | `direction` | enum: `north` `south` `east` `west` | **yes** | The direction the stair EXTENDS from its top — the whole assembly fills the allocated box from (start_x,start_y) going this way for up to `max_run`. |
 | `max_run` | number > 0 |  | ALLOCATED run: the length of space reserved for the stair along `direction`. The WHOLE assembly (flights + turn landings) is kept within [start, start+max_run]; when the run won't fit as one flight it auto-splits into switchback flights (more flights when tight), expanded in expandRoomWalls into plain staircases + floor_slab landings so every renderer is unchanged. Omit → one flight, no length limit. |
 | `landing_depth` | number > 0 |  | Turn-landing depth (along the run). Omitted → equals step_width. |

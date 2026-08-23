@@ -55,6 +55,13 @@ export function expandStaircase(
   floorBelowHeight: number,
   floorOwnHeight: number,
 ): Obj[] {
+  // BOX MODEL: when the author gives a `width`×`length` box, the WHOLE staircase
+  // (flights + turn landings) is packed to fit INSIDE the rectangle
+  // [start, start+(width,length)] — (start_x,start_y) is the box corner, not the
+  // first step, and the per-step width is DERIVED from the box. See below.
+  if (sc.width != null && sc.length != null) {
+    return expandStaircaseBox(sc, slabThickness, floorBelowHeight, floorOwnHeight);
+  }
   const up = ((sc.climb as string | undefined) ?? "down") === "up";
   const tread = n(sc.step_tread);
   const riser = n(sc.step_rise);
@@ -206,6 +213,173 @@ export function expandStaircase(
     o.name = isStair ? `${baseName}_F${++fi}` : `${baseName}_L${++li}`;
     return o;
   });
+}
+
+// Fit the WHOLE staircase (flights + turn landings) inside the allocated box.
+// `width` (X) × `length` (Y) is the rectangle; (start_x,start_y) is its min
+// corner. `direction` picks the run axis (N/S → run along length/Y, E/W → run
+// along width/X); the other axis is lateral. Per-step width is derived from the
+// box: two switchback lanes = (lateral − flight_gap)/2, or the full box for a
+// single flight. Throws when the box is too small for even the tightest split.
+function expandStaircaseBox(
+  sc: Obj,
+  slabThickness: number,
+  floorBelowHeight: number,
+  floorOwnHeight: number,
+): Obj[] {
+  const up = ((sc.climb as string | undefined) ?? "down") === "up";
+  const tread = n(sc.step_tread);
+  const riser = n(sc.step_rise);
+  const direction = (sc.direction as Dir) ?? "south";
+  const runAlongY = direction === "south" || direction === "north";
+  const boxW = n(sc.width);   // X extent of the box
+  const boxL = n(sc.length);  // Y extent of the box
+  const runBudget = runAlongY ? boxL : boxW;       // space along the climb
+  const lateralExtent = runAlongY ? boxW : boxL;   // space across the flights
+  const name = (sc.name as string) ?? "Stair";
+
+  const defaultRise = up ? floorOwnHeight : floorBelowHeight;
+  const riseHeight =
+    typeof sc.rise_height === "number" && sc.rise_height > 0 ? sc.rise_height : defaultRise;
+  const totalSteps = Math.max(1, Math.round(riseHeight / riser));
+  const anchorZ = sc.z_offset !== undefined ? n(sc.z_offset) : slabThickness;
+
+  const gap = typeof sc.flight_gap === "number" && sc.flight_gap > 0 ? sc.flight_gap : 0;
+  const laneWidth = (lateralExtent - gap) / 2;      // width of one switchback lane
+  const landingDepth =
+    typeof sc.landing_depth === "number" && sc.landing_depth > 0
+      ? sc.landing_depth
+      : Math.max(1, laneWidth);
+  const landingThickness =
+    typeof sc.landing_thickness === "number" ? sc.landing_thickness : riser;
+
+  // Fewest flights whose run + end landings fit the run budget. A switchback tops
+  // out at BOTH ends (near + far landings) once it has ≥3 flights; exactly 2
+  // flights need only the far landing; 1 flight needs none.
+  const singleRun = (totalSteps - 1) * tread;
+  const flightRunFor = (nf: number) => (Math.ceil(totalSteps / nf) - 1) * tread;
+  const reserveFor = (nf: number) => (nf <= 1 ? 0 : nf === 2 ? landingDepth : 2 * landingDepth);
+  let numFlights = 1;
+  if (singleRun > runBudget + 1e-6) {
+    numFlights = 0;
+    for (let nf = 2; nf <= totalSteps; nf++) {
+      if (Math.ceil(totalSteps / nf) < 2) break; // each flight must have ≥1 tread
+      if (flightRunFor(nf) + reserveFor(nf) <= runBudget + 1e-6) { numFlights = nf; break; }
+    }
+    if (numFlights === 0) {
+      const minLen = tread + 2 * landingDepth;
+      throw new Error(
+        `staircase "${name}" doesn't fit its box along ${runAlongY ? "length (Y)" : "width (X)"}: ` +
+          `need at least ${Math.ceil(minLen)} (one ${tread}-unit tread + two ${landingDepth}-unit landings), ` +
+          `but only ${Math.floor(runBudget)} is allocated. Enlarge the box or reduce landing_depth.`,
+      );
+    }
+  }
+
+  const nLanes = numFlights >= 2 ? 2 : 1;
+  const stairWidth = nLanes === 2 ? laneWidth : lateralExtent;
+  if (!(stairWidth > 0)) {
+    throw new Error(
+      `staircase "${name}" doesn't fit its box across the stairs: the ${Math.floor(lateralExtent)}-unit ` +
+        `side leaves no room for ${nLanes === 2 ? "two lanes" : "a flight"} past flight_gap ${gap}.`,
+    );
+  }
+
+  const perFlight = Math.ceil(totalSteps / numFlights);
+  const risersFor = (t: number) => Math.max(0, Math.min(perFlight, totalSteps - t * perFlight));
+  const flightRun = Math.max(1, perFlight - 1) * tread;
+
+  // Placement in the box's local frame: run axis = +Y, lateral = +X, from (0,0).
+  // Reserve a near-end landing zone [0, landingDepth] only when ≥3 flights need a
+  // near turn; flights then start at `nearOffset`, far landings sit just past them.
+  const hasNear = numFlights >= 3;
+  const nearOffset = hasNear ? landingDepth : 0;
+  // Turn handedness only swaps which lane each flight sits in.
+  const anti = sc.turn === "anticlockwise";
+  const laneA = anti ? stairWidth + gap : 0;
+  const laneB = anti ? 0 : stairWidth + gap;
+  const landingWidth = nLanes === 2 ? 2 * stairWidth + gap : stairWidth;
+
+  type Item = { o: Obj; isStair: boolean };
+  const items: Item[] = [];
+  const stepFields = { step_rise: riser, step_tread: tread, step_width: stairWidth };
+  let zCur = 0; // canonical z of the current flight's anchored platform
+  for (let t = 0; t < numFlights; t++) {
+    const risers = risersFor(t);
+    if (risers <= 0) break;
+    const treads = Math.max(1, risers - 1);
+    const even = t % 2 === 0;
+    const lane = even ? laneA : laneB;
+    const run = treads * tread;
+    if (up) {
+      const zBottomFlight = zCur;
+      const zTopFlight = zCur + risers * riser;
+      items.push({
+        isStair: true,
+        o: even
+          ? { type: "staircase", direction: "south", start_x: lane, start_y: nearOffset, num_steps: treads, ...stepFields, z_offset: zBottomFlight }
+          : { type: "staircase", direction: "north", start_x: lane, start_y: nearOffset + flightRun, num_steps: treads, ...stepFields, z_offset: zBottomFlight },
+      });
+      if (t < numFlights - 1) {
+        // even tops out FAR (landing just beyond); odd tops out NEAR (landing in the reserved near zone).
+        const ly = even ? nearOffset + flightRun : nearOffset - landingDepth;
+        items.push({ isStair: false, o: { type: "floor_slab", x: 0, y: ly, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zTopFlight - landingThickness } });
+      }
+      zCur = zTopFlight;
+    } else {
+      const zBottom = zCur - risers * riser;
+      items.push({
+        isStair: true,
+        o: even
+          ? { type: "staircase", direction: "north", start_x: lane, start_y: nearOffset + run, num_steps: treads, ...stepFields, z_offset: zBottom }
+          : { type: "staircase", direction: "south", start_x: lane, start_y: nearOffset + flightRun - run, num_steps: treads, ...stepFields, z_offset: zBottom },
+      });
+      if (t < numFlights - 1) {
+        const ly = even ? nearOffset + flightRun : nearOffset - landingDepth;
+        items.push({ isStair: false, o: { type: "floor_slab", x: 0, y: ly, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zBottom - landingThickness } });
+      }
+      zCur = zBottom;
+    }
+  }
+
+  // Rotate the local build to `direction`, then translate so the box's MIN corner
+  // lands exactly at (start_x, start_y) — the stair fills [start, start+box] for
+  // any direction. Lift z so the anchored platform sits at its real height.
+  const rotated = items.map((it) => ({ ...it, o: rotateObject(it.o, direction) }));
+  let minX = Infinity, minY = Infinity;
+  for (const { o } of rotated) {
+    const [ox, oy] = objMinCorner(o);
+    if (ox < minX) minX = ox;
+    if (oy < minY) minY = oy;
+  }
+  const dx = n(sc.start_x) - minX;
+  const dy = n(sc.start_y) - minY;
+
+  let fi = 0, li = 0;
+  return rotated.map(({ o, isStair }) => {
+    if (typeof o.x === "number") o.x += dx;
+    if (typeof o.y === "number") o.y += dy;
+    if (typeof o.start_x === "number") o.start_x += dx;
+    if (typeof o.start_y === "number") o.start_y += dy;
+    o.z_offset = n(o.z_offset) + anchorZ;
+    if (sc.layer !== undefined) o.layer = sc.layer;
+    if (isStair && sc.material !== undefined) o.material = sc.material;
+    o.name = isStair ? `${name}_F${++fi}` : `${name}_L${++li}`;
+    return o;
+  });
+}
+
+// Min (x,y) corner of an expanded staircase-flight or landing in plan.
+function objMinCorner(o: Obj): [number, number] {
+  if (o.type === "floor_slab") return [n(o.x), n(o.y)];
+  const sx = n(o.start_x), sy = n(o.start_y);
+  const r = n(o.num_steps) * n(o.step_tread), w = n(o.step_width);
+  const dir = o.direction as Dir;
+  const [vx, vy] = DIR_VEC[dir];
+  const ns = dir === "north" || dir === "south";
+  const ex = sx + (ns ? w : r * vx);
+  const ey = sy + (ns ? r * vy : w);
+  return [Math.min(sx, ex), Math.min(sy, ey)];
 }
 
 // --- Rotation about the origin, canonical = "south" (ascend +Y). z untouched.

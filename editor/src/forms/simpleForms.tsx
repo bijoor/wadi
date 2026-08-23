@@ -216,7 +216,9 @@ export function StaircaseForm({
         <div className="grid grid-cols-2 gap-x-2">
           <ObjectMeasureField object={o} field="start_x" label="Top X" patch={mpatch} hint="connection point" />
           <ObjectMeasureField object={o} field="start_y" label="Top Y" patch={mpatch} hint="connection point" />
-          <ObjectMeasureField object={o} field="step_width" label="Step width" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="width" label="Box width (X)" patch={mpatch} allowEmpty min={0.01} hint="allocated rectangle — the stair packs inside it. Blank = legacy fixed-width form." />
+          <ObjectMeasureField object={o} field="length" label="Box length (Y)" patch={mpatch} allowEmpty min={0.01} hint="rectangle depth; each flight's width is derived from the box" />
+          <ObjectMeasureField object={o} field="step_width" label="Step width" patch={mpatch} allowEmpty min={0.01} hint="legacy fixed width; derived from the box when a box is set" />
           <ObjectMeasureField object={o} field="step_tread" label="Step tread" patch={mpatch} min={0.01} />
           <ObjectMeasureField object={o} field="step_rise" label="Step rise" patch={mpatch} min={0.01} />
           <ObjectMeasureField

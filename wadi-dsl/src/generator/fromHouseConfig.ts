@@ -189,7 +189,10 @@ function emitNamedBox(w: W, indent: number, kw: string, o: Obj, opts: { height?:
 function emitStaircase(w: W, indent: number, o: Obj): void {
   let s = "staircase";
   if (o.name !== undefined) s += ` name ${str(o.name)}`;
-  s += ` at (${fld(o, "start_x")}, ${fld(o, "start_y")}) step (${fld(o, "step_rise")}, ${fld(o, "step_tread")}, ${fld(o, "step_width")}) direction ${o.direction}`;
+  s += ` at (${fld(o, "start_x")}, ${fld(o, "start_y")})`;
+  if (has(o, "width") && has(o, "length")) s += ` box (${fld(o, "width")}, ${fld(o, "length")})`;
+  const stepW = has(o, "step_width") ? `, ${fld(o, "step_width")}` : "";
+  s += ` step (${fld(o, "step_rise")}, ${fld(o, "step_tread")}${stepW}) direction ${o.direction}`;
   if (o.climb !== undefined) s += ` climb ${o.climb}`;
   if (has(o, "rise_height")) s += ` total_height ${fld(o, "rise_height")}`;
   if (has(o, "max_run")) s += ` max_run ${fld(o, "max_run")}`;

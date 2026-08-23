@@ -378,7 +378,12 @@ Ground:
 Staircase:
     'staircase' ('name' name=STRING)?
         'at' '(' start_x=Expr ',' start_y=Expr ')'
-        'step' '(' step_rise=Expr ',' step_tread=Expr ',' step_width=Expr ')'
+        // BOX MODEL (preferred): the whole staircase packs INSIDE this width×length
+        // rectangle anchored at (start_x,start_y); the step width is derived from it.
+        ('box' '(' box_width=Expr ',' box_length=Expr ')')?
+        // step width is optional: omit it under the box model (derived), give it for
+        // the legacy fixed-width + max_run form.
+        'step' '(' step_rise=Expr ',' step_tread=Expr (',' step_width=Expr)? ')'
         'direction' direction=Side
         ('climb' climb=('up' | 'down'))?
         ('total_height' rise_height=Expr)?

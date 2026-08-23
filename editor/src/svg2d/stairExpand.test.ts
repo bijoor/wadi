@@ -176,3 +176,52 @@ describe("expandStaircase — climb up (bottom-anchored, ascending)", () => {
     expect(Math.max(...lv)).toBeCloseTo(8 + 90 - 5, 6);
   });
 });
+
+describe("expandStaircase — box model (pack inside the allocated rectangle)", () => {
+  const boxBase = (over: Partial<Obj> = {}): Obj => ({
+    type: "staircase", name: "S", start_x: 10, start_y: 545,
+    width: 190, length: 280, direction: "south", climb: "up",
+    rise_height: 300, step_rise: 18, step_tread: 25, turn: "clockwise",
+    landing_depth: 90, flight_gap: 10, ...over,
+  });
+  const bx = (over: Partial<Obj> = {}) => expandStaircase(boxBase(over), 8, 300, 300);
+
+  it("packs the whole staircase inside [start, start + box]", () => {
+    const b = bbox(bx());
+    expect(b.x0).toBeGreaterThanOrEqual(10 - 0.01);
+    expect(b.x1).toBeLessThanOrEqual(10 + 190 + 0.01);
+    expect(b.y0).toBeGreaterThanOrEqual(545 - 0.01);
+    expect(b.y1).toBeLessThanOrEqual(545 + 280 + 0.01);
+  });
+
+  it("derives the flight width from the box (two lanes minus the gap)", () => {
+    for (const s of stairs(bx()) as any[]) expect(s.step_width).toBe((190 - 10) / 2); // 90
+  });
+
+  it("throws when the box is too short along the run", () => {
+    expect(() => bx({ length: 200 })).toThrow(/doesn't fit its box along length/);
+  });
+
+  it("throws when the box is too narrow across the stairs", () => {
+    expect(() => bx({ width: 8 })).toThrow(/doesn't fit its box across/);
+  });
+
+  it("a short climb is a single flight filling the full box width, no landings", () => {
+    const out = bx({ rise_height: 54 }); // 3 risers → 2 treads → one flight
+    expect(stairs(out)).toHaveLength(1);
+    expect((stairs(out)[0] as any).step_width).toBe(190); // full box width, no lanes
+    expect(landings(out)).toHaveLength(0);
+  });
+
+  it("anchors the box min corner at (start) and fits, for every direction", () => {
+    for (const direction of ["south", "north", "east", "west"] as const) {
+      const out = expandStaircase(
+        boxBase({ direction, width: 300, length: 300, landing_depth: 60 }), 8, 300, 300);
+      const b = bbox(out);
+      expect(b.x0).toBeCloseTo(10, 0);
+      expect(b.y0).toBeCloseTo(545, 0);
+      expect(b.x1).toBeLessThanOrEqual(10 + 300 + 0.5);
+      expect(b.y1).toBeLessThanOrEqual(545 + 300 + 0.5);
+    }
+  });
+});
