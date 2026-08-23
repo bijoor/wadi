@@ -163,7 +163,7 @@ export function expandStaircase(
         // odd at the NEAR end; its top is flush with the platform (zTopFlight).
         items.push({
           isStair: false,
-          o: { type: "floor_slab", x: landingX, y: even ? flightRun : 0, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zTopFlight - landingThickness },
+          o: { type: "floor_slab", x: landingX, y: even ? flightRun : -landingDepth, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zTopFlight - landingThickness },
         });
       }
       zCur = zTopFlight;
@@ -178,7 +178,7 @@ export function expandStaircase(
       if (t < numFlights - 1) {
         items.push({
           isStair: false,
-          o: { type: "floor_slab", x: landingX, y: even ? flightRun : 0, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zBottom - landingThickness },
+          o: { type: "floor_slab", x: landingX, y: even ? flightRun : -landingDepth, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zBottom - landingThickness },
         });
       }
       zCur = zBottom;

@@ -70,9 +70,15 @@ describe("expandStaircase", () => {
   it("descends from the top INTO `direction`, within [start, start+max_run]", () => {
     for (const direction of ["south", "north", "east", "west"] as const) {
       const out = expand({ max_run: 60, direction });
+      // Flights fit the allocated box; the turn landings may extend one
+      // landing_depth (default = step_width = 30) beyond each end, as a real
+      // switchback does — the near-end landings sit just behind the near flights.
+      const [flo, fhi] = runExtent(stairs(out), direction, 100, 50);
+      expect(flo).toBeGreaterThanOrEqual(-0.01);   // flights never behind the start
+      expect(fhi).toBeLessThanOrEqual(60 + 0.01);  // flights within the box
       const [lo, hi] = runExtent(out, direction, 100, 50);
-      expect(lo).toBeGreaterThanOrEqual(-0.01);   // never behind the start point
-      expect(hi).toBeLessThanOrEqual(60 + 0.01);  // never past the allocated box
+      expect(lo).toBeGreaterThanOrEqual(-30 - 0.01);   // near landings ≤ one landing_depth behind
+      expect(hi).toBeLessThanOrEqual(60 + 0.01);
     }
   });
 
@@ -154,8 +160,12 @@ describe("expandStaircase — climb up (bottom-anchored, ascending)", () => {
   it("switchback ascends and stays in the allocated box, conserving the climb", () => {
     for (const direction of ["south", "north", "east", "west"] as const) {
       const out = up({ max_run: 60, direction });
+      // Flights within the box; near-end turn landings extend one landing_depth behind.
+      const [flo, fhi] = runExtent(stairs(out), direction, 100, 50);
+      expect(flo).toBeGreaterThanOrEqual(-0.01);
+      expect(fhi).toBeLessThanOrEqual(60 + 0.01);
       const [lo, hi] = runExtent(out, direction, 100, 50);
-      expect(lo).toBeGreaterThanOrEqual(-0.01);
+      expect(lo).toBeGreaterThanOrEqual(-30 - 0.01);
       expect(hi).toBeLessThanOrEqual(60 + 0.01);
     }
     const out = up({ max_run: 100 });
