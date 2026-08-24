@@ -289,9 +289,11 @@ function expandStaircaseBox(
     );
   }
 
-  const perFlight = Math.ceil(totalSteps / numFlights);
-  const risersFor = (t: number) => Math.max(0, Math.min(perFlight, totalSteps - t * perFlight));
-  const flightRun = Math.max(1, perFlight - 1) * tread;
+  // Spread the risers as EVENLY as possible (differ by at most one), so there's no
+  // tiny stub flight — the first `rem` flights get one extra riser.
+  const base = Math.floor(totalSteps / numFlights);
+  const rem = totalSteps - base * numFlights;
+  const risersFor = (t: number) => base + (t < rem ? 1 : 0);
 
   // Placement in the box's local frame: run axis = +Y, lateral = +X, from (0,0).
   // Always inset the flights by one landing depth at the near end: at floor level
@@ -308,44 +310,39 @@ function expandStaircaseBox(
   type Item = { o: Obj; isStair: boolean };
   const items: Item[] = [];
   const stepFields = { step_rise: riser, step_tread: tread, step_width: stairWidth };
-  let zCur = 0; // canonical z of the current flight's anchored platform
+  // Build the switchback as a CHAIN: each flight starts where the previous flight's
+  // top landing sits, so flights of unequal length (risers not dividing evenly) still
+  // connect — no gap between a short flight and its landing. Flights alternate lane
+  // (even→laneA, odd→laneB) and climb direction (far/near), and every flight top gets
+  // a landing (a turn between flights, the ARRIVAL at the top of the last).
+  let bottomPos = nearOffset;   // where the current flight's bottom sits along +Y
+  let climbFar = true;          // flight 0 climbs toward the far end (+Y)
+  let zc = 0;                   // running z: bottom of the current flight (up) / top (down)
   for (let t = 0; t < numFlights; t++) {
     const risers = risersFor(t);
     if (risers <= 0) break;
     const treads = Math.max(1, risers - 1);
-    const even = t % 2 === 0;
-    const lane = even ? laneA : laneB;
     const run = treads * tread;
-    if (up) {
-      const zBottomFlight = zCur;
-      const zTopFlight = zCur + risers * riser;
-      items.push({
-        isStair: true,
-        o: even
-          ? { type: "staircase", direction: "south", start_x: lane, start_y: nearOffset, num_steps: treads, ...stepFields, z_offset: zBottomFlight }
-          : { type: "staircase", direction: "north", start_x: lane, start_y: nearOffset + flightRun, num_steps: treads, ...stepFields, z_offset: zBottomFlight },
-      });
-      // A landing at every flight top: a turn platform between flights, and the
-      // ARRIVAL platform at the top of the LAST flight. even tops out FAR, odd NEAR.
-      {
-        const ly = even ? nearOffset + flightRun : nearOffset - landingDepth;
-        items.push({ isStair: false, o: { type: "floor_slab", x: 0, y: ly, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zTopFlight - landingThickness } });
-      }
-      zCur = zTopFlight;
-    } else {
-      const zBottom = zCur - risers * riser;
-      items.push({
-        isStair: true,
-        o: even
-          ? { type: "staircase", direction: "north", start_x: lane, start_y: nearOffset + run, num_steps: treads, ...stepFields, z_offset: zBottom }
-          : { type: "staircase", direction: "south", start_x: lane, start_y: nearOffset + flightRun - run, num_steps: treads, ...stepFields, z_offset: zBottom },
-      });
-      {
-        const ly = even ? nearOffset + flightRun : nearOffset - landingDepth;
-        items.push({ isStair: false, o: { type: "floor_slab", x: 0, y: ly, width: landingWidth, length: landingDepth, thickness: landingThickness, z_offset: zBottom - landingThickness } });
-      }
-      zCur = zBottom;
-    }
+    const topPos = climbFar ? bottomPos + run : bottomPos - run;
+    const lane = t % 2 === 0 ? laneA : laneB;
+    // Renderer flights are bottom-origin ascending; z_offset is the flight's BOTTOM z.
+    const zFlightBottom = up ? zc : zc - risers * riser;
+    const zFlightTop = zFlightBottom + risers * riser;
+    items.push({
+      isStair: true,
+      o: { type: "staircase", direction: climbFar ? "south" : "north", start_x: lane, start_y: bottomPos, num_steps: treads, ...stepFields, z_offset: zFlightBottom },
+    });
+    // Landing at THIS flight's actual top, extending beyond it in the climb direction.
+    // The LAST (arrival) landing stretches all the way to the box edge, bridging the
+    // top step to the end of the allocated space — so it may be deeper or shallower
+    // than the turn landings, but there's never a gap between it and the box.
+    const isLast = t === numFlights - 1;
+    const ldepth = isLast ? (climbFar ? runBudget - topPos : topPos) : landingDepth;
+    const ly = climbFar ? topPos : topPos - ldepth;
+    items.push({ isStair: false, o: { type: "floor_slab", x: 0, y: ly, width: landingWidth, length: ldepth, thickness: landingThickness, z_offset: zFlightTop - landingThickness } });
+    bottomPos = topPos;
+    climbFar = !climbFar;
+    zc = up ? zFlightTop : zFlightBottom;
   }
 
   // Rotate the local build to `direction`, then translate so the box's MIN corner
