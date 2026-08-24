@@ -296,11 +296,14 @@ function expandStaircaseBox(
   const risersFor = (t: number) => base + (t < rem ? 1 : 0);
 
   // Placement in the box's local frame: run axis = +Y, lateral = +X, from (0,0).
-  // Always inset the flights by one landing depth at the near end: at floor level
-  // this is the APPROACH to the first flight (so the stair is usable inside the
-  // box); for a ≥3-flight switchback the same near zone also holds the near turn
-  // landing (a slab at platform height). Far turn landings sit just past the flights.
-  const nearOffset = landingDepth;
+  // CENTRE the flights: split the box depth left over after the longest flight
+  // evenly between the two ends. The approach (near) and every turn/arrival landing
+  // then come out UNIFORM at that half-depth — never below `landing_depth` (the fit
+  // guarantees runBudget − maxRun ≥ 2·landing_depth), and never ballooned on one end
+  // while the other sits at the minimum. At floor level the near zone is the approach
+  // to the first flight; for a switchback it also holds the near turn landings.
+  const maxRun = (base + (rem > 0 ? 1 : 0) - 1) * tread;
+  const nearOffset = (runBudget - maxRun) / 2;
   // Turn handedness only swaps which lane each flight sits in.
   const anti = sc.turn === "anticlockwise";
   const laneA = anti ? stairWidth + gap : 0;

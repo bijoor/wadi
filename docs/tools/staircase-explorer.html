@@ -225,7 +225,11 @@
     const laneA = anti ? stairWidth + gap : 0;
     const laneB = anti ? 0 : stairWidth + gap;
     const landingWidth = nLanes === 2 ? 2 * stairWidth + gap : stairWidth;
-    const nearOffset = landingDepth;
+    // Centre the flights: split the leftover box depth evenly between the two ends
+    // so landings come out UNIFORM (and ≥ landing_depth, guaranteed by the fit),
+    // instead of one end reaching landing_depth and the other ballooning to the edge.
+    const maxRun = (base + (rem > 0 ? 1 : 0) - 1) * tread;
+    const nearOffset = (runBudget - maxRun) / 2;
     const landingThickness = riser;
 
     const flights = [], landings = [];

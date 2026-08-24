@@ -211,10 +211,13 @@ describe("expandStaircase — box model (pack inside the allocated rectangle)", 
     expect(stairs(out)).toHaveLength(1);
     expect((stairs(out)[0] as any).step_width).toBe(190); // full box width, no lanes
     expect(landings(out)).toHaveLength(1); // arrival landing at the top; approach reserved at the bottom
-    // flight is inset from the near box edge by a landing depth (approach)
+    // flight is inset from the near box edge by at least a landing depth (approach);
+    // it's centred, so with slack the inset is more than the minimum.
     const f = stairs(out)[0] as any;
     const y0 = f.direction === "south" ? f.start_y : f.start_y - f.num_steps * f.step_tread;
-    expect(y0).toBeCloseTo(545 + 90, 0);
+    expect(y0).toBeGreaterThanOrEqual(545 + 90 - 0.5);
+    // the flight is centred in the box: approach depth == arrival landing depth
+    expect(y0 - 545).toBeCloseTo(landings(out)[0].length as number, 0);
   });
 
   it("reserves an approach at the bottom — the first flight is inset by a landing depth", () => {
