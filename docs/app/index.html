@@ -2099,7 +2099,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-Cq6OqAcS.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-Dy4N52CW.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-DBRtTYU9.css">
 </head>
@@ -2119,6 +2119,11 @@
                      window (⌘⇧D); browser: opens /dsl in a new tab. Wired in main.ts. -->
                 <a id="dsl-editor-link" class="persona-switch dsl-link" href="/dsl/"
                    title="Edit designs as code — the Wadi WDL editor (⌘⇧D)">⟨/⟩ WDL editor →</a>
+                <!-- Standalone staircase box explorer (live plan + elevation). Lives
+                     OUTSIDE /app/ so the app's service worker doesn't serve the SPA
+                     shell for it; the tool page has a back link to return here. -->
+                <a id="stair-tool-link" class="persona-switch dsl-link" href="/tools/staircase-explorer.html"
+                   title="Staircase box explorer — live plan + elevation">🪜 Stair tool →</a>
             </div>
             <div class="header-actions">
                 <!-- Mobile-only hamburger: on narrow screens the button

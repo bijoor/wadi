@@ -332,13 +332,13 @@ function expandStaircaseBox(
       isStair: true,
       o: { type: "staircase", direction: climbFar ? "south" : "north", start_x: lane, start_y: bottomPos, num_steps: treads, ...stepFields, z_offset: zFlightBottom },
     });
-    // Landing at THIS flight's actual top, extending beyond it in the climb direction.
-    // The LAST (arrival) landing stretches all the way to the box edge, bridging the
-    // top step to the end of the allocated space — so it may be deeper or shallower
-    // than the turn landings, but there's never a gap between it and the box.
-    const isLast = t === numFlights - 1;
-    const ldepth = isLast ? (climbFar ? runBudget - topPos : topPos) : landingDepth;
-    const ly = climbFar ? topPos : topPos - ldepth;
+    // EVERY landing stretches to the box EDGE in the climb direction — a landing
+    // never hangs mid-box. Far-climbing flights land against the far edge
+    // (runBudget); near-climbing flights against the near edge (0). Each landing
+    // bridges its flight's top step to the box boundary, so its depth adapts (it
+    // may differ from `landing_depth`, which only sets the reserved minimum).
+    const ldepth = climbFar ? runBudget - topPos : topPos;
+    const ly = climbFar ? topPos : 0;
     items.push({ isStair: false, o: { type: "floor_slab", x: 0, y: ly, width: landingWidth, length: ldepth, thickness: landingThickness, z_offset: zFlightTop - landingThickness } });
     bottomPos = topPos;
     climbFar = !climbFar;
