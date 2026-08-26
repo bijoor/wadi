@@ -17,8 +17,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { AstUtils } from "langium";
-import { WadiGrammar } from "../src/language/generated/grammar.js";
+import { collectGrammarKeywords } from "../src/language/grammar-keywords.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REFERENCE_TS = resolve(here, "../playground/reference.ts");
@@ -29,25 +28,9 @@ const DOC_EXEMPT = new Set<string>([
   "null", // a formula/value literal (with true/false), not a house field
 ]);
 
-const isKeywordToken = (v: unknown): v is string =>
-  typeof v === "string" && /^[a-z_][a-z0-9_]*$/i.test(v);
-
-function collectKeywords(): { field: Set<string>; value: Set<string> } {
-  const grammar = WadiGrammar();
-  const all = new Set<string>();
-  const value = new Set<string>();
-  for (const node of AstUtils.streamAst(grammar)) {
-    if (node.$type === "Keyword" && isKeywordToken(node.value)) all.add(node.value);
-    // Keywords inside an assignment's terminal are VALUES (enum alternatives).
-    if (node.$type === "Assignment" && node.terminal) {
-      for (const t of AstUtils.streamAst(node.terminal)) {
-        if (t.$type === "Keyword" && isKeywordToken(t.value)) value.add(t.value);
-      }
-    }
-  }
-  const field = new Set([...all].filter((k) => !value.has(k)));
-  return { field, value };
-}
+// Shared with the Monaco highlighter (playground/dsl-language.ts) so both stay
+// in lockstep with the grammar.
+const collectKeywords = collectGrammarKeywords;
 
 // Word-boundary match (so `feet_inches` doesn't satisfy `feet`, and a keyword
 // inside a longer identifier doesn't count).

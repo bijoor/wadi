@@ -5,25 +5,27 @@
 // itself — see wadi-dsl/README.md.)
 
 import type * as Monaco from "monaco-editor";
+import { collectGrammarKeywords } from "../src/language/grammar-keywords.js";
 
 export const LANG_ID = "wdl";
 
-// Structural keywords (block openers + section words).
-const KEYWORDS = [
-  "house", "convention", "center", "outer", "units", "site", "plot", "ref",
-  "defaults", "floor", "room", "wall", "pillar", "var", "point", "grid",
-  "configurator", "raw", "at", "size", "sill", "height", "thick", "role",
-  "structural", "planning", "per_unit", "floor_height", "wall_height",
-  "slab_thickness", "wall_thickness",
-];
-// Configurator control words + opening kinds + wall sides + unit systems.
-const KEYWORDS2 = [
-  "slider", "number", "toggle", "select", "step",
-  "door", "window", "north", "south", "east", "west",
-  "feet_inches", "feet", "meters", "centimeters", "millimeters",
-];
-// Pure formula functions (from param/formula.ts).
+// Pure formula functions (from param/formula.ts) — these are NOT grammar keywords
+// (the formula is its own sub-language), so they're listed explicitly.
 const FUNCTIONS = ["min", "max", "clamp", "round", "floor", "ceil", "abs"];
+
+// DERIVE the highlighted keywords straight from the grammar so highlighting can
+// never drift from wadi.langium (this is exactly why `guides` was un-highlighted
+// while `grid` was — the old list was hand-maintained). FIELD markers colour as
+// `keyword`, VALUE enum words (north/flat/open/…) as `type`, matching the two-tone
+// look; formula functions stay `predefined`.
+function grammarTokens(): { keywords: string[]; keywords2: string[] } {
+  const { field, value } = collectGrammarKeywords();
+  const fns = new Set(FUNCTIONS);
+  return {
+    keywords: [...field].filter((k) => !fns.has(k)),
+    keywords2: [...value].filter((k) => !fns.has(k)),
+  };
+}
 
 export function registerWadiDsl(monaco: typeof Monaco): void {
   monaco.languages.register({ id: LANG_ID, extensions: [".wdl"], aliases: ["Wadi DSL", "wdl"] });
@@ -49,9 +51,10 @@ export function registerWadiDsl(monaco: typeof Monaco): void {
     ],
   });
 
+  const { keywords, keywords2 } = grammarTokens();
   monaco.languages.setMonarchTokensProvider(LANG_ID, {
-    keywords: KEYWORDS,
-    keywords2: KEYWORDS2,
+    keywords,
+    keywords2,
     functions: FUNCTIONS,
     tokenizer: {
       root: [
