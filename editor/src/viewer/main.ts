@@ -29,8 +29,9 @@ import { createRoot } from "react-dom/client";
 import { createElement } from "react";
 import { useConfigStore } from "../state/configStore";
 import { validate } from "../schema/houseConfig";
-import type { HouseConfig as ValidatedHouseConfig } from "../schema/houseConfig";
+import type { HouseConfig as ValidatedHouseConfig, HouseObject } from "../schema/houseConfig";
 import type { HouseConfig } from "../svg2d/expand";
+import { roomBlocksOf, connectionSatisfied } from "../graph/graphModel";
 import { generateAllFloorPlans } from "../svg2d/floorPlansAll";
 import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
 import { generateCompositeSheet } from "../svg2d/compositeSheet";
@@ -986,6 +987,28 @@ export interface WadiApi {
   enterRoom: (key: string) => { ok: true; key: string };
   /** Return the 3D camera to the outside orbit view. */
   exitRoom: () => { ok: true };
+
+  // --- Co-design mutations (WebMCP): the agent authors the SAME live model the
+  // person edits. Every one funnels through the store's own actions, so agent
+  // and human edits share undo, validation, and live re-render. Sizes in FEET. ---
+  /** The whole house as structured data (floors, rooms + sizes/positions in
+   *  feet, connections, roof, plot, variables). Read this first. */
+  describeHouse: () => unknown;
+  /** Add a room to a floor. x/y = top-left corner in feet (x east, y south);
+   *  width east-west, length north-south. Abutting rooms share a wall. */
+  addRoom: (input: Record<string, unknown>) => { ok: true; name: string; floor?: string };
+  /** Rename / move / resize a room by name (any of new_name/x_ft/y_ft/width_ft/length_ft). */
+  editRoom: (input: Record<string, unknown>) => { ok: true; name: string };
+  /** Declare that two same-floor rooms open into each other; returns whether
+   *  it's physically passable yet (C11) and how to fix it if not. */
+  connectRooms: (input: Record<string, unknown>) => {
+    ok: true; connected: string[]; passable: boolean; note: string;
+  };
+  /** Undo / redo the last change (one shared history with the human). */
+  undo: () => { ok: true };
+  redo: () => { ok: true };
+  /** Render the current 3D model to a data URL so an agent can see the result. */
+  captureView: (size?: number) => string | null;
 }
 
 // WebMCP tool descriptor — document.modelContext.registerTool (W3C WebMCP,
@@ -2249,11 +2272,64 @@ async function ensureCatalog(): Promise<void> {
   galleryTemplates = await loadCatalog();
 }
 
+// ---- Co-design helpers: feet <-> project units + floor/room lookup ----------
+// The model stores project units (per_unit, default 10 = 1 ft); the agent-facing
+// tools speak FEET so a contractor's spoken sizes land where expected.
+type FloorLike = { name?: string; floor_number?: number; objects?: Array<Record<string, unknown>> };
+const perUnitOf = (cfg: unknown): number =>
+  Number((cfg as { units?: { per_unit?: number } } | null)?.units?.per_unit) || 10;
+const ftToU = (cfg: unknown, ft: unknown): number => (Number(ft) || 0) * perUnitOf(cfg);
+const uToFt = (cfg: unknown, u: unknown): number =>
+  Math.round(((Number(u) || 0) / perUnitOf(cfg)) * 10) / 10;
+const floorsOf = (cfg: unknown): FloorLike[] => ((cfg as { floors?: FloorLike[] } | null)?.floors ?? []);
+
+// Floor index from a name or floor_number; `fallback` (the active floor) when unset.
+function resolveFloorIdx(cfg: unknown, ref: unknown, fallback: number): number {
+  const floors = floorsOf(cfg);
+  if (ref == null || ref === "") return Math.max(0, Math.min(fallback, floors.length - 1));
+  const s = String(ref).trim().toLowerCase();
+  const byName = floors.findIndex((f) => String(f.name ?? "").toLowerCase() === s);
+  if (byName >= 0) return byName;
+  const n = Number(ref);
+  if (Number.isFinite(n)) {
+    const byNum = floors.findIndex((f) => Number(f.floor_number) === n);
+    if (byNum >= 0) return byNum;
+    if (n >= 1 && n <= floors.length) return n - 1;
+  }
+  return -1;
+}
+
+// A room's {floor, object} index + the raw object, by name (case-insensitive).
+function findRoomSel(cfg: unknown, name: unknown): { floor: number; object: number; room: Record<string, unknown> } | null {
+  const target = String(name ?? "").trim().toLowerCase();
+  const floors = floorsOf(cfg);
+  for (let fi = 0; fi < floors.length; fi++) {
+    const objs = floors[fi].objects ?? [];
+    for (let oi = 0; oi < objs.length; oi++) {
+      const o = objs[oi];
+      if (o?.type === "room" && String(o.name ?? "").toLowerCase() === target) return { floor: fi, object: oi, room: o };
+    }
+  }
+  return null;
+}
+
+// A room name not already taken (numeric suffix on collision) — connections
+// reference rooms by name, so names must be unique.
+function uniqueRoomName(cfg: unknown, base: string): string {
+  const used = new Set<string>();
+  for (const f of floorsOf(cfg)) for (const o of f.objects ?? []) if (o?.type === "room" && o.name) used.add(String(o.name).toLowerCase());
+  const root = base.trim() || "Room";
+  let name = root;
+  let n = 1;
+  while (used.has(name.toLowerCase())) { n += 1; name = `${root} ${n}`; }
+  return name;
+}
+
 // window.wadi — the programmatic control surface. Every method funnels through
 // the SAME store mutations the owner UI uses (loadConfig / updateVariables /
-// updatePoints) and the SAME template + view paths, so a client driving this
-// API is indistinguishable from a user driving the controls — and the two can
-// operate the one live model together.
+// updatePoints / updateObject / insertObject) and the SAME template + view
+// paths, so a client driving this API is indistinguishable from a user driving
+// the controls — and the two can operate the one live model together.
 function wireWadiApi(): void {
   const store = () => useConfigStore.getState();
   const layers = () => useLayerStore.getState();
@@ -2405,6 +2481,97 @@ function wireWadiApi(): void {
       interior().exit();
       return { ok: true as const };
     },
+
+    // ---- Co-design mutations: an agent authoring the SAME live model ----------
+    describeHouse() {
+      const cfg = store().config as Record<string, unknown> | null;
+      if (!cfg) return { loaded: false as const };
+      const site = (cfg.site ?? {}) as Record<string, unknown>;
+      const floors = floorsOf(cfg).map((f) => ({
+        floor_number: f.floor_number,
+        name: f.name,
+        rooms: (f.objects ?? [])
+          .filter((o) => o?.type === "room")
+          .map((o) => ({
+            name: o.name,
+            x_ft: uToFt(cfg, o.x), y_ft: uToFt(cfg, o.y),
+            width_ft: uToFt(cfg, o.width), length_ft: uToFt(cfg, o.length),
+            connections: Array.isArray(o.connections) ? o.connections : [],
+          })),
+      }));
+      const roof = floorsOf(cfg)
+        .flatMap((f) => (f.objects ?? []).filter((o) => o?.type === "roof"))
+        .map((r) => ({ roof_type: r.roof_type, endpoint: r.default_endpoint }));
+      return {
+        units: "feet" as const, per_unit: perUnitOf(cfg),
+        plot_width_ft: uToFt(cfg, site.plot_width), plot_length_ft: uToFt(cfg, site.plot_length),
+        coord_convention: (cfg.coord_convention as string) ?? "outer",
+        variables: (cfg.variables ?? {}) as Record<string, unknown>,
+        floors, roof,
+      };
+    },
+
+    addRoom(input: Record<string, unknown>) {
+      const cfg = store().config as Record<string, unknown> | null;
+      if (!cfg) throw new Error("wadi.addRoom: no house loaded — choose a template or load a config first.");
+      const fi = resolveFloorIdx(cfg, input.floor, useConfigStore.getState().activeFloorIdx);
+      if (fi < 0) throw new Error(`wadi.addRoom: unknown floor '${String(input.floor)}'. See describeHouse().floors.`);
+      const name = uniqueRoomName(cfg, String(input.name ?? "Room"));
+      const room = {
+        type: "room", name,
+        x: ftToU(cfg, input.x_ft), y: ftToU(cfg, input.y_ft),
+        width: ftToU(cfg, input.width_ft ?? 10), length: ftToU(cfg, input.length_ft ?? 10),
+      } as unknown as HouseObject;
+      // Freehand rooms author at wall CENTRELINES so abutting rooms share a wall.
+      if (!cfg.coord_convention) store().setCoordConvention("center");
+      const sel = store().insertObject(fi, room);
+      store().select(sel);
+      return { ok: true as const, name, floor: floorsOf(cfg)[fi]?.name };
+    },
+
+    editRoom(input: Record<string, unknown>) {
+      const cfg = store().config;
+      const found = findRoomSel(cfg, input.name);
+      if (!found) throw new Error(`wadi.editRoom: no room named '${String(input.name)}'. See describeHouse().`);
+      const patch: Record<string, unknown> = {};
+      if (input.new_name != null) patch.name = uniqueRoomName(cfg, String(input.new_name));
+      if (input.x_ft != null) patch.x = ftToU(cfg, input.x_ft);
+      if (input.y_ft != null) patch.y = ftToU(cfg, input.y_ft);
+      if (input.width_ft != null) patch.width = ftToU(cfg, input.width_ft);
+      if (input.length_ft != null) patch.length = ftToU(cfg, input.length_ft);
+      store().updateObject({ floor: found.floor, object: found.object }, patch as Partial<HouseObject>);
+      return { ok: true as const, name: (patch.name as string) ?? String(found.room.name) };
+    },
+
+    connectRooms(input: Record<string, unknown>) {
+      const cfg = store().config;
+      const a = findRoomSel(cfg, input.room_a);
+      const b = findRoomSel(cfg, input.room_b);
+      if (!a) throw new Error(`wadi.connectRooms: no room named '${String(input.room_a)}'.`);
+      if (!b) throw new Error(`wadi.connectRooms: no room named '${String(input.room_b)}'.`);
+      if (a.floor !== b.floor) throw new Error("wadi.connectRooms: the rooms are on different floors (connections are same-floor).");
+      const bName = String(b.room.name);
+      const existing = Array.isArray(a.room.connections) ? (a.room.connections as string[]) : [];
+      const next = [...new Set([...existing, bName])];
+      store().updateObject({ floor: a.floor, object: a.object }, { connections: next } as Partial<HouseObject>);
+      const cfg2 = store().config;
+      const blocks = cfg2 ? roomBlocksOf(cfg2, a.floor) : [];
+      const ba = blocks.find((x) => x.index === a.object);
+      const bb = blocks.find((x) => x.index === b.object);
+      const passable = !!(ba && bb && connectionSatisfied(ba, bb));
+      return {
+        ok: true as const,
+        connected: [String(a.room.name), bName],
+        passable,
+        note: passable
+          ? "Connected and passable — the rooms share a wall with a door, or that wall is left off both."
+          : "Connected, but not passable yet. Add a door on the shared wall (in the studio for now), or leave that wall off both rooms for an open passage.",
+      };
+    },
+
+    undo() { useConfigStore.temporal.getState().undo(); return { ok: true as const }; },
+    redo() { useConfigStore.temporal.getState().redo(); return { ok: true as const }; },
+    captureView(size?: number) { return window.wadiCapture3D?.(Number(size) || 1000) ?? null; },
   };
 }
 
@@ -2592,6 +2759,105 @@ function buildWadiMcpTools(): WebMcpTool[] {
       description: "Return the 3D camera to the outside view.",
       inputSchema: noInput,
       execute() { return text(api().exitRoom()); },
+    },
+
+    // ---- Co-design tools: author the SAME live model the person is editing.
+    // Every mutation goes through the studio's own store actions, so agent and
+    // human edits share one model and one undo history. Sizes are in FEET. ----
+    {
+      name: "wadi_describe_house",
+      description:
+        "Read the current house as structured data: each floor and its rooms (name, size and position in feet), room connections, roof, plot size, and design variables. Call this FIRST to see what you're working with.",
+      annotations: { readOnlyHint: true },
+      inputSchema: noInput,
+      execute() { return text(api().describeHouse()); },
+    },
+    {
+      name: "wadi_add_room",
+      description:
+        "Add a room to a floor. Position is the room's top-left corner in FEET (x = east, y = south); width runs east-west, length north-south. Rooms that touch share a wall. Returns the created room name.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "room name, e.g. Bedroom" },
+          floor: { type: "string", description: "floor name or number; defaults to the active floor" },
+          x_ft: { type: "number", description: "left edge (east) in feet" },
+          y_ft: { type: "number", description: "top edge (south) in feet" },
+          width_ft: { type: "number", description: "east-west size in feet" },
+          length_ft: { type: "number", description: "north-south size in feet" },
+        },
+        required: ["name", "width_ft", "length_ft"],
+      },
+      execute(input) { return text(api().addRoom(input)); },
+    },
+    {
+      name: "wadi_edit_room",
+      description:
+        "Rename, move, or resize an existing room (by name). Provide any of new_name, x_ft, y_ft, width_ft, length_ft (feet).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "the room to edit" },
+          new_name: { type: "string" },
+          x_ft: { type: "number" }, y_ft: { type: "number" },
+          width_ft: { type: "number" }, length_ft: { type: "number" },
+        },
+        required: ["name"],
+      },
+      execute(input) { return text(api().editRoom(input)); },
+    },
+    {
+      name: "wadi_connect_rooms",
+      description:
+        "Declare that two rooms (by name, same floor) open into each other. Returns whether the connection is physically passable yet, and if not, how to fix it (add a door on the shared wall, or leave that wall off both rooms).",
+      inputSchema: {
+        type: "object",
+        properties: { room_a: { type: "string" }, room_b: { type: "string" } },
+        required: ["room_a", "room_b"],
+      },
+      execute(input) { return text(api().connectRooms(input)); },
+    },
+    {
+      name: "wadi_set_variable",
+      description:
+        "Set a design variable or plot dimension by name (see wadi_describe_house.variables). Plot width/length are 'House.W'/'House.L' in raw units (10 units = 1 ft); roof_style is 0=Flat, 1=Shed, 2=Gable, 3=Hip. The whole house re-flows.",
+      inputSchema: {
+        type: "object",
+        properties: { name: { type: "string" }, value: { type: "number" } },
+        required: ["name", "value"],
+      },
+      execute(input) { return text(api().setKnob(String(input.name), Number(input.value))); },
+    },
+    {
+      name: "wadi_undo",
+      description: "Undo the last change. Agent and human share one undo history.",
+      inputSchema: noInput,
+      execute() { return text(api().undo()); },
+    },
+    {
+      name: "wadi_redo",
+      description: "Redo the last undone change.",
+      inputSchema: noInput,
+      execute() { return text(api().redo()); },
+    },
+    {
+      name: "wadi_capture_view",
+      description:
+        "Render the current 3D model to an image so you can SEE the result of your changes (the 3D canvas is otherwise invisible to you). Optional pixel size (default 1000).",
+      annotations: { readOnlyHint: true },
+      inputSchema: {
+        type: "object",
+        properties: { size: { type: "number", description: "image size in px, default 1000" } },
+      },
+      execute(input) {
+        const url = api().captureView(Number(input?.size) || 1000);
+        if (typeof url === "string" && url.startsWith("data:")) {
+          const comma = url.indexOf(",");
+          const mime = /^data:([^;]+)/.exec(url)?.[1] ?? "image/png";
+          return { content: [{ type: "image", data: url.slice(comma + 1), mimeType: mime }] };
+        }
+        return text("Could not capture a view — make sure a house is loaded and the 3D Model tab is open.");
+      },
     },
   ];
 }
