@@ -58,7 +58,11 @@
             background: rgba(255, 255, 255, 0.95);
             padding: 1rem 2rem;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
             z-index: 100;
+            /* Own compositing layer so the header (and its Apps dropdown) paints
+               ABOVE the WebGL 3D canvas in WKWebView — see .apps-dropdown. */
+            transform: translateZ(0);
         }
         body > header h1 {
             color: #333;
@@ -203,7 +207,13 @@
         .apps-btn .apps-caret { font-size: 0.6rem; opacity: 0.7; }
         .apps-menu[data-open="1"] .apps-caret { transform: rotate(180deg); }
         .apps-dropdown {
-            position: absolute; top: calc(100% + 6px); left: 0; z-index: 200;
+            position: absolute; top: calc(100% + 6px); left: 0; z-index: 1600;
+            /* Promote to its OWN compositing layer so it paints ABOVE the WebGL
+               3D canvas (#viewer-3d-scene). In WKWebView (the desktop app) a WebGL
+               canvas composites over normal HTML regardless of z-index, which
+               otherwise hides this menu behind the dark 3D panel. */
+            transform: translateZ(0);
+            will-change: transform;
             min-width: 244px; padding: 6px;
             background: #fff; color: #2C2A26;
             border: 1px solid rgba(44,42,38,0.14); border-radius: 12px;
