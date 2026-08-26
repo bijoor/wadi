@@ -61,11 +61,20 @@ var pilInset = (pillarW - wallT) / 2
 point House { x = 420, y = 470 }    // reference as House.x / House.W / House.L
                                     // (.W = x, .L = y — a point doubles as a size)
 
-grid main {                         // named wall centrelines; publishes main.x1 / main.yA
+guides main {                       // NAMED wall centrelines; publishes main.x1 / main.yA
   x: 1 @ wallT / 2, 2 @ House.W / 2, 3 @ House.W - wallT / 2
   y: A @ wallT / 2, B @ House.L / 2, C @ House.L - wallT / 2
 }
 // each line may add:  … @ <expr> thick <expr>  role structural|planning
+// (`grid` is a deprecated alias for a named `guides` object — still parses.)
+
+guides module {                     // GENERATED — a uniform family from origin+spacing
+  origin (0, 0)  spacing (30, 30)  [extent (40, 30)]   // origin default (0,0); extent optional
+}
+// Reference a generated line by INDEX: module.x8 (integer) or module.x(<expr>)
+// (call form — required for fractional/negative/computed indices). `extent`
+// (line counts per axis) only bounds where the lines are DRAWN. A `guides` object
+// is EITHER named (x/y lists) OR generated (spacing) — never both.
 
 configurator {                      // the owner-facing template you author
   title "Configure your home"       // panel heading (optional)
@@ -91,7 +100,8 @@ the knob to `W` — knobs target vars, never a point field like `House.W`.
 expression instead of a literal (`at (main.x1, main.yA)`, `size (House.W/2, 200)`).
 Operators: `+ - * /`, unary `-`, parentheses, and the functions
 `min max clamp round floor ceil abs`. References: a `var`, a `point`
-(`House.W`), or a grid line (`main.x3 - main.x1`). No comparison operators — gate
+(`House.W`), a named guide (`main.x3 - main.x1`), or a generated guide
+(`module.x8`, `module.x(n+1)`). No comparison operators — gate
 things with the `min/abs` idiom (see `enabled` below).
 
 ## Common attribute tail (every object)
@@ -137,6 +147,7 @@ only when it carries a door/window; omit a side to leave it open (verandah).
 
 ```wdl
 room Name at (x,y) size (w,l) [height <h>] [material "…"] {
+  connect Kitchen Hall                 // rooms this room opens into (same floor)
   wall east west north                 // plain walls — several in one statement
   wall south { door Main at <offset> [from start|center|end] size (w,h) [open] }   // wall WITH openings
   wall west  { window W at <offset> [from start|center|end] size (w,h) [sill <s>] [open] }
@@ -144,6 +155,11 @@ room Name at (x,y) size (w,l) [height <h>] [material "…"] {
 }
 ```
 
+- `connect A B …` records that this room adjoins the named room(s) — space-separated,
+  quote a name with spaces (`connect "Guest Room"`). It's design intent + a functional
+  test, **not geometry** (the renderer ignores it). May go anywhere in the block and
+  repeat. Validated by C11: connected rooms must OVERLAP on a wall AND be passable —
+  a door in the overlap, or the shared wall left off BOTH rooms (an open passage).
 - `wall <side>…` sides are `north|south|east|west`. A `wall <side>` line may also
   add `height <h>` / `height_end <h>` (sloped).
 - `door`/`window` `at <offset>` is measured along the wall; `size (width, height)`;
