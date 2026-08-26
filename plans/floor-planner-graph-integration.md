@@ -251,7 +251,21 @@ become shared centrelines. Adjacency for the satisfied check uses `spatialModel`
 ## 11. Decisions / deferred
 
 Decided:
-- **Standalone app retired** once the engine is ported into Wadi (§6).
+- **Standalone app KEPT as an optional add-on (reversal of the earlier "retire"
+  decision).** It is a useful blank-canvas STARTING point for a new house — sketch
+  rooms + connections on a grid — which the in-app Graph view (a formula-aware
+  editor over an EXISTING model) doesn't cover. It now lives in the repo at
+  `floor-planner/` (built to `docs/planner/`, deployed at `/planner`) and EXPORTS
+  a `.wadi` HouseConfig: rooms → `room` objects at `coord_convention: "center"`
+  (touching rooms share a wall), edges → `room.connections`, the regular grid →
+  a generated `guides module`, floors → `floors[]`, plot → `site`; scale = cell ×
+  unitPerCell × per_unit(10). No walls/doors are emitted — C11 then points at the
+  doors to add. Handoff: "⬇ Export .wadi" (download) + "Open in Wadi →" (stashes
+  the config in `localStorage['wadi:handoff']` and opens `/app#handoff`, which the
+  viewer reads once on boot). The `.wdl` path is free via the WDL editor's
+  "↩ Import .wadi". The companion tools (WDL editor, Floor planner, Staircase
+  explorer) now live behind a single header **Apps menu** (on-palette icons) and
+  each opens in its OWN window on desktop (Tauri `show_tool`).
 - **Generated-guide reference: both forms** — `module.x8` (integer shorthand) and
   `module.x(expr)` (fractional / negative / computed). Offsets are plain
   arithmetic, not an index feature (§4).

@@ -1,0 +1,463 @@
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --border: #e2e5ea;
+  --ink: #1f2430;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-soft: #dbe6ff;
+  --danger: #dc2626;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ---------- toolbar ---------- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.brand { font-weight: 700; font-size: 15px; margin-right: 4px; }
+.group { display: flex; align-items: center; gap: 4px; }
+.group.right { margin-left: auto; }
+
+.toolbar button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 7px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.toolbar button:hover { background: #f0f2f5; }
+.toolbar button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.toolbar button:disabled { opacity: 0.4; cursor: default; }
+
+/* ---------- body ---------- */
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.canvas-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.canvas {
+  flex: 1;
+  background:
+    linear-gradient(0deg, var(--bg), var(--bg));
+  touch-action: none;
+  user-select: none;
+  cursor: default;
+}
+
+.zoom-controls {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.zoom-controls button {
+  font: inherit;
+  font-size: 14px;
+  min-width: 30px;
+  height: 28px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.zoom-controls button:hover { background: #f0f2f5; }
+.zoom-controls .zoom-pct { min-width: 48px; font-size: 12px; color: var(--muted); }
+.canvas.tool-draw-room { cursor: crosshair; }
+.canvas.tool-draw-edge { cursor: alias; }
+
+/* ---------- grid + shapes ---------- */
+.grid-minor { stroke: #e9ebef; stroke-width: 1; }
+.grid-major { stroke: #d6dae0; stroke-width: 1; }
+
+.plot {
+  fill: rgba(255,255,255,0.55);
+  stroke: #111827;
+  stroke-width: 2.5;
+  pointer-events: none;
+}
+.plot-hit {
+  fill: none;
+  stroke: transparent;
+  pointer-events: stroke; /* only the border is clickable */
+  cursor: pointer;
+}
+
+.room {
+  fill-opacity: 0.6;
+  stroke: #334155;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+.room.selected { stroke: var(--accent); stroke-width: 2.5; }
+.room.bad { stroke: var(--danger); stroke-width: 2.5; }
+
+.room-label {
+  text-anchor: middle;
+  font-size: 13px;
+  font-weight: 600;
+  fill: #111827;
+  pointer-events: none;
+}
+.room-sub {
+  text-anchor: middle;
+  font-size: 10px;
+  fill: #475569;
+  pointer-events: none;
+}
+
+.edge {
+  stroke: #64748b;
+  stroke-width: 2;
+  pointer-events: none;
+}
+.edge-hit {
+  stroke: transparent;
+  fill: none;
+  cursor: pointer;
+  stroke-linecap: round;
+}
+.edge.dashed { stroke-dasharray: 6 4; }
+.edge.satisfied { stroke: #16a34a; stroke-width: 3.5; }
+.edge.violation { stroke: #ef4444; stroke-width: 3.5; }
+.edge.selected { stroke: var(--accent); stroke-width: 4; }
+.draft-edge { stroke: #94a3b8; stroke-dasharray: 5 4; pointer-events: none; }
+.draft-edge.valid { stroke: #16a34a; }
+.draft-edge.bad { stroke: var(--danger); }
+
+.draft-room {
+  fill: var(--accent-soft);
+  fill-opacity: 0.5;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+.draft-room.invalid { fill: #fde2e2; stroke: var(--danger); }
+
+.select-rect {
+  fill: rgba(37, 99, 235, 0.1);
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.handle {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.plot-handle { stroke: #111827; }
+
+/* ---------- sidebar ---------- */
+.sidebar {
+  width: 280px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+}
+.panel h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.panel.hint p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.field span { font-size: 12px; color: var(--muted); }
+.field input {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 100%;
+}
+.row { display: flex; gap: 8px; }
+.row .field { flex: 1; }
+
+.area-note { font-size: 13px; color: var(--ink); margin: 6px 0 10px; }
+
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.swatch {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.swatch.active { border-color: var(--ink); }
+
+button.secondary {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+  margin-top: 4px;
+}
+button.secondary:hover { background: #f0f2f5; }
+
+button.danger {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #f3c0c0;
+  background: #fff5f5;
+  color: var(--danger);
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+}
+button.danger:hover { background: #ffecec; }
+
+.status {
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.status.solved { background: #dcfce7; color: #15803d; }
+.status.todo { background: var(--warn-bg); color: var(--warn); }
+
+.health ul { list-style: none; margin: 0; padding: 0; }
+.health li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed var(--border);
+}
+.health li:last-child { border-bottom: none; }
+.health li span { color: var(--muted); }
+.health li.warn { color: var(--warn); }
+.health li.warn span { color: var(--warn); }
+.health li.warn b { color: var(--warn); }
+
+/* ---------- statusbar ---------- */
+.statusbar {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+.statusbar b { color: var(--ink); font-weight: 600; }
+.statusbar .tip { margin-left: auto; }
+
+/* ---------- floors ---------- */
+/* Floor tabs in the toolbar reuse the toolbar-button look; the active floor is
+   highlighted by the existing `.active` rule. */
+.group.floors {
+  padding-left: 8px;
+  margin-left: 4px;
+  border-left: 1px solid var(--border);
+}
+.group.floors .floor-add { font-weight: 700; }
+
+/* Faint tracing of the floor below, on the canvas. */
+.ghost-room {
+  fill: none;
+  stroke: #9aa3b2;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Floors management panel in the sidebar. */
+.floor-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.floor-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+.floor-row.active { border-color: var(--accent); background: var(--accent-soft); }
+.floor-row .floor-pick {
+  flex: none;
+  width: 24px; height: 24px;
+  border: none; background: transparent;
+  cursor: pointer; font-size: 13px; color: var(--muted);
+}
+.floor-row.active .floor-pick { color: var(--accent); }
+.floor-row input { flex: 1; min-width: 0; }
+.floor-ops { display: flex; gap: 2px; flex: none; }
+.floor-ops button {
+  width: 22px; height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ink);
+}
+.floor-ops button:hover:not(:disabled) { background: #f0f2f5; }
+.floor-ops button:disabled { opacity: 0.35; cursor: default; }
+.floor-ops button.danger-op { color: var(--danger); }
+
+/* View-mode control (single / overlay / side-by-side). */
+.group.viewmodes {
+  padding-left: 8px;
+  margin-left: 4px;
+  border-left: 1px solid var(--border);
+}
+
+/* Floor legend overlay (overlay + side-by-side views). */
+.floor-legend {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.floor-legend button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 3px 6px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.floor-legend button:hover { background: #f0f2f5; }
+.floor-legend button.active { background: var(--accent-soft); font-weight: 600; }
+.floor-legend .dot {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+
+/* Side-by-side plates. */
+.sheet-title { font-size: 13px; font-weight: 700; }
+.sheet-plate {
+  fill: #fff;
+  stroke: #c3c9d4;
+  stroke-width: 2;
+}
+.sheet-plate.active { stroke: var(--accent); stroke-width: 3; }
+
+/* Empty-floor hint (shown on a floor with no rooms; not in side-by-side). The
+   container lets clicks through to the canvas so you can still draw; only the
+   card and its buttons are interactive. */
+.empty-floor {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.empty-card {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  padding: 16px 20px;
+  text-align: center;
+  max-width: 320px;
+}
+.empty-title { margin: 0 0 4px; font-weight: 600; }
+.empty-sub { margin: 0 0 10px; font-size: 13px; color: var(--muted); line-height: 1.4; }
+.empty-card kbd {
+  font: inherit;
+  background: #f0f2f5;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+.empty-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.empty-actions button { width: auto; margin: 0; padding: 5px 10px; font-size: 13px; }
+
+/* Copy-to-floor control in the sidebar. */
+.copyto { margin: 8px 0; }
+.copyto-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.copyto-btns { display: flex; flex-wrap: wrap; gap: 4px; }
+.panel button.secondary.small {
+  width: auto;
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+}

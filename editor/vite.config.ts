@@ -37,7 +37,14 @@ const MIME: Record<string, string> = {
 //             stale build. Same origin, so window.wadi stays reachable.
 // Never applied to production builds (`apply: 'serve'`).
 function serveBuiltSite(): Plugin {
-  const dslRoot = path.resolve(__dirname, '..', 'docs', 'dsl')
+  const docs = path.resolve(__dirname, '..', 'docs')
+  // Built sibling apps served on this dev origin so their same-origin links work:
+  //   /dsl     → the WDL playground   (docs/dsl,     built by wadi-dsl)
+  //   /planner → the floor-planner    (docs/planner, built by floor-planner)
+  const staticApps: [string, string][] = [
+    ['/dsl', path.join(docs, 'dsl')],
+    ['/planner', path.join(docs, 'planner')],
+  ]
   return {
     name: 'wadi-serve-built-site',
     apply: 'serve',
@@ -46,7 +53,7 @@ function serveBuiltSite(): Plugin {
         const raw = req.url || ''
         const [urlPath, query] = raw.split('#')[0].split(/(?=\?)/)
 
-        // /app → the LIVE viewer, so the WDL editor previews current code.
+        // /app → the LIVE viewer, so the WDL editor / planner handoff hit current code.
         if (urlPath === '/app' || urlPath === '/app/') {
           res.statusCode = 302
           res.setHeader('Location', '/viewer.html' + (query ?? ''))
@@ -54,15 +61,15 @@ function serveBuiltSite(): Plugin {
           return
         }
 
-        // /dsl → the built playground bundle (docs/dsl).
         const pathname = urlPath.split('?')[0]
-        if (existsSync(dslRoot) && (pathname === '/dsl' || pathname.startsWith('/dsl/'))) {
-          if (pathname === '/dsl') { res.statusCode = 302; res.setHeader('Location', '/dsl/' + (query ?? '')); res.end(); return }
-          let rel = decodeURIComponent(pathname.slice('/dsl/'.length)) || 'index.html'
-          let file = path.join(dslRoot, rel)
-          if (!file.startsWith(dslRoot)) { res.statusCode = 403; res.end('Forbidden'); return }
+        for (const [prefix, root] of staticApps) {
+          if (!existsSync(root) || (pathname !== prefix && !pathname.startsWith(prefix + '/'))) continue
+          if (pathname === prefix) { res.statusCode = 302; res.setHeader('Location', prefix + '/' + (query ?? '')); res.end(); return }
+          let rel = decodeURIComponent(pathname.slice(prefix.length + 1)) || 'index.html'
+          let file = path.join(root, rel)
+          if (!file.startsWith(root)) { res.statusCode = 403; res.end('Forbidden'); return }
           if (existsSync(file) && statSync(file).isDirectory()) file = path.join(file, 'index.html')
-          if (!existsSync(file)) file = path.join(dslRoot, 'index.html') // SPA fallback
+          if (!existsSync(file)) file = path.join(root, 'index.html') // SPA fallback
           if (existsSync(file)) {
             res.setHeader('Content-Type', MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream')
             res.end(readFileSync(file))

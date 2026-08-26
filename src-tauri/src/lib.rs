@@ -170,6 +170,37 @@ fn show_dsl_editor(app: tauri::AppHandle) {
   open_dsl_editor(&app);
 }
 
+// Open a companion tool in its OWN window (focus it if already open). Each tool
+// is a page under the bundled frontendDist (docs/). Backs the app's Apps menu so
+// the WDL editor, Floor planner, and Staircase explorer each get a real window
+// on desktop instead of a browser tab.
+fn open_tool_window(app: &tauri::AppHandle, label: &str, url: &str, title: &str, w: f64, h: f64) {
+  if let Some(win) = app.get_webview_window(label) {
+    let _ = win.set_focus();
+    return;
+  }
+  match WebviewWindowBuilder::new(app, label, WebviewUrl::App(url.into()))
+    .title(title)
+    .inner_size(w, h)
+    .min_inner_size(820.0, 560.0)
+    .resizable(true)
+    .build()
+  {
+    Ok(_) => {}
+    Err(e) => eprintln!("[wadi] failed to open {label} window: {e}"),
+  }
+}
+
+#[tauri::command]
+fn show_tool(app: tauri::AppHandle, name: String) {
+  match name.as_str() {
+    "dsl" => open_tool_window(&app, "dsl", "/dsl/index.html", "Wadi WDL — editor + live renderer", 1500.0, 950.0),
+    "planner" => open_tool_window(&app, "planner", "/planner/index.html", "Wadi Floor Planner", 1400.0, 900.0),
+    "stairs" => open_tool_window(&app, "stairs", "/tools/staircase-explorer.html", "Wadi Staircase Explorer", 1200.0, 850.0),
+    other => eprintln!("[wadi] show_tool: unknown tool '{other}'"),
+  }
+}
+
 // ---- Save a template into a managed folder (desktop only) -------------------
 // The WDL editor's Publish panel saves a SELF-DESCRIBING `.wadi` (its `template`
 // metadata block + cover thumbnails) into the author's templates folder. That is
@@ -210,7 +241,7 @@ pub fn run() {
     .plugin(tauri_plugin_clipboard_manager::init())
     .manage(PendingOpen(Mutex::new(initial)))
     .manage(BridgeState(Mutex::new(HashMap::new())))
-    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response, show_dsl_editor, save_template])
+    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response, show_dsl_editor, show_tool, save_template])
     // Custom menu on macOS: the default Edit menu claims Cmd+Z / Shift+Cmd+Z
     // for native undo/redo, which would shadow the app's model-level
     // undo/redo (handled in the webview via the standard keyboard shortcuts).

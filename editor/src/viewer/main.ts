@@ -314,6 +314,28 @@ async function bootViewer(): Promise<void> {
     }
   }
 
+  // Floor-planner handoff: the optional planner add-on (/planner) stashes a
+  // freshly-sketched HouseConfig in localStorage (same origin) and opens
+  // /app#handoff. Read it once, then clear it so a reload doesn't reopen the
+  // sketch. Reuses loadedFromHash so downstream skips the default auto-load.
+  if (!loadedFromOpenFile && !loadedFromHash && location.hash === "#handoff") {
+    try {
+      const raw = localStorage.getItem("wadi:handoff");
+      localStorage.removeItem("wadi:handoff");
+      if (raw) {
+        const parsed = validate(JSON.parse(raw), { tolerant: true });
+        if (parsed.ok && parsed.data) {
+          useConfigStore.getState().loadConfig(parsed.data, "floor planner");
+          loadedFromHash = true;
+        } else {
+          console.warn("viewer: floor-planner handoff failed validation", parsed.errors);
+        }
+      }
+    } catch (e) {
+      console.warn("viewer: floor-planner handoff read failed", e);
+    }
+  }
+
   if (!loadedFromOpenFile && !loadedFromHash && location.hash.length > 1) {
     const looksLikeShareLink = /^#w1=/.test(location.hash);
     const raw = await decodeConfigFromHash(location.hash);
@@ -1833,6 +1855,55 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
+// Open a companion app by name: its own window on desktop (Tauri show_tool),
+// else a new browser tab (the studio stays open behind it).
+function openApp(name: string, url: string): void {
+  if (isTauri()) {
+    void invoke("show_tool", { name }).catch((err) => {
+      console.warn(`show_tool(${name}) failed, falling back to a tab:`, err);
+      window.open(url, "_blank", "noopener");
+    });
+  } else {
+    window.open(url, "_blank", "noopener");
+  }
+}
+
+// The header Apps dropdown: toggle it, close on outside-click / Escape, and route
+// each item through openApp.
+function wireAppsMenu(): void {
+  const menu = document.getElementById("apps-menu");
+  const btn = document.getElementById("apps-btn");
+  const dropdown = document.getElementById("apps-dropdown");
+  if (!menu || !btn || !dropdown) return;
+
+  const setOpen = (open: boolean) => {
+    dropdown.hidden = !open;
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) menu.setAttribute("data-open", "1");
+    else menu.removeAttribute("data-open");
+  };
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(Boolean(dropdown.hidden));
+  });
+  for (const item of Array.from(dropdown.querySelectorAll<HTMLElement>(".apps-item"))) {
+    item.addEventListener("click", () => {
+      const name = item.dataset.app ?? "";
+      const url = item.dataset.url ?? "/";
+      setOpen(false);
+      if (name) openApp(name, url);
+    });
+  }
+  // Dismiss on an outside click or Escape.
+  document.addEventListener("click", (e) => {
+    if (!dropdown.hidden && !menu.contains(e.target as Node)) setOpen(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !dropdown.hidden) setOpen(false);
+  });
+}
+
 function wireHeaderButtons(): void {
   const btnNew = document.getElementById("btn-new");
   const btnEdit = document.getElementById("btn-edit-toggle");
@@ -1845,16 +1916,10 @@ function wireHeaderButtons(): void {
   const btnRedo = document.getElementById("btn-redo");
   const fileInput = document.getElementById("file-input-json") as HTMLInputElement | null;
 
-  // Prominent entry to the DSL (code) editor. Desktop opens the dedicated DSL
-  // window (same as ⌘⇧D); browser opens /dsl in a new tab so the app stays open.
-  document.getElementById("dsl-editor-link")?.addEventListener("click", (e) => {
-    e.preventDefault();
-    if (isTauri()) {
-      void invoke("show_dsl_editor").catch((err) => console.warn("show_dsl_editor failed:", err));
-    } else {
-      window.open("/dsl/", "_blank", "noopener");
-    }
-  });
+  // Apps menu: the companion tools (WDL editor, Floor planner, Staircase
+  // explorer). Each opens in its OWN window on desktop (Tauri show_tool) and a
+  // new browser tab otherwise, so the studio stays open behind it.
+  wireAppsMenu();
 
   // Share: pack the current house into a '#'-fragment link and copy it.
   // Anyone opening the link loads this exact design on the web app (no
