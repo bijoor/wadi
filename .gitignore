@@ -52,3 +52,5 @@ designer/
 
 # Local Apple signing/notarization secrets for scripts/release-desktop.sh
 scripts/.signing.env
+/house_config.wadi
+docs/editor/
