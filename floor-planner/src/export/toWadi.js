@@ -84,9 +84,26 @@ export function modelToWadi(model, opts = {}) {
   }
 }
 
-/** Serialise + trigger a browser download of the `.wadi`. Returns the config. */
-export function downloadWadi(model, filename = 'floor-plan.wadi') {
+// The low-level Tauri invoke, present in ANY Tauri v2 webview (no package needed).
+// null in a plain browser. Lets the desktop planner window reach native commands.
+function tauriInvoke() {
+  const fn = typeof window !== 'undefined' && window.__TAURI_INTERNALS__?.invoke
+  return typeof fn === 'function' ? (cmd, args) => window.__TAURI_INTERNALS__.invoke(cmd, args) : null
+}
+
+/** Write the `.wadi`: a native Save dialog on desktop (Tauri), else a browser
+ *  download. The blob-download path is inert in WKWebView, hence the split. */
+export async function downloadWadi(model, filename = 'floor-plan.wadi') {
   const config = modelToWadi(model)
+  const invoke = tauriInvoke()
+  if (invoke) {
+    try {
+      await invoke('export_wadi', { config, suggestedName: filename })
+      return config // saved (or user cancelled) via the native dialog
+    } catch (e) {
+      console.warn('export_wadi failed, falling back to a browser download', e)
+    }
+  }
   const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -101,18 +118,22 @@ export function downloadWadi(model, filename = 'floor-plan.wadi') {
 
 // The same-origin handoff key the Wadi app reads on `/app#handoff` (see
 // editor/src/viewer/main.ts). localStorage is per-origin, so /planner and /app
-// share it when deployed together (and on the dev server).
+// share it — both in the browser (same site) and across Tauri windows (same
+// tauri origin).
 export const HANDOFF_KEY = 'wadi:handoff'
 
-/** Stash the config and open the Wadi studio, which loads it on boot. */
+/** Stash the config and go to the Wadi studio, which loads it on boot. Uses a
+ *  SAME-WINDOW navigation (not window.open '_blank'): a new tab/window is
+ *  unreliable in WKWebView and, if it escapes to the external browser, breaks the
+ *  shared-origin handoff. Navigating in place keeps the origin (localStorage). */
 export function openInWadi(model, appPath = '/app/') {
   const config = modelToWadi(model)
   try {
     localStorage.setItem(HANDOFF_KEY, JSON.stringify(config))
   } catch {
-    // localStorage unavailable (private mode) — fall back to a download.
+    // localStorage unavailable (private mode) — fall back to a file export.
     return downloadWadi(model)
   }
-  window.open(appPath + '#handoff', '_blank', 'noopener')
+  window.location.assign(appPath + '#handoff')
   return config
 }

@@ -201,6 +201,38 @@ fn show_tool(app: tauri::AppHandle, name: String) {
   }
 }
 
+// Save a HouseConfig to a `.wadi` via a native Save dialog. The Floor Planner's
+// browser "download a blob" path is inert in WKWebView, so on desktop it invokes
+// this instead. Returns the chosen path, or None if the user cancelled.
+#[tauri::command]
+fn export_wadi(
+  app: tauri::AppHandle,
+  config: serde_json::Value,
+  suggested_name: String,
+) -> Result<Option<String>, String> {
+  use tauri_plugin_dialog::DialogExt;
+  let name = if suggested_name.to_lowercase().ends_with(".wadi") {
+    suggested_name
+  } else {
+    format!("{suggested_name}.wadi")
+  };
+  let picked = app
+    .dialog()
+    .file()
+    .add_filter("Wadi house", &["wadi"])
+    .set_file_name(name)
+    .blocking_save_file();
+  match picked {
+    Some(fp) => {
+      let path = fp.into_path().map_err(|e| e.to_string())?;
+      let txt = serde_json::to_string_pretty(&config).map_err(|e| format!("serialize: {e}"))?;
+      std::fs::write(&path, txt + "\n").map_err(|e| format!("write: {e}"))?;
+      Ok(Some(path.to_string_lossy().into_owned()))
+    }
+    None => Ok(None),
+  }
+}
+
 // ---- Save a template into a managed folder (desktop only) -------------------
 // The WDL editor's Publish panel saves a SELF-DESCRIBING `.wadi` (its `template`
 // metadata block + cover thumbnails) into the author's templates folder. That is
@@ -241,7 +273,7 @@ pub fn run() {
     .plugin(tauri_plugin_clipboard_manager::init())
     .manage(PendingOpen(Mutex::new(initial)))
     .manage(BridgeState(Mutex::new(HashMap::new())))
-    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response, show_dsl_editor, show_tool, save_template])
+    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response, show_dsl_editor, show_tool, export_wadi, save_template])
     // Custom menu on macOS: the default Edit menu claims Cmd+Z / Shift+Cmd+Z
     // for native undo/redo, which would shadow the app's model-level
     // undo/redo (handled in the webview via the standard keyboard shortcuts).
