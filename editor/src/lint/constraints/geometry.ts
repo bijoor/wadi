@@ -6,6 +6,7 @@
 // but they are kept as-is now to preserve byte-identical findings.
 
 import type { Side } from "../../estimate/wallArea";
+import { openingStartOffset, type OpeningAnchor } from "../../svg2d/openingAnchor";
 import { num, objLabel, activeObjects, type Bag } from "./vocab";
 
 export type { Side };
@@ -92,8 +93,14 @@ export function collectOpeningSegs(objs: Bag[]): OpSeg[] {
       for (const side of ALL_SIDES) {
         const ops = (walls as Record<string, { openings?: Bag[] }>)[side]?.openings;
         if (!Array.isArray(ops)) continue;
+        // north/south run along the room WIDTH; east/west along its LENGTH.
+        const wallLen = side === "north" || side === "south" ? rw : rl;
         for (const op of ops) {
-          const off = num(op.offset), w = num(op.width);
+          const w = num(op.width);
+          // Resolve the `anchor` (start | center | end) to a start-based offset,
+          // exactly as expand.ts does before rendering — otherwise a `from center`
+          // / `from end` opening is placed at the wrong span here.
+          const off = openingStartOffset(op.anchor as OpeningAnchor | undefined, num(op.offset), w, wallLen);
           const owner = `room ${objLabel(o)} ${side}`;
           const label = openLabel(op);
           if (side === "north") out.push({ horiz: true, at: ry, lo: rx + off, hi: rx + off + w, owner, label });
@@ -109,8 +116,10 @@ export function collectOpeningSegs(objs: Bag[]): OpSeg[] {
       const horiz = Math.abs(sy - ey) < 1, vert = Math.abs(sx - ex) < 1;
       if (!horiz && !vert) continue; // diagonal wall — skip
       const start = horiz ? Math.min(sx, ex) : Math.min(sy, ey);
+      const wallLen = horiz ? Math.abs(ex - sx) : Math.abs(ey - sy);
       for (const op of ops as Bag[]) {
-        const off = num(op.offset), w = num(op.width);
+        const w = num(op.width);
+        const off = openingStartOffset(op.anchor as OpeningAnchor | undefined, num(op.offset), w, wallLen);
         out.push({ horiz, at: horiz ? sy : sx, lo: start + off, hi: start + off + w, owner: `wall ${objLabel(o)}`, label: openLabel(op) });
       }
     }

@@ -15,7 +15,7 @@ export const C6: Constraint = {
     rationale:
       "Each opening is a boolean-subtract from the wall. Overlapping spans merge into one ragged hole (or fight over the same brick), which is never what you meant — and on a shared wall it silently punches a bigger gap than either room's plan shows.",
     fix:
-      "Offset or narrow one opening so the spans are disjoint. Openings are measured from the wall's start corner (`offset` = near edge; the opening occupies `[offset, offset+width]`).",
+      "Offset or narrow one opening so the spans are disjoint. An opening's span is its resolved `[offset, offset+width]` along the wall — the `from start|center|end` anchor is honoured (its offset is converted to a start-based position first, exactly as the renderer does).",
   },
 
   check(ctx) {
@@ -61,6 +61,20 @@ export const C6: Constraint = {
           }),
         ]),
       },
+      {
+        name: "anchored openings that only READ as disjoint once anchors resolve",
+        // Hall south wall is 300 wide. D1 = start [40,80]; W1 = `from end` offset 40
+        // → start-offset 300-40-40=220 → [220,260]. Disjoint. A start-only reader
+        // would place W1 at [40,80] and wrongly flag an overlap.
+        config: house([
+          roomWith({
+            south: { openings: [
+              { kind: "door", name: "D1", offset: 40, width: 40, anchor: "start" },
+              { kind: "window", name: "W1", offset: 40, width: 40, anchor: "end" },
+            ] },
+          }),
+        ]),
+      },
     ],
     fail: [
       {
@@ -71,6 +85,22 @@ export const C6: Constraint = {
             south: { openings: [
               { kind: "door", name: "D1", offset: 40, width: 40 },
               { kind: "window", name: "W1", offset: 60, width: 40 },
+            ] },
+          }),
+        ]),
+        expect: { count: 1, level: "error", messageIncludes: "overlap" },
+      },
+      {
+        name: "anchored openings that only COLLIDE once anchors resolve",
+        // D1 = start [40,80]; W1 = `from end` offset 230 → start-offset
+        // 300-40-230=30 → [30,70], overlapping D1. A start-only reader would place
+        // W1 at [230,270] and miss the collision entirely.
+        config: house([
+          roomWith({
+            north: {}, east: {}, west: {},
+            south: { openings: [
+              { kind: "door", name: "D1", offset: 40, width: 40, anchor: "start" },
+              { kind: "window", name: "W1", offset: 230, width: 40, anchor: "end" },
             ] },
           }),
         ]),

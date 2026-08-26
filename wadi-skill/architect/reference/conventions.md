@@ -147,7 +147,7 @@ floor 1 "Ground Floor" height 116 {
 
 **Fix.**
 
-Offset or narrow one opening so the spans are disjoint. Openings are measured from the wall's start corner (`offset` = near edge; the opening occupies `[offset, offset+width]`).
+Offset or narrow one opening so the spans are disjoint. An opening's span is its resolved `[offset, offset+width]` along the wall — the `from start|center|end` anchor is honoured (its offset is converted to a start-based position first, exactly as the renderer does).
 
 ---
 
