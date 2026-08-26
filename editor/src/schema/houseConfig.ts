@@ -56,6 +56,8 @@ const gridLine = z
     thickness: numOrFormula.optional(),
   })
   .strict();
+// NAMED guides: ordered, individually-named lines per axis (the original grid).
+// Referenced by name: `<id>.x<name>` / `<id>.y<name>` (e.g. `main.x2`, `main.yC`).
 const gridDef = z
   .object({
     x: z.array(gridLine).min(2), // vertical centrelines (west → east)
@@ -63,6 +65,26 @@ const gridDef = z
   })
   .strict();
 export type GridDef = z.infer<typeof gridDef>;
+
+// GENERATED guides: a uniform family from origin + spacing, referenced by INDEX:
+//   `<id>.x8`         integer shorthand (mirrors the named `.x2` shape)
+//   `<id>.x(expr)`    call form — required for fractional/negative/computed indices
+// resolving lazily to `origin + index · spacing`. `extent` (line counts per axis)
+// exists only so the 2D plan can DRAW the uniform lines; referencing is lazy.
+const generatedGuides = z
+  .object({
+    origin: z.tuple([numOrFormula, numOrFormula]).optional(), // default (0, 0)
+    spacing: z.tuple([numOrFormula, numOrFormula]), // (dx, dy)
+    extent: z.tuple([z.number().int().positive(), z.number().int().positive()]).optional(),
+  })
+  .strict();
+export type GeneratedGuides = z.infer<typeof generatedGuides>;
+
+// A `guides` object is EITHER named (x/y line lists) OR generated (spacing), never
+// both — the union enforces it (each side is `.strict()`, so a named object can't
+// also carry `spacing`, and vice versa).
+const guidesDef = z.union([gridDef, generatedGuides]);
+export type GuidesDef = z.infer<typeof guidesDef>;
 // Objects don't bind to the grid with a special field — a grid line's position is
 // published as a formula symbol (`<gridId>.x<name>` / `.y<name>`, see
 // param/resolve.ts), so a room places itself with ordinary `formulas`, e.g.
@@ -219,6 +241,11 @@ const room = z
     // form treats 0 as "no override" and doesn't write it back.
     height: nonNegative().optional(),
     material: z.string().optional(),
+    // Rooms this room connects to, by name (same floor). Design intent + a
+    // functional test (constraint C11): a declared connection must be adjacent
+    // AND joined by a door. Symmetric and deduped; NOT geometry — it never moves
+    // or sizes anything, and the renderer ignores it.
+    connections: z.array(z.string()).optional(),
     // Vertical position of the room (its floor + walls), as a lift above the
     // FLOOR BASE (slabZ = plinth top for floor 0, else the floor below's
     // top; project units, 10 = 1 ft). This is the UNIFIED z_offset
@@ -755,11 +782,13 @@ export const HouseConfig = z
     // `component` object instantiates one by `ref`. Stored once; referenced by
     // many instances; edit here to update every instance.
     components: z.record(z.string(), componentDef).optional(),
-    // First-class parametric grids (plans/grid-convention.md). Map of id →
-    // GridDef (named X/Y wall centrelines). Rooms/slabs bind via `grid`+`cell`,
-    // pillars via `grid`+`node`; the resolver derives their geometry from the
-    // centrelines + wall thickness. Optional; reusable across templates.
-    grids: z.record(z.string(), gridDef).optional(),
+    // First-class parametric GUIDES (plans/floor-planner-graph-integration.md).
+    // Map of id → a named XOR generated guides object; objects place themselves by
+    // referencing a guide in ordinary formulas (`main.x2`, `module.x8`). Optional;
+    // reusable across templates. `grids` is the deprecated former name — still
+    // read for backward-compat; the resolver merges both (guides wins on collision).
+    guides: z.record(z.string(), guidesDef).optional(),
+    grids: z.record(z.string(), guidesDef).optional(),
     // Configurator metadata (Gharkul owner UI). Optional; see plans/configurator-plan.md.
     configurator: configuratorSection.optional(),
     // Preview snapshots (data: URLs) captured by the architect editor and saved

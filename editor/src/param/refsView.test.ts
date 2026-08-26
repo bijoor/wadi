@@ -47,4 +47,16 @@ describe("buildRefsView", () => {
   it("handles an empty config", () => {
     expect(buildRefsView(null)).toEqual({ variables: [], points: [], grids: [] });
   });
+
+  it("surfaces a generated guide as index-named lines within its extent", () => {
+    const cfg = {
+      guides: { module: { origin: [10, 0], spacing: [30, 20], extent: [3, 2] } },
+      floors: [{ name: "G", objects: [] }],
+    } as unknown as HouseConfig;
+    const v = buildRefsView(cfg);
+    const g = v.grids.find((x) => x.id === "module")!;
+    expect(g.generated).toBe(true);
+    expect(g.xLines).toEqual([{ name: "0", value: 10 }, { name: "1", value: 40 }, { name: "2", value: 70 }]);
+    expect(g.yLines).toEqual([{ name: "0", value: 0 }, { name: "1", value: 20 }]);
+  });
 });

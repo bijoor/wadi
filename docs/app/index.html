@@ -708,6 +708,18 @@
         .view-container.active {
             display: block;
         }
+        /* ---- Graph view: a READ-ONLY room-layout plan. The only interaction is
+           selecting a room (studio only), which opens the shared studio property
+           panel; editing otherwise is via the forms / the WDL code. ---- */
+        .graph-view { display: flex; flex-direction: column; width: 100%; height: 100%; background: #0b1220; color: #e2e8f0; font: 13px system-ui, sans-serif; }
+        .graph-empty { padding: 24px; color: #94a3b8; }
+        .graph-toolbar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #111827; border-bottom: 1px solid #1e293b; flex: none; }
+        .graph-hint { font-size: 12px; color: #94a3b8; }
+        /* Floor label only — switching floors is the left panel's job (shared
+           store cursor), so the Graph shows the active floor's name, not a picker. */
+        .graph-floor { margin-left: auto; font-size: 12px; color: #94a3b8; }
+        .graph-body { flex: 1 1 auto; display: flex; min-height: 0; }
+        .graph-canvas { flex: 1 1 auto; min-width: 0; background: #f8fafc; }
         .svg-views-container {
             width: 100%;
             height: 100%;
@@ -2099,9 +2111,9 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-x5QuBvpP.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-A2rXV_Z6.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
-  <link rel="stylesheet" crossorigin href="./assets/viewer-DBRtTYU9.css">
+  <link rel="stylesheet" crossorigin href="./assets/viewer-At0tiqjU.css">
 </head>
 <body>
     <header>
@@ -2267,8 +2279,19 @@
                     <line x1="8" y1="18" x2="13" y2="18" stroke="currentColor" stroke-width="1.5"/>
                 </svg><span class="tab-label"> Quantities</span>
             </button>
+            <button class="tab" onclick="switchView('graph')" title="Graph (room layout + connections)">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- room-graph: two nodes joined by an edge -->
+                    <rect x="3" y="4" width="7" height="7" fill="#B85028"/>
+                    <rect x="3" y="4" width="7" height="7" stroke="currentColor" stroke-width="1.3"/>
+                    <rect x="14" y="13" width="7" height="7" stroke="currentColor" stroke-width="1.3"/>
+                    <line x1="10" y1="11" x2="14" y2="13" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 1.5"/>
+                </svg><span class="tab-label"> Graph</span>
+            </button>
         </nav>
         <div id="viewer-views">
+        <!-- Graph View (room layout + connections) — React root mounted by main.ts -->
+        <div id="view-graph" class="view-container"></div>
         <!-- 3D Model View -->
         <div id="view-3d" class="view-container active">
             <!-- Walk-through camera (top-left, top of the stack). The 🎥
@@ -2612,6 +2635,23 @@
                 document.getElementById('view-quantities').classList.add('active');
                 svgContainer.style.display = 'none';
                 loadQuantities();
+            } else if (view === 'graph') {
+                document.getElementById('view-graph').classList.add('active');
+                svgContainer.style.display = 'none';
+                // GraphView is a persistent React root (mounted in main.ts) that
+                // subscribes to the config store — no per-switch load needed.
+                // The Graph is READ-ONLY except for room SELECTION, and selection
+                // is only enabled in the full studio (architect persona, not an
+                // embedded preview). There, selecting a room opens the shared
+                // property panel, so ensure edit mode is on. The WDL editor's
+                // preview (?panels=off) and the owner app stay view-only.
+                const gq = new URLSearchParams(location.search);
+                const gEmbedded = gq.get('panels') === 'off' || gq.get('embed') === '1';
+                const gStudio = document.body.dataset.persona !== 'owner';
+                if (gStudio && !gEmbedded && document.body.dataset.editMode !== 'on') {
+                    document.body.dataset.editMode = 'on';
+                    try { localStorage.setItem('wadi:edit-mode', 'on'); } catch (e) { /* ignore */ }
+                }
             }
         }
 

@@ -18,7 +18,7 @@
 //     of truth, so we must not overwrite them with their resolved number.
 
 import type { HouseConfig } from "../schema/houseConfig";
-import { evalFormula, formulaDeps, type Scope } from "./formula";
+import { evalFormula, formulaDeps, type Scope, type FnResolver } from "./formula";
 import type { FormulaWarning } from "./warnings";
 
 export type { FormulaWarning } from "./warnings";
@@ -178,6 +178,7 @@ function resolveSegment(
   scope: Scope,
   warnings: FormulaWarning[],
   where: string,
+  fn?: FnResolver,
 ): { value: unknown; changed: boolean } {
   const s = seg as Record<string, unknown> | null | undefined;
   const fm = s?.formulas as Record<string, string> | undefined;
@@ -187,7 +188,7 @@ function resolveSegment(
   const start = Array.isArray(s.start) ? [...(s.start as number[])] : undefined;
   const end = Array.isArray(s.end) ? [...(s.end as number[])] : undefined;
   for (const [field, src] of Object.entries(fm)) {
-    const r = evalFormula(src, scope);
+    const r = evalFormula(src, scope, fn);
     if (r.value === null) {
       warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula", severity: "error" });
       continue;
@@ -215,6 +216,7 @@ function resolveTruss(
   scope: Scope,
   warnings: FormulaWarning[],
   where: string,
+  fn?: FnResolver,
 ): { value: unknown; changed: boolean } {
   const t = truss as Record<string, unknown> | null | undefined;
   const fm = t?.formulas as Record<string, string> | undefined;
@@ -222,7 +224,7 @@ function resolveTruss(
   const positions = Array.isArray(t.positions_along) ? [...(t.positions_along as number[])] : [];
   let changed = false;
   for (const [field, src] of Object.entries(fm)) {
-    const r = evalFormula(src, scope);
+    const r = evalFormula(src, scope, fn);
     if (r.value === null) {
       warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula", severity: "error" });
       continue;
@@ -241,6 +243,7 @@ function resolveRoofNested(
   scope: Scope,
   warnings: FormulaWarning[],
   where: string,
+  fn?: FnResolver,
 ): { value: unknown; changed: boolean } {
   const o = obj as Record<string, unknown>;
   if (o?.type !== "roof") return { value: obj, changed: false };
@@ -249,7 +252,7 @@ function resolveRoofNested(
   if (Array.isArray(o.segments)) {
     let segChanged = false;
     const next = (o.segments as unknown[]).map((s, i) => {
-      const r = resolveSegment(s, scope, warnings, `${where}/seg${i}`);
+      const r = resolveSegment(s, scope, warnings, `${where}/seg${i}`, fn);
       if (r.changed) segChanged = true;
       return r.value;
     });
@@ -258,7 +261,7 @@ function resolveRoofNested(
   if (Array.isArray(o.trusses)) {
     let tChanged = false;
     const next = (o.trusses as unknown[]).map((t, i) => {
-      const r = resolveTruss(t, scope, warnings, `${where}/truss${i}`);
+      const r = resolveTruss(t, scope, warnings, `${where}/truss${i}`, fn);
       if (r.changed) tChanged = true;
       return r.value;
     });
@@ -268,7 +271,7 @@ function resolveRoofNested(
   // (saltbox) — each is a container carrying its own angle_deg/ridge_h formula.
   for (const key of ["slope", "slope_left", "slope_right"] as const) {
     if (o[key] && typeof o[key] === "object") {
-      const r = applyContainerFormulas(o[key], scope, warnings, `${where}/${key}`);
+      const r = applyContainerFormulas(o[key], scope, warnings, `${where}/${key}`, fn);
       if (r.changed) { patch[key] = r.value; changed = true; }
     }
   }
@@ -282,12 +285,13 @@ function resolveOpenings(
   scope: Scope,
   warnings: FormulaWarning[],
   where: string,
+  fn?: FnResolver,
 ): { value: unknown; changed: boolean } {
   const o = obj as Record<string, unknown>;
   if (o?.type === "wall" && Array.isArray(o.openings)) {
     let changed = false;
     const next = (o.openings as unknown[]).map((op, i) => {
-      const r = applyContainerFormulas(op, scope, warnings, `${where}/opening${i}`);
+      const r = applyContainerFormulas(op, scope, warnings, `${where}/opening${i}`, fn);
       if (r.changed) changed = true;
       return r.value;
     });
@@ -303,7 +307,7 @@ function resolveOpenings(
       if (!Array.isArray(ops)) { nextWalls[side] = wc; continue; }
       let sideChanged = false;
       const nextOps = ops.map((op, i) => {
-        const r = applyContainerFormulas(op, scope, warnings, `${where}/${side}/opening${i}`);
+        const r = applyContainerFormulas(op, scope, warnings, `${where}/${side}/opening${i}`, fn);
         if (r.changed) sideChanged = true;
         return r.value;
       });
@@ -330,6 +334,7 @@ function applyContainerFormulas<T>(
   scope: Scope,
   warnings: FormulaWarning[],
   where: string,
+  fn?: FnResolver,
 ): { value: T; changed: boolean } {
   const c = container as Record<string, unknown> | null | undefined;
   const fm = c?.formulas as Record<string, string> | undefined;
@@ -337,7 +342,7 @@ function applyContainerFormulas<T>(
   const next: Record<string, unknown> = { ...c };
   let changed = false;
   for (const [field, src] of Object.entries(fm)) {
-    const r = evalFormula(src, scope);
+    const r = evalFormula(src, scope, fn);
     if (r.value === null) {
       warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula", severity: "error" });
       continue;
@@ -356,7 +361,9 @@ function applyContainerFormulas<T>(
 // evaluate a single field's formula against the same scope the resolver uses
 // (for per-field error reporting). Returns an empty scope when there are no
 // variables/points.
-export function buildScope(config: HouseConfig): { scope: Scope; warnings: FormulaWarning[] } {
+export function buildScope(
+  config: HouseConfig,
+): { scope: Scope; warnings: FormulaWarning[]; fn?: FnResolver } {
   const warnings: FormulaWarning[] = [];
   const scope: Scope = {};
   const syms = collectSymbols(config);
@@ -384,10 +391,13 @@ export function buildScope(config: HouseConfig): { scope: Scope; warnings: Formu
   // A room is then just `x: "= main.x1", width: "= main.x5 - main.x1"` (centreline
   // convention → no wall math). Resolved AFTER variables/points (grid `at`
   // formulas reference them).
-  if ((config as { grids?: unknown }).grids) {
+  // Generated guides publish a lazy accessor (`module.x8` / `module.x(expr)`);
+  // build it first so named lines (and objects) can reference generated guides.
+  const fn = buildGuideAccessor(config, scope, warnings);
+  if (Object.keys(mergedGuides(config)).length) {
     const defaultT =
       ((config as { defaults?: { wall_thickness?: number } }).defaults?.wall_thickness) ?? 8;
-    const grids = resolveGrids(config, scope, warnings, defaultT);
+    const grids = resolveGrids(config, scope, warnings, defaultT, fn);
     for (const [id, g] of grids) {
       for (const [name, pos] of g.x) scope[`${id}.x${name}`] = pos;
       for (const [name, pos] of g.y) scope[`${id}.y${name}`] = pos;
@@ -403,16 +413,16 @@ export function buildScope(config: HouseConfig): { scope: Scope; warnings: Formu
     seen.add(k);
     return true;
   });
-  return { scope, warnings: deduped };
+  return { scope, warnings: deduped, fn };
 }
 
 // Cache the resolved scope + warnings per config version (config is an
 // immutable reference that changes on every mutation), so many fields checking
 // their own formula in one render pass share a single scope build.
-const scopeCache = new WeakMap<object, { scope: Scope; warnings: FormulaWarning[] }>();
+const scopeCache = new WeakMap<object, { scope: Scope; warnings: FormulaWarning[]; fn?: FnResolver }>();
 function buildScopeCached(
   config: HouseConfig | null | undefined,
-): { scope: Scope; warnings: FormulaWarning[] } {
+): { scope: Scope; warnings: FormulaWarning[]; fn?: FnResolver } {
   if (!config || typeof config !== "object") return { scope: {}, warnings: [] };
   const cached = scopeCache.get(config);
   if (cached) return cached;
@@ -431,11 +441,48 @@ export function scopeForConfig(config: HouseConfig | null | undefined): Scope {
 export function resolvedGridsForConfig(
   config: HouseConfig | null | undefined,
 ): Map<string, ResolvedGrid> {
-  if (!config || typeof config !== "object" || !(config as { grids?: unknown }).grids) return new Map();
-  const { scope, warnings } = buildScopeCached(config);
+  if (!config || typeof config !== "object" || !Object.keys(mergedGuides(config)).length) return new Map();
+  const { scope, warnings, fn } = buildScopeCached(config);
   const defaultT =
     (config as { defaults?: { wall_thickness?: number } }).defaults?.wall_thickness ?? 8;
-  return resolveGrids(config, scope, warnings.slice(), defaultT);
+  return resolveGrids(config, scope, warnings.slice(), defaultT, fn);
+}
+
+// A generated guide's resolved geometry — origin, spacing, and the per-axis line
+// COUNT from `extent` (0 when absent). For drawing the uniform lines on the plan.
+export interface ResolvedGeneratedGuide {
+  ox: number; oy: number; dx: number; dy: number; ex: number; ey: number;
+}
+export function resolvedGeneratedGuidesForConfig(
+  config: HouseConfig | null | undefined,
+): Map<string, ResolvedGeneratedGuide> {
+  const out = new Map<string, ResolvedGeneratedGuide>();
+  if (!config || typeof config !== "object" || !Object.keys(mergedGuides(config)).length) return out;
+  const { scope } = buildScopeCached(config);
+  const num = (v: unknown, dflt: number): number => {
+    if (typeof v === "number") return v;
+    if (isFormula(v)) {
+      const r = evalFormula(v, scope);
+      return r.value === null ? dflt : r.value;
+    }
+    return dflt;
+  };
+  for (const [id, g] of Object.entries(mergedGuides(config))) {
+    if (!isGeneratedGuide(g)) continue;
+    const gg = g as { origin?: unknown[]; spacing: unknown[]; extent?: unknown[] };
+    const dx = num(gg.spacing?.[0], 0);
+    const dy = num(gg.spacing?.[1], 0);
+    if (!dx && !dy) continue;
+    out.set(id, {
+      ox: num(gg.origin?.[0], 0),
+      oy: num(gg.origin?.[1], 0),
+      dx,
+      dy,
+      ex: Math.max(0, Math.round(num(gg.extent?.[0], 0))),
+      ey: Math.max(0, Math.round(num(gg.extent?.[1], 0))),
+    });
+  }
+  return out;
 }
 
 // Error message for a house-level symbol (a variable or point field) by its
@@ -457,7 +504,8 @@ export function formulaFieldError(
   src: string | undefined,
 ): string | null {
   if (!src) return null;
-  const r = evalFormula(src, scopeForConfig(config));
+  const { scope, fn } = buildScopeCached(config);
+  const r = evalFormula(src, scope, fn);
   return r.value === null ? (r.error ?? "invalid formula") : null;
 }
 
@@ -474,20 +522,76 @@ export interface ResolvedGrid {
   yt: Map<string, number>;
 }
 
+// The guides objects, merging the deprecated `grids` key with the canonical
+// `guides` (guides wins on an id collision). Either key may hold named or
+// generated objects.
+function mergedGuides(config: unknown): Record<string, unknown> {
+  const c = config as { grids?: Record<string, unknown>; guides?: Record<string, unknown> };
+  return { ...(c.grids ?? {}), ...(c.guides ?? {}) };
+}
+
+// A generated guides object has a `spacing` and no named `x`/`y` line lists.
+function isGeneratedGuide(g: unknown): g is { origin?: unknown[]; spacing: unknown[] } {
+  return !!g && typeof g === "object" && "spacing" in (g as object) && !("x" in (g as object));
+}
+
+// Build the accessor for GENERATED guides: `module.x(8)` / `module.x8` resolve to
+// `origin + index · spacing` lazily. Returns undefined when there are none. Its
+// `origin`/`spacing` may themselves be formulas over variables/points (already in
+// `scope`). Keyed by `<id>.x` / `<id>.y`.
+function buildGuideAccessor(
+  config: HouseConfig,
+  scope: Scope,
+  warnings: FormulaWarning[],
+): FnResolver | undefined {
+  const acc = new Map<string, { origin: number; spacing: number }>();
+  const numAt = (v: unknown, dflt: number | null, where: string): number | null => {
+    if (v === undefined) return dflt;
+    if (typeof v === "number") return v;
+    if (isFormula(v)) {
+      const r = evalFormula(v, scope);
+      if (r.value === null) {
+        warnings.push({ where, formula: v, message: r.error ?? "invalid formula", severity: "error" });
+        return dflt;
+      }
+      return r.value;
+    }
+    return dflt;
+  };
+  for (const [id, g] of Object.entries(mergedGuides(config))) {
+    if (!isGeneratedGuide(g)) continue;
+    const gg = g as { origin?: unknown[]; spacing: unknown[] };
+    const ox = numAt(gg.origin?.[0], 0, `guides/${id}/origin/x`) ?? 0;
+    const oy = numAt(gg.origin?.[1], 0, `guides/${id}/origin/y`) ?? 0;
+    const dx = numAt(gg.spacing?.[0], null, `guides/${id}/spacing/x`);
+    const dy = numAt(gg.spacing?.[1], null, `guides/${id}/spacing/y`);
+    if (dx !== null) acc.set(`${id}.x`, { origin: ox, spacing: dx });
+    if (dy !== null) acc.set(`${id}.y`, { origin: oy, spacing: dy });
+  }
+  if (acc.size === 0) return undefined;
+  return (name, args) => {
+    const a = acc.get(name);
+    if (!a || args.length !== 1 || !Number.isFinite(args[0])) return undefined;
+    return a.origin + args[0] * a.spacing;
+  };
+}
+
 // Resolve every grid's line positions (and per-line thickness) into numbers.
 function resolveGrids(
   config: HouseConfig,
   scope: Scope,
   warnings: FormulaWarning[],
   defaultT: number,
+  fn?: FnResolver,
 ): Map<string, ResolvedGrid> {
   const out = new Map<string, ResolvedGrid>();
-  const grids = (config as { grids?: Record<string, unknown> }).grids;
-  if (!grids) return out;
+  const grids = mergedGuides(config);
+  if (!Object.keys(grids).length) return out;
   const num = (v: unknown, where: string): number | null => {
     if (typeof v === "number") return v;
     if (isFormula(v)) {
-      const r = evalFormula(v, scope);
+      // `fn` lets a named line's `at` reference a generated guide (`module.x8`).
+      const r = evalFormula(v, scope, fn);
       if (r.value === null) {
         warnings.push({ where, formula: v, message: r.error ?? "invalid formula", severity: "error" });
         return null;
@@ -496,7 +600,8 @@ function resolveGrids(
     }
     return null;
   };
-  for (const [id, gRaw] of Object.entries(grids as Record<string, unknown>)) {
+  for (const [id, gRaw] of Object.entries(grids)) {
+    if (isGeneratedGuide(gRaw)) continue; // generated → served by the accessor, not lines
     const g = gRaw as { x?: unknown[]; y?: unknown[] };
     const rg: ResolvedGrid = { x: new Map(), y: new Map(), xt: new Map(), yt: new Map() };
     for (const axis of ["x", "y"] as const) {
@@ -543,7 +648,8 @@ export function resolveParametric(config: HouseConfig): ResolveResult {
     }
 
     // Resolve the house-level symbol table (variables + points + grid symbols).
-    const { scope, warnings } = buildScope(config);
+    // `fn` serves generated-guide accessors (`module.x8` / `module.x(expr)`).
+    const { scope, warnings, fn } = buildScope(config);
 
     // 4. Apply formulas into fields — objects, each floor's own fields, and the
     // house-level site / plinth / defaults containers. Same-reference is
@@ -556,30 +662,31 @@ export function resolveParametric(config: HouseConfig): ResolveResult {
         // Object formulas (x/y/width/length …) resolve against the scope, which
         // now includes the grid line symbols (see buildScope) — so a grid-bound
         // room is just formulas referencing `<grid>.x<name>` / `.y<name>`.
-        const res = applyContainerFormulas(o, scope, warnings, `floor${fi}/obj${oi}`);
+        const res = applyContainerFormulas(o, scope, warnings, `floor${fi}/obj${oi}`, fn);
         // Nested one level down, with their own formulas: wall/room openings,
         // and roof segments + slope.
-        const opRes = resolveOpenings(res.value, scope, warnings, `floor${fi}/obj${oi}`);
-        const roofRes = resolveRoofNested(opRes.value, scope, warnings, `floor${fi}/obj${oi}`);
+        const opRes = resolveOpenings(res.value, scope, warnings, `floor${fi}/obj${oi}`, fn);
+        const roofRes = resolveRoofNested(opRes.value, scope, warnings, `floor${fi}/obj${oi}`, fn);
         if (res.changed || opRes.changed || roofRes.changed) objectsChanged = true;
         return roofRes.value as typeof o;
       });
       // Apply the floor's OWN formulas (height / wall_height / slab_thickness)
       // to a container carrying the possibly-updated objects.
       const base = objectsChanged ? { ...f, objects } : f;
-      const res = applyContainerFormulas(base, scope, warnings, `floor${fi}`);
+      const res = applyContainerFormulas(base, scope, warnings, `floor${fi}`, fn);
       const finalFloor = res.value;
       if (finalFloor !== f) anyFloorChanged = true;
       return finalFloor;
     });
     const floors = anyFloorChanged ? mappedFloors : config.floors;
 
-    const siteRes = applyContainerFormulas(config.site, scope, warnings, "site");
+    const siteRes = applyContainerFormulas(config.site, scope, warnings, "site", fn);
     const defaultsRes = applyContainerFormulas(
       (config as { defaults?: unknown }).defaults,
       scope,
       warnings,
       "defaults",
+      fn,
     );
 
     const changed =

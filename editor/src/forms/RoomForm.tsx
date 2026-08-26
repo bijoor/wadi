@@ -166,6 +166,8 @@ export function RoomForm({ room, selection }: { room: Room; selection: Selection
         />
       </Section>
 
+      <RoomConnectionsSection room={room} selection={selection} />
+
       <Section title="Position & size">
         <div className="grid grid-cols-2 gap-x-2">
           <ObjectMeasureField object={robj} field="x" label="X" patch={mpatch} />
@@ -408,6 +410,85 @@ function OpeningRow({
         Open — no {opening.kind === "door" ? "door leaf" : "glazing/frame"} (bare hole)
       </label>
     </div>
+  );
+}
+
+// Room connectivity (plans/floor-planner-graph-integration.md §5). Connections
+// are design intent + a functional test (C11: connected rooms must be adjacent
+// AND joined by a door) — never geometry. Symmetric + deduped: an edge is stored
+// on this room; removing it also clears the mirror entry on the other room.
+// This is the ONE connections editor — the Graph studio view selects a room and
+// edits it here, in the shared property panel (no duplicate panel).
+function RoomConnectionsSection({ room, selection }: { room: Room; selection: Selection }) {
+  const config = useConfigStore((s) => s.config);
+  const updateObject = useConfigStore((s) => s.updateObject);
+  if (!config) return null;
+  const floor = config.floors[selection.floor];
+  if (!floor) return null;
+
+  const current = room.connections ?? [];
+  const siblings = floor.objects
+    .map((o, idx) => ({ o: o as unknown as Room, idx }))
+    .filter(({ o, idx }) => (o as { type?: string }).type === "room" && idx !== selection.object && !!o.name);
+  const others = siblings.filter(({ o }) => !current.includes(o.name));
+
+  const setConnections = (idx: number, next: string[]) =>
+    updateObject({ floor: selection.floor, object: idx }, {
+      connections: next.length ? next : undefined,
+    } as Partial<Room>);
+
+  const add = (name: string) => {
+    if (!name || current.includes(name)) return;
+    setConnections(selection.object, [...current, name]);
+  };
+  const remove = (name: string) => {
+    setConnections(selection.object, current.filter((n) => n !== name));
+    // Clear the mirror entry if the other room stored the edge on its side.
+    const other = siblings.find(({ o }) => o.name === name);
+    if (other && (other.o.connections ?? []).includes(room.name)) {
+      setConnections(other.idx, (other.o.connections ?? []).filter((n) => n !== room.name));
+    }
+  };
+
+  return (
+    <Section title="Connections">
+      <div className="mb-2 text-[11px] text-slate-400">
+        Rooms this one opens into (same floor). Validated by C11: a connection
+        must be <b>adjacent</b> and joined by a <b>door</b>.
+      </div>
+      {current.length === 0 ? (
+        <div className="mb-2 text-[11px] text-slate-500">No connections yet.</div>
+      ) : (
+        <ul className="mb-2 space-y-1">
+          {current.map((name) => {
+            const exists = siblings.some(({ o }) => o.name === name);
+            return (
+              <li key={name} className="flex items-center justify-between rounded bg-slate-950/50 px-2 py-1 text-xs">
+                <span className={exists ? "text-slate-200" : "text-amber-300"} title={exists ? undefined : "No room with this name on this floor"}>
+                  {exists ? "↔" : "⚠"} {name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => remove(name)}
+                  className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-red-300 hover:bg-red-900"
+                  title="Remove connection"
+                >
+                  ✕
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {others.length > 0 && (
+        <SelectField
+          label=""
+          value=""
+          options={[{ value: "", label: "Add connection…" }, ...others.map(({ o }) => ({ value: o.name, label: o.name }))]}
+          onChange={(v) => add(v)}
+        />
+      )}
+    </Section>
   );
 }
 

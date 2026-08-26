@@ -210,6 +210,28 @@ Extend or add a roof segment to span the room, or reduce the room. Roof segments
 
 ---
 
+## C11 — A declared connection must overlap on a wall and be passable (door or open) · **error**
+
+**Statement.** For every `connect`ion a room declares, the two rooms must **overlap on a wall** (not necessarily the whole wall), and that overlap must be **passable**: either a **door** lies in it, or the wall is **left off both rooms** (an open passage).
+
+**Rationale.** A connection is a FUNCTIONAL requirement — `Living` opens into `Kitchen`. It is design intent, not geometry (the renderer never draws it), so this constraint is what verifies the intent is physically realized. It fails two ways: the rooms' walls don't overlap at all, or they overlap but a solid wall (present on either room, no door in the overlap) blocks the way. No door is ever generated — a room authors its own openings, or omits the shared wall to leave the rooms open to each other.
+
+**Fix.**
+
+Overlap the two rooms on a wall, then EITHER put a door in the overlap (on either room), OR omit that wall on both:
+
+```wdl
+// door in the shared wall
+room Living  at (…) size (…) { connect Kitchen  wall east { door D at 80 size (40,210) } }
+room Kitchen at (…) size (…)
+
+// open passage — neither room walls the shared side
+room Living  at (…) size (…) { connect Kitchen  wall north south west }
+room Kitchen at (…) size (…) { wall north south east }
+```
+
+---
+
 ## SP1 — A spiral staircase's central pole must be smaller than its radius · **error**
 
 **Statement.** A `spiral_staircase`'s `pole_radius` must be less than its outer `radius`.

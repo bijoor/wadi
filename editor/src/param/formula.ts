@@ -225,8 +225,15 @@ export function formulaDeps(src: string): string[] {
   }
 }
 
-// Parse + evaluate one formula against `scope`. Never throws.
-export function evalFormula(src: string, scope: Scope): EvalResult {
+// Resolves a call/ref name the builtin table + flat scope don't cover — used for
+// generated-guide accessors (`module.x(8)` and the `module.x8` shorthand). Return
+// a finite number to satisfy the reference, or undefined to fall through to the
+// normal "unknown symbol/function" error.
+export type FnResolver = (name: string, args: number[]) => number | undefined;
+
+// Parse + evaluate one formula against `scope`. Never throws. `fn` (optional)
+// resolves names outside the builtin table + scope (generated-guide accessors).
+export function evalFormula(src: string, scope: Scope, fn?: FnResolver): EvalResult {
   let ast: Node;
   const deps: string[] = [];
   try {
@@ -262,8 +269,12 @@ export function evalFormula(src: string, scope: Scope): EvalResult {
         return args.length === 1 ? Math.ceil(args[0]) : setErr("ceil(x) needs 1 arg");
       case "abs":
         return args.length === 1 ? Math.abs(args[0]) : setErr("abs(x) needs 1 arg");
-      default:
+      default: {
+        // A generated-guide accessor call: `module.x(8)` → fn("module.x", [8]).
+        const custom = fn?.(name, args);
+        if (typeof custom === "number" && Number.isFinite(custom)) return custom;
         return setErr(`unknown function '${name}'`);
+      }
     }
   };
   const evalNode = (n: Node): number => {
@@ -272,11 +283,18 @@ export function evalFormula(src: string, scope: Scope): EvalResult {
         return n.v;
       case "ref": {
         const v = scope[n.name];
-        if (typeof v !== "number" || !Number.isFinite(v)) {
-          if (!error) error = `unknown or unresolved '${n.name}'`;
-          return NaN;
+        if (typeof v === "number" && Number.isFinite(v)) return v;
+        // Fallback: a generated-guide index shorthand `<id>.x8` computes lazily
+        // as fn("<id>.x", [8]). (Negative/fractional indices need the call form.)
+        if (fn) {
+          const m = /^(.+\.[xy])(\d+)$/.exec(n.name);
+          if (m) {
+            const g = fn(m[1], [Number(m[2])]);
+            if (typeof g === "number" && Number.isFinite(g)) return g;
+          }
         }
-        return v;
+        if (!error) error = `unknown or unresolved '${n.name}'`;
+        return NaN;
       }
       case "neg":
         return -evalNode(n.a);

@@ -78,11 +78,20 @@ Var:
 Point:
     'point' name=ID '{' 'x' '=' x=Expr ','? 'y' '=' y=Expr '}';
 
-// ---- First-class parametric grid: named X/Y wall centrelines ----
+// ---- First-class parametric guides ('grid' is the deprecated alias) ----
+// A guides object is EITHER named (x/y line lists, referenced by name `main.x2`)
+// OR generated (origin+spacing+extent, referenced by index `module.x8` /
+// `module.x(expr)`), never both.
 Grid:
-    'grid' name=ID '{'
-        'x' ':' xlines+=GridLine (',' xlines+=GridLine)*
-        'y' ':' ylines+=GridLine (',' ylines+=GridLine)*
+    ('guides' | 'grid') name=ID '{'
+        (
+            'x' ':' xlines+=GridLine (',' xlines+=GridLine)*
+            'y' ':' ylines+=GridLine (',' ylines+=GridLine)*
+          |
+            ('origin' '(' origin_x=Expr ',' origin_y=Expr ')')?
+            'spacing' '(' spacing_x=Expr ',' spacing_y=Expr ')'
+            ('extent' '(' extent_x=NUMBER ',' extent_y=NUMBER ')')?
+        )
     '}';
 GridLine:
     name=(ID | NUMBER) '@' at=Expr ('thick' thickness=Expr)? ('role' role=('structural' | 'planning'))?;
@@ -311,7 +320,12 @@ Room:
         'size' '(' w=Expr ',' l=Expr ')'
         ('height' height=Expr)?
         Common ('material' material=STRING)?
-        ('{' (walls+=RoomWall | items+=RoomItem)* '}')?;
+        // Inside the block, `connect`, `wall`, and `item` statements may appear in
+        // ANY order (and `connect` may repeat — names accumulate). Authors don't
+        // have to remember that connections come first.
+        ('{' ( ('connect' connections+=NameRef (connections+=NameRef)*)
+             | walls+=RoomWall
+             | items+=RoomItem )* '}')?;
 // One or more sides in a single statement: plain walls read `wall east west
 // north`; a wall that carries openings is declared on its own side with a block.
 RoomWall:

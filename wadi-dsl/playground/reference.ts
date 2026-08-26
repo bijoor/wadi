@@ -21,15 +21,19 @@ line.</p>
 <h3>Parametric core</h3>
 <pre>var name = &lt;expr&gt;                      // a number, or a formula
 point Name { x = &lt;expr&gt;, y = &lt;expr&gt; }   // ref as Name.x / Name.W / Name.L
-grid main {
+guides main {                           // NAMED guides ('grid' = deprecated alias)
   x: 1 @ &lt;expr&gt;, 2 @ &lt;expr&gt;  [thick &lt;expr&gt;]  [role structural|planning]
   y: A @ &lt;expr&gt;, B @ &lt;expr&gt;
-}                                       // line position published as main.x1 / main.yA</pre>
+}                                       // ref by NAME: main.x1 / main.yA
+guides module {                         // GENERATED guides — uniform lines
+  [origin (&lt;expr&gt;, &lt;expr&gt;)]  spacing (&lt;dx&gt;, &lt;dy&gt;)  [extent (&lt;cols&gt;, &lt;rows&gt;)]
+}                                       // ref by INDEX: module.x8 or module.x(&lt;expr&gt;)</pre>
 
 <h3>Formulas</h3>
 <pre>+  -  *  /   ( )   -unary
 min  max  clamp  round  floor  ceil  abs
-refs: a var · a point (House.W) · a grid line (main.x3 - main.x1)</pre>
+refs: a var · a point (House.W) · a named guide (main.x3 - main.x1)
+      · a generated guide (module.x8, module.y(n+1) — fractional/negative need the call form)</pre>
 
 <h3>Control knobs (owner UI)</h3>
 <p class="ref-note">The template the home owner configures. Each knob binds to a
@@ -98,6 +102,7 @@ node — place it at <code>at (cx - w/2, cy - l/2)</code>.</p>
 
 <h3>Rooms, walls &amp; openings</h3>
 <pre>room Name at (x,y) size (w,l) [height &lt;h&gt;] {
+  connect A B                      // optional: rooms this room adjoins (same floor)
   wall east west north             // plain walls — list several in one statement
   wall south { door Main at &lt;offset&gt; size (w,h) [open] }   // a wall WITH an opening: one side
   wall west { window W at &lt;offset&gt; size (w,h) [sill &lt;s&gt;] [open] }
@@ -109,6 +114,11 @@ wall Name from (x1,y1) to (x2,y2) [height &lt;h&gt;] [height_end &lt;h2&gt;] [fa
 no <code>wall</code> lines is enclosed on all four sides). Declare plain walls
 compactly — <code>wall east west north</code> — and give a wall its own line only
 when it carries a door/window. Omit a side to leave it open (verandah).</p>
+<p class="ref-note">A <code>connect A B</code> line inside the room records that
+this room adjoins rooms <code>A</code> and <code>B</code> (same floor) — design
+intent, not geometry. It is a functional test: a declared connection must be
+adjacent AND joined by a door, otherwise it flags an error. Connections are
+symmetric, so state each once.</p>
 <p class="ref-note"><b>Free-standing walls don't auto-mitre at corners.</b> Two
 <code>wall … from … to …</code> that just touch at a point leave a small notch; extend
 the endpoints so the bodies <b>overlap</b> (≥ ½·wall_thickness past the shared point) to

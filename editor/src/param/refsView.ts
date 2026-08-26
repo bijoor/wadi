@@ -4,7 +4,7 @@
 // same thing. Values come from the same `scopeForConfig` the resolver uses.
 
 import type { HouseConfig } from "../schema/houseConfig";
-import { scopeForConfig } from "./resolve";
+import { scopeForConfig, resolvedGeneratedGuidesForConfig } from "./resolve";
 
 export interface RefVar {
   name: string;
@@ -26,6 +26,8 @@ export interface RefGrid {
   id: string;
   xLines: RefGridLine[];
   yLines: RefGridLine[];
+  /** True for a generated guide (lines are index-named: id.x0, id.x1, …). */
+  generated?: boolean;
 }
 export interface RefsView {
   variables: RefVar[];
@@ -71,7 +73,7 @@ export function buildRefsView(config: HouseConfig | null | undefined): RefsView 
   // Grid lines land in the scope as `<id>.x<line>` / `<id>.y<line>` (line name is
   // 1+ chars, which distinguishes them from a point's single-char `.x`/`.y`
   // synonyms). Reconstruct the grids from those keys, preserving key order.
-  const grids = new Map<string, { xLines: RefGridLine[]; yLines: RefGridLine[] }>();
+  const grids = new Map<string, { xLines: RefGridLine[]; yLines: RefGridLine[]; generated?: boolean }>();
   for (const [key, val] of Object.entries(scope)) {
     const m = key.match(/^(\w+)\.([xy])(.+)$/);
     if (!m) continue;
@@ -79,6 +81,17 @@ export function buildRefsView(config: HouseConfig | null | undefined): RefsView 
     if (!grids.has(id)) grids.set(id, { xLines: [], yLines: [] });
     const g = grids.get(id)!;
     (axis === "x" ? g.xLines : g.yLines).push({ name: line, value: num(val) });
+  }
+
+  // Generated guides publish no flat symbols (referenced lazily as `id.x8`), so
+  // materialise their lines within `extent` — index-named so a pick becomes
+  // `id.x0`, `id.x1`, … — for the picker. Skipped when `extent` is absent (0).
+  for (const [id, gg] of resolvedGeneratedGuidesForConfig(config)) {
+    const xLines: RefGridLine[] = [];
+    const yLines: RefGridLine[] = [];
+    for (let i = 0; i < gg.ex; i++) xLines.push({ name: `${i}`, value: num(gg.ox + i * gg.dx) });
+    for (let j = 0; j < gg.ey; j++) yLines.push({ name: `${j}`, value: num(gg.oy + j * gg.dy) });
+    grids.set(id, { xLines, yLines, generated: true });
   }
 
   return {

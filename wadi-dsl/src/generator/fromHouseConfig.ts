@@ -119,15 +119,20 @@ function emitRoom(w: W, indent: number, o: Obj): void {
   let head = `room ${nameTok(o.name)} ${at(o)} ${size(o)}`;
   if (has(o, "height")) head += ` height ${fld(o, "height")}`;
   head += commonSuffix(o);
+  const conns = Array.isArray(o.connections)
+    ? (o.connections as unknown[]).filter((c): c is string => typeof c === "string")
+    : [];
   const walls = o.walls && !Array.isArray(o.walls) ? (o.walls as Record<string, Obj>) : {};
   const items = Array.isArray(o.items) ? (o.items as Obj[]) : [];
   const wallSides = Object.entries(walls);
-  const hasBody = wallSides.length > 0 || items.length > 0;
+  const hasBody = wallSides.length > 0 || items.length > 0 || conns.length > 0;
   if (!hasBody) {
     w.line(indent, head);
     return;
   }
   w.line(indent, head + " {");
+  // `connect` is the first line inside the block (space-separated names).
+  if (conns.length) w.line(indent + 1, `connect ${conns.map((c) => nameTok(c)).join(" ")}`);
   // Emit walls in their ORIGINAL order (so the side order round-trips). Collapse
   // only a RUN of consecutive plain walls into one `wall a b c` line; a wall with
   // openings or a per-side height gets its own statement.
@@ -442,9 +447,21 @@ function emitGrids(w: W, indent: number, grids: Record<string, Obj>): void {
     return s;
   };
   for (const [name, g] of Object.entries(grids)) {
-    w.line(indent, `grid ${name} {`);
-    w.line(indent + 1, `x : ${(g.x ?? []).map(line).join(", ")}`);
-    w.line(indent + 1, `y : ${(g.y ?? []).map(line).join(", ")}`);
+    w.line(indent, `guides ${name} {`);
+    if (Array.isArray(g.spacing)) {
+      // GENERATED guides.
+      if (Array.isArray(g.origin)) {
+        w.line(indent + 1, `origin (${val(g.origin[0])}, ${val(g.origin[1])})`);
+      }
+      w.line(indent + 1, `spacing (${val(g.spacing[0])}, ${val(g.spacing[1])})`);
+      if (Array.isArray(g.extent)) {
+        w.line(indent + 1, `extent (${g.extent[0]}, ${g.extent[1]})`);
+      }
+    } else {
+      // NAMED guides.
+      w.line(indent + 1, `x : ${(g.x ?? []).map(line).join(", ")}`);
+      w.line(indent + 1, `y : ${(g.y ?? []).map(line).join(", ")}`);
+    }
     w.line(indent, `}`);
   }
 }
@@ -661,7 +678,11 @@ export function emitWdl(config: Obj, houseName = "House"): string {
   if (config.template) emitTemplate(w, 1, config.template as Obj);
   if (config.variables && Object.keys(config.variables).length) { w.blank(); emitVars(w, 1, config.variables); }
   if (config.points && Object.keys(config.points).length) emitPoints(w, 1, config.points);
-  if (config.grids && Object.keys(config.grids).length) { w.blank(); emitGrids(w, 1, config.grids); }
+  {
+    // Merge the deprecated `grids` key with the canonical `guides` (guides wins).
+    const allGuides = { ...(config.grids as Record<string, Obj> ?? {}), ...(config.guides as Record<string, Obj> ?? {}) };
+    if (Object.keys(allGuides).length) { w.blank(); emitGrids(w, 1, allGuides); }
+  }
   if (config.configurator) { w.blank(); emitConfigurator(w, 1, config.configurator); }
   if (Array.isArray(config.layers) && config.layers.length) { w.blank(); emitLayers(w, 1, config.layers); }
 

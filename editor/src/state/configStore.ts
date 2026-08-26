@@ -30,6 +30,11 @@ interface ConfigState {
   // index. Mutex with selection + siteEditorOpen (setter clears the
   // others, and picking an object / opening site editor clears this).
   floorEditorIdx: number | null;
+  // The floor whose objects the editing surfaces (Sidebar object tree AND the
+  // Graph studio view) operate on. A single source of truth so switching the
+  // floor in the left panel also switches the Graph, and vice versa — no
+  // per-surface floor picker. NOT part of undo history (a UI cursor).
+  activeFloorIdx: number;
   validationErrors: { path: string; message: string }[];
   dirty: boolean;
 
@@ -41,6 +46,7 @@ interface ConfigState {
   select: (sel: Selection | null) => void;
   setSiteEditorOpen: (open: boolean) => void;
   setFloorEditor: (idx: number | null) => void;
+  setActiveFloor: (idx: number) => void;
   updateSite: (patch: Partial<HouseConfig["site"]>) => void;
   // Patches the house-level defaults block (floor_height / wall_height
   // / slab_thickness). Passing undefined for a field deletes it (so it
@@ -76,6 +82,10 @@ interface ConfigState {
   // lines objects derive from via "= main.x1" formulas). Pass an empty object or
   // undefined to clear. Goes through the resolver seam like variables/points.
   updateGrids: (grids: NonNullable<HouseConfig["grids"]> | undefined) => void;
+  // House-level coordinate convention: "center" = room x/y/size are wall
+  // CENTRELINES (abutting rooms share a wall); "outer" = outer faces. The Graph
+  // view authors at centrelines, so it sets this to "center".
+  setCoordConvention: (conv: "outer" | "center") => void;
   // Owner-facing Configurator metadata (which variables/points a template
   // exposes to the Gharkul app + how to present them). Ignored by the resolver.
   updateConfigurator: (configurator: NonNullable<HouseConfig["configurator"]> | undefined) => void;
@@ -115,6 +125,7 @@ const NON_TRACKED_KEYS = new Set<keyof ConfigState>([
   "filename",
   "filePath",
   "selection",
+  "activeFloorIdx",
   "validationErrors",
 ]);
 
@@ -167,6 +178,7 @@ export const useConfigStore = create<ConfigState>()(
       selection: null,
       siteEditorOpen: false,
       floorEditorIdx: null,
+      activeFloorIdx: 0,
       validationErrors: [],
       dirty: false,
 
@@ -188,6 +200,7 @@ export const useConfigStore = create<ConfigState>()(
           selection: null,
           siteEditorOpen: false,
           floorEditorIdx: null,
+          activeFloorIdx: 0,
           validationErrors: pluginError ? [{ path: "components", message: pluginError }] : [],
           dirty: false,
         });
@@ -208,6 +221,7 @@ export const useConfigStore = create<ConfigState>()(
           selection: null,
           siteEditorOpen: false,
           floorEditorIdx: null,
+          activeFloorIdx: 0,
           validationErrors: [],
           dirty: false,
         });
@@ -235,6 +249,11 @@ export const useConfigStore = create<ConfigState>()(
           selection: idx !== null ? null : state.selection,
           siteEditorOpen: idx !== null ? false : state.siteEditorOpen,
         })),
+      // Switch the floor the editing surfaces operate on. A plain UI cursor
+      // (no config change ⇒ the wrapped set skips re-resolution); selection is
+      // left as-is (surfaces already guard selection.floor), matching how the
+      // Sidebar floor tabs behaved before this was lifted into the store.
+      setActiveFloor: (idx) => set({ activeFloorIdx: idx }),
 
       updateSite: (patch) =>
         set((state) => {
@@ -398,6 +417,13 @@ export const useConfigStore = create<ConfigState>()(
             config: { ...state.config, grids: cleaned } as HouseConfig,
             dirty: true,
           };
+        }),
+
+      setCoordConvention: (conv) =>
+        set((state) => {
+          if (!state.config) return state;
+          if ((state.config as { coord_convention?: string }).coord_convention === conv) return state;
+          return { config: { ...state.config, coord_convention: conv } as HouseConfig, dirty: true };
         }),
 
       updateFloor: (floorIdx, patch) =>

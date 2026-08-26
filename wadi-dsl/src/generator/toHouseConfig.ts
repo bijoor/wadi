@@ -157,6 +157,10 @@ function room(r: ast.Room): Record<string, unknown> {
   if (h !== undefined) o.height = h;
   if (Object.keys(walls).length) o.walls = walls;
   if (items.length) o.items = items;
+  if (r.connections.length) {
+    // De-dupe; keep author order. Names may be ID or STRING → unquote.
+    o.connections = [...new Set(r.connections.map(unquote))];
+  }
   applyCommon(o, formulas, r);
   return done(o, formulas);
 }
@@ -988,13 +992,24 @@ export function modelToHouseConfig(
   if (model.grids.length) {
     const grids: Record<string, unknown> = {};
     for (const g of model.grids) {
-      const line = (l: ast.GridLine) => {
-        const o: Record<string, unknown> = { name: String(l.name), at: exprToValue(l.at) };
-        if (l.thickness) o.thickness = exprToValue(l.thickness);
-        if (l.role) o.role = l.role;
-        return o;
-      };
-      grids[g.name] = { x: g.xlines.map(line), y: g.ylines.map(line) };
+      if (g.spacing_x !== undefined) {
+        // GENERATED guides: origin + spacing (+ extent), referenced by index.
+        const gen: Record<string, unknown> = {
+          spacing: [exprToValue(g.spacing_x), exprToValue(g.spacing_y)],
+        };
+        if (g.origin_x !== undefined) gen.origin = [exprToValue(g.origin_x), exprToValue(g.origin_y)];
+        if (g.extent_x !== undefined) gen.extent = [Number(g.extent_x), Number(g.extent_y)];
+        grids[g.name] = gen;
+      } else {
+        // NAMED guides: x/y line lists.
+        const line = (l: ast.GridLine) => {
+          const o: Record<string, unknown> = { name: String(l.name), at: exprToValue(l.at) };
+          if (l.thickness) o.thickness = exprToValue(l.thickness);
+          if (l.role) o.role = l.role;
+          return o;
+        };
+        grids[g.name] = { x: g.xlines.map(line), y: g.ylines.map(line) };
+      }
     }
     cfg.grids = grids;
   }

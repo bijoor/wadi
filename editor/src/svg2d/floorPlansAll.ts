@@ -1,6 +1,6 @@
 import { generateFloorPlanSvg, type FloorPlanRoofOverlay, type FloorPlanGridOverlay } from "./floorPlan";
 import { expandRoomWalls, type HouseConfig } from "./expand";
-import { resolvedGridsForConfig } from "../param/resolve";
+import { resolvedGridsForConfig, resolvedGeneratedGuidesForConfig } from "../param/resolve";
 import { derivePitchedRoof } from "./roof/v2/derivePitched";
 import { deriveFlatRoof } from "./roof/v2/deriveFlat";
 import { deriveShedRoof } from "./roof/v2/deriveShed";
@@ -49,14 +49,26 @@ export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[]
 // Flatten every resolved grid's lines into one overlay (model coords) for the
 // plan guide. With multiple grids, line names are prefixed by the grid id.
 export function buildGridOverlay(config: HouseConfig): FloorPlanGridOverlay | undefined {
-  const grids = resolvedGridsForConfig(config as Parameters<typeof resolvedGridsForConfig>[0]);
-  if (grids.size === 0) return undefined;
+  // deno-lint-ignore no-explicit-any
+  const cfg = config as any;
+  const grids = resolvedGridsForConfig(cfg);
+  const generated = resolvedGeneratedGuidesForConfig(cfg);
+  if (grids.size === 0 && generated.size === 0) return undefined;
   const x: { name: string; pos: number }[] = [];
   const y: { name: string; pos: number }[] = [];
+  const multi = grids.size + generated.size > 1;
+  // Named guides: draw each named line.
   for (const [id, g] of grids) {
-    const prefix = grids.size > 1 ? `${id}.` : "";
+    const prefix = multi ? `${id}.` : "";
     for (const [name, pos] of g.x) x.push({ name: prefix + name, pos });
     for (const [name, pos] of g.y) y.push({ name: prefix + name, pos });
+  }
+  // Generated guides: materialise the uniform lines within `extent` (indices
+  // 0..extent-1), labelled by index to match the `id.x8` reference.
+  for (const [id, gg] of generated) {
+    const prefix = multi ? `${id}.` : "";
+    for (let i = 0; i < gg.ex; i++) x.push({ name: `${prefix}x${i}`, pos: gg.ox + i * gg.dx });
+    for (let j = 0; j < gg.ey; j++) y.push({ name: `${prefix}y${j}`, pos: gg.oy + j * gg.dy });
   }
   return x.length || y.length ? { x, y } : undefined;
 }

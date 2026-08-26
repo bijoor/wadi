@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import clsx from "clsx";
 import { useConfigStore } from "../state/configStore";
 import type { HouseObject } from "../schema/houseConfig";
@@ -75,7 +75,11 @@ export function Sidebar() {
   const addObject = useConfigStore((s) => s.addObject);
   const addFloor = useConfigStore((s) => s.addFloor);
   const moveFloor = useConfigStore((s) => s.moveFloor);
-  const [activeFloor, setActiveFloor] = useState(0);
+  // The active floor is a shared store cursor (see configStore.activeFloorIdx)
+  // so the Graph studio view operates on the same floor the tree does — one
+  // floor picker for both surfaces.
+  const activeFloor = useConfigStore((s) => s.activeFloorIdx);
+  const setActiveFloor = useConfigStore((s) => s.setActiveFloor);
 
   // If the config change reduced the floor count (e.g. loading a
   // 2-floor template while we were on floor 2 of a 3-floor config),

@@ -5,10 +5,10 @@
 // site: plot dimensions + reference origin
 // plinth: raised base rectangle + height
 
-import type { HouseConfig } from "../schema/houseConfig";
+import type { HouseConfig, GeneratedGuides } from "../schema/houseConfig";
 import { useConfigStore } from "../state/configStore";
 import { pickAndLoadConfig } from "../io/fileIO";
-import { symbolError, resolvedGridsForConfig } from "../param/resolve";
+import { symbolError, resolvedGridsForConfig, resolvedGeneratedGuidesForConfig } from "../param/resolve";
 import { NumberField, SelectField, TextField, Section, ObjectMeasureField } from "./fields";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 import { effectiveLayers, type LayerDef } from "../three/layers";
@@ -541,7 +541,8 @@ function PointsSection() {
 // (project units) is shown read-only beside each row so the grid is legible.
 // -------------------------------------------------------------------
 type GridsMap = NonNullable<HouseConfig["grids"]>;
-type GridDefT = GridsMap[string];
+type GuidesDefT = GridsMap[string];                  // named XOR generated (union)
+type GridDefT = Extract<GuidesDefT, { x: unknown }>; // the NAMED variant (x/y line lists)
 type GridLineT = GridDefT["x"][number];
 
 function GridsSection() {
@@ -549,23 +550,30 @@ function GridsSection() {
   const updateGrids = useConfigStore((s) => s.updateGrids);
   const grids = ((config as { grids?: GridsMap })?.grids ?? {}) as GridsMap;
   const resolved = resolvedGridsForConfig(config);
-  const gridIds = Object.keys(grids);
+  // This panel edits NAMED grids; generated guides (spacing-based) are shown
+  // read-only below (they're authored on the canvas / in the DSL).
+  const gridIds = Object.keys(grids).filter((id) => Array.isArray((grids[id] as { x?: unknown }).x));
+  const generatedGuides = resolvedGeneratedGuidesForConfig(config);
+  // `grids[id]` is the named-XOR-generated union; the named-grid editor below only
+  // ever runs for ids in `gridIds` (which have x/y lines), so narrow to the named
+  // variant here rather than casting at every use.
+  const named = (id: string) => grids[id] as GridDefT;
 
   const commit = (next: GridsMap) =>
     updateGrids(Object.keys(next).length > 0 ? next : undefined);
   const patchGrid = (id: string, def: GridDefT) => commit({ ...grids, [id]: def });
 
   const setLine = (id: string, axis: "x" | "y", i: number, patch: Partial<GridLineT>) => {
-    const def = grids[id];
+    const def = named(id);
     patchGrid(id, { ...def, [axis]: def[axis].map((ln, j) => (j === i ? { ...ln, ...patch } : ln)) });
   };
   const removeLine = (id: string, axis: "x" | "y", i: number) => {
-    const def = grids[id];
+    const def = named(id);
     if (def[axis].length <= 2) return; // schema requires ≥ 2 lines per axis
     patchGrid(id, { ...def, [axis]: def[axis].filter((_, j) => j !== i) });
   };
   const move = (id: string, axis: "x" | "y", i: number, dir: -1 | 1) => {
-    const def = grids[id];
+    const def = named(id);
     const j = i + dir;
     if (j < 0 || j >= def[axis].length) return;
     const lines = def[axis].slice();
@@ -573,7 +581,7 @@ function GridsSection() {
     patchGrid(id, { ...def, [axis]: lines });
   };
   const addLine = (id: string, axis: "x" | "y") => {
-    const def = grids[id];
+    const def = named(id);
     const taken = new Set(def[axis].map((l) => l.name));
     const nameFor = axis === "x" ? (n: number) => String(n) : (n: number) => String.fromCharCode(64 + n);
     let n = def[axis].length + 1;
@@ -593,8 +601,33 @@ function GridsSection() {
     });
   };
 
+  // --- Generated (computed) guides: a uniform family from origin + spacing,
+  // referenced lazily by index (`= module.x8` / `= module.x(n)`). origin/spacing
+  // are literal-or-formula; extent (line counts, drawn on the canvas) are ints.
+  const genIds = Object.keys(grids).filter((id) => Array.isArray((grids[id] as { spacing?: unknown }).spacing));
+  const genDef = (id: string) => grids[id] as unknown as GeneratedGuides;
+  const patchGen = (id: string, def: GeneratedGuides) => patchGrid(id, def as unknown as GridDefT);
+  const setGenPair = (id: string, key: "origin" | "spacing", axis: 0 | 1, raw: string) => {
+    const def = genDef(id);
+    const cur = (def[key] ?? [0, 0]) as [number | string, number | string];
+    const next: [number | string, number | string] = [cur[0], cur[1]];
+    next[axis] = parseVarValue(raw);
+    patchGen(id, { ...def, [key]: next });
+  };
+  const setGenExtent = (id: string, axis: 0 | 1, n: number | undefined) => {
+    const def = genDef(id);
+    const cur = (def.extent ?? [10, 10]) as [number, number];
+    const next: [number, number] = [cur[0], cur[1]];
+    next[axis] = Math.max(1, Math.round(n ?? cur[axis]));
+    patchGen(id, { ...def, extent: next });
+  };
+  const addGenerated = () => {
+    const id = grids.module ? `module${genIds.length + 1}` : "module";
+    commit({ ...grids, [id]: { origin: [0, 0], spacing: [30, 30], extent: [10, 10] } });
+  };
+
   const AxisBlock = ({ id, axis }: { id: string; axis: "x" | "y" }) => {
-    const def = grids[id];
+    const def = named(id);
     const posMap = axis === "x" ? resolved.get(id)?.x : resolved.get(id)?.y;
     const sym = (name: string) => `${id}.${axis}${name}`;
     return (
@@ -673,14 +706,72 @@ function GridsSection() {
           <AxisBlock id={id} axis="y" />
         </div>
       ))}
-      {gridIds.length === 0 && <div className="text-[11px] text-slate-500">No grids yet.</div>}
-      <button
-        type="button"
-        onClick={addGrid}
-        className="mt-1 rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
-      >
-        + Add grid
-      </button>
+      {genIds.map((id) => {
+        const def = genDef(id);
+        const origin = (def.origin ?? [0, 0]) as [number | string, number | string];
+        const spacing = def.spacing as [number | string, number | string];
+        const extent = (def.extent ?? [10, 10]) as [number, number];
+        const res = generatedGuides.get(id);
+        return (
+          <div key={`gen-${id}`} className="mb-2 rounded border border-indigo-800/60 bg-indigo-950/20 p-2">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-indigo-200">{id}</span>
+                <span className="rounded bg-indigo-900/60 px-1 text-[9px] uppercase tracking-wide text-indigo-300">generated</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => removeGrid(id)}
+                className="rounded bg-slate-800 px-2 py-0.5 text-[10px] text-red-300 hover:bg-red-900"
+                title="Remove this generated guide"
+              >
+                Remove
+              </button>
+            </div>
+            <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-500">Origin (x, y)</div>
+            <div className="grid grid-cols-2 gap-x-2">
+              <TextField label="" value={varValueStr(origin[0])} onCommit={(v) => setGenPair(id, "origin", 0, v)} placeholder="number or = formula" />
+              <TextField label="" value={varValueStr(origin[1])} onCommit={(v) => setGenPair(id, "origin", 1, v)} placeholder="number or = formula" />
+            </div>
+            <div className="mb-1 mt-1 text-[10px] uppercase tracking-wide text-slate-500">Spacing (dx, dy)</div>
+            <div className="grid grid-cols-2 gap-x-2">
+              <TextField label="" value={varValueStr(spacing?.[0])} onCommit={(v) => setGenPair(id, "spacing", 0, v)} placeholder="number or = formula" />
+              <TextField label="" value={varValueStr(spacing?.[1])} onCommit={(v) => setGenPair(id, "spacing", 1, v)} placeholder="number or = formula" />
+            </div>
+            <div className="mb-1 mt-1 text-[10px] uppercase tracking-wide text-slate-500">Extent — line counts (nx, ny)</div>
+            <div className="grid grid-cols-2 gap-x-2">
+              <NumberField label="" value={extent[0]} onCommit={(n) => setGenExtent(id, 0, n)} min={1} step={1} />
+              <NumberField label="" value={extent[1]} onCommit={(n) => setGenExtent(id, 1, n)} min={1} step={1} />
+            </div>
+            <div className="mt-1 text-[10px] text-slate-400">
+              {res && <>resolved spacing ({Math.round(res.dx)}, {Math.round(res.dy)}) · </>}
+              reference by index:{" "}
+              <code className="mx-0.5 rounded bg-slate-800 px-1">= {id}.x8</code> or{" "}
+              <code className="mx-0.5 rounded bg-slate-800 px-1">= {id}.x(n)</code>.
+            </div>
+          </div>
+        );
+      })}
+      {gridIds.length === 0 && genIds.length === 0 && (
+        <div className="text-[11px] text-slate-500">No grids yet.</div>
+      )}
+      <div className="mt-1 flex gap-2">
+        <button
+          type="button"
+          onClick={addGrid}
+          className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
+        >
+          + Add grid
+        </button>
+        <button
+          type="button"
+          onClick={addGenerated}
+          className="rounded bg-indigo-700 px-2 py-1 text-xs text-white hover:bg-indigo-600"
+          title="Add a computed (uniform) guide family, referenced by index"
+        >
+          + Add generated guide
+        </button>
+      </div>
     </Section>
   );
 }

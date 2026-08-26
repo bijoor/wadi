@@ -20,9 +20,12 @@ export const HARD_KEYWORDS = new Set<string>([
   // object types (FloorObject leaders)
   "room", "wall", "pillar", "beam", "slab", "plinth", "ground", "staircase",
   "spiral_staircase", "kitchen", "item", "use", "roof", "raw", "door", "window",
+  // room-block statement leader — hard so the space-separated `connect A B` name
+  // list stops at the next `connect` (repeatable) instead of swallowing it.
+  "connect",
   // top-level / house-body leaders
   "house", "import", "asset", "units", "site", "defaults", "layer", "component",
-  "floor", "var", "point", "grid", "configurator", "group",
+  "floor", "var", "point", "grid", "guides", "configurator", "group",
   // configurator / grid internals (rule leaders)
   "slider", "number", "toggle", "select", "note", "role", "structural", "planning",
   "thick", "dims", "src", "as",

@@ -83,6 +83,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-manager";
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
+import { GraphView } from "../graph/GraphView";
 import { mountViewer3D, mountViewerLayerPanel, mountViewerLightingPanel, mountViewerInteriorPanel, mountViewerLayersEditor } from "./mount3D";
 import { mountViewer3DToolbar } from "./Toolbar3D";
 import { startConfigWatcher } from "./configWatcher";
@@ -797,6 +798,10 @@ function mountEditPanels(): void {
   const props = document.getElementById("viewer-property-panel");
   if (sidebar) createRoot(sidebar).render(createElement(Sidebar));
   if (props) createRoot(props).render(createElement(PropertyPanel));
+  // Graph view (Phase 2): a persistent React root over the config store, shown
+  // when the Graph tab is active (view-container toggled by switchView).
+  const graph = document.getElementById("view-graph");
+  if (graph) createRoot(graph).render(createElement(GraphView));
 }
 
 // Called on every config mutation. Rebuilds the SVG map and asks the
