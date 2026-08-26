@@ -58,11 +58,7 @@
             background: rgba(255, 255, 255, 0.95);
             padding: 1rem 2rem;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            position: relative;
             z-index: 100;
-            /* Own compositing layer so the header (and its Apps dropdown) paints
-               ABOVE the WebGL 3D canvas in WKWebView — see .apps-dropdown. */
-            transform: translateZ(0);
         }
         body > header h1 {
             color: #333;
@@ -206,19 +202,20 @@
         .apps-btn:hover { opacity: 1; background: rgba(184,80,40,0.08); border-color: rgba(184,80,40,0.6); }
         .apps-btn .apps-caret { font-size: 0.6rem; opacity: 0.7; }
         .apps-menu[data-open="1"] .apps-caret { transform: rotate(180deg); }
+        /* The dropdown renders in the browser TOP LAYER via the Popover API, so it
+           paints ABOVE the WebGL 3D canvas (a composited canvas otherwise covers
+           normal HTML regardless of z-index, on the web AND in WKWebView). JS sets
+           its top/left from the button on open. */
         .apps-dropdown {
-            position: absolute; top: calc(100% + 6px); left: 0; z-index: 1600;
-            /* Promote to its OWN compositing layer so it paints ABOVE the WebGL
-               3D canvas (#viewer-3d-scene). In WKWebView (the desktop app) a WebGL
-               canvas composites over normal HTML regardless of z-index, which
-               otherwise hides this menu behind the dark 3D panel. */
-            transform: translateZ(0);
-            will-change: transform;
+            position: fixed; inset: auto; margin: 0; z-index: 1600;
             min-width: 244px; padding: 6px;
             background: #fff; color: #2C2A26;
             border: 1px solid rgba(44,42,38,0.14); border-radius: 12px;
             box-shadow: 0 10px 30px rgba(44,42,38,0.18);
+            overflow: visible;
         }
+        /* Fallback for engines without the Popover API: anchor under the button. */
+        .apps-menu[data-nopopover] .apps-dropdown { position: absolute; top: calc(100% + 6px); left: 0; }
         .apps-dropdown[hidden] { display: none; }
         .apps-item {
             display: flex; align-items: center; gap: 11px; width: 100%;
@@ -2161,7 +2158,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-DPBhRGbs.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-CAbBDiM3.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-QTnfLwEv.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-At0tiqjU.css">
 </head>
@@ -2191,7 +2188,7 @@
                     </svg>
                     <span>Apps</span><span class="apps-caret" aria-hidden="true">▾</span>
                   </button>
-                  <div id="apps-dropdown" class="apps-dropdown" role="menu" hidden>
+                  <div id="apps-dropdown" class="apps-dropdown" role="menu" popover="auto">
                     <button class="apps-item" type="button" role="menuitem" data-app="dsl" data-url="/dsl/">
                       <span class="apps-ico" aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">

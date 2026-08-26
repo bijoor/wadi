@@ -1868,24 +1868,50 @@ function openApp(name: string, url: string): void {
   }
 }
 
-// The header Apps dropdown: toggle it, close on outside-click / Escape, and route
-// each item through openApp.
+// The header Apps dropdown. It renders in the browser TOP LAYER via the Popover
+// API so it paints above the WebGL 3D canvas (a composited canvas otherwise
+// covers normal HTML regardless of z-index). Falls back to a plain absolute
+// dropdown on engines without the Popover API.
 function wireAppsMenu(): void {
   const menu = document.getElementById("apps-menu");
   const btn = document.getElementById("apps-btn");
-  const dropdown = document.getElementById("apps-dropdown");
+  const dropdown = document.getElementById("apps-dropdown") as
+    | (HTMLElement & { showPopover?: () => void; hidePopover?: () => void })
+    | null;
   if (!menu || !btn || !dropdown) return;
 
+  const usePopover = typeof dropdown.showPopover === "function";
+  if (!usePopover) {
+    menu.setAttribute("data-nopopover", "");
+    dropdown.removeAttribute("popover"); // inert attr → make it a normal hidden div
+    dropdown.hidden = true;
+  }
+
+  const isOpen = () =>
+    usePopover ? dropdown.matches(":popover-open") : !dropdown.hidden;
+
   const setOpen = (open: boolean) => {
-    dropdown.hidden = !open;
+    if (usePopover) {
+      if (open) {
+        // Anchor the fixed popover under the button (top layer is viewport-fixed).
+        const b = btn.getBoundingClientRect();
+        dropdown.style.top = `${Math.round(b.bottom + 6)}px`;
+        dropdown.style.left = `${Math.round(b.left)}px`;
+        dropdown.showPopover?.();
+      } else {
+        dropdown.hidePopover?.();
+      }
+    } else {
+      dropdown.hidden = !open;
+    }
     btn.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open) menu.setAttribute("data-open", "1");
-    else menu.removeAttribute("data-open");
+    menu.toggleAttribute("data-open", open);
   };
+
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setOpen(Boolean(dropdown.hidden));
+    setOpen(!isOpen());
   });
   for (const item of Array.from(dropdown.querySelectorAll<HTMLElement>(".apps-item"))) {
     item.addEventListener("click", () => {
@@ -1895,13 +1921,22 @@ function wireAppsMenu(): void {
       if (name) openApp(name, url);
     });
   }
-  // Dismiss on an outside click or Escape.
-  document.addEventListener("click", (e) => {
-    if (!dropdown.hidden && !menu.contains(e.target as Node)) setOpen(false);
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !dropdown.hidden) setOpen(false);
-  });
+
+  if (usePopover) {
+    // popover="auto" gives light-dismiss + Escape natively; keep aria/caret in sync.
+    dropdown.addEventListener("toggle", (e) => {
+      const open = (e as Event & { newState?: string }).newState === "open";
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      menu.toggleAttribute("data-open", open);
+    });
+  } else {
+    document.addEventListener("click", (e) => {
+      if (!dropdown.hidden && !menu.contains(e.target as Node)) setOpen(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !dropdown.hidden) setOpen(false);
+    });
+  }
 }
 
 function wireHeaderButtons(): void {
