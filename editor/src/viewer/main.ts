@@ -1004,6 +1004,17 @@ export interface WadiApi {
   connectRooms: (input: Record<string, unknown>) => {
     ok: true; connected: string[]; passable: boolean; note: string;
   };
+  /** Put a door in the wall two rooms share (centred on the overlap) and ensure
+   *  they're connected. Completes a connection so it becomes passable. */
+  addDoor: (input: Record<string, unknown>) => {
+    ok: true; door: string; on: string; between: string[]; passable: boolean;
+  };
+  /** Build a WHOLE house from a room graph: {rooms:[{name,width_ft,length_ft}],
+   *  connections:[[a,b],…]}. Lays connected rooms adjacent, adds a door on each,
+   *  and loads it. Replaces the current model. */
+  buildHouse: (input: Record<string, unknown>) => {
+    ok: true; rooms: number; doors: number; plot_ft: number[]; notes: string[];
+  };
   /** Undo / redo the last change (one shared history with the human). */
   undo: () => { ok: true };
   redo: () => { ok: true };
@@ -2325,6 +2336,106 @@ function uniqueRoomName(cfg: unknown, base: string): string {
   return name;
 }
 
+// ---- Door placement (wadi_add_door): find the wall two rooms share and centre
+// a door on the overlap. Mirrors the C11 shared-wall geometry. ----------------
+type DoorSide = "north" | "south" | "east" | "west";
+const nu = (v: unknown): number => Number(v) || 0;
+const rectOfRoom = (o: Record<string, unknown>) => ({ x: nu(o.x), y: nu(o.y), w: nu(o.width), l: nu(o.length) });
+
+// A's facing side + the overlap span [lo, hi] along that wall, or null if the
+// rooms don't share a wall. `tol` absorbs the center/outer wall-thickness overlap.
+function sharedWallBetween(
+  a: { x: number; y: number; w: number; l: number },
+  b: { x: number; y: number; w: number; l: number },
+  tol: number,
+): { side: DoorSide; lo: number; hi: number } | null {
+  const ax1 = a.x + a.w, ay1 = a.y + a.l, bx1 = b.x + b.w, by1 = b.y + b.l;
+  const yLo = Math.max(a.y, b.y), yHi = Math.min(ay1, by1);
+  const xLo = Math.max(a.x, b.x), xHi = Math.min(ax1, bx1);
+  if (yHi - yLo > 0) {
+    if (Math.abs(ax1 - b.x) <= tol) return { side: "east", lo: yLo, hi: yHi };
+    if (Math.abs(bx1 - a.x) <= tol) return { side: "west", lo: yLo, hi: yHi };
+  }
+  if (xHi - xLo > 0) {
+    if (Math.abs(ay1 - b.y) <= tol) return { side: "south", lo: xLo, hi: xHi };
+    if (Math.abs(by1 - a.y) <= tol) return { side: "north", lo: xLo, hi: xHi };
+  }
+  return null;
+}
+
+// Return the room's walls as a dict with `opening` added to `side`, PRESERVING
+// every other wall. A room with no `walls` field has all four, so we materialise
+// all four (else adding one opening would silently delete the other three).
+function wallsWithOpening(walls: unknown, side: DoorSide, opening: Record<string, unknown>): Record<string, unknown> {
+  let dict: Record<string, { openings?: unknown[] }>;
+  if (walls == null) dict = { north: {}, south: {}, east: {}, west: {} };
+  else if (Array.isArray(walls)) { dict = {}; for (const s of walls) dict[String(s)] = {}; }
+  else dict = { ...(walls as Record<string, { openings?: unknown[] }>) };
+  const cur = { ...(dict[side] ?? {}) };
+  cur.openings = [...(Array.isArray(cur.openings) ? cur.openings : []), opening];
+  dict[side] = cur;
+  return dict;
+}
+
+function uniqueOpeningName(room: Record<string, unknown>, base: string): string {
+  const used = new Set<string>();
+  const walls = room.walls;
+  if (walls && !Array.isArray(walls) && typeof walls === "object") {
+    for (const s of Object.values(walls as Record<string, { openings?: Array<{ name?: unknown }> }>))
+      for (const op of s?.openings ?? []) if (op?.name) used.add(String(op.name));
+  }
+  let name = base;
+  let n = 1;
+  while (used.has(name)) { n += 1; name = `${base} ${n}`; }
+  return name;
+}
+
+// ---- Graph -> floor plan (wadi_build_house): greedily lay out a room graph so
+// CONNECTED rooms end up adjacent, so an agent can hand over a whole house as
+// {rooms, connections} and get a real layout back. Hub-first placement: the
+// most-connected room anchors, each other room abuts a placed neighbour on the
+// first free side (else it appends east of the bounding box). ----------------
+type LaidRect = { name: string; x: number; y: number; w: number; l: number };
+const rectsOverlap = (a: LaidRect, b: LaidRect): boolean =>
+  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.l && b.y < a.y + a.l;
+
+function layoutRoomGraph(specs: { name: string; w: number; l: number }[], edges: [string, string][]): LaidRect[] {
+  const adj = new Map<string, Set<string>>();
+  const link = (a: string, b: string) => { if (!adj.has(a)) adj.set(a, new Set()); adj.get(a)!.add(b); };
+  for (const [a, b] of edges) { link(a, b); link(b, a); }
+  const degree = (n: string) => adj.get(n)?.size ?? 0;
+  const order = [...specs].sort((a, b) => degree(b.name) - degree(a.name)); // hub first
+  const placed: LaidRect[] = [];
+  const byName = new Map<string, LaidRect>();
+  const fits = (r: LaidRect) => !placed.some((p) => rectsOverlap(r, p));
+  const put = (r: LaidRect) => { placed.push(r); byName.set(r.name, r); };
+
+  for (const s of order) {
+    if (!placed.length) { put({ name: s.name, x: 0, y: 0, w: s.w, l: s.l }); continue; }
+    const neighbours = [...(adj.get(s.name) ?? [])].map((n) => byName.get(n)).filter((x): x is LaidRect => !!x);
+    const anchors = neighbours.length ? neighbours : placed;
+    let done = false;
+    for (const anchor of anchors) {
+      for (const side of ["east", "south", "west", "north"] as const) {
+        const x = side === "east" ? anchor.x + anchor.w : side === "west" ? anchor.x - s.w : anchor.x;
+        const y = side === "south" ? anchor.y + anchor.l : side === "north" ? anchor.y - s.l : anchor.y;
+        const r = { name: s.name, x, y, w: s.w, l: s.l };
+        if (fits(r)) { put(r); done = true; break; }
+      }
+      if (done) break;
+    }
+    if (!done) {
+      const maxX = Math.max(...placed.map((p) => p.x + p.w));
+      const minY = Math.min(...placed.map((p) => p.y));
+      put({ name: s.name, x: maxX, y: minY, w: s.w, l: s.l });
+    }
+  }
+  const minX = Math.min(...placed.map((p) => p.x));
+  const minY = Math.min(...placed.map((p) => p.y));
+  for (const r of placed) { r.x -= minX; r.y -= minY; }
+  return placed;
+}
+
 // window.wadi — the programmatic control surface. Every method funnels through
 // the SAME store mutations the owner UI uses (loadConfig / updateVariables /
 // updatePoints / updateObject / insertObject) and the SAME template + view
@@ -2514,19 +2625,42 @@ function wireWadiApi(): void {
     addRoom(input: Record<string, unknown>) {
       const cfg = store().config as Record<string, unknown> | null;
       if (!cfg) throw new Error("wadi.addRoom: no house loaded — choose a template or load a config first.");
-      const fi = resolveFloorIdx(cfg, input.floor, useConfigStore.getState().activeFloorIdx);
-      if (fi < 0) throw new Error(`wadi.addRoom: unknown floor '${String(input.floor)}'. See describeHouse().floors.`);
       const name = uniqueRoomName(cfg, String(input.name ?? "Room"));
-      const room = {
-        type: "room", name,
-        x: ftToU(cfg, input.x_ft), y: ftToU(cfg, input.y_ft),
-        width: ftToU(cfg, input.width_ft ?? 10), length: ftToU(cfg, input.length_ft ?? 10),
-      } as unknown as HouseObject;
+      const widthU = ftToU(cfg, input.width_ft ?? 10);
+      const lengthU = ftToU(cfg, input.length_ft ?? 10);
+      let fi: number, xU: number, yU: number, placed: string;
+
+      if (input.next_to != null && input.side != null) {
+        // RELATIVE placement: abut an existing room on a side (no coordinates
+        // needed). This is what lets an agent lay out a whole floor by relation.
+        const ref = findRoomSel(cfg, input.next_to);
+        if (!ref) throw new Error(`wadi.addRoom: next_to room '${String(input.next_to)}' not found. See describeHouse().`);
+        fi = ref.floor;
+        const r = rectOfRoom(ref.room);
+        const side = String(input.side).toLowerCase();
+        const align = String(input.align ?? "start").toLowerCase();
+        const alongY = align === "center" ? r.y + (r.l - lengthU) / 2 : align === "end" ? r.y + r.l - lengthU : r.y;
+        const alongX = align === "center" ? r.x + (r.w - widthU) / 2 : align === "end" ? r.x + r.w - widthU : r.x;
+        if (side === "east") { xU = r.x + r.w; yU = alongY; }
+        else if (side === "west") { xU = r.x - widthU; yU = alongY; }
+        else if (side === "south") { yU = r.y + r.l; xU = alongX; }
+        else if (side === "north") { yU = r.y - lengthU; xU = alongX; }
+        else throw new Error(`wadi.addRoom: side must be north|south|east|west, got '${side}'.`);
+        placed = `${side} of ${String(ref.room.name)}`;
+      } else {
+        fi = resolveFloorIdx(cfg, input.floor, useConfigStore.getState().activeFloorIdx);
+        if (fi < 0) throw new Error(`wadi.addRoom: unknown floor '${String(input.floor)}'. See describeHouse().floors.`);
+        xU = ftToU(cfg, input.x_ft);
+        yU = ftToU(cfg, input.y_ft);
+        placed = "absolute";
+      }
+
+      const room = { type: "room", name, x: xU, y: yU, width: widthU, length: lengthU } as unknown as HouseObject;
       // Freehand rooms author at wall CENTRELINES so abutting rooms share a wall.
       if (!cfg.coord_convention) store().setCoordConvention("center");
       const sel = store().insertObject(fi, room);
       store().select(sel);
-      return { ok: true as const, name, floor: floorsOf(cfg)[fi]?.name };
+      return { ok: true as const, name, floor: floorsOf(cfg)[fi]?.name, placed };
     },
 
     editRoom(input: Record<string, unknown>) {
@@ -2565,8 +2699,118 @@ function wireWadiApi(): void {
         passable,
         note: passable
           ? "Connected and passable — the rooms share a wall with a door, or that wall is left off both."
-          : "Connected, but not passable yet. Add a door on the shared wall (in the studio for now), or leave that wall off both rooms for an open passage.",
+          : "Connected, but not passable yet. Call wadi_add_door with these two rooms to put a door in the shared wall, or leave that wall off both for an open passage.",
       };
+    },
+
+    addDoor(input: Record<string, unknown>) {
+      const cfg = store().config as Record<string, unknown> | null;
+      const a = findRoomSel(cfg, input.room_a);
+      const b = findRoomSel(cfg, input.room_b);
+      if (!a) throw new Error(`wadi.addDoor: no room named '${String(input.room_a)}'.`);
+      if (!b) throw new Error(`wadi.addDoor: no room named '${String(input.room_b)}'.`);
+      if (a.floor !== b.floor) throw new Error("wadi.addDoor: the rooms are on different floors.");
+      const wt = nu((cfg?.defaults as { wall_thickness?: unknown } | undefined)?.wall_thickness) || 8;
+      const ra = rectOfRoom(a.room), rb = rectOfRoom(b.room);
+      const sw = sharedWallBetween(ra, rb, wt + 1);
+      if (!sw) throw new Error(`wadi.addDoor: ${String(a.room.name)} and ${String(b.room.name)} don't share a wall — move them so they abut first.`);
+      const per = perUnitOf(cfg);
+      const overlap = sw.hi - sw.lo;
+      const widthU = input.width_ft != null
+        ? ftToU(cfg, input.width_ft)
+        : Math.max(Math.min(overlap - per / 2, 3 * per), Math.min(overlap * 0.6, 2 * per));
+      const heightU = input.height_ft != null ? ftToU(cfg, input.height_ft) : Math.round(6.5 * per);
+      const alongStart = sw.side === "east" || sw.side === "west" ? ra.y : ra.x;
+      const wallLen = sw.side === "north" || sw.side === "south" ? ra.w : ra.l;
+      const center = (sw.lo + sw.hi) / 2;
+      const offset = Math.max(0, Math.min(center - alongStart - widthU / 2, wallLen - widthU));
+      const doorName = uniqueOpeningName(a.room, "Door");
+      const walls = wallsWithOpening(a.room.walls, sw.side, { kind: "door", name: doorName, offset, width: widthU, height: heightU });
+      const existing = Array.isArray(a.room.connections) ? (a.room.connections as string[]) : [];
+      const connections = [...new Set([...existing, String(b.room.name)])];
+      store().updateObject({ floor: a.floor, object: a.object }, { walls, connections } as Partial<HouseObject>);
+      const cfg2 = store().config;
+      const blocks = cfg2 ? roomBlocksOf(cfg2, a.floor) : [];
+      const ba = blocks.find((x) => x.index === a.object);
+      const bb = blocks.find((x) => x.index === b.object);
+      return {
+        ok: true as const,
+        door: doorName,
+        on: `${String(a.room.name)} ${sw.side} wall`,
+        between: [String(a.room.name), String(b.room.name)],
+        passable: !!(ba && bb && connectionSatisfied(ba, bb)),
+      };
+    },
+
+    buildHouse(input: Record<string, unknown>) {
+      const per = 10; // fresh house authored in feet_inches (10 units = 1 ft)
+      // Unique room names + sizes in units.
+      const used = new Set<string>();
+      const nameMap = new Map<string, string>();
+      const specs: { name: string; w: number; l: number }[] = [];
+      for (const r of (input.rooms as Array<Record<string, unknown>> | undefined) ?? []) {
+        const base = String(r.name ?? "Room").trim() || "Room";
+        let name = base, k = 1;
+        while (used.has(name.toLowerCase())) { k += 1; name = `${base} ${k}`; }
+        used.add(name.toLowerCase());
+        nameMap.set(String(r.name), name);
+        specs.push({ name, w: (Number(r.width_ft) || 10) * per, l: (Number(r.length_ft) || 10) * per });
+      }
+      if (!specs.length) throw new Error("wadi.buildHouse: provide at least one room, e.g. rooms:[{name,width_ft,length_ft}].");
+
+      const edges: [string, string][] = [];
+      for (const c of (input.connections as Array<unknown> | undefined) ?? []) {
+        const a = Array.isArray(c) ? c[0] : (c as Record<string, unknown>).a;
+        const b = Array.isArray(c) ? c[1] : (c as Record<string, unknown>).b;
+        const an = nameMap.get(String(a)) ?? String(a);
+        const bn = nameMap.get(String(b)) ?? String(b);
+        if (an && bn && an !== bn) edges.push([an, bn]);
+      }
+
+      const placed = layoutRoomGraph(specs, edges);
+      const rectByName = new Map(placed.map((r) => [r.name, r]));
+      const roomObjs: Record<string, unknown>[] = placed.map((r) => ({
+        type: "room", name: r.name, x: r.x, y: r.y, width: r.w, length: r.l,
+      }));
+      const objByName = new Map(roomObjs.map((o) => [o.name as string, o]));
+
+      const wt = 8; // default wall thickness for a fresh house
+      const notes: string[] = [];
+      let doors = 0;
+      for (const [an, bn] of edges) {
+        const oa = objByName.get(an);
+        if (!oa) continue;
+        oa.connections = [...new Set([...((oa.connections as string[]) ?? []), bn])];
+        const ra = rectByName.get(an)!, rb = rectByName.get(bn)!;
+        const sw = sharedWallBetween(ra, rb, wt + 1);
+        if (!sw) { notes.push(`${an} <-> ${bn}: placed apart, no door (connection kept)`); continue; }
+        const overlap = sw.hi - sw.lo;
+        const width = Math.max(Math.min(overlap - per / 2, 3 * per), Math.min(overlap * 0.6, 2 * per));
+        const along = sw.side === "east" || sw.side === "west" ? ra.y : ra.x;
+        const wallLen = sw.side === "north" || sw.side === "south" ? ra.w : ra.l;
+        const center = (sw.lo + sw.hi) / 2;
+        const offset = Math.max(0, Math.min(center - along - width / 2, wallLen - width));
+        oa.walls = wallsWithOpening(oa.walls, sw.side, { kind: "door", name: `Door ${doors + 1}`, offset, width, height: Math.round(6.5 * per) });
+        doors += 1;
+      }
+      for (const o of roomObjs) if (!(o.connections as string[] | undefined)?.length) delete o.connections;
+
+      const maxX = Math.max(...placed.map((r) => r.x + r.w));
+      const maxY = Math.max(...placed.map((r) => r.y + r.l));
+      const config = {
+        units: { system: "feet_inches", per_unit: per },
+        coord_convention: "center",
+        site: { plot_width: maxX, plot_length: maxY, reference_x: 0, reference_y: 0 },
+        floors: [{ floor_number: 1, name: String(input.floor_name ?? "Ground"), slab_thickness: 0, objects: roomObjs }],
+      };
+      // Validate + load through the store (one operation → one undo step).
+      const parsed = validate(config);
+      if (!parsed.ok || !parsed.data) {
+        throw new Error("wadi.buildHouse: generated an invalid house — " + JSON.stringify(parsed.errors));
+      }
+      store().loadConfig(parsed.data, "wadi.buildHouse");
+      document.body.dataset.homeChosen = "yes";
+      return { ok: true as const, rooms: placed.length, doors, plot_ft: [Math.round(maxX / per), Math.round(maxY / per)], notes };
     },
 
     undo() { useConfigStore.temporal.getState().undo(); return { ok: true as const }; },
@@ -2773,18 +3017,52 @@ function buildWadiMcpTools(): WebMcpTool[] {
       execute() { return text(api().describeHouse()); },
     },
     {
+      name: "wadi_build_house",
+      description:
+        "Build a WHOLE house from a room graph in one call. Give a list of rooms (name + size in feet) and the connections between them; this lays connected rooms next to each other, puts a door on each connection, and shows the 3D house. Use this to turn a described house into a real design, then refine with the other tools. Replaces the current model.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          rooms: {
+            type: "array",
+            description: "the rooms",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                width_ft: { type: "number", description: "east-west size in feet" },
+                length_ft: { type: "number", description: "north-south size in feet" },
+              },
+              required: ["name", "width_ft", "length_ft"],
+            },
+          },
+          connections: {
+            type: "array",
+            description: "which rooms open into each other, as name pairs, e.g. [[\"Living\",\"Kitchen\"],[\"Living\",\"Hall\"]]",
+            items: { type: "array", items: { type: "string" } },
+          },
+          floor_name: { type: "string", description: "name for the floor (default Ground)" },
+        },
+        required: ["rooms"],
+      },
+      execute(input) { return text(api().buildHouse(input)); },
+    },
+    {
       name: "wadi_add_room",
       description:
-        "Add a room to a floor. Position is the room's top-left corner in FEET (x = east, y = south); width runs east-west, length north-south. Rooms that touch share a wall. Returns the created room name.",
+        "Add a room. Size is width_ft (east-west) by length_ft (north-south). Place it either RELATIVELY (next_to an existing room + side) which is easiest for building a whole floor, or ABSOLUTELY (x_ft, y_ft = top-left corner, x east / y south). Rooms that touch share a wall.",
       inputSchema: {
         type: "object",
         properties: {
           name: { type: "string", description: "room name, e.g. Bedroom" },
-          floor: { type: "string", description: "floor name or number; defaults to the active floor" },
-          x_ft: { type: "number", description: "left edge (east) in feet" },
-          y_ft: { type: "number", description: "top edge (south) in feet" },
           width_ft: { type: "number", description: "east-west size in feet" },
           length_ft: { type: "number", description: "north-south size in feet" },
+          next_to: { type: "string", description: "relative placement: name of the room to abut" },
+          side: { type: "string", enum: ["north", "south", "east", "west"], description: "which side of next_to to place this room" },
+          align: { type: "string", enum: ["start", "center", "end"], description: "align along the shared edge (default start)" },
+          floor: { type: "string", description: "absolute placement: floor name or number (defaults to active)" },
+          x_ft: { type: "number", description: "absolute placement: left edge (east) in feet" },
+          y_ft: { type: "number", description: "absolute placement: top edge (south) in feet" },
         },
         required: ["name", "width_ft", "length_ft"],
       },
@@ -2816,6 +3094,20 @@ function buildWadiMcpTools(): WebMcpTool[] {
         required: ["room_a", "room_b"],
       },
       execute(input) { return text(api().connectRooms(input)); },
+    },
+    {
+      name: "wadi_add_door",
+      description:
+        "Put a door in the wall two rooms share (centred on where they overlap) and connect them. Use this to make a connection passable. Optional width_ft (default ~3 ft) and height_ft (default ~6.5 ft).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          room_a: { type: "string" }, room_b: { type: "string" },
+          width_ft: { type: "number" }, height_ft: { type: "number" },
+        },
+        required: ["room_a", "room_b"],
+      },
+      execute(input) { return text(api().addDoor(input)); },
     },
     {
       name: "wadi_set_variable",
