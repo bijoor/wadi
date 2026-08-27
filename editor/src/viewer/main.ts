@@ -2398,12 +2398,14 @@ function runCheck(cfg: unknown): CheckSummary {
 }
 // Compact form for mutating tools' return values: the agent gets an immediate
 // heads-up (and the top messages) without a second call; details via wadi_check.
-function checkBrief(cfg: unknown): { ok: boolean; errors: number; warnings: number; summary: string; error_messages?: string[] } {
+interface CheckBrief { ok: boolean; errors: number; warnings: number; summary: string; error_messages?: string[]; warning_messages?: string[] }
+function checkBrief(cfg: unknown): CheckBrief {
   const c = runCheck(cfg);
-  const out: { ok: boolean; errors: number; warnings: number; summary: string; error_messages?: string[] } = {
-    ok: c.ok, errors: c.error_count, warnings: c.warning_count, summary: c.summary,
-  };
+  const out: CheckBrief = { ok: c.ok, errors: c.error_count, warnings: c.warning_count, summary: c.summary };
   if (c.errors.length) out.error_messages = c.errors.slice(0, 4).map((e) => e.message);
+  // Warnings matter too (e.g. two rooms overlapping) — surface them so the agent
+  // can decide whether to fix, not just see a count.
+  if (c.warnings.length) out.warning_messages = c.warnings.slice(0, 4).map((e) => e.message);
   return out;
 }
 
@@ -3130,7 +3132,7 @@ function buildWadiMcpTools(): WebMcpTool[] {
     {
       name: "wadi_check",
       description:
-        "Check the current house for structural problems (the same C1-C11 conventions the desktop/CLI use). Returns errors and warnings with the rule id, a message, and the room/floor. Use this whenever you are asked whether the layout is valid, or after moving/resizing rooms — a room moved by coordinates can drift away from a room it is connected to (C11: 'connected but their walls do not overlap') or lose the door in the shared wall ('no door'). ok=true means no errors.",
+        "Check the current house for structural problems (the same C1-C12 conventions the desktop/CLI use). Returns errors and warnings with the rule id, a message, and the room/floor. Use this whenever you are asked whether the layout is valid, and after adding/moving/resizing rooms. Read the WARNINGS too, not just errors: C12 flags two rooms that OVERLAP (occupy the same floor area) — usually a placement mistake to fix by moving one room. C11 flags a connection whose rooms drifted apart ('connected but their walls do not overlap') or lost the door ('no door'). ok=true means no errors (warnings can still need fixing).",
       annotations: { readOnlyHint: true },
       inputSchema: noInput,
       execute() { return text(api().check()); },

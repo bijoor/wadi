@@ -232,6 +232,18 @@ room Kitchen at (…) size (…) { wall north south east }
 
 ---
 
+## C12 — Rooms should not overlap (they share walls, not floor area) · **warning**
+
+**Statement.** Two `room`s on the same floor should not overlap in plan — flagged as a **warning**, because it is occasionally intentional (embedding a corner room to carve an L-shaped space). Adjacent rooms may **touch** on a shared wall (their edges coincide); a larger intersection is reported.
+
+**Rationale.** Rooms usually share walls, not floor area. A real overlap means two rooms were placed on the same spot — the renderer draws one over the other. It most often happens when a room is placed by absolute coordinates, or when a band (a verandah, a corridor) is dropped across an existing wing. C11 checks that declared connections are realized; this checks that the geometry is physically consistent. It stays a warning because an L-shaped room is modelled by overlapping a small corner room onto a larger bounding one.
+
+**Fix.**
+
+If the overlap is unintended, move or resize one room so they only touch on a shared wall (prefer relative placement — abut a neighbour on a side — over absolute coordinates that can land on top of another room). Ignore the warning if it is a deliberate corner embed.
+
+---
+
 ## SP1 — A spiral staircase's central pole must be smaller than its radius · **error**
 
 **Statement.** A `spiral_staircase`'s `pole_radius` must be less than its outer `radius`.
