@@ -2444,6 +2444,22 @@ function wallsWithOpening(walls: unknown, side: DoorSide, opening: Record<string
   return dict;
 }
 
+const OPP_SIDE: Record<DoorSide, DoorSide> = { north: "south", south: "north", east: "west", west: "east" };
+
+// Return the room's walls as a dict with `side` OMITTED (the room is left open on
+// that side), preserving every other wall + its openings. Used on the NEIGHBOUR
+// when a door is placed on a shared wall: the room with the door keeps its wall,
+// the neighbour opens its facing side, so the boundary is a single doored wall (the
+// shipped-template pattern) instead of a door backed by the neighbour's solid wall.
+function wallsWithoutSide(walls: unknown, side: DoorSide): Record<string, unknown> {
+  let dict: Record<string, unknown>;
+  if (walls == null) dict = { north: {}, south: {}, east: {}, west: {} };
+  else if (Array.isArray(walls)) { dict = {}; for (const s of walls) dict[String(s)] = {}; }
+  else dict = { ...(walls as Record<string, unknown>) };
+  delete dict[side];
+  return dict;
+}
+
 function uniqueOpeningName(room: Record<string, unknown>, base: string): string {
   const used = new Set<string>();
   const walls = room.walls;
@@ -2842,6 +2858,10 @@ function wireWadiApi(): void {
       const existing = Array.isArray(a.room.connections) ? (a.room.connections as string[]) : [];
       const connections = [...new Set([...existing, String(b.room.name)])];
       store().updateObject({ floor: a.floor, object: a.object }, { walls, connections } as Partial<HouseObject>);
+      // Open the neighbour's facing wall so the doorway is a single shared wall, not
+      // a door backed by the neighbour's solid wall (the shipped-template pattern).
+      const bWalls = wallsWithoutSide(b.room.walls, OPP_SIDE[sw.side]);
+      store().updateObject({ floor: b.floor, object: b.object }, { walls: bWalls } as Partial<HouseObject>);
       const cfg2 = store().config;
       const blocks = cfg2 ? roomBlocksOf(cfg2, a.floor) : [];
       const ba = blocks.find((x) => x.index === a.object);
@@ -2904,6 +2924,10 @@ function wireWadiApi(): void {
         const center = (sw.lo + sw.hi) / 2;
         const offset = Math.max(0, Math.min(center - along - width / 2, wallLen - width));
         oa.walls = wallsWithOpening(oa.walls, sw.side, { kind: "door", name: `Door ${doors + 1}`, offset, width, height: Math.round(6.5 * per) });
+        // Open the neighbour's facing wall so the doorway is one shared wall, not a
+        // door backed by a solid wall (matches how the shipped templates author it).
+        const ob = objByName.get(bn);
+        if (ob) ob.walls = wallsWithoutSide(ob.walls, OPP_SIDE[sw.side]);
         doors += 1;
       }
       for (const o of roomObjs) if (!(o.connections as string[] | undefined)?.length) delete o.connections;
@@ -3223,7 +3247,7 @@ function buildWadiMcpTools(): WebMcpTool[] {
     {
       name: "wadi_add_door",
       description:
-        "Put a door in the wall two rooms share (centred on where they overlap) and connect them. Use this to make a connection passable. Optional width_ft (default ~3 ft) and height_ft (default ~6.5 ft).",
+        "Put a door in the wall two rooms share (centred on where they overlap) and connect them. Call this ONCE per pair — it makes the doorway a single shared wall (it opens the neighbour's facing wall for you), so do NOT also add a door the other direction. Use it to make a connection passable. Optional width_ft (default ~3 ft) and height_ft (default ~6.5 ft).",
       inputSchema: {
         type: "object",
         properties: {
