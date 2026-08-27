@@ -32,6 +32,7 @@ import { validate } from "../schema/houseConfig";
 import type { HouseConfig as ValidatedHouseConfig, HouseObject } from "../schema/houseConfig";
 import type { HouseConfig } from "../svg2d/expand";
 import { roomBlocksOf, connectionSatisfied } from "../graph/graphModel";
+import { lintStructure, partitionFindings, type LintFinding } from "../lint/structural";
 import { generateAllFloorPlans } from "../svg2d/floorPlansAll";
 import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
 import { generateCompositeSheet } from "../svg2d/compositeSheet";
@@ -992,8 +993,13 @@ export interface WadiApi {
   // person edits. Every one funnels through the store's own actions, so agent
   // and human edits share undo, validation, and live re-render. Sizes in FEET. ---
   /** The whole house as structured data (floors, rooms + sizes/positions in
-   *  feet, connections, roof, plot, variables). Read this first. */
+   *  feet, connections with a per-connection `passable` flag, roof, plot,
+   *  variables, and an `issues` structural summary). Read this first. */
   describeHouse: () => unknown;
+  /** Run the structural linter (C1-C11) over the LIVE house — the same checks
+   *  the WDL/MCP path runs — and return errors + warnings. Answers "are there
+   *  any layout problems?" truthfully (e.g. a connection whose rooms drifted). */
+  check: () => CheckSummary;
   /** Add a room to a floor. x/y = top-left corner in feet (x east, y south);
    *  width east-west, length north-south. Abutting rooms share a wall. */
   addRoom: (input: Record<string, unknown>) => { ok: true; name: string; floor?: string };
@@ -2342,6 +2348,65 @@ type DoorSide = "north" | "south" | "east" | "west";
 const nu = (v: unknown): number => Number(v) || 0;
 const rectOfRoom = (o: Record<string, unknown>) => ({ x: nu(o.x), y: nu(o.y), w: nu(o.width), l: nu(o.length) });
 
+// Place a rect of size (w,l) flush against `ref` on `side`, aligned along the
+// shared edge. Returns the top-left corner in units. Shared by add_room and the
+// relative branch of edit_room so relative placement ALWAYS shares a wall (never
+// a gap) — the failure mode when a room is moved by absolute coordinates instead.
+function abutPosition(
+  ref: { x: number; y: number; w: number; l: number },
+  side: string, align: string, w: number, l: number,
+): { x: number; y: number } {
+  const alongY = align === "center" ? ref.y + (ref.l - l) / 2 : align === "end" ? ref.y + ref.l - l : ref.y;
+  const alongX = align === "center" ? ref.x + (ref.w - w) / 2 : align === "end" ? ref.x + ref.w - w : ref.x;
+  switch (side) {
+    case "east": return { x: ref.x + ref.w, y: alongY };
+    case "west": return { x: ref.x - w, y: alongY };
+    case "south": return { x: alongX, y: ref.y + ref.l };
+    case "north": return { x: alongX, y: ref.y - l };
+    default: throw new Error(`side must be north|south|east|west, got '${side}'.`);
+  }
+}
+
+interface CheckIssue { rule: string; message: string; floor?: number; room?: string }
+interface CheckSummary {
+  ok: boolean; error_count: number; warning_count: number;
+  errors: CheckIssue[]; warnings: CheckIssue[]; summary: string;
+}
+// Run the SAME structural linter the WDL/MCP path runs (C1-C11) over the LIVE
+// resolved config, so the in-page agent can actually answer "any layout errors?".
+// C11 is the one that flags a declared connection whose rooms drifted apart or
+// lost their door — the exact bug a coordinate move introduces.
+function runCheck(cfg: unknown): CheckSummary {
+  const fmt = (f: LintFinding): CheckIssue => ({ rule: f.rule, message: f.message, floor: f.floor, room: f.where });
+  const none = (summary: string): CheckSummary => ({ ok: true, error_count: 0, warning_count: 0, errors: [], warnings: [], summary });
+  if (!cfg) return none("No house loaded.");
+  let findings: LintFinding[];
+  try {
+    findings = lintStructure(cfg as unknown as ValidatedHouseConfig);
+  } catch (e) {
+    return { ok: false, error_count: 0, warning_count: 0, errors: [], warnings: [], summary: `Check could not run: ${(e as Error).message}` };
+  }
+  const { errors, warnings } = partitionFindings(findings);
+  return {
+    ok: errors.length === 0,
+    error_count: errors.length, warning_count: warnings.length,
+    errors: errors.map(fmt), warnings: warnings.map(fmt),
+    summary: errors.length === 0
+      ? (warnings.length === 0 ? "No structural issues found." : `No errors; ${warnings.length} warning(s).`)
+      : `${errors.length} error(s)${warnings.length ? `, ${warnings.length} warning(s)` : ""} — see errors[].`,
+  };
+}
+// Compact form for mutating tools' return values: the agent gets an immediate
+// heads-up (and the top messages) without a second call; details via wadi_check.
+function checkBrief(cfg: unknown): { ok: boolean; errors: number; warnings: number; summary: string; error_messages?: string[] } {
+  const c = runCheck(cfg);
+  const out: { ok: boolean; errors: number; warnings: number; summary: string; error_messages?: string[] } = {
+    ok: c.ok, errors: c.error_count, warnings: c.warning_count, summary: c.summary,
+  };
+  if (c.errors.length) out.error_messages = c.errors.slice(0, 4).map((e) => e.message);
+  return out;
+}
+
 // A's facing side + the overlap span [lo, hi] along that wall, or null if the
 // rooms don't share a wall. `tol` absorbs the center/outer wall-thickness overlap.
 function sharedWallBetween(
@@ -2598,18 +2663,35 @@ function wireWadiApi(): void {
       const cfg = store().config as Record<string, unknown> | null;
       if (!cfg) return { loaded: false as const };
       const site = (cfg.site ?? {}) as Record<string, unknown>;
-      const floors = floorsOf(cfg).map((f) => ({
-        floor_number: f.floor_number,
-        name: f.name,
-        rooms: (f.objects ?? [])
-          .filter((o) => o?.type === "room")
-          .map((o) => ({
-            name: o.name,
-            x_ft: uToFt(cfg, o.x), y_ft: uToFt(cfg, o.y),
-            width_ft: uToFt(cfg, o.width), length_ft: uToFt(cfg, o.length),
-            connections: Array.isArray(o.connections) ? o.connections : [],
-          })),
-      }));
+      const floors = floorsOf(cfg).map((f, fi) => {
+        const objs = f.objects ?? [];
+        // Blocks (true polygons) for this floor, so each declared connection can
+        // report whether it is actually PASSABLE (shared wall + door/open), not
+        // just declared. This is what tells the agent a move broke a connection.
+        const blocks = roomBlocksOf(cfg as unknown as ValidatedHouseConfig, fi);
+        return {
+          floor_number: f.floor_number,
+          name: f.name,
+          rooms: objs
+            .map((o, oi) => ({ o, oi }))
+            .filter(({ o }) => o?.type === "room")
+            .map(({ o, oi }) => {
+              const conns = Array.isArray(o.connections) ? (o.connections as unknown[]) : [];
+              const ba = blocks.find((x) => x.index === oi);
+              const connections = conns.map((cn) => {
+                const bIdx = objs.findIndex((x) => x?.type === "room" && x?.name === cn);
+                const bb = blocks.find((x) => x.index === bIdx);
+                return { to: String(cn), passable: !!(ba && bb && connectionSatisfied(ba, bb)) };
+              });
+              return {
+                name: o.name,
+                x_ft: uToFt(cfg, o.x), y_ft: uToFt(cfg, o.y),
+                width_ft: uToFt(cfg, o.width), length_ft: uToFt(cfg, o.length),
+                connections,
+              };
+            }),
+        };
+      });
       const roof = floorsOf(cfg)
         .flatMap((f) => (f.objects ?? []).filter((o) => o?.type === "roof"))
         .map((r) => ({ roof_type: r.roof_type, endpoint: r.default_endpoint }));
@@ -2619,6 +2701,10 @@ function wireWadiApi(): void {
         coord_convention: (cfg.coord_convention as string) ?? "outer",
         variables: (cfg.variables ?? {}) as Record<string, unknown>,
         floors, roof,
+        // Structural check (C1-C11) of the whole house, so a single describe call
+        // tells the agent if anything is wrong. Each connection above also carries
+        // its own `passable` flag.
+        issues: checkBrief(cfg),
       };
     },
 
@@ -2669,12 +2755,37 @@ function wireWadiApi(): void {
       if (!found) throw new Error(`wadi.editRoom: no room named '${String(input.name)}'. See describeHouse().`);
       const patch: Record<string, unknown> = {};
       if (input.new_name != null) patch.name = uniqueRoomName(cfg, String(input.new_name));
-      if (input.x_ft != null) patch.x = ftToU(cfg, input.x_ft);
-      if (input.y_ft != null) patch.y = ftToU(cfg, input.y_ft);
       if (input.width_ft != null) patch.width = ftToU(cfg, input.width_ft);
       if (input.length_ft != null) patch.length = ftToU(cfg, input.length_ft);
+      // RELATIVE move: snap this room flush against another (no gap). PREFER this
+      // over absolute x_ft/y_ft — a coordinate move can leave the rooms separated
+      // and silently break a declared connection. Uses the post-resize size.
+      if (input.next_to != null && input.side != null) {
+        const ref = findRoomSel(cfg, input.next_to);
+        if (!ref) throw new Error(`wadi.editRoom: next_to room '${String(input.next_to)}' not found. See describeHouse().`);
+        if (ref.floor !== found.floor) throw new Error("wadi.editRoom: next_to must be a room on the same floor.");
+        const cur = rectOfRoom(found.room);
+        const w = patch.width != null ? Number(patch.width) : cur.w;
+        const l = patch.length != null ? Number(patch.length) : cur.l;
+        const pos = abutPosition(
+          rectOfRoom(ref.room),
+          String(input.side).toLowerCase(),
+          String(input.align ?? "start").toLowerCase(),
+          w, l,
+        );
+        patch.x = pos.x; patch.y = pos.y;
+      } else {
+        if (input.x_ft != null) patch.x = ftToU(cfg, input.x_ft);
+        if (input.y_ft != null) patch.y = ftToU(cfg, input.y_ft);
+      }
       store().updateObject({ floor: found.floor, object: found.object }, patch as Partial<HouseObject>);
-      return { ok: true as const, name: (patch.name as string) ?? String(found.room.name) };
+      // Report structural state after the edit so the agent notices immediately if
+      // the move broke a connection (C11), rather than claiming "no errors".
+      return { ok: true as const, name: (patch.name as string) ?? String(found.room.name), check: checkBrief(store().config) };
+    },
+
+    check() {
+      return runCheck(store().config);
     },
 
     connectRooms(input: Record<string, unknown>) {
@@ -3011,10 +3122,18 @@ function buildWadiMcpTools(): WebMcpTool[] {
     {
       name: "wadi_describe_house",
       description:
-        "Read the current house as structured data: each floor and its rooms (name, size and position in feet), room connections, roof, plot size, and design variables. Call this FIRST to see what you're working with.",
+        "Read the current house as structured data: each floor and its rooms (name, size and position in feet), each room's connections (with a `passable` flag = the two rooms actually share a wall with a door or open passage), the roof, plot size, design variables, and an `issues` structural summary (errors/warnings). Call this FIRST to see what you're working with, and again to confirm a change landed correctly.",
       annotations: { readOnlyHint: true },
       inputSchema: noInput,
       execute() { return text(api().describeHouse()); },
+    },
+    {
+      name: "wadi_check",
+      description:
+        "Check the current house for structural problems (the same C1-C11 conventions the desktop/CLI use). Returns errors and warnings with the rule id, a message, and the room/floor. Use this whenever you are asked whether the layout is valid, or after moving/resizing rooms — a room moved by coordinates can drift away from a room it is connected to (C11: 'connected but their walls do not overlap') or lose the door in the shared wall ('no door'). ok=true means no errors.",
+      annotations: { readOnlyHint: true },
+      inputSchema: noInput,
+      execute() { return text(api().check()); },
     },
     {
       name: "wadi_build_house",
@@ -3071,13 +3190,17 @@ function buildWadiMcpTools(): WebMcpTool[] {
     {
       name: "wadi_edit_room",
       description:
-        "Rename, move, or resize an existing room (by name). Provide any of new_name, x_ft, y_ft, width_ft, length_ft (feet).",
+        "Rename, move, or resize an existing room (by name). To MOVE a room, prefer RELATIVE placement (next_to + side [+ align]) so it snaps flush against its neighbour and keeps sharing a wall — e.g. to put the Veranda in front of the Living room, next_to:\"Living\", side:\"south\". Absolute x_ft/y_ft is available but can leave a gap that breaks a connection. You can also rename (new_name) or resize (width_ft/length_ft). The result includes a `check` summary so you can see if the edit broke anything.",
       inputSchema: {
         type: "object",
         properties: {
           name: { type: "string", description: "the room to edit" },
           new_name: { type: "string" },
-          x_ft: { type: "number" }, y_ft: { type: "number" },
+          next_to: { type: "string", description: "relative move: name of the room to snap flush against" },
+          side: { type: "string", enum: ["north", "south", "east", "west"], description: "which side of next_to to place this room (south = toward the front/entrance)" },
+          align: { type: "string", enum: ["start", "center", "end"], description: "align along the shared edge (default start)" },
+          x_ft: { type: "number", description: "absolute move: left edge (east) in feet — may leave a gap; prefer next_to" },
+          y_ft: { type: "number", description: "absolute move: top edge (south) in feet — may leave a gap; prefer next_to" },
           width_ft: { type: "number" }, length_ft: { type: "number" },
         },
         required: ["name"],
