@@ -40,6 +40,13 @@ export async function loadConfigFromPath(path: string): Promise<LoadResult> {
   return parseAndValidate(text, basename(path), path);
 }
 
+// Parse + validate .wadi/.json TEXT into a LoadResult, no file picker involved.
+// Used by the paste-import fallback (iOS Safari can't reliably select a custom
+// `.wadi` in its document picker, so the user can paste the contents instead).
+export function parseConfigText(text: string, filename = "pasted.wadi"): LoadResult {
+  return parseAndValidate(text, filename, null);
+}
+
 function parseAndValidate(
   text: string,
   filename: string,

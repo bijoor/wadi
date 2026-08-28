@@ -54,6 +54,7 @@ import { setTextScale, computeTextScale, houseSpanUnits } from "../svg2d/config"
 import {
   pickAndLoadConfig,
   loadConfigFromPath,
+  parseConfigText,
   saveConfig,
   saveAsWadi,
   saveText,
@@ -3860,9 +3861,77 @@ function closeNewHouseModal(): void {
 // architect's Load button uses, exposed to owners too (from the gallery) so a
 // returning owner can reopen their saved design instead of starting fresh.
 // Returns true on a successful load.
+function isIOSDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/iP(ad|hone|od)/.test(ua)) return true;
+  return navigator.platform === "MacIntel" && (navigator.maxTouchPoints ?? 0) > 1;
+}
+
+// Load a house by PASTING its .wadi/.json text. This is the reliable iOS path:
+// Safari's document picker types a custom `.wadi` in a way no <input accept> can
+// match, so it greys the file out. Pasting the contents sidesteps the OS file
+// type entirely. Resolves to the pasted text, the sentinel " FILE" if the
+// user chose the file picker instead, or null on cancel.
+const PICK_FILE_SENTINEL = " FILE";
+function pasteConfigModal(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const ov = document.createElement("div");
+    ov.style.cssText =
+      "position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;";
+    ov.innerHTML =
+      `<div style="background:#fff;color:#111827;max-width:640px;width:100%;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden;font:14px system-ui,sans-serif;">
+        <div style="padding:14px 18px;border-bottom:1px solid #e5e7eb;font-weight:600;">Load a .wadi</div>
+        <div style="padding:14px 18px;">
+          <p style="margin:0 0 10px;color:#4b5563;">On iPad/iPhone, Safari won't let you pick a <code>.wadi</code> file directly. Open the file's text (in the Files app, or copy it from another device) and paste it below. Your file stays a <code>.wadi</code> — only its contents are read.</p>
+          <textarea id="paste-load-ta" placeholder='{ "site": { … }, "floors": [ … ] }' style="width:100%;height:220px;box-sizing:border-box;font:12px ui-monospace,Menlo,monospace;border:1px solid #d1d5db;border-radius:8px;padding:10px;resize:vertical;"></textarea>
+          <div id="paste-load-err" style="color:#dc2626;font-size:12px;margin-top:6px;min-height:16px;"></div>
+        </div>
+        <div style="padding:12px 18px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+          <button id="paste-load-file" type="button" style="margin-right:auto;background:none;border:none;color:#2563eb;cursor:pointer;font:inherit;">📂 Try the file picker…</button>
+          <button id="paste-load-cancel" type="button" style="background:#f3f4f6;border:1px solid #d1d5db;padding:8px 14px;border-radius:8px;cursor:pointer;">Cancel</button>
+          <button id="paste-load-ok" type="button" style="background:#2563eb;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Load</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const ta = ov.querySelector("#paste-load-ta") as HTMLTextAreaElement;
+    const err = ov.querySelector("#paste-load-err") as HTMLElement;
+    const close = (val: string | null) => { ov.remove(); resolve(val); };
+    setTimeout(() => ta.focus(), 30);
+    ov.addEventListener("click", (e) => { if (e.target === ov) close(null); });
+    (ov.querySelector("#paste-load-cancel") as HTMLElement).onclick = () => close(null);
+    (ov.querySelector("#paste-load-file") as HTMLElement).onclick = () => close(PICK_FILE_SENTINEL);
+    (ov.querySelector("#paste-load-ok") as HTMLElement).onclick = () => {
+      const t = ta.value.trim();
+      if (!t) { err.textContent = "Paste your .wadi contents first."; return; }
+      // Validate before closing so a bad paste shows inline (and keeps the text)
+      // rather than closing the modal and firing an alert.
+      try { parseConfigText(t); } catch (e) {
+        err.textContent = (e instanceof Error ? e.message : String(e)).slice(0, 240);
+        return;
+      }
+      close(t);
+    };
+  });
+}
+
 async function openExistingFromDisk(): Promise<boolean> {
   try {
     if (!(await guardUnsaved("opening another model"))) return false;
+    // iOS Safari can't reliably select a custom `.wadi` in its document picker, so
+    // there we open a paste box first (with a "try the file picker" escape hatch
+    // for files iOS does recognise, like .json).
+    if (isIOSDevice() && !isTauri()) {
+      const pasted = await pasteConfigModal();
+      if (pasted === null) return false;
+      if (pasted !== PICK_FILE_SENTINEL) {
+        const res = parseConfigText(pasted);
+        useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
+        markHomeChosen();
+        return true;
+      }
+      // fall through to the native/browser file picker
+    }
     const res = await pickAndLoadConfig();
     useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
     markHomeChosen();
