@@ -75,33 +75,11 @@ function parseAndValidate(
   return { config: result.data, filename, filePath };
 }
 
-// iOS / iPadOS greys out any file whose extension it can't resolve to a UTI in
-// the Files picker. A custom `.wadi` has none, and because the `accept` list
-// contains types iOS DOES know (`.json` / `application/json`) it enables only
-// those and disables the user's `.wadi` — so it can't be selected at all. iPadOS
-// 13+ reports as "MacIntel", so also treat a touch-capable Mac UA as iOS.
-function isIOS(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  if (/iP(ad|hone|od)/.test(ua)) return true;
-  return navigator.platform === "MacIntel" && (navigator.maxTouchPoints ?? 0) > 1;
-}
-
 function pickJsonFile(): Promise<File> {
   return new Promise((resolve, reject) => {
     const input = document.createElement("input");
     input.type = "file";
-    // iOS gives a custom `.wadi` a DYNAMIC UTI that conforms only to `public.data`,
-    // so the Files picker greys it out under a `.json`/`application/json` filter
-    // (wrong UTI) and under an empty/`*/*` accept it drops to the photo-or-file
-    // media menu that still can't select it. `application/octet-stream` maps to
-    // `public.data` — the very type the .wadi conforms to — so it becomes
-    // selectable AND iOS stays in the document picker (no media menu, since no
-    // image type is listed). Content is JSON-parsed + schema-validated on load, so
-    // enabling any file is safe. Desktop keeps the tidy by-extension filter.
-    input.accept = isIOS()
-      ? "application/octet-stream,application/json,.json,.wadi"
-      : "application/json,.json,.wadi";
+    input.accept = "application/json,.json,.wadi";
     input.addEventListener("change", () => {
       const file = input.files?.[0];
       if (!file) {

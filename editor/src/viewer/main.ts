@@ -481,6 +481,9 @@ async function bootViewer(): Promise<void> {
   wireKeyboardShortcuts();
   // Offer to save unsaved changes before the app/tab closes.
   wireCloseGuard();
+  // Drag-and-drop a .wadi onto the app to open it (the reliable path on iPadOS,
+  // where Safari's file picker can't select a custom .wadi).
+  wireFileDrop();
   // Expose window.exportCurrentSvg for the inline lightbox toolbar.
   wireExports();
   // Expose the on-demand Layout render + panel metadata.
@@ -3861,77 +3864,9 @@ function closeNewHouseModal(): void {
 // architect's Load button uses, exposed to owners too (from the gallery) so a
 // returning owner can reopen their saved design instead of starting fresh.
 // Returns true on a successful load.
-function isIOSDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  if (/iP(ad|hone|od)/.test(ua)) return true;
-  return navigator.platform === "MacIntel" && (navigator.maxTouchPoints ?? 0) > 1;
-}
-
-// Load a house by PASTING its .wadi/.json text. This is the reliable iOS path:
-// Safari's document picker types a custom `.wadi` in a way no <input accept> can
-// match, so it greys the file out. Pasting the contents sidesteps the OS file
-// type entirely. Resolves to the pasted text, the sentinel " FILE" if the
-// user chose the file picker instead, or null on cancel.
-const PICK_FILE_SENTINEL = " FILE";
-function pasteConfigModal(): Promise<string | null> {
-  return new Promise((resolve) => {
-    const ov = document.createElement("div");
-    ov.style.cssText =
-      "position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;";
-    ov.innerHTML =
-      `<div style="background:#fff;color:#111827;max-width:640px;width:100%;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden;font:14px system-ui,sans-serif;">
-        <div style="padding:14px 18px;border-bottom:1px solid #e5e7eb;font-weight:600;">Load a .wadi</div>
-        <div style="padding:14px 18px;">
-          <p style="margin:0 0 10px;color:#4b5563;">On iPad/iPhone, Safari won't let you pick a <code>.wadi</code> file directly. Open the file's text (in the Files app, or copy it from another device) and paste it below. Your file stays a <code>.wadi</code> — only its contents are read.</p>
-          <textarea id="paste-load-ta" placeholder='{ "site": { … }, "floors": [ … ] }' style="width:100%;height:220px;box-sizing:border-box;font:12px ui-monospace,Menlo,monospace;border:1px solid #d1d5db;border-radius:8px;padding:10px;resize:vertical;"></textarea>
-          <div id="paste-load-err" style="color:#dc2626;font-size:12px;margin-top:6px;min-height:16px;"></div>
-        </div>
-        <div style="padding:12px 18px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
-          <button id="paste-load-file" type="button" style="margin-right:auto;background:none;border:none;color:#2563eb;cursor:pointer;font:inherit;">📂 Try the file picker…</button>
-          <button id="paste-load-cancel" type="button" style="background:#f3f4f6;border:1px solid #d1d5db;padding:8px 14px;border-radius:8px;cursor:pointer;">Cancel</button>
-          <button id="paste-load-ok" type="button" style="background:#2563eb;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Load</button>
-        </div>
-      </div>`;
-    document.body.appendChild(ov);
-    const ta = ov.querySelector("#paste-load-ta") as HTMLTextAreaElement;
-    const err = ov.querySelector("#paste-load-err") as HTMLElement;
-    const close = (val: string | null) => { ov.remove(); resolve(val); };
-    setTimeout(() => ta.focus(), 30);
-    ov.addEventListener("click", (e) => { if (e.target === ov) close(null); });
-    (ov.querySelector("#paste-load-cancel") as HTMLElement).onclick = () => close(null);
-    (ov.querySelector("#paste-load-file") as HTMLElement).onclick = () => close(PICK_FILE_SENTINEL);
-    (ov.querySelector("#paste-load-ok") as HTMLElement).onclick = () => {
-      const t = ta.value.trim();
-      if (!t) { err.textContent = "Paste your .wadi contents first."; return; }
-      // Validate before closing so a bad paste shows inline (and keeps the text)
-      // rather than closing the modal and firing an alert.
-      try { parseConfigText(t); } catch (e) {
-        err.textContent = (e instanceof Error ? e.message : String(e)).slice(0, 240);
-        return;
-      }
-      close(t);
-    };
-  });
-}
-
 async function openExistingFromDisk(): Promise<boolean> {
   try {
     if (!(await guardUnsaved("opening another model"))) return false;
-    // iOS Safari can't reliably select a custom `.wadi` in its document picker, so
-    // there we open a paste box first (with a "try the file picker" escape hatch
-    // for files iOS does recognise, like .json).
-    if (isIOSDevice() && !isTauri()) {
-      const pasted = await pasteConfigModal();
-      if (pasted === null) return false;
-      if (pasted !== PICK_FILE_SENTINEL) {
-        const res = parseConfigText(pasted);
-        useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
-        markHomeChosen();
-        return true;
-      }
-      // fall through to the native/browser file picker
-    }
     const res = await pickAndLoadConfig();
     useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
     markHomeChosen();
@@ -3941,6 +3876,69 @@ async function openExistingFromDisk(): Promise<boolean> {
     if (msg !== "Cancelled") alert(`Load failed: ${msg}`);
     return false;
   }
+}
+
+// Load a house from a File the user DROPPED on the app. This is the reliable path
+// on iPadOS, where Safari's document picker greys out a custom `.wadi` (no UTI it
+// can match) — a file dragged from the Files app arrives via dataTransfer.files
+// with no such filtering, so any extension works. Also works in desktop browsers.
+async function loadDroppedFile(file: File): Promise<void> {
+  try {
+    if (!(await guardUnsaved("opening another model"))) return;
+    const text = await file.text();
+    const res = parseConfigText(text, file.name || "dropped.wadi");
+    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
+    markHomeChosen();
+  } catch (e) {
+    alert(`Couldn\u2019t load "${file.name}": ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+// Whole-window drag-and-drop to load a .wadi. Shows a drop overlay while a file is
+// dragged over the page and loads the first file dropped. Works in desktop
+// browsers and iPadOS (a file dragged from the Files app arrives here regardless
+// of extension, unlike the picker).
+function wireFileDrop(): void {
+  if (typeof window === "undefined") return;
+  const hasFiles = (e: DragEvent): boolean =>
+    !!e.dataTransfer && Array.from(e.dataTransfer.types || []).includes("Files");
+
+  let overlay: HTMLElement | null = null;
+  const show = (): void => {
+    if (overlay) return;
+    overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;z-index:100000;background:rgba(37,99,235,.12);" +
+      "display:flex;align-items:center;justify-content:center;pointer-events:none;";
+    overlay.innerHTML =
+      '<div style="background:#fff;color:#1e3a8a;border:3px dashed #2563eb;border-radius:16px;' +
+      'padding:28px 40px;font:600 18px system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.25);">' +
+      '\u2b07\ufe0e Drop your .wadi file to open it</div>';
+    document.body.appendChild(overlay);
+  };
+  const hide = (): void => { overlay?.remove(); overlay = null; };
+
+  let depth = 0;
+  window.addEventListener("dragenter", (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth += 1;
+    show();
+  });
+  window.addEventListener("dragover", (e) => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener("dragleave", (e) => {
+    if (!hasFiles(e)) return;
+    depth -= 1;
+    if (depth <= 0) { depth = 0; hide(); }
+  });
+  window.addEventListener("drop", (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth = 0;
+    hide();
+    const file = e.dataTransfer?.files?.[0];
+    if (file) void loadDroppedFile(file);
+  });
 }
 
 // Owner welcome/empty state: `body[data-home-chosen]` gates the #owner-welcome
