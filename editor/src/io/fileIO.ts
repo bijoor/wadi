@@ -84,10 +84,12 @@ function pickJsonFile(): Promise<File> {
   return new Promise((resolve, reject) => {
     const input = document.createElement("input");
     input.type = "file";
-    // On iOS drop the filter entirely so the `.wadi` file is selectable; the
-    // content is JSON-parsed + schema-validated on load, so an unfiltered pick is
-    // safe. Elsewhere (desktop browsers match by extension) keep the convenience.
-    input.accept = isIOS() ? "" : "application/json,.json,.wadi";
+    // On iOS use "*/*" (maps to the root "any item" type) so the `.wadi` file is
+    // selectable — an empty accept makes WebKit fall back to a media picker that
+    // still greys out unknown types, and a `.json`-based filter can't match the
+    // UTI-less `.wadi`. The content is JSON-parsed + schema-validated on load, so
+    // an unfiltered pick is safe. Desktop browsers keep the by-extension filter.
+    input.accept = isIOS() ? "*/*" : "application/json,.json,.wadi";
     input.addEventListener("change", () => {
       const file = input.files?.[0];
       if (!file) {
