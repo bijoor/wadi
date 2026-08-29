@@ -62,6 +62,7 @@ import {
   serializeConfig,
   toShareName,
 } from "../io/fileIO";
+import { wdlToConfig, configToWdl } from "../io/wdl";
 import {
   encodeConfigToHash,
   decodeConfigFromHash,
@@ -1030,6 +1031,15 @@ export interface WadiApi {
   redo: () => { ok: true };
   /** Render the current 3D model to a data URL so an agent can see the result. */
   captureView: (size?: number) => string | null;
+  /** Compile .wdl source through the real pipeline and load it into the live
+   *  model. Returns compile/schema errors (model unchanged on error), else the
+   *  C1-C12 structural check. The full DSL — every object type, variables,
+   *  formulas, components — is the agent's authoring surface. */
+  setWdl: (wdl: string) => Promise<unknown>;
+  /** The current live model decompiled to editable .wdl text. */
+  getWdl: () => Promise<string>;
+  /** Compile-check .wdl WITHOUT loading it (dry run) — returns errors or ok. */
+  checkWdl: (wdl: string) => Promise<unknown>;
 }
 
 // WebMCP tool descriptor — document.modelContext.registerTool (W3C WebMCP,
@@ -2957,6 +2967,25 @@ function wireWadiApi(): void {
     undo() { useConfigStore.temporal.getState().undo(); return { ok: true as const }; },
     redo() { useConfigStore.temporal.getState().redo(); return { ok: true as const }; },
     captureView(size?: number) { return window.wadiCapture3D?.(Number(size) || 1000) ?? null; },
+
+    async setWdl(wdl: string) {
+      const res = await wdlToConfig(String(wdl ?? ""));
+      if (!res.ok || !res.config) return { ok: false as const, errors: res.errors };
+      store().loadConfig(res.config, "wadi.setWdl");
+      document.body.dataset.homeChosen = "yes";
+      return { loaded: true as const, ...checkBrief(store().config) };
+    },
+    async getWdl() {
+      const cfg = store().config;
+      if (!cfg) return "";
+      return configToWdl(cfg as unknown as ValidatedHouseConfig);
+    },
+    async checkWdl(wdl: string) {
+      const res = await wdlToConfig(String(wdl ?? ""));
+      return res.ok
+        ? { ok: true as const, message: "Compiles and validates. Load it with wadi_set_wdl to render it and get the structural (C1-C12) check." }
+        : { ok: false as const, errors: res.errors };
+    },
   };
 }
 
@@ -2998,6 +3027,37 @@ function wireLayerStatus(): void {
 // (localhost/dev) or add a production origin-trial token to viewer.html.
 const WEBMCP_ROOF: Record<string, number> = { flat: 0, shed: 1, gable: 2, hip: 3 };
 
+const WDL_PRIMER = [
+  "Wadi .wdl DSL — the full authoring language for a house. A minimal valid house:",
+  "",
+  "house House {",
+  "  convention center               // room x/y/size are wall CENTRELINES, so abutting rooms share a wall (alternative: outer)",
+  "  site { plot (400, 300) }        // plot W, L in project units (10 units = 1 ft by default); values may be variables/formulas",
+  "  defaults { floor_height 100 wall_height 92 slab_thickness 8 wall_thickness 8 }",
+  "",
+  "  floor 1 \"Ground Floor\" {",
+  "    slab_thickness 0              // a floor of only rooms/walls needs slab 0 (or add a `slab`), else the walls float above the base",
+  "    room Living at (0, 0) size (160, 140) material \"living\" {",
+  "      wall north south west                       // several sides on one line",
+  "      wall east { door D1 at 55 size (30, 84) }   // a door NEEDS a name; `at` = offset along the wall, size = (width, height)",
+  "    }",
+  "    room Kitchen at (160, 0) size (120, 140) {",
+  "      wall north south east                       // west omitted -> open to Living's doored wall (a passage)",
+  "    }",
+  "  }",
+  "}",
+  "",
+  "KEY RULES:",
+  "- Names are BARE identifiers (room Living, door D1) — NOT quoted. \"strings\" are only for titles/materials.",
+  "- Object types inside a floor: room, wall, pillar, beam, slab, roof, staircase, kitchen_platform, item (furniture GLB), component (reusable).",
+  "- Openings live inside `wall SIDE { ... }`: `door NAME at OFFSET size (w,h) [open]`, `window NAME at OFFSET size (w,h) [sill N]`. `open` = open passage.",
+  "- Two rooms are connected when they abut and the shared wall has a door on one room (and is omitted on the other), OR is omitted on both (open passage).",
+  "- Coordinates: origin top-left, X right, Y DOWN. Positions/sizes are project units (10 = 1 ft by default).",
+  "- Parametric: declare variables and use them / write formulas (e.g. main.x4 - main.x1) in any numeric slot; reusable components and the unified `roof` object are supported.",
+  "",
+  "For complete, correct examples (roofs, variables, grids, components), call wadi_choose_home then wadi_get_wdl to read a full house's WDL, edit it, and apply with wadi_set_wdl. wadi_set_wdl returns compile errors + the C1-C12 structural check so you can iterate.",
+].join("\n");
+
 function buildWadiMcpTools(): WebMcpTool[] {
   const api = () => {
     const w = window.wadi;
@@ -3010,6 +3070,47 @@ function buildWadiMcpTools(): WebMcpTool[] {
   const noInput: Record<string, unknown> = { type: "object", properties: {} };
 
   return [
+    // ---- WDL: the full authoring surface. An agent authors Wadi's .wdl DSL —
+    // every object type, variables, formulas, components, roofs — compiled through
+    // the real pipeline and rendered live. This is the powerful path; the narrower
+    // tools below remain for simple owner-facing tweaks. ----
+    {
+      name: "wadi_wdl_reference",
+      description:
+        "Get a primer on Wadi's .wdl DSL (the full authoring language) before writing WDL. Returns the core syntax. For complete, correct examples, load any home with wadi_choose_home then call wadi_get_wdl to see real WDL for a full house.",
+      annotations: { readOnlyHint: true },
+      inputSchema: noInput,
+      execute() { return text(WDL_PRIMER); },
+    },
+    {
+      name: "wadi_get_wdl",
+      description:
+        "Return the CURRENT live house as .wdl source — the full, editable design. Read this first when modifying an existing house: change the WDL text, then apply it with wadi_set_wdl.",
+      annotations: { readOnlyHint: true },
+      async execute() { return text(await api().getWdl()); },
+    },
+    {
+      name: "wadi_set_wdl",
+      description:
+        "Author the house by compiling .wdl source through Wadi's real pipeline and loading it into the live 3D model. This is the full-power tool: every object type, variables, formulas, components and roofs are available. On a compile or schema error the model is left unchanged and the errors are returned to fix. On success it returns the C1-C12 structural check (errors + warnings). Typical loop: wadi_get_wdl -> edit the text -> wadi_set_wdl -> read warnings -> repeat. Call wadi_wdl_reference first if unsure of the syntax.",
+      inputSchema: {
+        type: "object",
+        properties: { wdl: { type: "string", description: "the complete .wdl document" } },
+        required: ["wdl"],
+      },
+      async execute(input) { return text(await api().setWdl(String(input?.wdl ?? ""))); },
+    },
+    {
+      name: "wadi_check_wdl",
+      description:
+        "Compile-check .wdl WITHOUT loading it (dry run). Returns compile/schema errors, or ok. Use to validate a draft before wadi_set_wdl.",
+      inputSchema: {
+        type: "object",
+        properties: { wdl: { type: "string", description: "the .wdl document to check" } },
+        required: ["wdl"],
+      },
+      async execute(input) { return text(await api().checkWdl(String(input?.wdl ?? ""))); },
+    },
     {
       name: "wadi_list_homes",
       description:

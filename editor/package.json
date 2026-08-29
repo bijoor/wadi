@@ -35,6 +35,7 @@
     "clsx": "^2.1.1",
     "fflate": "^0.8.3",
     "jspdf": "^4.2.1",
+    "langium": "^4.3.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.81.0",

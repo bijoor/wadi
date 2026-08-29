@@ -85,6 +85,15 @@ function serveBuiltSite(): Plugin {
 export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss(), serveBuiltSite()],
+  resolve: {
+    alias: {
+      // The WDL compiler/decompiler (sibling wadi-dsl package), reached only via
+      // dynamic import() so Langium lands in a lazy chunk. Typed by
+      // src/types/wadi-wdl.d.ts; here the bare names resolve to the real source.
+      'wadi-wdl-compiler': path.resolve(__dirname, '..', 'wadi-dsl', 'src', 'generator', 'toHouseConfig.ts'),
+      'wadi-wdl-emitter': path.resolve(__dirname, '..', 'wadi-dsl', 'src', 'generator', 'fromHouseConfig.ts'),
+    },
+  },
   server: {
     fs: {
       allow: [path.resolve(__dirname), path.resolve(__dirname, '..')],
