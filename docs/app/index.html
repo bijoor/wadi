@@ -7,11 +7,13 @@
     <!-- WebMCP: the viewer registers its controls as agent-callable tools via
          document.modelContext (see wireWebMcpTools in src/viewer/main.ts), so a
          WebMCP browser agent (Gemini in Chrome, Claude, …) can drive the model.
-         To DEMO on localhost, enable chrome://flags/#enable-webmcp-testing (no
-         token). For PRODUCTION on wadi.house, register the origin for the WebMCP
-         origin trial at https://developer.chrome.com/origintrials and paste the
-         token below (uncomment):
-    <meta http-equiv="origin-trial" content="YOUR_WEBMCP_ORIGIN_TRIAL_TOKEN"> -->
+         The origin-trial token below enrolls https://wadi.house in the WebMCP
+         trial (Chrome 149-156, expires 2026-11-17), so `document.modelContext`
+         is exposed to every visitor with NO chrome://flags step. On localhost,
+         enable chrome://flags/#enable-webmcp-testing instead (the token is
+         origin-bound to wadi.house and is inert elsewhere). Re-register at
+         https://developer.chrome.com/origintrials before it expires. -->
+    <meta http-equiv="origin-trial" content="AlE8c1z5+t5hWin6/YnAghSle93BMl1bz6aRXu58yGvstjPqrMyDiq5kGrVP+1Bcvsew7Gxzj3L/cK7LhN7QVQAAAABKeyJvcmlnaW4iOiJodHRwczovL3dhZGkuaG91c2U6NDQzIiwiZmVhdHVyZSI6IldlYk1DUCIsImV4cGlyeSI6MTc5NDg3MzYwMH0=">
 
     <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
     <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
