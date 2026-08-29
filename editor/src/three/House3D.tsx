@@ -469,19 +469,19 @@ export function House3D({ config }: { config: HouseConfig }) {
     <>
       {displayLayers.map((l) => {
         const kids = byLayer[l.id];
-        // Openings (door/window fills) leak: when a room PERSISTS but its
-        // openings change or are removed, R3F doesn't dispose the old
-        // OpeningPane meshes on the in-place child swap (removing the room
-        // entirely does clear them — so it's specific to a surviving parent
-        // group). Wrap the openings content in an inner group re-KEYED by its
-        // child set, so any change remounts it and the stale panes are
-        // disposed. Scoped to openings sub-layers: the CSG-heavy wall/structure
-        // layers keep their per-object useMemo caches (no needless recompute).
-        const content = l.id.endsWith("_openings") ? (
-          <group key={childSig(kids)}>{kids}</group>
-        ) : (
-          kids
-        );
+        // Stale-mesh leak: R3F can leave old meshes parented in a SURVIVING
+        // group when its keyed children are swapped (a room resized/moved, a
+        // door added/removed). The stale meshes linger — door/window panes
+        // stranded on the ground where a wall used to be, and old wall segments
+        // that overlap the live ones so a wall reads as "one-faced"/z-fighting.
+        // This showed up when the WebMCP tools drive incremental edits. Wrapping
+        // each layer's child set in an inner group re-KEYED by its signature
+        // forces a clean unmount+remount whenever the set changes, so the stale
+        // meshes are disposed. Applied to EVERY layer (was openings-only): the
+        // wall/structure layers leak the same way. A layer only remounts when
+        // ITS children actually change (childSig), so an edit on one floor
+        // doesn't churn the roof or other floors.
+        const content = <group key={childSig(kids)}>{kids}</group>;
         return (
           <group key={l.id} visible={visible[l.id] !== false}>
             {content}
