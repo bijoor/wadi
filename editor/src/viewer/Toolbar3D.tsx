@@ -370,13 +370,14 @@ function ShotManager({
     <div className="shot-mgr-backdrop" onClick={onClose}>
       <div className="shot-mgr-card" onClick={(e) => e.stopPropagation()}>
         <div className="shot-mgr-head">
-          <h3>Template previews</h3>
+          <h3>Model previews</h3>
           <button className="shot-mgr-ibtn" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <p className="shot-mgr-sub">
-          These images show in the owner gallery. The first is the cover. Use 📸 Shot
-          to add the current 3D view, ✨ Auto for a fresh set of angles + the plan,
-          or 📸 on the Layout tab to add a 2D sheet. Reorder, set the cover, or delete below.
+          Previews for this model — they show on its gallery card and travel inside
+          the <code>.wadi</code> bundle. The first is the cover. Use 📸 Shot to add the
+          current 3D view, ✨ Auto for a fresh set of angles + the plan, or 📸 on the
+          Layout tab to add a 2D sheet. Reorder, set the cover, or delete below.
         </p>
         <div className="shot-mgr-grid">
           {thumbs.length === 0 && (

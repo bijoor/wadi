@@ -56,9 +56,6 @@ import {
   loadConfigFromPath,
   parseConfigBytes,
   saveConfig,
-  saveAsWadi,
-  saveToLibrary,
-  libraryDir,
   saveText,
   saveBinary,
 } from "../io/fileIO";
@@ -1919,12 +1916,9 @@ function wireAppsMenu(): void {
 
 function wireHeaderButtons(): void {
   const btnNew = document.getElementById("btn-new");
-  const btnEdit = document.getElementById("btn-edit-toggle");
   const btnLoad = document.getElementById("btn-load");
   const btnSave = document.getElementById("btn-save");
   const btnSaveAs = document.getElementById("btn-save-as");
-  const btnExportWadi = document.getElementById("btn-export-wadi");
-  const btnSaveLibrary = document.getElementById("btn-save-library");
   const btnUndo = document.getElementById("btn-undo");
   const btnRedo = document.getElementById("btn-redo");
   const fileInput = document.getElementById("file-input-json") as HTMLInputElement | null;
@@ -1937,56 +1931,6 @@ function wireHeaderButtons(): void {
   // (Share-as-URL retired — a design is shared by handing over its `.wadi` bundle
   // file: Save/Export the file and send it, or save into a shared library folder.)
 
-  // Export the current house as a .wadi file (native document that opens
-  // in the desktop app). Payload is plain house_config JSON.
-  btnExportWadi?.addEventListener("click", async () => {
-    const cfg = useConfigStore.getState().config;
-    if (!cfg) return;
-    try {
-      const saved = await saveAsWadi(cfg, useConfigStore.getState().wdl);
-      if (saved) flashSaved(btnExportWadi, "✓ Saved .wadi");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg !== "Cancelled") alert(`Export failed: ${msg}`);
-    }
-  });
-
-  // Save the model as a bundle INTO the library folder, so it shows up in the
-  // gallery with no separate publish step (the folder IS the catalog). On desktop
-  // with a local library folder it writes straight in; otherwise it falls back to
-  // Save As / a browser download (the user drops it into their Drive/R2 folder).
-  // The button only makes sense as a one-tap save when a local folder is set; it
-  // relabels to reflect that.
-  const refreshLibraryBtn = () => {
-    if (!btnSaveLibrary) return;
-    const hasLocal = !!libraryDir();
-    btnSaveLibrary.title = hasLocal
-      ? "Save into your library folder — it shows up in your gallery"
-      : "Save a .wadi to add to your library (set a local library folder to save in place)";
-  };
-  refreshLibraryBtn();
-  btnSaveLibrary?.addEventListener("click", async () => {
-    const state = useConfigStore.getState();
-    const cfg = state.config;
-    if (!cfg) return;
-    try {
-      const saved = await saveToLibrary(cfg, state.wdl, state.filename ?? undefined);
-      if (saved) {
-        // Written into the library folder (desktop): adopt the path + refresh the
-        // gallery so the new entry appears next time it opens.
-        if (libraryDir()) state.setFilePath(saved);
-        state.markSaved();
-      }
-      flashSaved(btnSaveLibrary, libraryDir() ? "✓ In your library" : "✓ Saved");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg !== "Cancelled") alert(`Save to library failed: ${msg}`);
-    }
-  });
-
-  // Edit toggle RETIRED: form-studio editing is gone (WDL is the only edit
-  // surface), so there is no edit mode to toggle — hide the button entirely.
-  if (btnEdit) btnEdit.style.display = "none";
 
   btnNew?.addEventListener("click", () => {
     void openNewHouseModal();
@@ -3969,7 +3913,9 @@ function wireWdlEditor(): void {
   const embedded = new URLSearchParams(window.location.search).get("panels") === "off";
   let storedWdl: string | null = null;
   try { storedWdl = localStorage.getItem(WDL_PANEL_KEY); } catch { /* ignore */ }
-  document.body.dataset.wdl = embedded ? "off" : storedWdl === "off" ? "off" : "on";
+  // Default CLOSED (the configurator is the everyday surface; open the WDL editor
+  // via its edge chevron). A stored "on" preference reopens it; embed hides it.
+  document.body.dataset.wdl = embedded ? "off" : storedWdl === "on" ? "on" : "off";
   let storedMax: string | null = null;
   try { storedMax = localStorage.getItem(WDL_MAX_KEY); } catch { /* ignore */ }
   if (storedMax === "on" && !embedded) document.body.dataset.wdlMax = "on";

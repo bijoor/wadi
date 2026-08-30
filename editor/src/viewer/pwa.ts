@@ -165,10 +165,11 @@ export function registerServiceWorker(): void {
   });
 }
 
-// A floating "Install app" pill, shown only in a web browser that can install
-// (and isn't already installed). On Chromium/Android it fires the native
-// install prompt; on iOS Safari (no beforeinstallprompt) it explains the
-// Share → Add to Home Screen gesture. Hidden entirely in the Tauri app.
+// The header "⬇ Install app" button (#btn-install), shown only in a web browser
+// that can install (and isn't already installed). On Chromium/Android it fires
+// the native install prompt; on iOS Safari (no beforeinstallprompt) it explains
+// the Share → Add to Home Screen gesture. Stays hidden in the Tauri app and once
+// installed. Lives in the header buttons row so it never overlaps the viewer UI.
 export function setupInstallPrompt(): void {
   if (!isSecureBrowser() || isStandalone()) return;
 
@@ -177,85 +178,38 @@ export function setupInstallPrompt(): void {
     /iphone|ipad|ipod/i.test(navigator.userAgent) &&
     !/crios|fxios/i.test(navigator.userAgent); // only Safari can Add to Home Screen
 
-  const pill = document.createElement("button");
-  pill.id = "wadi-install";
-  pill.type = "button";
-  pill.textContent = "⬇ Install app";
-  Object.assign(pill.style, {
-    position: "fixed",
-    right: "16px",
-    bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-    zIndex: "2000",
-    display: "none",
-    alignItems: "center",
-    gap: "6px",
-    padding: "10px 16px",
-    borderRadius: "999px",
-    border: "none",
-    background: "#B85028",
-    color: "#fff",
-    font: "600 0.9rem system-ui, -apple-system, sans-serif",
-    boxShadow: "0 4px 16px rgba(30,20,10,0.28)",
-    cursor: "pointer",
-  } as CSSStyleDeclaration);
+  const wire = (): void => {
+    const btn = document.getElementById("btn-install") as HTMLButtonElement | null;
+    if (!btn) return;
+    const show = () => { btn.style.display = ""; };
+    const hide = () => { btn.style.display = "none"; };
 
-  const hint = document.createElement("div");
-  Object.assign(hint.style, {
-    position: "fixed",
-    right: "16px",
-    bottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
-    zIndex: "2000",
-    display: "none",
-    maxWidth: "260px",
-    padding: "10px 14px",
-    borderRadius: "12px",
-    background: "#fff",
-    color: "#23201c",
-    font: "500 0.82rem/1.4 system-ui, -apple-system, sans-serif",
-    boxShadow: "0 6px 24px rgba(30,20,10,0.22)",
-    border: "1px solid #e7ded1",
-  } as CSSStyleDeclaration);
-  hint.textContent = "Tap the Share button, then “Add to Home Screen”.";
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault(); // keep our own button in control
+      deferred = e as typeof deferred;
+      show();
+    });
+    window.addEventListener("appinstalled", hide);
 
-  const show = () => {
-    pill.style.display = "inline-flex";
-  };
-  const remove = () => {
-    pill.remove();
-    hint.remove();
-  };
-
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault(); // keep our own button in control
-    deferred = e as typeof deferred;
-    show();
-  });
-
-  window.addEventListener("appinstalled", remove);
-
-  pill.addEventListener("click", async () => {
-    if (deferred) {
-      await deferred.prompt();
-      try {
-        const choice = await deferred.userChoice;
-        if (choice.outcome === "accepted") remove();
-      } catch {
-        /* ignore */
+    btn.addEventListener("click", async () => {
+      if (deferred) {
+        await deferred.prompt();
+        try {
+          const choice = await deferred.userChoice;
+          if (choice.outcome === "accepted") hide();
+        } catch {
+          /* ignore */
+        }
+        deferred = null;
+      } else if (isIOS) {
+        alert("To install Wadi: tap the Share button, then “Add to Home Screen”.");
       }
-      deferred = null;
-    } else if (isIOS) {
-      // Toggle the Share→Add-to-Home-Screen hint.
-      hint.style.display = hint.style.display === "none" ? "block" : "none";
-    }
-  });
+    });
 
-  const attach = () => {
-    document.body.appendChild(hint);
-    document.body.appendChild(pill);
-    // iOS never fires beforeinstallprompt — show the pill so the user can learn
-    // the gesture. Others wait for the event before revealing it.
+    // iOS never fires beforeinstallprompt — reveal the button so the user can
+    // learn the gesture. Others wait for the event before revealing it.
     if (isIOS) show();
   };
-  if (document.body) attach();
-  else window.addEventListener("DOMContentLoaded", attach);
+  if (document.body) wire();
+  else window.addEventListener("DOMContentLoaded", wire);
 }

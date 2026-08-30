@@ -94,19 +94,9 @@
         body > header {
             position: relative;
         }
-        /* Edit-mode indicator: the button lights up in laterite when
-           edit mode is on, sits neutral when off. Driven by
-           body[data-edit-mode="on"|"off"] which main.ts toggles. */
-        body[data-edit-mode="on"] #btn-edit-toggle {
-            background: #B85028;
-            color: #fff;
-            border-color: #B85028;
-        }
-        body[data-edit-mode="on"] #btn-edit-toggle:hover:not(:disabled) {
-            background: #a04620;
-        }
-        /* (Personas retired: one mode. The form-studio panels are deleted, the
-           edit-toggle is hidden in JS, and screenshot capture is always visible.) */
+        /* (Personas + the form-studio edit toggle are retired: one mode, with the
+           configurator + WDL editor as the two edit surfaces. Capture is always
+           visible.) */
         /* Retire the old 📚 layer popup and 🎥 camera popup — the toolbar's
            "Show/hide layers" and "Change view" dropdowns replace them. (The
            interior walk-through panel stays MOUNTED but hidden so its joystick
@@ -2216,13 +2206,11 @@
                             title="Show geometry issues" aria-label="Geometry issues">✓ OK</button>
                     <button id="btn-undo" class="hdr-btn" title="Undo (⌘Z)" aria-label="Undo">↶</button>
                     <button id="btn-redo" class="hdr-btn" title="Redo (⇧⌘Z)" aria-label="Redo">↷</button>
-                    <button id="btn-load" class="hdr-btn hdr-btn-text" title="Open a Wadi house — .wadi (⌘O)">📂 Load</button>
-                    <button id="btn-save" class="hdr-btn hdr-btn-text" title="Save — write in place (⌘S)">💾 Save</button>
-                    <button id="btn-save-as" class="hdr-btn hdr-btn-text" title="Save to a new .wadi file (⇧⌘S)">📝 Save As</button>
-                    <button id="btn-export-wadi" class="hdr-btn hdr-btn-text" title="Save as a .wadi file (double-clicks open in the desktop app)">📦 .wadi</button>
-                    <button id="btn-save-library" class="hdr-btn hdr-btn-text" title="Save into your library folder — it shows up in your gallery">📚 To library</button>
-                    <button id="btn-new" class="hdr-btn hdr-btn-text" title="Start a new house from a template (⌘N)">✨ New</button>
-                    <button id="btn-edit-toggle" class="hdr-btn hdr-btn-text" title="Toggle edit panels">✏️ Edit</button>
+                    <button id="btn-new" class="hdr-btn hdr-btn-text" title="Start a new model from the gallery (⌘N)">✨ New</button>
+                    <button id="btn-load" class="hdr-btn hdr-btn-text" title="Open a model — .wadi (⌘O)">📂 Load</button>
+                    <button id="btn-save" class="hdr-btn hdr-btn-text" title="Save — write the current .wadi in place (⌘S)">💾 Save</button>
+                    <button id="btn-save-as" class="hdr-btn hdr-btn-text" title="Save a copy to a new .wadi (⇧⌘S)">📝 Save As</button>
+                    <button id="btn-install" class="hdr-btn hdr-btn-text" title="Install Wadi as an app" style="display:none">⬇ Install app</button>
                 </div>
                 <input id="file-input-json" type="file" accept="application/json,.json" hidden />
             </div>
