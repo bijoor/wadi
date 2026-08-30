@@ -210,12 +210,36 @@ async function parseLegacyJson(
       }):\n${details}${(result.errors?.length ?? 0) > errList.length ? "\n  …" : ""}`,
     );
   }
-  // A legacy JSON `.wadi` embeds its thumbnails inside the config; it has no
-  // separate thumbnail files. Clear the carried set — the store decompiles the
-  // config to WDL, and the next save writes a fresh bundle.
+  // A legacy JSON `.wadi` embeds its thumbnails as base64 in `config.thumbnails`
+  // (the OLD R2 templates). Those never reach the WDL, so editing the WDL used to
+  // drop the previews. MIGRATE them on load: decode each into a bundle file and
+  // record its PATH in `config.template.thumbnails` — the field the decompiler
+  // emits — so the previews carry into the WDL and survive editing, and the next
+  // save writes a proper bundle.
   bundleThumbnails = {};
   thumbUrlCache.clear();
+  migrateLegacyThumbnails(result.data as Record<string, unknown>);
   return { config: result.data, filename, filePath };
+}
+
+// Move a legacy config's inline `thumbnails`/`thumbnail` (base64 data URLs) into
+// bundle files + `template.thumbnails` PATHS. No-op if the config already has
+// template paths, or has no legacy thumbnails. Mutates the config in place.
+function migrateLegacyThumbnails(cfg: Record<string, unknown>): void {
+  const template = (cfg.template as { thumbnails?: unknown } | undefined) ?? undefined;
+  if (Array.isArray(template?.thumbnails) && template.thumbnails.length) return; // already migrated
+
+  const legacy: string[] = Array.isArray(cfg.thumbnails)
+    ? (cfg.thumbnails as unknown[]).filter((s): s is string => typeof s === "string")
+    : typeof cfg.thumbnail === "string"
+      ? [cfg.thumbnail]
+      : [];
+  if (!legacy.length) return;
+
+  const paths = legacy.map((u) => (u.startsWith("data:") ? addBundleThumbnail(u) : u));
+  cfg.template = { ...(template ?? {}), thumbnails: paths };
+  delete cfg.thumbnails;
+  delete cfg.thumbnail;
 }
 
 // Extra manifest fields a save can embed so the CATALOG can index a bundle by

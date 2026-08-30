@@ -124,6 +124,29 @@ describe("wadi bundle", () => {
     expect(await readBundleCoverUrls(jsonBytes)).toEqual([]);
   });
 
+  it("migrates a legacy JSON's inline thumbnails into template.thumbnails + files", async () => {
+    setBundleThumbnails({});
+    // A legacy config: base64 in top-level `thumbnails`, no template paths.
+    const legacy = await parseWadiBytes(jsonBytes, "coastal.wadi");
+    const cfg = {
+      ...legacy.config,
+      thumbnails: ["data:image/png;base64,AAECAwQF", "data:image/jpeg;base64,/9j/AAA="],
+    };
+    const bytes = new TextEncoder().encode(JSON.stringify(cfg));
+
+    const loaded = await parseWadiBytes(bytes, "old-template.wadi");
+    const tpl = (loaded.config as { template?: { thumbnails?: string[] } }).template;
+    // Base64 thumbnails moved to template PATHS, and the inline array is gone.
+    expect(tpl?.thumbnails?.length).toBe(2);
+    expect(tpl?.thumbnails?.every((p) => p.startsWith("thumbnails/"))).toBe(true);
+    expect((loaded.config as { thumbnails?: unknown }).thumbnails).toBeUndefined();
+    // The decoded files are in the bundle, so a save carries them.
+    for (const p of tpl!.thumbnails!) expect(Object.keys(currentBundleThumbnails())).toContain(p);
+    // And they now round-trip through the WDL (the whole point).
+    const wdl = emitWdl(loaded.config as unknown as Record<string, unknown>);
+    expect(wdl).toMatch(/thumbnails "thumbnails\/shot-\d+\.\w+"/);
+  });
+
   it("rejects a bundle with no model.wdl", async () => {
     // A zip that has only a manifest, no model.wdl.
     const { zipSync, strToU8 } = await import("fflate");
