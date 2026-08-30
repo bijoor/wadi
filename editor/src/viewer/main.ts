@@ -75,6 +75,7 @@ import {
 } from "../io/templateSource";
 import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
 import { writeValue } from "../configurator/spec";
+import { mountConfiguratorPanel } from "./configuratorPanel";
 import { listRooms, useInteriorStore } from "../three/interiorView";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -425,6 +426,12 @@ async function bootViewer(): Promise<void> {
   if (lightingContainer) mountViewerLightingPanel(lightingContainer);
   const interiorContainer = document.getElementById("viewer-interior-panel");
   if (interiorContainer) mountViewerInteriorPanel(interiorContainer);
+
+  // Configurator: the LEFT panel — a model's declared `configurator` inputs as
+  // friendly sliders/selects, the simple no-WDL edit surface (the WDL editor is
+  // the RIGHT panel). Shown whenever the loaded model declares inputs. Drives the
+  // same writeValue path window.wadi.setKnob / a WebMCP agent uses.
+  mountConfiguratorPanel();
 
   // Persona (Gharkul owner / Nakasha architect). Resolve + brand before mounting.
   applyPersona();
