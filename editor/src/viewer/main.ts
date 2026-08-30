@@ -3898,6 +3898,7 @@ function wireWdlEditor(): void {
     `<textarea id="wdl-editor" spellcheck="false" placeholder="house House { … }"></textarea>` +
     `<div class="wdl-foot">` +
     `<button class="wdl-apply" id="wdl-apply" disabled>Apply changes<span class="k">⌘↵</span></button>` +
+    `<button class="wdl-btn" id="wdl-save" title="Save the WDL source as a .wdl file">💾 Save .wdl</button>` +
     `<span class="wdl-status" id="wdl-status"></span></div>`;
   container.appendChild(aside);
 
@@ -3995,6 +3996,26 @@ function wireWdlEditor(): void {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); if (isDirty()) void apply(); }
   });
   applyBtn.onclick = () => { void apply(); };
+
+  // Save the WDL source itself as a standalone `.wdl` file (raw code, no
+  // thumbnails) — the in-viewer editor replaces the retired DSL playground, so it
+  // owns saving the source. Saves exactly what's in the editor (unapplied edits
+  // included). The whole model + previews still save as a `.wadi` bundle via the
+  // header Save.
+  const saveWdlBtn = document.getElementById("wdl-save") as HTMLButtonElement;
+  saveWdlBtn.onclick = async () => {
+    const base = (useConfigStore.getState().filename ?? "house")
+      .replace(/\s*\([^)]*\)\s*$/, "")
+      .replace(/\.(wadi|json|wdl)$/i, "")
+      .trim() || "house";
+    try {
+      const saved = await saveText(ta.value, `${base}.wdl`, "WDL source", ["wdl"], "text/plain");
+      setStatus("ok", saved ? `✓ Saved ${base}.wdl` : "✓ Downloaded .wdl");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") setStatus("err", `Save failed: ${msg}`);
+    }
+  };
 
   // Show/hide via the right-edge chevron (mirrors the left configurator toggle):
   // ❯ collapse when open, ❮ expand when closed. Persisted like the left panel.
