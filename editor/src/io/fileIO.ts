@@ -1,7 +1,8 @@
 import { validate, type HouseConfig } from "../schema/houseConfig";
 import { isTauri } from "@tauri-apps/api/core";
 import { open as tauriOpen, save as tauriSave } from "@tauri-apps/plugin-dialog";
-import { readTextFile, writeTextFile, writeFile } from "@tauri-apps/plugin-fs";
+import { readFile, writeTextFile, writeFile } from "@tauri-apps/plugin-fs";
+import { parseWadiBytes, buildWadiBundle, currentBundleThumbnails } from "./wadiBundle";
 
 // Load result — filePath is populated only when running inside Tauri,
 // so `saveConfig` can distinguish "Save" (write in place) from
@@ -10,12 +11,16 @@ export interface LoadResult {
   config: HouseConfig;
   filename: string;
   filePath: string | null;
+  // The `.wdl` source, when the loaded `.wadi` was a bundle (its model.wdl).
+  // Undefined for a legacy JSON `.wadi` (the store decompiles instead) — kept
+  // verbatim so hand-authored WDL and comments round-trip.
+  wdl?: string;
 }
 
 export async function pickAndLoadConfig(): Promise<LoadResult> {
   if (isTauri()) {
     const selected = await tauriOpen({
-      title: "Open house config",
+      title: "Open house",
       multiple: false,
       directory: false,
       filters: [{ name: "Wadi house", extensions: ["wadi", "json"] }],
@@ -23,12 +28,12 @@ export async function pickAndLoadConfig(): Promise<LoadResult> {
     if (!selected || typeof selected !== "string") {
       throw new Error("Cancelled");
     }
-    const text = await readTextFile(selected);
-    return parseAndValidate(text, basename(selected), selected);
+    const bytes = await readFile(selected);
+    return parseWadiBytes(bytes, basename(selected), selected);
   }
   const file = await pickJsonFile();
-  const text = await file.text();
-  return parseAndValidate(text, file.name, null);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return parseWadiBytes(bytes, file.name, null);
 }
 
 // Load a config from a KNOWN absolute path (no picker) — used by the
@@ -36,22 +41,29 @@ export async function pickAndLoadConfig(): Promise<LoadResult> {
 // Tauri-only (reads through the fs plugin). Sets filePath so the live
 // watcher attaches to the opened file.
 export async function loadConfigFromPath(path: string): Promise<LoadResult> {
-  const text = await readTextFile(path);
-  return parseAndValidate(text, basename(path), path);
+  const bytes = await readFile(path);
+  return parseWadiBytes(bytes, basename(path), path);
 }
 
-// Parse + validate .wadi/.json TEXT into a LoadResult, no file picker involved.
-// Used by the paste-import fallback (iOS Safari can't reliably select a custom
-// `.wadi` in its document picker, so the user can paste the contents instead).
+// Parse a `.wadi` from raw BYTES (bundle or legacy JSON) — no file picker.
+// Used by the drag-and-drop loader, which reads the dropped File as an
+// ArrayBuffer so a zip bundle can be detected by its magic bytes.
+export function parseConfigBytes(
+  bytes: Uint8Array,
+  filename = "dropped.wadi",
+): Promise<LoadResult> {
+  return parseWadiBytes(bytes, filename, null);
+}
+
+// Parse a legacy JSON `.wadi` from TEXT into a LoadResult (no bundle handling).
+// Kept for the paste-import fallback (iOS Safari can't reliably select a custom
+// `.wadi` in its picker, so the user can paste the JSON contents) — a pasted zip
+// can't survive as text, so this path stays JSON-only.
 export function parseConfigText(text: string, filename = "pasted.wadi"): LoadResult {
-  return parseAndValidate(text, filename, null);
+  return parseWadiBytes_syncJson(text, filename);
 }
 
-function parseAndValidate(
-  text: string,
-  filename: string,
-  filePath: string | null,
-): LoadResult {
+function parseWadiBytes_syncJson(text: string, filename: string): LoadResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -72,7 +84,7 @@ function parseAndValidate(
       }`,
     );
   }
-  return { config: result.data, filename, filePath };
+  return { config: result.data, filename, filePath: null };
 }
 
 function pickJsonFile(): Promise<File> {
@@ -103,7 +115,18 @@ export function serializeConfig(config: HouseConfig): string {
   return JSON.stringify(clean, null, 2) + "\n";
 }
 
-// Save the config.
+// Build the `.wadi` bytes to write for a save. A `.wadi` is now a ZIP BUNDLE
+// (wadi.json + model.wdl + thumbnails/); the WDL source is the truth, so callers
+// pass the store's live `wdl`. If no WDL is available (an unexpected edge), we
+// fall back to legacy JSON bytes so a save can never silently lose the model —
+// the loader detects either form by magic bytes.
+async function wadiBytesFor(config: HouseConfig, wdl?: string): Promise<Uint8Array> {
+  const src = (wdl ?? "").trim();
+  if (src) return buildWadiBundle(src, currentBundleThumbnails());
+  return new TextEncoder().encode(serializeConfig(config));
+}
+
+// Save the house as a `.wadi` bundle.
 // - In Tauri with `filePath`: writes in place (Save). Returns the same path.
 // - In Tauri without `filePath`: shows native save dialog (Save As). Returns the chosen path.
 // - In the browser: triggers a Blob download using `defaultName`. Returns null.
@@ -111,40 +134,35 @@ export async function saveConfig(
   config: HouseConfig,
   filePath: string | null,
   defaultName = "house.wadi",
+  wdl?: string,
 ): Promise<string | null> {
-  const text = serializeConfig(config);
+  const bytes = await wadiBytesFor(config, wdl);
+  const name = toWadiName(defaultName);
   if (isTauri()) {
     let target = filePath;
     if (!target) {
       const chosen = await tauriSave({
         title: "Save house",
-        defaultPath: toWadiName(defaultName),
+        defaultPath: name,
         filters: [{ name: "Wadi house", extensions: ["wadi"] }],
       });
       if (!chosen) throw new Error("Cancelled");
       target = chosen;
     }
-    await writeTextFile(target, text);
+    await writeFile(target, bytes);
     return target;
   }
-  downloadBlob(text, toWadiName(defaultName));
+  downloadBytes(bytes, name);
   return null;
 }
 
-// Export the current house as a `.wadi` file — the shareable native
-// document that double-clicks open in the desktop app. The payload is
-// plain house_config JSON (same bytes as Save), so the app's existing
-// load/validate/watch path handles it unchanged; only the extension +
-// OS file association make it special. Tauri: native save dialog. Browser:
+// Export the current house as a `.wadi` bundle — the shareable native document
+// that double-clicks open in the desktop app. The bundle carries the WDL source
+// plus its thumbnail files, self-contained. Tauri: native save dialog. Browser:
 // Blob download. Returns the saved path (Tauri) or null (browser).
-export async function saveAsWadi(config: HouseConfig): Promise<string | null> {
-  return saveText(
-    serializeConfig(config),
-    "house.wadi",
-    "Wadi House",
-    ["wadi"],
-    "application/json",
-  );
+export async function saveAsWadi(config: HouseConfig, wdl?: string): Promise<string | null> {
+  const bytes = await wadiBytesFor(config, wdl);
+  return saveBinary(bytes, "house.wadi", "Wadi House", ["wadi"], "application/zip");
 }
 
 // Kept as an alias so any lingering call sites that only care about
@@ -155,6 +173,18 @@ export function downloadConfig(config: HouseConfig, filename = "house.wadi") {
 
 function downloadBlob(text: string, filename: string) {
   const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadBytes(bytes: Uint8Array, filename: string) {
+  const blob = new Blob([bytes as BlobPart], { type: "application/zip" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

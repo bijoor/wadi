@@ -1,0 +1,157 @@
+// The `.wadi` BUNDLE format.
+//
+// A `.wadi` file is now a ZIP archive — a small, self-contained project bundle:
+//
+//   my-house.wadi  (zip)
+//   ├── wadi.json          { "format": "wadi-bundle", "version": 2, "main": "model.wdl" }
+//   ├── model.wdl          the WDL source — the editable truth
+//   └── thumbnails/        preview images as REAL files (never base64 in the WDL)
+//       ├── cover.jpg
+//       └── …
+//
+// The WDL is the source of the model; loading a bundle compiles `model.wdl`
+// through the real pipeline. Thumbnails live as files referenced by PATH from the
+// WDL's `template { thumbnails "…" }` block, so the WDL stays small and diffable,
+// while the bundle is still one shareable file.
+//
+// BACKWARD COMPATIBILITY: older `.wadi` files are a plain JSON HouseConfig. The two
+// are told apart by MAGIC BYTES — a zip always starts with "PK\x03\x04", JSON with
+// "{" — so `parseWadiBytes` transparently loads either. Legacy JSON has its
+// thumbnails embedded in the config; the bundle has them as files.
+//
+// fflate (the zip codec) is loaded via dynamic import() so it lands in its own lazy
+// chunk and never weighs down the everyday viewer bundle — same treatment as the
+// Langium WDL compiler.
+
+import { validate, type HouseConfig } from "../schema/houseConfig";
+import { wdlToConfig } from "./wdl";
+
+export interface LoadedWadi {
+  config: HouseConfig;
+  /** The `.wdl` source. Present for a bundle (its model.wdl); undefined for a
+   *  legacy JSON `.wadi`, where the store decompiles the config to WDL. */
+  wdl?: string;
+  filename: string;
+  filePath: string | null;
+}
+
+const MANIFEST = "wadi.json";
+const MODEL = "model.wdl";
+const THUMB_DIR = "thumbnails/";
+const BUNDLE_VERSION = 2;
+
+// A zip local-file header always begins with "PK\x03\x04".
+const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
+export function isWadiBundle(bytes: Uint8Array): boolean {
+  return bytes.length >= 4 && ZIP_MAGIC.every((b, i) => bytes[i] === b);
+}
+
+// Thumbnail files from the most-recently-loaded bundle (path -> bytes), kept so a
+// load → edit → save round-trip preserves them. Newly captured shots (a later
+// step) will add to this same store. Cleared when a legacy JSON or a fresh model
+// is loaded (those carry no separate thumbnail files).
+let bundleThumbnails: Record<string, Uint8Array> = {};
+
+/** The thumbnail files (path -> bytes) that a save should re-bundle. */
+export function currentBundleThumbnails(): Record<string, Uint8Array> {
+  return bundleThumbnails;
+}
+/** Replace the carried thumbnail set (used by the capture flow / on New). */
+export function setBundleThumbnails(next: Record<string, Uint8Array>): void {
+  bundleThumbnails = next;
+}
+
+// Parse raw `.wadi` bytes (bundle OR legacy JSON) into a loadable config.
+export async function parseWadiBytes(
+  bytes: Uint8Array,
+  filename: string,
+  filePath: string | null = null,
+): Promise<LoadedWadi> {
+  if (isWadiBundle(bytes)) return parseBundle(bytes, filename, filePath);
+  return parseLegacyJson(bytes, filename, filePath);
+}
+
+async function parseBundle(
+  bytes: Uint8Array,
+  filename: string,
+  filePath: string | null,
+): Promise<LoadedWadi> {
+  const { unzipSync, strFromU8 } = await import("fflate");
+  let files: Record<string, Uint8Array>;
+  try {
+    files = unzipSync(bytes);
+  } catch (e) {
+    throw new Error(`Not a readable .wadi bundle: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  const wdlBytes = files[MODEL];
+  if (!wdlBytes) {
+    throw new Error(`This .wadi bundle has no ${MODEL}.`);
+  }
+  const wdl = strFromU8(wdlBytes);
+
+  const res = await wdlToConfig(wdl);
+  if (!res.ok || !res.config) {
+    const details = res.errors.slice(0, 5).map((e) => `  ${e}`).join("\n");
+    throw new Error(`The bundle's ${MODEL} failed to compile:\n${details}`);
+  }
+
+  // Keep the thumbnail files so a subsequent Save re-bundles them.
+  const thumbs: Record<string, Uint8Array> = {};
+  for (const [name, data] of Object.entries(files)) {
+    if (name.startsWith(THUMB_DIR) && !name.endsWith("/")) thumbs[name] = data;
+  }
+  bundleThumbnails = thumbs;
+
+  return { config: res.config, wdl, filename, filePath };
+}
+
+async function parseLegacyJson(
+  bytes: Uint8Array,
+  filename: string,
+  filePath: string | null,
+): Promise<LoadedWadi> {
+  const text = new TextDecoder().decode(bytes);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    throw new Error(
+      `Not a Wadi bundle, and not valid JSON: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  const result = validate(parsed);
+  if (!result.ok || !result.data) {
+    const errList = (result.errors ?? []).slice(0, 5);
+    const details = errList.map((e) => `  /${e.path}: ${e.message}`).join("\n");
+    throw new Error(
+      `Config failed schema validation (${result.errors?.length} error${
+        result.errors?.length === 1 ? "" : "s"
+      }):\n${details}${(result.errors?.length ?? 0) > errList.length ? "\n  …" : ""}`,
+    );
+  }
+  // A legacy JSON `.wadi` embeds its thumbnails inside the config; it has no
+  // separate thumbnail files. Clear the carried set — the store decompiles the
+  // config to WDL, and the next save writes a fresh bundle.
+  bundleThumbnails = {};
+  return { config: result.data, filename, filePath };
+}
+
+// Build a `.wadi` bundle (zip bytes) from the WDL source + thumbnail files.
+export async function buildWadiBundle(
+  wdl: string,
+  thumbnails: Record<string, Uint8Array> = bundleThumbnails,
+): Promise<Uint8Array> {
+  const { zipSync, strToU8 } = await import("fflate");
+  const manifest =
+    JSON.stringify({ format: "wadi-bundle", version: BUNDLE_VERSION, main: MODEL }, null, 2) + "\n";
+  const entries: Record<string, Uint8Array> = {
+    [MANIFEST]: strToU8(manifest),
+    [MODEL]: strToU8(wdl),
+  };
+  for (const [name, data] of Object.entries(thumbnails)) {
+    // Guard: only bundle real thumbnail files.
+    if (name.startsWith(THUMB_DIR) && !name.endsWith("/")) entries[name] = data;
+  }
+  return zipSync(entries, { level: 6 });
+}

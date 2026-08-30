@@ -30,22 +30,32 @@
 // to watch and fetch already returns the served copy.
 
 import { isTauri } from "@tauri-apps/api/core";
-import { readTextFile, watch, type UnwatchFn } from "@tauri-apps/plugin-fs";
+import { readFile, watch, type UnwatchFn } from "@tauri-apps/plugin-fs";
 import { useConfigStore } from "../state/configStore";
-import { validate } from "../schema/houseConfig";
-import { serializeConfig } from "../io/fileIO";
+import { serializeConfig, parseConfigBytes } from "../io/fileIO";
 
 const WATCH_DEBOUNCE_MS = 300;
+
+// Cheap FNV-1a signature of the raw bytes, so a change event whose content is
+// unchanged (or matches our own last save) is skipped without a full unzip +
+// compile. `.wadi` is now a zip bundle, so we compare bytes, not decoded text.
+function byteSig(bytes: Uint8Array): string {
+  let h = 2166136261;
+  for (let i = 0; i < bytes.length; i++) {
+    h ^= bytes[i];
+    h = Math.imul(h, 16777619);
+  }
+  return `${bytes.length}:${(h >>> 0).toString(16)}`;
+}
 
 export function startConfigWatcher(): void {
   // In a plain browser the fs plugin isn't available and there's no
   // external file to reconcile against — the served copy IS the source.
   if (!isTauri()) return;
 
-  // Last raw text we've seen on disk. Used to skip the expensive
-  // parse+validate when a change event fires but the bytes are
-  // unchanged. Reset to null whenever the watched target changes so the
-  // new target is read fresh.
+  // Signature of the raw bytes we last saw on disk. Used to skip the expensive
+  // unzip+compile when a change event fires but the content is unchanged. Reset
+  // to null whenever the watched target changes so the new target is read fresh.
   let lastSeen: string | null = null;
   let inFlight = false;
   // A change event that arrives while a read is still in flight sets
@@ -55,46 +65,48 @@ export function startConfigWatcher(): void {
   let pending = false;
   let unwatch: UnwatchFn | null = null;
 
-  const applyText = (path: string, text: string): void => {
-    if (text === lastSeen) return; // unchanged since last read
-    lastSeen = text;
+  const applyBytes = async (path: string, bytes: Uint8Array): Promise<void> => {
+    const sig = byteSig(bytes);
+    if (sig === lastSeen) return; // unchanged since last read
+    lastSeen = sig;
 
     const state = useConfigStore.getState();
 
-    // Skip reloads triggered by the app's OWN save: if the on-disk
-    // text already matches what we'd serialize from the current
-    // config, there's nothing external to apply. (Without this, an
-    // in-app Save would bounce back through the watcher and wipe the
-    // selection + undo history for no reason.)
-    if (state.config && text.trim() === serializeConfig(state.config).trim()) {
+    // The file may be caught mid-write (a partial zip / partial JSON) or hold an
+    // intermediate state that doesn't compile yet. In both cases we skip this
+    // revision and wait for the next change rather than flashing a broken model.
+    // `.wadi` is a zip BUNDLE now (or a legacy JSON config); parseConfigBytes
+    // detects which by magic bytes and returns the model + its WDL source.
+    let loaded;
+    try {
+      loaded = await parseConfigBytes(bytes, state.filename ?? "house.wadi");
+    } catch (e) {
+      console.warn(
+        "[watch] config not loadable yet; waiting for next write:",
+        e instanceof Error ? e.message : String(e),
+      );
       return;
     }
 
-    // The file may be caught mid-write (partial JSON) or hold an
-    // intermediate state that doesn't validate yet. In both cases we
-    // skip this revision and wait for the next change rather than
-    // flashing a broken model — matches the plan's "ignore invalid
-    // intermediate states" rule.
-    let raw: unknown;
-    try {
-      raw = JSON.parse(text);
-    } catch {
-      console.warn("[watch] config not parseable yet; waiting for next write");
-      return;
-    }
-    const parsed = validate(raw);
-    if (!parsed.ok || !parsed.data) {
-      console.warn(
-        "[watch] external config failed validation; keeping current model",
-        parsed.errors,
-      );
-      return;
+    // Skip reloads triggered by the app's OWN save. Comparing raw bytes is
+    // unreliable (the zip re-encode may differ byte-for-byte), so compare the
+    // MODEL: if the file's WDL (bundle) or serialized config (legacy) already
+    // matches the current model, there's nothing external to apply. (Without
+    // this, an in-app Save bounces back through the watcher and wipes the undo
+    // history for no reason.)
+    if (state.config) {
+      const sameByWdl =
+        loaded.wdl != null && state.wdl != null && loaded.wdl.trim() === state.wdl.trim();
+      const sameByJson =
+        loaded.wdl == null &&
+        serializeConfig(loaded.config).trim() === serializeConfig(state.config).trim();
+      if (sameByWdl || sameByJson) return;
     }
 
     console.info("[watch] external config change → reloading model");
     useConfigStore
       .getState()
-      .loadConfig(parsed.data, state.filename ?? "house_config.json", path);
+      .loadConfig(loaded.config, state.filename ?? "house.wadi", path, loaded.wdl);
   };
 
   const readAndApply = async (path: string): Promise<void> => {
@@ -106,8 +118,8 @@ export function startConfigWatcher(): void {
     }
     inFlight = true;
     try {
-      const text = await readTextFile(path);
-      applyText(path, text);
+      const bytes = await readFile(path);
+      await applyBytes(path, bytes);
     } catch (e) {
       // Transient read errors (file briefly missing during an atomic
       // rename). Stay quiet-ish; the next change event will retry.

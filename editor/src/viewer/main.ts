@@ -54,7 +54,7 @@ import { setTextScale, computeTextScale, houseSpanUnits } from "../svg2d/config"
 import {
   pickAndLoadConfig,
   loadConfigFromPath,
-  parseConfigText,
+  parseConfigBytes,
   saveConfig,
   saveAsWadi,
   saveText,
@@ -548,7 +548,7 @@ async function openWadiPath(path: string): Promise<void> {
   if (!(await guardUnsaved("opening another model"))) return;
   try {
     const res = await loadConfigFromPath(path);
-    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
+    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath, res.wdl);
   } catch (e) {
     console.error("viewer: failed to open file", path, e);
     alert(
@@ -619,7 +619,7 @@ async function guardUnsaved(actionLabel: string): Promise<boolean> {
   if (choice === "cancel") return false;
   if (choice === "discard") return true;
   try {
-    const saved = await saveConfig(st.config, st.filePath, st.filename ?? undefined);
+    const saved = await saveConfig(st.config, st.filePath, st.filename ?? undefined, st.wdl);
     if (saved) st.setFilePath(saved);
     st.markSaved();
     return true;
@@ -2081,7 +2081,7 @@ function wireHeaderButtons(): void {
     const cfg = useConfigStore.getState().config;
     if (!cfg) return;
     try {
-      const saved = await saveAsWadi(cfg);
+      const saved = await saveAsWadi(cfg, useConfigStore.getState().wdl);
       if (saved) flashSaved(btnExportWadi, "✓ Saved .wadi");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -2105,7 +2105,7 @@ function wireHeaderButtons(): void {
     const cfg = state.config;
     if (!cfg) return;
     try {
-      const saved = await saveConfig(cfg, state.filePath, state.filename ?? undefined);
+      const saved = await saveConfig(cfg, state.filePath, state.filename ?? undefined, state.wdl);
       if (saved) state.setFilePath(saved);
       state.markSaved();
       // saveConfig is silent on success; give explicit feedback so the
@@ -2125,7 +2125,7 @@ function wireHeaderButtons(): void {
     const cfg = state.config;
     if (!cfg) return;
     try {
-      const saved = await saveConfig(cfg, null, state.filename ?? undefined);
+      const saved = await saveConfig(cfg, null, state.filename ?? undefined, state.wdl);
       if (saved) state.setFilePath(saved);
       state.markSaved();
       flashSaved(btnSaveAs);
@@ -3983,7 +3983,7 @@ async function openExistingFromDisk(): Promise<boolean> {
   try {
     if (!(await guardUnsaved("opening another model"))) return false;
     const res = await pickAndLoadConfig();
-    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
+    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath, res.wdl);
     markHomeChosen();
     return true;
   } catch (e) {
@@ -4000,9 +4000,11 @@ async function openExistingFromDisk(): Promise<boolean> {
 async function loadDroppedFile(file: File): Promise<void> {
   try {
     if (!(await guardUnsaved("opening another model"))) return;
-    const text = await file.text();
-    const res = parseConfigText(text, file.name || "dropped.wadi");
-    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
+    // Read as BYTES so a `.wadi` zip bundle is detected by its magic bytes;
+    // parseConfigBytes handles both the bundle and a legacy JSON `.wadi`.
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const res = await parseConfigBytes(bytes, file.name || "dropped.wadi");
+    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath, res.wdl);
     markHomeChosen();
   } catch (e) {
     alert(`Couldn\u2019t load "${file.name}": ${e instanceof Error ? e.message : String(e)}`);
