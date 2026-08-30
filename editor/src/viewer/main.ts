@@ -61,15 +61,8 @@ import {
   libraryDir,
   saveText,
   saveBinary,
-  serializeConfig,
-  toShareName,
 } from "../io/fileIO";
 import { wdlToConfig, configToWdlText } from "../io/wdl";
-import {
-  encodeConfigToHash,
-  decodeConfigFromHash,
-  buildShareUrl,
-} from "../io/shareLink";
 import { isTauri, invoke } from "@tauri-apps/api/core";
 import { getPersona, isOwner, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona, type Persona } from "./persona";
 import {
@@ -81,13 +74,11 @@ import {
   type TemplateSource,
 } from "../io/templateSource";
 import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
-import { mountConfiguratorPanel } from "./configuratorPanel";
 import { writeValue } from "../configurator/spec";
 import { listRooms, useInteriorStore } from "../three/interiorView";
 import { useLayersUiStore } from "../state/layersUiStore";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-manager";
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
 import { GraphView } from "../graph/GraphView";
@@ -342,32 +333,9 @@ async function bootViewer(): Promise<void> {
     }
   }
 
-  if (!loadedFromOpenFile && !loadedFromHash && location.hash.length > 1) {
-    const looksLikeShareLink = /^#w1=/.test(location.hash);
-    const raw = await decodeConfigFromHash(location.hash);
-    if (raw) {
-      // Tolerant load: a link made by a NEWER build may carry keys this build
-      // doesn't know. Drop those and open the rest rather than hard-failing.
-      const parsed = validate(raw, { tolerant: true });
-      if (parsed.ok && parsed.data) {
-        useConfigStore.getState().loadConfig(parsed.data, "shared link");
-        loadedFromHash = true;
-        if (parsed.stripped && parsed.stripped.length > 0) {
-          console.warn("viewer: shared link had newer options, ignored:", parsed.stripped);
-          const n = parsed.stripped.length;
-          shareLinkError =
-            `Opened this shared design, but ${n} newer option${n > 1 ? "s were" : " was"} ignored — update Wadi to see everything.`;
-        }
-      } else {
-        console.warn("viewer: shared-link config failed validation", parsed.errors);
-        shareLinkError =
-          "This shared link couldn't be opened — it may have been created with a newer version of Wadi. Showing the default house instead.";
-      }
-    } else if (looksLikeShareLink) {
-      shareLinkError =
-        "This shared link is corrupt or truncated and couldn't be opened. Showing the default house instead.";
-    }
-  }
+  // (Share-as-URL retired: models are too large to pack into a link. A design is
+  // shared now by handing over its `.wadi` bundle file — opened via the OS share
+  // target, the 📂 Load button, or drag-and-drop.)
 
   // `?load` startup option — lets the app be driven as a pure renderer.
   //   • ?load=<url>  → fetch a house config from <url> and open it (skips the
@@ -462,10 +430,6 @@ async function bootViewer(): Promise<void> {
   if (lightingContainer) mountViewerLightingPanel(lightingContainer);
   const interiorContainer = document.getElementById("viewer-interior-panel");
   if (interiorContainer) mountViewerInteriorPanel(interiorContainer);
-  // Gharkul (owner) Configurator panel RETIRED — form-based editing (knob sliders)
-  // is gone; the WDL editor is the only edit surface. (Not mounted; the void keeps
-  // the import referenced for a future re-enable.)
-  void mountConfiguratorPanel;
 
   // Persona (Gharkul owner / Nakasha architect). Resolve + brand before mounting.
   applyPersona();
@@ -1875,48 +1839,6 @@ function flashSaved(btn: HTMLElement | null, text = "✓ Saved"): void {
   btn.dataset.flashTimer = String(t);
 }
 
-// Copy text to the clipboard, cross-target. The async Clipboard API is
-// the happy path in a browser, but it throws in the Tauri WKWebView; there
-// we fall back to a hidden-textarea execCommand("copy"), which WKWebView
-// does support. (window.prompt is NOT an option — WKWebView throws on it.)
-async function copyText(text: string): Promise<boolean> {
-  // In the Tauri desktop app both web clipboard paths are unavailable in
-  // WKWebView (async Clipboard API throws; execCommand("copy") is a
-  // no-op), so go straight to the native clipboard plugin.
-  if (isTauri()) {
-    try {
-      await tauriClipboardWrite(text);
-      return true;
-    } catch {
-      /* fall through to the web paths (harmless if they also fail) */
-    }
-  }
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    /* fall through to the legacy execCommand path */
-  }
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "fixed";
-    ta.style.top = "-1000px";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.select();
-    ta.setSelectionRange(0, text.length);
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
-  } catch {
-    return false;
-  }
-}
-
 // Open a companion app by name: its own window on desktop (Tauri show_tool),
 // else a new browser tab (the studio stays open behind it).
 function openApp(name: string, url: string): void {
@@ -2007,7 +1929,6 @@ function wireHeaderButtons(): void {
   const btnLoad = document.getElementById("btn-load");
   const btnSave = document.getElementById("btn-save");
   const btnSaveAs = document.getElementById("btn-save-as");
-  const btnShare = document.getElementById("btn-share");
   const btnExportWadi = document.getElementById("btn-export-wadi");
   const btnSaveLibrary = document.getElementById("btn-save-library");
   const btnUndo = document.getElementById("btn-undo");
@@ -2019,65 +1940,8 @@ function wireHeaderButtons(): void {
   // new browser tab otherwise, so the studio stays open behind it.
   wireAppsMenu();
 
-  // Share: pack the current house into a '#'-fragment link and copy it.
-  // Anyone opening the link loads this exact design on the web app (no
-  // backend); if they have the desktop app we can later offer to hand
-  // off to it. Falls back to a manual-copy prompt where the async
-  // clipboard API is blocked (e.g. non-secure / file:// contexts).
-  // Some phones (notably Android) and messaging apps truncate very long URLs, which
-  // makes a large share link fail to open ("corrupt or truncated") even though the same
-  // link works on computers and iPad. Warn past this length so the sender can hand over
-  // the .wadi file instead. Tunable: an observed Android failure was ~5,600 chars, so
-  // this leaves margin without crying wolf on medium designs.
-  const SHARE_URL_WARN_LEN = 4000;
-  btnShare?.addEventListener("click", async () => {
-    const cfg = useConfigStore.getState().config;
-    if (!cfg) return;
-    try {
-      const url = buildShareUrl(await encodeConfigToHash(cfg));
-
-      // Large design: the link is too long to open reliably on some phones. Prefer
-      // sharing the .wadi FILE through the OS share sheet (works at any size; the
-      // recipient opens it via Wadi's share target or the 📂 Load button). Fall back
-      // to the link when the platform can't share files (e.g. desktop).
-      if (url.length > SHARE_URL_WARN_LEN) {
-        // Share as ".wadi.json" so messengers recognise the type (a bare ".wadi"
-        // is seen as generic binary and gets no Share option / no handler).
-        const name = toShareName(useConfigStore.getState().filename ?? undefined);
-        const file = new File([serializeConfig(cfg)], name, { type: "application/json" });
-        if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: name, text: "A Wadi home design" });
-            return; // shared as a file
-          } catch (e) {
-            if ((e as Error).name === "AbortError") return; // user cancelled the sheet
-            /* otherwise fall through to the link */
-          }
-        }
-        const copied = await copyText(url);
-        alert(
-          `This design is large (a ${url.length.toLocaleString()}-character link).\n\n` +
-            `Some phones (especially Android) may not open such a link. This device can't share ` +
-            `the file directly, so use "Export .wadi" and send the file instead.` +
-            (copied ? "\n\nThe link has still been copied." : ""),
-        );
-        return;
-      }
-
-      // Small design: copy the link — the recipient opens it in one tap, no install.
-      const copied = await copyText(url);
-      if (copied) {
-        flashSaved(btnShare, "✓ Link copied");
-      } else {
-        // Extremely rare (both clipboard paths failed). Don't use
-        // window.prompt — WKWebView doesn't support it.
-        console.info("[share] link:", url);
-        alert("Couldn't copy automatically — the link was logged to the console.");
-      }
-    } catch (e) {
-      alert(`Share failed: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  });
+  // (Share-as-URL retired — a design is shared by handing over its `.wadi` bundle
+  // file: Save/Export the file and send it, or save into a shared library folder.)
 
   // Export the current house as a .wadi file (native document that opens
   // in the desktop app). Payload is plain house_config JSON.
