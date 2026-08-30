@@ -3531,6 +3531,8 @@ interface TemplateEntry {
   description: string;
   file: string;
   meta?: TemplateMeta;
+  /** Loose cover image path (relative to the catalog base) from catalog.json. */
+  cover?: string;
 }
 
 // Render a template's key features as small chips so a user can pick by
@@ -3879,33 +3881,61 @@ function renderTemplateCards(): void {
   }
 }
 
-// Lazily fetch a template file's embedded preview images (`thumbnails[]`, or
-// the legacy singular `thumbnail`) and build a mini carousel in the card.
-// Cached per file so re-filtering is free. Silent on failure — the 🏠
-// placeholder stays.
+// Encode fetched image bytes as a data URL for an <img src>, MIME by extension.
+function bytesToImgUrl(bytes: Uint8Array, path: string): string {
+  const mime = /\.jpe?g$/i.test(path)
+    ? "image/jpeg"
+    : /\.webp$/i.test(path)
+      ? "image/webp"
+      : "image/png";
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return `data:${mime};base64,${btoa(bin)}`;
+}
+
+// Lazily fetch a template's preview image(s): the rich catalog's loose cover when
+// present, else the file's own previews (a bundle's cover files, or a legacy
+// config's embedded `thumbnails[]`). Build a mini carousel in the card. Cached
+// per file so re-filtering is free. Silent on failure — the 🏠 placeholder stays.
 async function loadTemplateThumb(t: TemplateEntry, thumbEl: HTMLElement | null): Promise<void> {
   if (!thumbEl) return;
   const file = t.file;
   let images = thumbCache.get(file);
   if (images === undefined) {
-    try {
-      const bytes = await fetchCatalogBytes(file);
-      if (isWadiBundle(bytes)) {
-        // A bundle's previews are files; resolve the cover (+ any others) to URLs.
-        images = await readBundleCoverUrls(bytes);
-      } else {
-        const raw = JSON.parse(new TextDecoder().decode(bytes)) as {
-          thumbnails?: unknown;
-          thumbnail?: unknown;
-        };
-        images = Array.isArray(raw.thumbnails)
-          ? raw.thumbnails.filter((x): x is string => typeof x === "string")
-          : typeof raw.thumbnail === "string"
-            ? [raw.thumbnail]
-            : [];
+    // Fast path: a loose cover image named by the rich catalog.json index — one
+    // small fetch, no bundle download (works across sources via the same adapter
+    // dispatch). The loose covers are generated + uploaded to R2 by
+    // publish-templates.sh; if one is missing (e.g. the committed bundled
+    // fallback, where covers aren't tracked) we fall back to the bundle's own
+    // cover file, which always ships inside the .wadi.
+    if (t.cover) {
+      try {
+        const bytes = await fetchCatalogBytes(t.cover);
+        images = [bytesToImgUrl(bytes, t.cover)];
+      } catch {
+        /* loose cover unavailable → fall back to the file's own previews */
       }
-    } catch {
-      images = [];
+    }
+    if (images === undefined) {
+      try {
+        const bytes = await fetchCatalogBytes(file);
+        if (isWadiBundle(bytes)) {
+          // A bundle's previews are files; resolve the cover (+ any others).
+          images = await readBundleCoverUrls(bytes);
+        } else {
+          const raw = JSON.parse(new TextDecoder().decode(bytes)) as {
+            thumbnails?: unknown;
+            thumbnail?: unknown;
+          };
+          images = Array.isArray(raw.thumbnails)
+            ? raw.thumbnails.filter((x): x is string => typeof x === "string")
+            : typeof raw.thumbnail === "string"
+              ? [raw.thumbnail]
+              : [];
+        }
+      } catch {
+        images = [];
+      }
     }
     thumbCache.set(file, images);
   }

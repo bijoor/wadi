@@ -58,16 +58,20 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 echo
 
 echo "Publishing $SRC -> r2://$BUCKET"
-for f in "$SRC"/*; do
-  [ -f "$f" ] || continue
-  key="$(basename "$f")"
+# Walk the whole tree so the covers/ subfolder ships too. The object KEY is the
+# path relative to SRC (e.g. "covers/family_home.jpg"), matching what the app's
+# catalog.json references.
+while IFS= read -r -d '' f; do
+  key="${f#"$SRC"/}"
   case "$key" in
     *.jpg|*.jpeg) ct="image/jpeg" ;;
     *.png)        ct="image/png" ;;
-    *)            ct="application/json" ;;  # index.json, *.wadi, *.json
+    *.webp)       ct="image/webp" ;;
+    *.wadi)       ct="application/zip" ;;   # .wadi is a zip BUNDLE now
+    *)            ct="application/json" ;;   # manifest.json, catalog.json, *.json
   esac
   echo "  put $key ($ct)"
   npx wrangler r2 object put "$BUCKET/$key" --file "$f" --content-type "$ct" --remote
-done
+done < <(find "$SRC" -type f -print0)
 
 echo "Done. In the app: New → Change source… → your bucket's public URL."

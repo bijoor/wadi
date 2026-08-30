@@ -26,6 +26,9 @@ export interface TemplateEntry {
   description: string;
   file: string;
   meta: TemplateMeta;
+  /** Gallery cover image, a path relative to the catalog base (e.g.
+   *  "covers/family_home.jpg"), set from the rich catalog.json fast index. */
+  cover?: string;
 }
 
 /** Editorial fields a config can't derive; carried from a prior index entry or a

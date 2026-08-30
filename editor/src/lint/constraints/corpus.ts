@@ -14,10 +14,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 // editor/src/lint/constraints → repo root
 const repo = presolve(here, "..", "..", "..", "..");
 
+// NOTE: the `editor/public/templates/*.wadi` catalog files are now zip BUNDLES
+// (not JSON), so they can't be JSON.parsed here — the equivalent models live in
+// `library/` as plain JSON and cover the same geometry.
 const FILES = [
   "house_config.json",
-  "editor/public/templates/family_home.wadi",
-  "editor/public/templates/single_story_cottage.wadi",
   "library/coastal_konkan.wadi",
   "library/family_home.wadi",
   "library/single_story_cottage.wadi",

@@ -5,11 +5,24 @@
 // resolve + expand — the whole point of the enable-per-type approach.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { unzipSync, strFromU8 } from "fflate";
+import { compileDsl } from "wadi-wdl-compiler";
 import { resolveParametric } from "../param/resolve";
 import { expandRoomWalls } from "../svg2d/expand";
 import { HouseConfig } from "../schema/houseConfig";
 
 const TEMPLATES = ["family_home", "single_story_cottage"] as const;
+
+// The shipped templates are `.wadi` BUNDLES now; load a template's config the way
+// the app does — unzip and compile its model.wdl. This also proves the JSON→bundle
+// migration preserved the parametric machinery (variables, configurator, the roof
+// enable-per-type formulas) through the WDL round-trip.
+function loadTemplateConfig(name: string): Record<string, unknown> {
+  const bytes = new Uint8Array(readFileSync(`public/templates/${name}.wadi`));
+  const files = unzipSync(bytes);
+  const wdl = strFromU8(files["model.wdl"]);
+  return compileDsl(wdl) as Record<string, unknown>;
+}
 
 // [roof_type, default_endpoint | undefined] expected for each roof_style.
 const EXPECTED: Array<[string, string | undefined]> = [
@@ -21,9 +34,10 @@ const EXPECTED: Array<[string, string | undefined]> = [
 
 for (const name of TEMPLATES) {
   describe(`template ${name}: roof_style gating`, () => {
-    const raw = JSON.parse(
-      readFileSync(`public/templates/${name}.wadi`, "utf8"),
-    );
+    const raw = loadTemplateConfig(name) as {
+      variables?: { roof_style?: unknown };
+      configurator?: { inputs?: Array<{ target?: string; options?: Array<{ value: number }> }> };
+    };
 
     it("is schema-valid", () => {
       expect(HouseConfig.safeParse(raw).success).toBe(true);

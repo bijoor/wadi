@@ -14,7 +14,9 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import url from "node:url";
+import { unzipSync, strFromU8 } from "fflate";
 
+import { compileDsl } from "../../wadi-dsl/src/generator/toHouseConfig.ts";
 import { resolveParametric } from "../src/param/resolve.ts";
 import { validate } from "../src/schema/houseConfig.ts";
 import { expandRoomWalls } from "../src/svg2d/expand.ts";
@@ -68,6 +70,18 @@ function surfaces(rawCfg) {
   };
 }
 
+// Load a repo config: a `.wadi` is now a zip BUNDLE (wadi.json + model.wdl), so
+// compile its model.wdl the way the app does; a plain JSON config is read directly.
+// This makes the gate also prove the JSON→bundle migration is geometry-neutral.
+function readConfig(file) {
+  const buf = readFileSync(file);
+  if (buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04) {
+    const files = unzipSync(new Uint8Array(buf));
+    return compileDsl(strFromU8(files["model.wdl"]));
+  }
+  return JSON.parse(buf.toString("utf8"));
+}
+
 const update = process.argv.includes("--update");
 const out = {};
 for (const [name, file] of CONFIGS) {
@@ -75,7 +89,7 @@ for (const [name, file] of CONFIGS) {
     console.error(`  ! missing config: ${file}`);
     process.exit(2);
   }
-  out[name] = surfaces(JSON.parse(readFileSync(file, "utf8")));
+  out[name] = surfaces(readConfig(file));
 }
 
 if (update) {
