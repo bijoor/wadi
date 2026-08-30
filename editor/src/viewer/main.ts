@@ -3411,7 +3411,7 @@ async function openNewHouseModal(): Promise<void> {
   } catch (e) {
     grid.innerHTML =
       `<div class="new-house-modal-empty" style="color:#b00">
-        Couldn't load the template catalog (${escapeHtml(sourceLabel())}): ${e instanceof Error ? e.message : String(e)}
+        Couldn't load models from (${escapeHtml(sourceLabel())}): ${e instanceof Error ? e.message : String(e)}
       </div>`;
     return;
   }
@@ -3432,7 +3432,7 @@ async function openNewHouseModal(): Promise<void> {
 // A human label for a templates source, used in the bar and error messages.
 function sourceLabel(s: TemplateSource = templateSource()): string {
   switch (s.kind) {
-    case "default": return "Wadi hosted";
+    case "default": return "Wadi sample homes";
     case "bundled": return "bundled with the app";
     case "local": return `folder: ${s.dir}`;
     case "url": return s.url;
@@ -3448,8 +3448,8 @@ function renderCatalogSourceBar(): void {
   const bar = document.getElementById("new-house-modal-source");
   if (!bar) return;
   bar.innerHTML =
-    `<span class="tpl-source-label">Templates: <b>${escapeHtml(sourceLabel())}</b></span>
-     <button type="button" class="tpl-source-btn" id="tpl-source-set">Change source…</button>
+    `<span class="tpl-source-label">Models: <b>${escapeHtml(sourceLabel())}</b></span>
+     <button type="button" class="tpl-source-btn" id="tpl-source-set">Change location…</button>
      <button type="button" class="tpl-source-btn" id="tpl-source-refresh">↻ Refresh</button>`;
   document.getElementById("tpl-source-refresh")?.addEventListener("click", () => {
     resetCatalogSource();
@@ -3468,9 +3468,9 @@ function openCatalogSourceEditor(bar: HTMLElement): void {
     ? `<option value="local"${cur.kind === "local" ? " selected" : ""}>A folder on this computer</option>`
     : "";
   bar.innerHTML =
-    `<span class="tpl-source-label">Templates from:</span>
+    `<span class="tpl-source-label">Open models from:</span>
      <select id="tpl-kind" class="tpl-source-input">
-       <option value="default"${cur.kind === "default" ? " selected" : ""}>Wadi hosted (default)</option>
+       <option value="default"${cur.kind === "default" ? " selected" : ""}>Wadi sample homes (default)</option>
        <option value="bundled"${cur.kind === "bundled" ? " selected" : ""}>Bundled with the app</option>
        ${localOpt}
        <option value="url"${cur.kind === "url" ? " selected" : ""}>A web address (R2 / jsDelivr)</option>
@@ -3499,7 +3499,7 @@ function openCatalogSourceEditor(bar: HTMLElement): void {
          <span class="tpl-source-label" id="tpl-dir">${escapeHtml(pickedDir || "no folder chosen")}</span>`;
       document.getElementById("tpl-pick")?.addEventListener("click", async () => {
         const { open } = await import("@tauri-apps/plugin-dialog");
-        const picked = await open({ directory: true, title: "Choose your templates folder" });
+        const picked = await open({ directory: true, title: "Choose your models folder" });
         if (typeof picked === "string") {
           pickedDir = picked;
           const dirEl = document.getElementById("tpl-dir");
