@@ -3,6 +3,8 @@ import { isTauri } from "@tauri-apps/api/core";
 import { open as tauriOpen, save as tauriSave } from "@tauri-apps/plugin-dialog";
 import { readFile, writeTextFile, writeFile } from "@tauri-apps/plugin-fs";
 import { parseWadiBytes, buildWadiBundle, currentBundleThumbnails } from "./wadiBundle";
+import { localTemplatesDir } from "./templateSource";
+import { deriveTemplateEntry } from "../templatePackage/catalogMeta";
 
 // Load result — filePath is populated only when running inside Tauri,
 // so `saveConfig` can distinguish "Save" (write in place) from
@@ -117,13 +119,64 @@ export function serializeConfig(config: HouseConfig): string {
 
 // Build the `.wadi` bytes to write for a save. A `.wadi` is now a ZIP BUNDLE
 // (wadi.json + model.wdl + thumbnails/); the WDL source is the truth, so callers
-// pass the store's live `wdl`. If no WDL is available (an unexpected edge), we
-// fall back to legacy JSON bytes so a save can never silently lose the model —
-// the loader detects either form by magic bytes.
-async function wadiBytesFor(config: HouseConfig, wdl?: string): Promise<Uint8Array> {
+// pass the store's live `wdl`. The manifest also carries the catalog meta + cover
+// so a folder of saved bundles indexes as a gallery with no per-file WDL compile.
+// If no WDL is available (an unexpected edge), we fall back to legacy JSON bytes
+// so a save can never silently lose the model — the loader detects either form
+// by magic bytes.
+async function wadiBytesFor(
+  config: HouseConfig,
+  wdl?: string,
+  defaultName = "house.wadi",
+): Promise<Uint8Array> {
   const src = (wdl ?? "").trim();
-  if (src) return buildWadiBundle(src, currentBundleThumbnails());
-  return new TextEncoder().encode(serializeConfig(config));
+  if (!src) return new TextEncoder().encode(serializeConfig(config));
+
+  // Derive the catalog entry (counts, plot, editorial from config.template) so
+  // the bundle self-describes for the gallery.
+  const id = toWadiName(defaultName).replace(/\.wadi$/i, "");
+  const editorial = (config as { template?: Parameters<typeof deriveTemplateEntry>[3] }).template;
+  const entry = deriveTemplateEntry(id, config, `${id}.wadi`, editorial);
+  const cover = (config as { template?: { thumbnails?: string[] } }).template?.thumbnails?.[0];
+
+  return buildWadiBundle(src, currentBundleThumbnails(), {
+    meta: { title: entry.title, description: entry.description, ...entry.meta },
+    cover,
+  });
+}
+
+// The library folder (desktop) the app both lists AND saves into — the local
+// template source. Empty when the source isn't a local folder (browser, or a
+// remote / Drive source that this build can't write to directly).
+export function libraryDir(): string {
+  return localTemplatesDir();
+}
+
+// Save the current model as a `.wadi` bundle INTO the library folder, so it
+// becomes a gallery entry with no separate publish step ("any model is a
+// template"). Desktop with a local library folder writes the file there; every
+// other case (browser, or a remote/Drive source) falls back to a normal Save As
+// / download — Drive-write is a follow-on. Returns the saved path or null.
+export async function saveToLibrary(
+  config: HouseConfig,
+  wdl: string | undefined,
+  defaultName = "house.wadi",
+): Promise<string | null> {
+  const dir = libraryDir();
+  if (isTauri() && dir) {
+    const name = toWadiName(defaultName);
+    const bytes = await wadiBytesFor(config, wdl, name);
+    const target = joinDir(dir, name);
+    await writeFile(target, bytes);
+    return target;
+  }
+  // No writable local library: fall back to Save As / browser download.
+  return saveAsWadi(config, wdl);
+}
+
+function joinDir(dir: string, name: string): string {
+  const sep = dir.includes("\\") && !dir.includes("/") ? "\\" : "/";
+  return dir.replace(/[/\\]+$/, "") + sep + name;
 }
 
 // Save the house as a `.wadi` bundle.
@@ -136,8 +189,8 @@ export async function saveConfig(
   defaultName = "house.wadi",
   wdl?: string,
 ): Promise<string | null> {
-  const bytes = await wadiBytesFor(config, wdl);
   const name = toWadiName(defaultName);
+  const bytes = await wadiBytesFor(config, wdl, name);
   if (isTauri()) {
     let target = filePath;
     if (!target) {
@@ -161,7 +214,7 @@ export async function saveConfig(
 // plus its thumbnail files, self-contained. Tauri: native save dialog. Browser:
 // Blob download. Returns the saved path (Tauri) or null (browser).
 export async function saveAsWadi(config: HouseConfig, wdl?: string): Promise<string | null> {
-  const bytes = await wadiBytesFor(config, wdl);
+  const bytes = await wadiBytesFor(config, wdl, "house.wadi");
   return saveBinary(bytes, "house.wadi", "Wadi House", ["wadi"], "application/zip");
 }
 

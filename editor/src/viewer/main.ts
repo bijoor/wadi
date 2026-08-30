@@ -57,6 +57,8 @@ import {
   parseConfigBytes,
   saveConfig,
   saveAsWadi,
+  saveToLibrary,
+  libraryDir,
   saveText,
   saveBinary,
   serializeConfig,
@@ -71,13 +73,14 @@ import {
 import { isTauri, invoke } from "@tauri-apps/api/core";
 import { getPersona, isOwner, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona, type Persona } from "./persona";
 import {
-  fetchCatalogText,
+  fetchCatalogBytes,
   loadCatalog,
   templateSource,
   setTemplateSource,
   resetCatalogSource,
   type TemplateSource,
 } from "../io/templateSource";
+import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
 import { mountConfiguratorPanel } from "./configuratorPanel";
 import { writeValue } from "../configurator/spec";
 import { listRooms, useInteriorStore } from "../three/interiorView";
@@ -2006,6 +2009,7 @@ function wireHeaderButtons(): void {
   const btnSaveAs = document.getElementById("btn-save-as");
   const btnShare = document.getElementById("btn-share");
   const btnExportWadi = document.getElementById("btn-export-wadi");
+  const btnSaveLibrary = document.getElementById("btn-save-library");
   const btnUndo = document.getElementById("btn-undo");
   const btnRedo = document.getElementById("btn-redo");
   const fileInput = document.getElementById("file-input-json") as HTMLInputElement | null;
@@ -2086,6 +2090,39 @@ function wireHeaderButtons(): void {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg !== "Cancelled") alert(`Export failed: ${msg}`);
+    }
+  });
+
+  // Save the model as a bundle INTO the library folder, so it shows up in the
+  // gallery with no separate publish step (the folder IS the catalog). On desktop
+  // with a local library folder it writes straight in; otherwise it falls back to
+  // Save As / a browser download (the user drops it into their Drive/R2 folder).
+  // The button only makes sense as a one-tap save when a local folder is set; it
+  // relabels to reflect that.
+  const refreshLibraryBtn = () => {
+    if (!btnSaveLibrary) return;
+    const hasLocal = !!libraryDir();
+    btnSaveLibrary.title = hasLocal
+      ? "Save into your library folder — it shows up in your gallery"
+      : "Save a .wadi to add to your library (set a local library folder to save in place)";
+  };
+  refreshLibraryBtn();
+  btnSaveLibrary?.addEventListener("click", async () => {
+    const state = useConfigStore.getState();
+    const cfg = state.config;
+    if (!cfg) return;
+    try {
+      const saved = await saveToLibrary(cfg, state.wdl, state.filename ?? undefined);
+      if (saved) {
+        // Written into the library folder (desktop): adopt the path + refresh the
+        // gallery so the new entry appears next time it opens.
+        if (libraryDir()) state.setFilePath(saved);
+        state.markSaved();
+      }
+      flashSaved(btnSaveLibrary, libraryDir() ? "✓ In your library" : "✓ Saved");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") alert(`Save to library failed: ${msg}`);
     }
   });
 
@@ -3852,16 +3889,21 @@ async function loadTemplateThumb(t: TemplateEntry, thumbEl: HTMLElement | null):
   let images = thumbCache.get(file);
   if (images === undefined) {
     try {
-      const raw = JSON.parse(await fetchCatalogText(file)) as {
-        thumbnails?: unknown;
-        thumbnail?: unknown;
-      };
-      const arr = Array.isArray(raw.thumbnails)
-        ? raw.thumbnails.filter((x): x is string => typeof x === "string")
-        : typeof raw.thumbnail === "string"
-          ? [raw.thumbnail]
-          : [];
-      images = arr;
+      const bytes = await fetchCatalogBytes(file);
+      if (isWadiBundle(bytes)) {
+        // A bundle's previews are files; resolve the cover (+ any others) to URLs.
+        images = await readBundleCoverUrls(bytes);
+      } else {
+        const raw = JSON.parse(new TextDecoder().decode(bytes)) as {
+          thumbnails?: unknown;
+          thumbnail?: unknown;
+        };
+        images = Array.isArray(raw.thumbnails)
+          ? raw.thumbnails.filter((x): x is string => typeof x === "string")
+          : typeof raw.thumbnail === "string"
+            ? [raw.thumbnail]
+            : [];
+      }
     } catch {
       images = [];
     }
@@ -4220,18 +4262,15 @@ async function selectTemplate(t: TemplateEntry): Promise<void> {
   // Loading a template replaces the current house — offer to save first.
   if (!(await guardUnsaved("creating a new house"))) return;
   try {
-    // Files are named relative to the catalog base (bundled dir or cloud
-    // bucket); templateSource resolves + caches them.
-    const raw = JSON.parse(await fetchCatalogText(t.file));
-    const parsed = validate(raw);
-    if (!parsed.ok || !parsed.data) {
-      alert(
-        `Template "${t.title}" failed validation:\n` +
-        (parsed.errors ?? []).slice(0, 5).map((e) => `• ${e.path}: ${e.message}`).join("\n"),
-      );
-      return;
-    }
-    useConfigStore.getState().loadConfig(parsed.data, `${t.title} (template)`);
+    // Files are named relative to the catalog base (local folder / cloud bucket /
+    // Drive). Read as BYTES so a `.wadi` zip bundle is detected and compiled from
+    // its model.wdl; a legacy JSON `.wadi` validates as before. parseWadiBytes
+    // returns the model + (for a bundle) its WDL source and thumbnail files.
+    const bytes = await fetchCatalogBytes(t.file);
+    const loaded = await parseConfigBytes(bytes, t.file);
+    useConfigStore
+      .getState()
+      .loadConfig(loaded.config, `${t.title} (template)`, null, loaded.wdl);
     markHomeChosen();
     // Clear undo history so the freshly-loaded template becomes the new
     // baseline — Ctrl+Z shouldn't revert to the pre-template state.

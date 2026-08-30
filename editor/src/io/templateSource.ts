@@ -25,7 +25,8 @@
 // download, not code execution.
 
 import { isTauri } from "@tauri-apps/api/core";
-import { entryFromConfig, type TemplateEntry } from "../templatePackage/catalogMeta";
+import { entryFromConfig, titleCase, type TemplateEntry } from "../templatePackage/catalogMeta";
+import { isWadiBundle, readBundleManifest } from "./wadiBundle";
 
 // Baked-in remote catalog: the Cloudflare R2 bucket on our custom domain. Serves
 // index.json + the template .wadi files with CORS `*`, so the web app, the
@@ -213,6 +214,11 @@ async function localReadFile(dir: string, relPath: string): Promise<string> {
   return readTextFile(joinPath(dir, relPath));
 }
 
+async function localReadBytes(dir: string, relPath: string): Promise<Uint8Array> {
+  const { readFile } = await import("@tauri-apps/plugin-fs");
+  return readFile(joinPath(dir, relPath));
+}
+
 // --- Google Drive adapter ----------------------------------------------------
 
 // name → fileId for the active Drive folder (built once per folder via the
@@ -259,6 +265,23 @@ async function driveFetchText(folderId: string, relPath: string): Promise<string
   );
   if (!r.ok) throw new Error(`Drive get HTTP ${r.status}`);
   return r.text();
+}
+
+async function driveFetchBytes(folderId: string, relPath: string): Promise<Uint8Array> {
+  const apiKey = driveApiKey();
+  if (!apiKey) {
+    throw new Error(
+      "This Google Drive source needs an API key — set it in the template source settings.",
+    );
+  }
+  const map = await driveFolderMap(folderId, apiKey);
+  const id = map.get(relPath);
+  if (!id) throw new Error(`"${relPath}" not found in the Drive folder`);
+  const r = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${encodeURIComponent(apiKey)}`,
+  );
+  if (!r.ok) throw new Error(`Drive get HTTP ${r.status}`);
+  return new Uint8Array(await r.arrayBuffer());
 }
 
 // --- unified fetch (adapter dispatch + cache + fallback) ----------------------
@@ -321,6 +344,35 @@ export async function fetchCatalogText(relPath: string): Promise<string> {
   }
 }
 
+/** Fetch a catalog file as raw BYTES — needed to detect a `.wadi` zip bundle by
+ *  its magic bytes and to read its thumbnail files. Mirrors fetchCatalogText's
+ *  adapter dispatch (local disk / Drive / static host); no offline text-cache
+ *  (a zip isn't text) but keeps the bundled fallback for a remote miss. */
+export async function fetchCatalogBytes(relPath: string): Promise<Uint8Array> {
+  const localDir = localTemplatesDir();
+  if (localDir) return localReadBytes(localDir, relPath);
+
+  const base = templatesBaseUrl();
+  const folderId = driveFolderId(base);
+  const remote = base !== BUNDLED_BASE;
+  if (folderId) return driveFetchBytes(folderId, relPath);
+  try {
+    const bust = `${relPath.includes("?") ? "&" : "?"}t=${Date.now()}`;
+    const url = `${base}/${relPath}${bust}`;
+    const r = remote
+      ? await fetchWithTimeout(url, REMOTE_FETCH_TIMEOUT_MS)
+      : await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return new Uint8Array(await r.arrayBuffer());
+  } catch (err) {
+    if (remote) {
+      const r = await fetch(`${BUNDLED_BASE}/${relPath}?t=${Date.now()}`);
+      if (r.ok) return new Uint8Array(await r.arrayBuffer());
+    }
+    throw err;
+  }
+}
+
 // --- auto-indexing: the folder IS the catalog --------------------------------
 // Instead of a hand-maintained index.json, the app LISTS the templates folder and
 // builds each entry from the self-describing `.wadi` (its `template` block +
@@ -354,21 +406,67 @@ export async function listCatalogFiles(): Promise<string[]> {
 }
 
 /** Build the whole catalog by listing the folder and indexing each file. A file
- *  that fails to parse is skipped (it never blanks the gallery). */
+ *  that fails to parse is skipped (it never blanks the gallery).
+ *
+ *  A `.wadi` BUNDLE indexes from its `wadi.json` manifest meta (written on save),
+ *  so no per-file WDL compile is needed; a legacy JSON `.wadi` indexes from the
+ *  config as before. */
 export async function loadCatalog(): Promise<TemplateEntry[]> {
   const files = await listCatalogFiles();
   const entries: TemplateEntry[] = [];
   for (const file of files) {
     try {
-      const cfg = JSON.parse(await fetchCatalogText(file)) as Record<string, unknown>;
       const id = file.replace(/\.(wadi|json)$/i, "");
-      entries.push(entryFromConfig(id, cfg, file));
+      const bytes = await fetchCatalogBytes(file);
+      const entry = isWadiBundle(bytes)
+        ? await bundleEntry(id, file, bytes)
+        : entryFromConfig(id, JSON.parse(textFromBytes(bytes)) as Record<string, unknown>, file);
+      entries.push(entry);
     } catch {
       /* skip an unreadable/invalid file */
     }
   }
   // Stable, friendly order: by title.
   return entries.sort((a, b) => a.title.localeCompare(b.title));
+}
+
+function textFromBytes(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes);
+}
+
+// Index a bundle from its manifest `meta` (fast, no compile). If a bundle lacks
+// meta (hand-made, or an older bundle), fall back to a filename title.
+async function bundleEntry(id: string, file: string, bytes: Uint8Array): Promise<TemplateEntry> {
+  const man = (await readBundleManifest(bytes)) ?? {};
+  const meta = man.meta as Partial<TemplateEntry> & TemplateEntry["meta"];
+  if (meta && typeof meta === "object") {
+    return {
+      id,
+      file,
+      title: (meta as { title?: string }).title || titleCase(id),
+      description: (meta as { description?: string }).description || "",
+      meta: {
+        bedrooms: numOr(meta.bedrooms, 0),
+        bathrooms: numOr(meta.bathrooms, 0),
+        floors: numOr(meta.floors, 1),
+        style: (meta.style as string) || "—",
+        roof: (meta.roof as string) || "—",
+        minWidthFt: numOr(meta.minWidthFt, 30),
+        minLengthFt: numOr(meta.minLengthFt, 40),
+        parametric: !!meta.parametric,
+        ...(Array.isArray(meta.tags) ? { tags: meta.tags as string[] } : {}),
+      },
+    };
+  }
+  return { id, file, title: titleCase(id), description: "", meta: {
+    bedrooms: 0, bathrooms: 0, floors: 1, style: "—", roof: "—",
+    minWidthFt: 30, minLengthFt: 40, parametric: false,
+  } };
+}
+
+function numOr(v: unknown, d: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
 }
 
 /** Drop any in-memory source state (Drive folder listing). Call on source change. */

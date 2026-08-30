@@ -20,6 +20,8 @@ import {
   addBundleThumbnail,
   thumbnailUrl,
   pruneBundleThumbnails,
+  readBundleManifest,
+  readBundleCoverUrls,
 } from "./wadiBundle";
 import { wdlToConfig } from "./wdl";
 
@@ -96,6 +98,30 @@ describe("wadi bundle", () => {
       "thumbnails/cover.png",
       "thumbnails/iso.png",
     ]);
+  });
+
+  it("embeds catalog meta + cover in the manifest for fast indexing", async () => {
+    const legacy = await parseWadiBytes(jsonBytes, "coastal.wadi");
+    const wdl = emitWdl(legacy.config as unknown as Record<string, unknown>);
+    const cover = new Uint8Array([0xff, 0xd8, 0xff, 9, 8, 7]);
+    const bytes = await buildWadiBundle(
+      wdl,
+      { "thumbnails/cover.jpg": cover },
+      { meta: { title: "Coastal", bedrooms: 2, floors: 1 }, cover: "thumbnails/cover.jpg" },
+    );
+
+    const man = await readBundleManifest(bytes);
+    expect(man?.format).toBe("wadi-bundle");
+    expect((man?.meta as { title?: string })?.title).toBe("Coastal");
+    expect(man?.cover).toBe("thumbnails/cover.jpg");
+
+    const covers = await readBundleCoverUrls(bytes);
+    expect(covers.length).toBe(1);
+    expect(covers[0]).toMatch(/^data:image\/jpeg;base64,/);
+
+    // Not-a-bundle inputs return empty, not throw.
+    expect(await readBundleManifest(jsonBytes)).toBeNull();
+    expect(await readBundleCoverUrls(jsonBytes)).toEqual([]);
   });
 
   it("rejects a bundle with no model.wdl", async () => {

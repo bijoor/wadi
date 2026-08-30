@@ -218,16 +218,30 @@ async function parseLegacyJson(
   return { config: result.data, filename, filePath };
 }
 
+// Extra manifest fields a save can embed so the CATALOG can index a bundle by
+// reading only its small `wadi.json` — no WDL compile per file. `meta` is the
+// derived+editorial catalog entry; `cover` is the gallery cover thumbnail path.
+export interface BundleManifestExtra {
+  meta?: unknown;
+  cover?: string;
+}
+
 // Build a `.wadi` bundle (zip bytes) from the WDL source + thumbnail files.
 export async function buildWadiBundle(
   wdl: string,
   thumbnails: Record<string, Uint8Array> = bundleThumbnails,
+  extra: BundleManifestExtra = {},
 ): Promise<Uint8Array> {
   const { zipSync, strToU8 } = await import("fflate");
-  const manifest =
-    JSON.stringify({ format: "wadi-bundle", version: BUNDLE_VERSION, main: MODEL }, null, 2) + "\n";
+  const manifestObj: Record<string, unknown> = {
+    format: "wadi-bundle",
+    version: BUNDLE_VERSION,
+    main: MODEL,
+  };
+  if (extra.meta !== undefined) manifestObj.meta = extra.meta;
+  if (extra.cover) manifestObj.cover = extra.cover;
   const entries: Record<string, Uint8Array> = {
-    [MANIFEST]: strToU8(manifest),
+    [MANIFEST]: strToU8(JSON.stringify(manifestObj, null, 2) + "\n"),
     [MODEL]: strToU8(wdl),
   };
   for (const [name, data] of Object.entries(thumbnails)) {
@@ -235,4 +249,52 @@ export async function buildWadiBundle(
     if (name.startsWith(THUMB_DIR) && !name.endsWith("/")) entries[name] = data;
   }
   return zipSync(entries, { level: 6 });
+}
+
+// --- Catalog helpers: index a bundle WITHOUT touching the loaded-model state ---
+//
+// These unzip a bundle for the gallery (its manifest + cover image) and must NOT
+// mutate the module's `bundleThumbnails` (that belongs to the currently-open
+// model, not a catalog preview). They also avoid compiling the WDL: the manifest
+// carries the derived catalog meta, so indexing stays cheap.
+
+/** The parsed `wadi.json` of a bundle, or null if the bytes aren't a bundle. */
+export async function readBundleManifest(
+  bytes: Uint8Array,
+): Promise<Record<string, unknown> | null> {
+  if (!isWadiBundle(bytes)) return null;
+  const { unzipSync, strFromU8 } = await import("fflate");
+  const files = unzipSync(bytes);
+  const raw = files[MANIFEST];
+  if (!raw) return {};
+  try {
+    return JSON.parse(strFromU8(raw)) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+/** The gallery cover image of a bundle as a display data URL: the manifest's
+ *  `cover` path, else the first `thumbnails/` file. "" when there is none. */
+export async function readBundleCoverUrls(bytes: Uint8Array): Promise<string[]> {
+  if (!isWadiBundle(bytes)) return [];
+  const { unzipSync, strFromU8 } = await import("fflate");
+  const files = unzipSync(bytes);
+  let order: string[] = [];
+  const manRaw = files[MANIFEST];
+  if (manRaw) {
+    try {
+      const man = JSON.parse(strFromU8(manRaw)) as { cover?: string };
+      if (man.cover) order = [man.cover];
+    } catch {
+      /* ignore */
+    }
+  }
+  const thumbNames = Object.keys(files)
+    .filter((n) => n.startsWith(THUMB_DIR) && !n.endsWith("/"))
+    .sort();
+  for (const n of thumbNames) if (!order.includes(n)) order.push(n);
+  return order
+    .filter((n) => files[n])
+    .map((n) => bytesToDataUrl(files[n], mimeForPath(n)));
 }
