@@ -190,6 +190,7 @@ function CaptureBridge({ fit }: { fit: { dist: number; targetY: number } }) {
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
+  const invalidate = useThree((s) => s.invalidate);
 
   useEffect(() => {
     // Downscale the live canvas to a JPEG data URL (sky-filled so transparent
@@ -238,6 +239,13 @@ function CaptureBridge({ fit }: { fit: { dist: number; targetY: number } }) {
     const raf = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
     window.wadiCapture3D = (maxW = 720) => grab(maxW);
+
+    // Request a live repaint. The scene renders on demand, so a change applied
+    // outside a user gesture (a WDL edit debounce, a programmatic load) updates the
+    // React scene but wouldn't paint to the visible canvas until the next
+    // interaction — call this to force the frame. `frames` renders a few in a row
+    // to cover post-processing / a late React flush.
+    window.wadiInvalidate = (frames = 2) => invalidate(frames);
 
     // Interior capture that DIRECTLY seats the camera at `eye` (no React /
     // useFrame), so it works with the window backgrounded. Looks north (−Z),
@@ -369,8 +377,9 @@ function CaptureBridge({ fit }: { fit: { dist: number; targetY: number } }) {
       delete window.wadiCaptureView;
       delete window.wadiCaptureInterior;
       delete window.wadiCaptureAngles;
+      delete window.wadiInvalidate;
     };
-  }, [gl, scene, camera, controls, fit.dist, fit.targetY]);
+  }, [gl, scene, camera, controls, invalidate, fit.dist, fit.targetY]);
   return null;
 }
 
@@ -379,6 +388,9 @@ declare global {
     /** Capture the CURRENT 3D frame as a downscaled JPEG data URL (manual
      *  "take a shot"). Returns null if the canvas isn't ready. */
     wadiCapture3D?: (maxW?: number) => string | null;
+    /** Force a live repaint of the on-demand scene (after a non-gesture update
+     *  like a WDL-edit compile). Optionally render several frames. */
+    wadiInvalidate?: (frames?: number) => void;
     /** Capture the exterior from a named preset angle (iso | front | back |
      *  left | right | top) — seats the camera on a sphere around the orbit
      *  target, grabs, and restores. Synchronous → works backgrounded. */

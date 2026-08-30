@@ -4123,6 +4123,12 @@ function wireWdlEditor(): void {
     // WDL is the SOURCE: keep the author's exact text (don't re-decompile).
     st.loadConfig(res.config, st.filename ?? undefined, st.filePath, src);
     markHomeChosen();
+    // The scene renders on demand; a compile from the debounce (no user gesture)
+    // updates the React scene but wouldn't paint to the visible canvas until the
+    // next interaction (e.g. clicking out of the editor). Force the repaint now,
+    // and once more on the next frame after React has flushed the new geometry.
+    window.wadiInvalidate?.();
+    requestAnimationFrame(() => window.wadiInvalidate?.());
     const chk = checkBrief(useConfigStore.getState().config);
     if (!chk.ok) setStatus("err", `✖ ${chk.summary}\n` + (chk.error_messages ?? []).join("\n"));
     else if (chk.warnings) setStatus("warn", `⚠ ${chk.summary}\n` + (chk.warning_messages ?? []).join("\n"));
@@ -4134,7 +4140,7 @@ function wireWdlEditor(): void {
     editing = true;
     setStatus("busy", "…");
     window.clearTimeout(timer);
-    timer = window.setTimeout(() => { void apply().finally(() => { editing = false; }); }, 700);
+    timer = window.setTimeout(() => { void apply().finally(() => { editing = false; }); }, 450);
   });
   ta.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
