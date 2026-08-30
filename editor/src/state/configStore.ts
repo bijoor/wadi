@@ -43,7 +43,11 @@ interface ConfigState {
   validationErrors: { path: string; message: string }[];
   dirty: boolean;
 
-  loadConfig: (config: HouseConfig, filename?: string, filePath?: string | null) => void;
+  // `wdl` (optional): the exact WDL source this config was compiled from. Pass it
+  // when the load ORIGINATES from WDL (the WDL editor, wadi_set_wdl) so the author's
+  // text is kept as the source of truth. Omit it for a .wadi/template load — the
+  // store then derives the WDL by decompiling.
+  loadConfig: (config: HouseConfig, filename?: string, filePath?: string | null, wdl?: string) => void;
   setFilePath: (filePath: string | null) => void;
   // Clear the dirty flag after a successful save (Save / Save As).
   markSaved: () => void;
@@ -162,9 +166,15 @@ export const useConfigStore = create<ConfigState>()(
               (patch as { config: HouseConfig }).config,
             );
             reportFormulaWarnings(warnings);
-            // Keep the model's .wdl in lockstep with the config (cheap decompile).
-            // This is what makes WDL native — the model always carries its source.
-            return { ...(patch as object), config, wdl: configToWdlText(config) };
+            // Keep the model's .wdl in lockstep with the config. When the caller
+            // supplies the wdl explicitly (an edit that CAME FROM WDL — the WDL
+            // editor, wadi_set_wdl), keep that exact source text (WDL is the source
+            // of truth; preserve the author's formatting/comments). Otherwise the
+            // change came from a config path (loading a .wadi, a form edit), so
+            // derive the wdl by decompiling — cheap, no Langium.
+            const suppliedWdl = (patch as { wdl?: unknown }).wdl;
+            const wdl = typeof suppliedWdl === "string" ? suppliedWdl : configToWdlText(config);
+            return { ...(patch as object), config, wdl };
           }
           return patch;
         };
@@ -190,7 +200,7 @@ export const useConfigStore = create<ConfigState>()(
       validationErrors: [],
       dirty: false,
 
-      loadConfig: (config, filename, filePath) => {
+      loadConfig: (config, filename, filePath, wdl) => {
         // Register any components this config exposes as typed primitives, BEFORE
         // it is validated, expanded, or rendered (plans/declarative-plugins.md P0).
         // A bad plugin (un-namespaced / colliding) must not crash the load: surface
@@ -203,6 +213,9 @@ export const useConfigStore = create<ConfigState>()(
         }
         set({
           config,
+          // When the load came from WDL, keep the author's exact source (see the
+          // resolve wrap). Omitted -> the wrap decompiles the config.
+          ...(typeof wdl === "string" ? { wdl } : {}),
           filename: filename ?? null,
           filePath: filePath ?? null,
           selection: null,

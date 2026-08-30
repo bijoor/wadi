@@ -438,6 +438,11 @@ async function bootViewer(): Promise<void> {
   // call, so it doesn't need reinstalling after config changes.
   patchFetch();
 
+  // Always-on WDL editor pane FIRST (before the 3D mounts): it shrinks the content
+  // area, so the R3F canvas measures the correct width from the start instead of
+  // sizing to the full width and then needing a refit.
+  wireWdlEditor();
+
   // Mount the Three.js scene + layer panel. Both subscribe to
   // useConfigStore internally, so property-panel edits re-render the
   // scene automatically.
@@ -2969,9 +2974,11 @@ function wireWadiApi(): void {
     captureView(size?: number) { return window.wadiCapture3D?.(Number(size) || 1000) ?? null; },
 
     async setWdl(wdl: string) {
-      const res = await wdlToConfig(String(wdl ?? ""));
+      const src = String(wdl ?? "");
+      const res = await wdlToConfig(src);
       if (!res.ok || !res.config) return { ok: false as const, errors: res.errors };
-      store().loadConfig(res.config, "wadi.setWdl");
+      // Keep the agent's exact WDL as the model's source (WDL is the source of truth).
+      store().loadConfig(res.config, "wadi.setWdl", null, src);
       document.body.dataset.homeChosen = "yes";
       return { loaded: true as const, ...checkBrief(store().config) };
     },
@@ -4017,6 +4024,130 @@ async function loadDroppedFile(file: File): Promise<void> {
 
 // Whole-window drag-and-drop to load a .wadi. Shows a drop overlay while a file is
 // dragged over the page and loads the first file dropped. Works in desktop
+// Always-on WDL editor pane. WDL is Wadi's native source: the model always carries
+// its .wdl, and this pane lets a human edit it directly — compile-on-edit (debounced
+// + ⌘/Ctrl+Enter), the 3D re-renders, and compile/structural errors show inline.
+// WDL is kept as the SOURCE (loadConfig(..., src) preserves the author's exact text
+// rather than re-decompiling). Injected into #viewer-container as a right-side pane,
+// so it works in every persona; hidden in the embedded ?panels=off surface.
+function wireWdlEditor(): void {
+  const container = document.getElementById("viewer-container");
+  if (!container || document.getElementById("viewer-wdl")) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    #viewer-wdl { width: 460px; max-width: 46vw; flex: none; display: flex; flex-direction: column;
+      background: #0b1220; color: #e2e8f0; border-left: 1px solid #1e293b; }
+    body[data-wdl="off"] #viewer-wdl { display: none; }
+    #viewer-wdl .wdl-head { flex: none; display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: #111827; border-bottom: 1px solid #1e293b; font: 600 13px system-ui, sans-serif; }
+    #viewer-wdl .wdl-head .sub { color: #94a3b8; font-weight: 400; font-size: 11px; margin-left: 8px; }
+    #viewer-wdl textarea { flex: 1 1 auto; min-height: 0; resize: none; border: none; outline: none;
+      background: #0b1220; color: #e2e8f0; font: 13px/1.55 ui-monospace, Menlo, Consolas, monospace;
+      padding: 12px 14px; tab-size: 2; white-space: pre; overflow: auto; }
+    #viewer-wdl .wdl-status { flex: none; padding: 8px 12px; border-top: 1px solid #1e293b;
+      font: 12px/1.4 ui-monospace, monospace; max-height: 34%; overflow: auto; white-space: pre-wrap; color: #94a3b8; }
+    #viewer-wdl .wdl-status.ok { color: #4ade80; } #viewer-wdl .wdl-status.warn { color: #fbbf24; }
+    #viewer-wdl .wdl-status.err { color: #f87171; } #viewer-wdl .wdl-status.busy { color: #93c5fd; }
+    #viewer-wdl .wdl-btn { background: none; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px;
+      padding: 2px 9px; cursor: pointer; font: inherit; }
+    #wdl-reopen { position: absolute; top: 60px; right: 0; z-index: 6; background: #111827; color: #e2e8f0;
+      border: 1px solid #1e293b; border-right: none; border-radius: 8px 0 0 8px; padding: 6px 11px; cursor: pointer;
+      font: 600 12px system-ui, sans-serif; display: none; }
+    body[data-wdl="off"] #wdl-reopen { display: block; }`;
+  document.head.appendChild(style);
+
+  const aside = document.createElement("aside");
+  aside.id = "viewer-wdl";
+  aside.setAttribute("aria-label", "WDL source");
+  aside.innerHTML =
+    `<div class="wdl-head"><span>WDL <span class="sub">the model's source · ⌘↵ to apply</span></span>` +
+    `<button class="wdl-btn" id="wdl-hide" title="Hide the WDL pane">Hide ⟩</button></div>` +
+    `<textarea id="wdl-editor" spellcheck="false" placeholder="house House { … }"></textarea>` +
+    `<div class="wdl-status" id="wdl-status"></div>`;
+  container.appendChild(aside);
+
+  const reopen = document.createElement("button");
+  reopen.id = "wdl-reopen";
+  reopen.textContent = "⟨ WDL";
+  container.appendChild(reopen);
+
+  // Always-on for humans; hidden in the embedded/agent surface (?panels=off).
+  const embedded = new URLSearchParams(window.location.search).get("panels") === "off";
+  document.body.dataset.wdl = embedded ? "off" : "on";
+
+  // The 3D canvas measured the full width before this pane shrank the content
+  // area. Refit it whenever the content area's size changes (pane toggled, window
+  // resized, canvas mounted late) — the R3F view re-measures on a window resize.
+  // A ResizeObserver makes this robust to timing (fixed timeouts missed the late
+  // canvas mount). No feedback loop: the canvas resizing doesn't change the
+  // content area's own size (the pane is fixed width).
+  const refit = (): void => { window.dispatchEvent(new Event("resize")); };
+  const contentArea = document.getElementById("viewer-content-area");
+  if (contentArea && typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(refit).observe(contentArea);
+  }
+  // The R3F canvas can mount AFTER the pane reflow with the default 300x150 size;
+  // a window resize makes it re-measure. Nudge until it's actually sized (or give
+  // up after ~3s), which is robust to the canvas mounting late.
+  let tries = 0;
+  const kick = (): void => {
+    refit();
+    const c = document.querySelector("#view-3d canvas") as HTMLElement | null;
+    if ((!c || c.clientWidth < 50) && tries++ < 20) window.setTimeout(kick, 150);
+  };
+  window.setTimeout(kick, 80);
+
+  const ta = document.getElementById("wdl-editor") as HTMLTextAreaElement;
+  const status = document.getElementById("wdl-status") as HTMLElement;
+  const setStatus = (cls: string, msg: string): void => { status.className = "wdl-status " + cls; status.textContent = msg; };
+
+  // Mirror the model's WDL into the editor when it changes from elsewhere (loading
+  // a template, undo/redo, an interim form edit). Skip while the user is typing so
+  // we never clobber their text mid-edit.
+  let editing = false;
+  const syncFromStore = (): void => {
+    if (editing) return;
+    const wdl = useConfigStore.getState().wdl ?? "";
+    if (ta.value !== wdl) { ta.value = wdl; setStatus("", ""); }
+  };
+  useConfigStore.subscribe(syncFromStore);
+  syncFromStore();
+
+  const apply = async (): Promise<void> => {
+    const src = ta.value;
+    setStatus("busy", "Compiling…");
+    const res = await wdlToConfig(src);
+    if (!res.ok || !res.config) { setStatus("err", "✖ " + res.errors.join("\n")); return; }
+    const st = useConfigStore.getState();
+    // WDL is the SOURCE: keep the author's exact text (don't re-decompile).
+    st.loadConfig(res.config, st.filename ?? undefined, st.filePath, src);
+    markHomeChosen();
+    const chk = checkBrief(useConfigStore.getState().config);
+    if (!chk.ok) setStatus("err", `✖ ${chk.summary}\n` + (chk.error_messages ?? []).join("\n"));
+    else if (chk.warnings) setStatus("warn", `⚠ ${chk.summary}\n` + (chk.warning_messages ?? []).join("\n"));
+    else setStatus("ok", "✓ Applied — no structural issues.");
+  };
+
+  let timer: number | undefined;
+  ta.addEventListener("input", () => {
+    editing = true;
+    setStatus("busy", "…");
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => { void apply().finally(() => { editing = false; }); }, 700);
+  });
+  ta.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      window.clearTimeout(timer);
+      void apply().finally(() => { editing = false; });
+    }
+  });
+
+  (document.getElementById("wdl-hide") as HTMLElement).onclick = () => { document.body.dataset.wdl = "off"; refit(); };
+  reopen.onclick = () => { document.body.dataset.wdl = "on"; syncFromStore(); refit(); };
+}
+
 // browsers and iPadOS (a file dragged from the Files app arrives here regardless
 // of extension, unlike the picker).
 function wireFileDrop(): void {
