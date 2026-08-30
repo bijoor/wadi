@@ -143,37 +143,11 @@ fn start_bridge(app: AppHandle) {
   });
 }
 
-// Open (or focus) the WDL editor+renderer window — the bundled Monaco playground
-// at /dsl, which compiles .wdl in-webview and drives the app renderer in a
-// same-origin iframe. Fully offline; no dev server, no VS Code, no watch loop.
-fn open_dsl_editor(app: &tauri::AppHandle) {
-  if let Some(win) = app.get_webview_window("dsl") {
-    let _ = win.set_focus();
-    return;
-  }
-  match WebviewWindowBuilder::new(app, "dsl", WebviewUrl::App("/dsl/index.html".into()))
-    .title("Wadi WDL — editor + live renderer")
-    .inner_size(1500.0, 950.0)
-    .min_inner_size(1000.0, 640.0)
-    .resizable(true)
-    .build()
-  {
-    Ok(_) => {}
-    Err(e) => eprintln!("[wadi] failed to open WDL editor window: {e}"),
-  }
-}
-
-// Command form of `open_dsl_editor`, so the app's own header link (main window)
-// can open the WDL editor window — same as the ⌘⇧D menu item.
-#[tauri::command]
-fn show_dsl_editor(app: tauri::AppHandle) {
-  open_dsl_editor(&app);
-}
-
 // Open a companion tool in its OWN window (focus it if already open). Each tool
 // is a page under the bundled frontendDist (docs/). Backs the app's Apps menu so
-// the WDL editor, Floor planner, and Staircase explorer each get a real window
-// on desktop instead of a browser tab.
+// the Floor planner and Staircase explorer each get a real window on desktop
+// instead of a browser tab. (The standalone WDL/DSL editor is retired — the app's
+// own always-on WDL editor pane replaces it.)
 fn open_tool_window(app: &tauri::AppHandle, label: &str, url: &str, title: &str, w: f64, h: f64) {
   if let Some(win) = app.get_webview_window(label) {
     let _ = win.set_focus();
@@ -194,7 +168,6 @@ fn open_tool_window(app: &tauri::AppHandle, label: &str, url: &str, title: &str,
 #[tauri::command]
 fn show_tool(app: tauri::AppHandle, name: String) {
   match name.as_str() {
-    "dsl" => open_tool_window(&app, "dsl", "/dsl/index.html", "Wadi WDL — editor + live renderer", 1500.0, 950.0),
     "planner" => open_tool_window(&app, "planner", "/planner/index.html", "Wadi Floor Planner", 1400.0, 900.0),
     "stairs" => open_tool_window(&app, "stairs", "/tools/staircase-explorer.html", "Wadi Staircase Explorer", 1200.0, 850.0),
     other => eprintln!("[wadi] show_tool: unknown tool '{other}'"),
@@ -273,7 +246,7 @@ pub fn run() {
     .plugin(tauri_plugin_clipboard_manager::init())
     .manage(PendingOpen(Mutex::new(initial)))
     .manage(BridgeState(Mutex::new(HashMap::new())))
-    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response, show_dsl_editor, show_tool, export_wadi, save_template])
+    .invoke_handler(tauri::generate_handler![take_pending_open, bridge_response, show_tool, export_wadi, save_template])
     // Custom menu on macOS: the default Edit menu claims Cmd+Z / Shift+Cmd+Z
     // for native undo/redo, which would shadow the app's model-level
     // undo/redo (handled in the webview via the standard keyboard shortcuts).
@@ -284,7 +257,7 @@ pub fn run() {
     .menu(|handle| {
       #[cfg(target_os = "macos")]
       {
-        use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+        use tauri::menu::{MenuBuilder, SubmenuBuilder};
         let app_menu = SubmenuBuilder::new(handle, "Wadi")
           .about(None)
           .separator()
@@ -302,14 +275,8 @@ pub fn run() {
           .paste()
           .select_all()
           .build()?;
-        let dsl_item = MenuItemBuilder::new("WDL Editor")
-          .id("open-dsl")
-          .accelerator("Cmd+Shift+D")
-          .build(handle)?;
         let window_menu = SubmenuBuilder::new(handle, "Window")
           .minimize()
-          .separator()
-          .item(&dsl_item)
           .separator()
           .close_window()
           .build()?;
@@ -320,11 +287,6 @@ pub fn run() {
       #[cfg(not(target_os = "macos"))]
       {
         tauri::menu::Menu::default(handle)
-      }
-    })
-    .on_menu_event(|app, event| {
-      if event.id().as_ref() == "open-dsl" {
-        open_dsl_editor(app);
       }
     })
     .setup(|app| {

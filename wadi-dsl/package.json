@@ -11,8 +11,6 @@
     "gen": "tsx src/cli/main.ts",
     "test": "vitest run",
     "prepare": "langium generate",
-    "dev:playground": "vite --config vite.playground.config.ts",
-    "build:playground": "langium generate && vite build --config vite.playground.config.ts",
     "watch": "tsx src/cli/watch.ts"
   },
   "dependencies": {

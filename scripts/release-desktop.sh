@@ -42,16 +42,14 @@ esac
 VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
 echo "▶ Wadi desktop release build — v${VERSION}"
 
-# 1. Build BOTH frontend surfaces that live under docs/ (the app bundles docs/).
-#    build:tauri rebuilds docs/app (the viewer); build:playground rebuilds docs/dsl.
-#    emptyOutDir is false on both, so they don't wipe each other or the templates.
-#    This runs on the HOST so the Linux container can reuse the built docs/ as-is
-#    (it must NOT rebuild the frontend — the host's editor/node_modules holds
-#    macOS-native binaries that fail to load under Linux).
+# 1. Build the frontend that lives under docs/ (the app bundles docs/).
+#    build:tauri rebuilds docs/app (the viewer). emptyOutDir is false so it doesn't
+#    wipe the templates. This runs on the HOST so the Linux container can reuse the
+#    built docs/ as-is (it must NOT rebuild the frontend — the host's
+#    editor/node_modules holds macOS-native binaries that fail to load under Linux).
 if [ "$DO_MAC" = "1" ]; then
-  echo "▶ [1/3] Building frontend (viewer + DSL playground) into docs/…"
+  echo "▶ [1/3] Building frontend (viewer) into docs/…"
   npm --prefix editor run build:tauri
-  npm --prefix wadi-dsl run build:playground
 
   # 2. macOS universal bundle.
   #    Ensure both apple-darwin targets exist (universal needs Intel + Apple Silicon).
