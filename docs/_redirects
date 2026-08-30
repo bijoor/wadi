@@ -1,0 +1,3 @@
+# The standalone WDL/DSL playground is retired — the app's built-in WDL editor
+# pane replaces it. Send any old /dsl link to the app.
+/dsl/*  /app/  302
