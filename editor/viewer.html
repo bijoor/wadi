@@ -2288,9 +2288,8 @@
             <h4 id="cfg-dock-title">Configure your home</h4>
             <div id="viewer-config-list"></div>
         </aside>
-        <!-- Edit-mode slots: React roots for the editor's Sidebar (left)
-             and PropertyPanel (right). Hidden unless body[data-edit-mode=on]. -->
-        <aside id="viewer-sidebar"></aside>
+        <!-- (Form-studio Sidebar + PropertyPanel retired — WDL is the only edit
+             surface. Their React mount slots are gone.) -->
         <div id="viewer-content-area">
         <!-- View tabs: docked at the top of the content area so they
              don't overlap the edit-mode sidebar. On mobile the same
@@ -2641,7 +2640,6 @@
         </div>
         </div><!-- /viewer-views -->
         </div><!-- /viewer-content-area -->
-        <aside id="viewer-property-panel"></aside>
     </div>
 
     <!-- Layers editor modal (React, mounted by main.ts). Renders nothing until

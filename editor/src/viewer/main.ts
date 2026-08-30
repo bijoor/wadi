@@ -79,8 +79,6 @@ import { listRooms, useInteriorStore } from "../three/interiorView";
 import { useLayersUiStore } from "../state/layersUiStore";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Sidebar } from "../components/Sidebar";
-import { PropertyPanel } from "../components/PropertyPanel";
 import { GraphView } from "../graph/GraphView";
 import { mountViewer3D, mountViewerLayerPanel, mountViewerLightingPanel, mountViewerInteriorPanel, mountViewerLayersEditor } from "./mount3D";
 import { mountViewer3DToolbar } from "./Toolbar3D";
@@ -795,12 +793,10 @@ function patchFetch(): void {
 }
 
 function mountEditPanels(): void {
-  const sidebar = document.getElementById("viewer-sidebar");
-  const props = document.getElementById("viewer-property-panel");
-  if (sidebar) createRoot(sidebar).render(createElement(Sidebar));
-  if (props) createRoot(props).render(createElement(PropertyPanel));
-  // Graph view (Phase 2): a persistent React root over the config store, shown
-  // when the Graph tab is active (view-container toggled by switchView).
+  // Form-studio editing is retired (WDL is the only edit surface): the Sidebar
+  // object tree and the PropertyPanel forms are gone. Only the read-only Graph
+  // view remains — a persistent React root over the config store, shown when the
+  // Graph tab is active (view-container toggled by switchView).
   const graph = document.getElementById("view-graph");
   if (graph) createRoot(graph).render(createElement(GraphView));
 }

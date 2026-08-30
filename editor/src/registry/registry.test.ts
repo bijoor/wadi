@@ -12,7 +12,7 @@ describe("node registry", () => {
     expect(typeof def!.makeDefault).toBe("function");
     expect(typeof def!.render3D).toBe("function");
     expect(typeof def!.planFootprint).toBe("function");
-    expect(def!.Form).toBeTruthy();
+    // (Form retired — property-panel editing is gone; WDL is the only edit surface.)
   });
 
   it("exposes item as an addable type", () => {

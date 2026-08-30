@@ -21,9 +21,6 @@ import type { NodeDefinition } from "../types";
 const FurnitureItem = lazy(() =>
   import("../../three/FurnitureItem").then((m) => ({ default: m.FurnitureItem })),
 );
-const ItemForm = lazy(() =>
-  import("../../forms/ItemForm").then((m) => ({ default: m.ItemForm })),
-);
 
 interface ItemAssetShape {
   src: string;
@@ -50,8 +47,6 @@ export const itemNode: NodeDefinition = {
       rotation: 0,
     } as HouseObject;
   },
-
-  Form: ItemForm as NodeDefinition["Form"],
 
   render3D: (obj, ctx) => {
     const asset = obj.asset as ItemAssetShape | undefined;

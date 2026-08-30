@@ -2,17 +2,15 @@
 // NodeDefinition). Each registered node owns its whole surface in ONE file: how it's
 // created, edited, rendered in 3D + on the 2D plan, and which layer it toggles with.
 //
-// This is ADDITIVE. The dispatchers (House3D, floorPlan, PropertyPanel, defaultFactory,
-// Sidebar, layers) consult the registry FIRST and fall back to their existing per-type
-// switches for the legacy object types that haven't been migrated. So a new object type
-// = one registry entry, no edits scattered across the renderers.
+// This is ADDITIVE. The dispatchers (House3D, floorPlan, defaultFactory, layers)
+// consult the registry FIRST and fall back to their existing per-type switches for
+// the legacy object types that haven't been migrated. So a new object type = one
+// registry entry, no edits scattered across the renderers.
 
 import type { ReactNode } from "react";
-import type { ComponentType } from "react";
 import type { ZodTypeAny } from "zod";
 import type { FieldSpec } from "./fieldSchema";
 import type { HouseConfig, HouseObject } from "../schema/houseConfig";
-import type { Selection } from "../state/configStore";
 import type { LayerRole } from "../state/layerDefaults";
 import type { FloorZBounds, PlotBounds } from "../three/coords";
 
@@ -108,11 +106,10 @@ export interface NodeDefinition {
   addable?: boolean;
   /** Build a default instance for the "+ Add" menu. */
   makeDefault?: (cfg: HouseConfig, existing: HouseObject[]) => HouseObject;
-  /** Declarative fields (P2). Drive the generated schema/docs and, when no bespoke
-   *  `Form` is given, the property-panel form (AutoForm). */
+  /** Declarative fields (P2). Drive the generated schema + docs. (These also once
+   *  drove the property-panel form, which is retired — WDL is the only edit
+   *  surface — but `fields` remain the source of the schema.) */
   fields?: FieldSpec[];
-  /** Property-panel editor. Overrides the AutoForm generated from `fields`. */
-  Form?: ComponentType<{ obj: HouseObject; selection: Selection }>;
   /** Zod schema for this object type (a z.object whose `type` is a literal). Used
    *  to build the config discriminated union from the registry (P1e). */
   schema?: ZodTypeAny;
