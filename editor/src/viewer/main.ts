@@ -3070,7 +3070,7 @@ function buildWadiMcpTools(): WebMcpTool[] {
   });
   const noInput: Record<string, unknown> = { type: "object", properties: {} };
 
-  return [
+  const allTools: WebMcpTool[] = [
     // ---- WDL: the full authoring surface. An agent authors Wadi's .wdl DSL —
     // every object type, variables, formulas, components, roofs — compiled through
     // the real pipeline and rendered live. This is the powerful path; the narrower
@@ -3407,6 +3407,25 @@ function buildWadiMcpTools(): WebMcpTool[] {
       },
     },
   ];
+
+  // WDL-ONLY EDITING (user directive): the model is edited exclusively by
+  // authoring WDL (wadi_set_wdl). Every OTHER mutating tool is withheld from the
+  // agent surface — no add/edit/connect/door, no build_house, no knob/plot/roof
+  // setters. What remains: the WDL tools, plus read-only orientation, view, undo,
+  // and loading a ready-made starting home. (The window.wadi methods still exist
+  // for the owner configurator UI + skill; they are just not exposed as tools.)
+  const NON_WDL_EDIT_TOOLS = new Set<string>([
+    "wadi_build_house",
+    "wadi_add_room",
+    "wadi_edit_room",
+    "wadi_connect_rooms",
+    "wadi_add_door",
+    "wadi_set_variable",
+    "wadi_set_plot",
+    "wadi_set_roof",
+    "wadi_adjust",
+  ]);
+  return allTools.filter((t) => !NON_WDL_EDIT_TOOLS.has(t.name));
 }
 
 function wireWebMcpTools(): void {
