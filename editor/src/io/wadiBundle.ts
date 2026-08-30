@@ -61,6 +61,79 @@ export function setBundleThumbnails(next: Record<string, Uint8Array>): void {
   bundleThumbnails = next;
 }
 
+// --- Capture flow: shots become FILES in the bundle, referenced by PATH -------
+//
+// A captured shot arrives as a `data:` URL (a canvas snapshot). Instead of
+// storing that base64 in the model (where the WDL decompiler would drop it, so it
+// never round-trips), we decode it to a real file under `thumbnails/` and hand
+// back its PATH. The path goes into the WDL's `template { thumbnails … }` block,
+// so it survives every WDL edit; the bytes ride in the saved `.wadi` bundle.
+
+// Session-unique filename counter, and a path -> display data-URL cache so the UI
+// can show a shot without re-encoding its bytes each render.
+let shotSeq = 0;
+const thumbUrlCache = new Map<string, string>();
+
+function mimeForPath(p: string): string {
+  if (/\.jpe?g$/i.test(p)) return "image/jpeg";
+  if (/\.webp$/i.test(p)) return "image/webp";
+  return "image/png";
+}
+
+function bytesFromDataUrl(dataUrl: string): { bytes: Uint8Array; mime: string } {
+  const m = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(dataUrl);
+  if (!m) throw new Error("Not a data: URL");
+  const mime = m[1] || "image/png";
+  const body = m[3];
+  const bin = m[2] ? atob(body) : decodeURIComponent(body);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { bytes, mime };
+}
+
+function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return `data:${mime};base64,${btoa(bin)}`;
+}
+
+// Add a captured shot (a data: URL) to the bundle as a file. Returns its PATH,
+// which the caller stores in `config.template.thumbnails`.
+export function addBundleThumbnail(dataUrl: string): string {
+  const { bytes, mime } = bytesFromDataUrl(dataUrl);
+  const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
+  const path = `${THUMB_DIR}shot-${++shotSeq}.${ext}`;
+  bundleThumbnails[path] = bytes;
+  thumbUrlCache.set(path, dataUrl); // reuse the original for display, no re-encode
+  return path;
+}
+
+// Resolve a thumbnail entry to something an <img src> can show: a legacy `data:`
+// URL passes through; a bundle PATH resolves from its file bytes (or "" if the
+// path isn't in the current bundle).
+export function thumbnailUrl(entry: string): string {
+  if (entry.startsWith("data:")) return entry;
+  const cached = thumbUrlCache.get(entry);
+  if (cached) return cached;
+  const bytes = bundleThumbnails[entry];
+  if (!bytes) return "";
+  const url = bytesToDataUrl(bytes, mimeForPath(entry));
+  thumbUrlCache.set(entry, url);
+  return url;
+}
+
+// Drop bundle files whose paths are no longer referenced (after a delete / an
+// Auto-capture that replaces the whole set), so removed shots don't ride along.
+export function pruneBundleThumbnails(keepPaths: string[]): void {
+  const keep = new Set(keepPaths);
+  for (const p of Object.keys(bundleThumbnails)) {
+    if (p.startsWith(THUMB_DIR) && !keep.has(p)) {
+      delete bundleThumbnails[p];
+      thumbUrlCache.delete(p);
+    }
+  }
+}
+
 // Parse raw `.wadi` bytes (bundle OR legacy JSON) into a loadable config.
 export async function parseWadiBytes(
   bytes: Uint8Array,
@@ -102,6 +175,13 @@ async function parseBundle(
     if (name.startsWith(THUMB_DIR) && !name.endsWith("/")) thumbs[name] = data;
   }
   bundleThumbnails = thumbs;
+  thumbUrlCache.clear();
+  // Advance the shot counter past any loaded `shot-N.*` so a fresh capture in
+  // this session can't overwrite a file the bundle already carries.
+  for (const name of Object.keys(thumbs)) {
+    const m = /shot-(\d+)\./.exec(name);
+    if (m) shotSeq = Math.max(shotSeq, Number(m[1]));
+  }
 
   return { config: res.config, wdl, filename, filePath };
 }
@@ -134,6 +214,7 @@ async function parseLegacyJson(
   // separate thumbnail files. Clear the carried set — the store decompiles the
   // config to WDL, and the next save writes a fresh bundle.
   bundleThumbnails = {};
+  thumbUrlCache.clear();
   return { config: result.data, filename, filePath };
 }
 

@@ -15,11 +15,20 @@ import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { effectiveLayers, layerGroups, useLayerStore } from "../three/layers";
 import { useConfigStore } from "../state/configStore";
+import { thumbnailUrl } from "../io/wadiBundle";
 import { listRooms, useInteriorStore } from "../three/interiorView";
 import { useSpinStore } from "../three/spinStore";
 
+// The shot list: bundle PATHS from `template.thumbnails` (the field the WDL
+// round-trips), falling back to a legacy file's inline `thumbnails`/`thumbnail`
+// data URLs. Both forms display through `thumbnailUrl()`.
 function readThumbs(config: unknown): string[] {
-  const c = config as { thumbnails?: string[]; thumbnail?: string } | null;
+  const c = config as {
+    template?: { thumbnails?: string[] };
+    thumbnails?: string[];
+    thumbnail?: string;
+  } | null;
+  if (c?.template?.thumbnails?.length) return c.template.thumbnails;
   if (c?.thumbnails?.length) return c.thumbnails;
   return c?.thumbnail ? [c.thumbnail] : [];
 }
@@ -376,7 +385,7 @@ function ShotManager({
           {thumbs.map((url, i) => (
             <div key={i} className={`shot-mgr-item${i === 0 ? " cover" : ""}`}>
               <div className="shot-mgr-thumb">
-                <img src={url} alt={`preview ${i + 1}`} />
+                <img src={thumbnailUrl(url)} alt={`preview ${i + 1}`} />
               </div>
               <div className="shot-mgr-row">
                 {i === 0 ? <span className="cover-tag">Cover</span> : <span className="idx">#{i + 1}</span>}

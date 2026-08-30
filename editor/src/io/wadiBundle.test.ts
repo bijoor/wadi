@@ -17,7 +17,11 @@ import {
   isWadiBundle,
   currentBundleThumbnails,
   setBundleThumbnails,
+  addBundleThumbnail,
+  thumbnailUrl,
+  pruneBundleThumbnails,
 } from "./wadiBundle";
+import { wdlToConfig } from "./wdl";
 
 // Vitest runs with cwd = editor/, so the repo's library/ is one level up.
 const FIXTURE = path.resolve(process.cwd(), "..", "library", "coastal_konkan.wadi");
@@ -61,6 +65,37 @@ describe("wadi bundle", () => {
     const carried = currentBundleThumbnails();
     expect(Object.keys(carried)).toContain("thumbnails/cover.jpg");
     expect(Array.from(carried["thumbnails/cover.jpg"])).toEqual(Array.from(cover));
+  });
+
+  it("capture: a data URL becomes a bundle file, referenced by path", () => {
+    setBundleThumbnails({});
+    const dataUrl = "data:image/png;base64,AAECAwQF"; // 6 bytes
+    const path = addBundleThumbnail(dataUrl);
+    expect(path).toMatch(/^thumbnails\/shot-\d+\.png$/);
+    expect(Object.keys(currentBundleThumbnails())).toContain(path);
+    // Display resolves the path back to a URL; a data: URL passes through.
+    expect(thumbnailUrl(path)).toBe(dataUrl);
+    expect(thumbnailUrl("data:image/png;base64,ZZZZ")).toBe("data:image/png;base64,ZZZZ");
+    // Pruning drops files no longer referenced.
+    pruneBundleThumbnails([]);
+    expect(Object.keys(currentBundleThumbnails())).not.toContain(path);
+  });
+
+  it("template.thumbnails PATHS round-trip through the WDL", async () => {
+    const legacy = await parseWadiBytes(jsonBytes, "coastal.wadi");
+    const cfg = {
+      ...legacy.config,
+      template: { ...(legacy.config as { template?: object }).template, thumbnails: ["thumbnails/cover.png", "thumbnails/iso.png"] },
+    };
+    const wdl = emitWdl(cfg as unknown as Record<string, unknown>);
+    expect(wdl).toContain('thumbnails "thumbnails/cover.png", "thumbnails/iso.png"');
+
+    const back = await wdlToConfig(wdl);
+    expect(back.ok).toBe(true);
+    expect((back.config as { template?: { thumbnails?: string[] } }).template?.thumbnails).toEqual([
+      "thumbnails/cover.png",
+      "thumbnails/iso.png",
+    ]);
   });
 
   it("rejects a bundle with no model.wdl", async () => {

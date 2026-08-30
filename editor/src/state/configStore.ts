@@ -4,6 +4,7 @@ import type { HouseConfig, HouseObject } from "../schema/houseConfig";
 import { makeDefault, makeDefaultFloor, type AddableObjectType } from "./defaultFactory";
 import { composeResolve } from "../pipeline/compose";
 import { configToWdlText } from "../io/wdl";
+import { addBundleThumbnail, pruneBundleThumbnails } from "../io/wadiBundle";
 import { reportFormulaWarnings } from "../param/warnings";
 import { registerExposedComponents } from "../registry/promote";
 
@@ -352,47 +353,72 @@ export const useConfigStore = create<ConfigState>()(
           };
         }),
 
-      // Read the current shot list, folding the legacy single `thumbnail` in.
-      addThumbnail: (dataUrl) =>
-        set((state) => {
-          if (!state.config || !dataUrl) return state;
-          const cur =
-            state.config.thumbnails ??
-            (state.config.thumbnail ? [state.config.thumbnail] : []);
-          return {
-            config: {
-              ...state.config,
-              thumbnails: [...cur, dataUrl],
-              thumbnail: undefined, // migrate away from the singular form
-            } as HouseConfig,
-            dirty: true,
-          };
-        }),
-
-      setThumbnails: (thumbnails) =>
+      // Template previews (shots) are stored as FILES in the `.wadi` bundle,
+      // referenced by PATH from `config.template.thumbnails` — the one field the
+      // WDL decompiler emits, so a shot survives every WDL round-trip. A captured
+      // `data:` URL is decoded to a bundle file here and only its path is kept in
+      // the model (never base64 in the WDL). Legacy top-level `thumbnails` /
+      // `thumbnail` (inline data URLs) are read as a fallback and migrated to
+      // files on the first edit.
+      addThumbnail: (dataUrl) => {
+        if (!dataUrl) return;
+        const path = addBundleThumbnail(dataUrl); // decode -> bundle file, get path
         set((state) => {
           if (!state.config) return state;
+          const template = { ...(state.config.template ?? {}) };
+          template.thumbnails = [...(template.thumbnails ?? []), path];
           return {
             config: {
               ...state.config,
-              thumbnails: thumbnails.length ? thumbnails : undefined,
+              template,
+              thumbnails: undefined, // migrate off inline data URLs
               thumbnail: undefined,
             } as HouseConfig,
             dirty: true,
           };
-        }),
+        });
+      },
+
+      // Accepts a mix of bundle PATHS (from the shot manager reordering) and raw
+      // `data:` URLs (from Auto-capture, which replaces the whole set); each data
+      // URL is minted into a bundle file. Unreferenced files are pruned.
+      setThumbnails: (entries) => {
+        const paths = entries.map((e) =>
+          e.startsWith("data:") ? addBundleThumbnail(e) : e,
+        );
+        pruneBundleThumbnails(paths);
+        set((state) => {
+          if (!state.config) return state;
+          const template = { ...(state.config.template ?? {}) };
+          template.thumbnails = paths.length ? paths : undefined;
+          return {
+            config: {
+              ...state.config,
+              template,
+              thumbnails: undefined,
+              thumbnail: undefined,
+            } as HouseConfig,
+            dirty: true,
+          };
+        });
+      },
 
       removeThumbnail: (index) =>
         set((state) => {
           if (!state.config) return state;
           const cur =
+            state.config.template?.thumbnails ??
             state.config.thumbnails ??
             (state.config.thumbnail ? [state.config.thumbnail] : []);
           const next = cur.filter((_, i) => i !== index);
+          pruneBundleThumbnails(next.filter((e) => !e.startsWith("data:")));
+          const template = { ...(state.config.template ?? {}) };
+          template.thumbnails = next.length ? next : undefined;
           return {
             config: {
               ...state.config,
-              thumbnails: next.length ? next : undefined,
+              template,
+              thumbnails: undefined,
               thumbnail: undefined,
             } as HouseConfig,
             dirty: true,
