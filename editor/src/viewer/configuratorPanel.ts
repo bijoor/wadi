@@ -224,6 +224,4 @@ export function mountConfiguratorPanel(): void {
 
   render();
   useConfigStore.subscribe(() => render());
-  // Re-evaluate when the persona is switched in place (owner ⇄ architect).
-  window.addEventListener("wadi:persona-changed", () => render());
 }

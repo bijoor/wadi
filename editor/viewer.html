@@ -105,15 +105,8 @@
         body[data-edit-mode="on"] #btn-edit-toggle:hover:not(:disabled) {
             background: #a04620;
         }
-        /* Persona split: the retired form-studio panels stay hidden (WDL is the
-           only edit surface). Screenshot capture is NOT hidden any more — it's a
-           normal, always-visible facility now that studio + owner have collapsed
-           into the single WDL-editor mode. */
-        body[data-persona="owner"] #btn-edit-toggle,
-        body[data-persona="owner"] #viewer-sidebar,
-        body[data-persona="owner"] #viewer-property-panel {
-            display: none !important;
-        }
+        /* (Personas retired: one mode. The form-studio panels are deleted, the
+           edit-toggle is hidden in JS, and screenshot capture is always visible.) */
         /* Retire the old 📚 layer popup and 🎥 camera popup — the toolbar's
            "Show/hide layers" and "Change view" dropdowns replace them. (The
            interior walk-through panel stays MOUNTED but hidden so its joystick
@@ -136,8 +129,8 @@
             justify-content: center;
             padding: 1.5rem;
         }
-        /* Show only for an owner who hasn't chosen a home yet. */
-        body[data-persona="owner"][data-home-chosen="no"] #owner-welcome {
+        /* Show the welcome only until a home has been chosen. */
+        body[data-home-chosen="no"] #owner-welcome {
             display: flex;
         }
         .ow-card {
@@ -553,9 +546,6 @@
             cursor: pointer;
             user-select: none;
         }
-        /* Layer editing is an architect (Nakasha) concern — hide the "Edit
-           layers…" launcher from the owner (Gharkul) layer menu. */
-        body[data-persona="owner"] .layer-edit-btn { display: none; }
         .layers-panel input[type="checkbox"] {
             accent-color: #667eea;
         }
@@ -1000,7 +990,6 @@
         }
         .svg-item:hover .svg-shot-btn { opacity: 0.9; }
         .svg-shot-btn:hover { opacity: 1 !important; }
-        body[data-persona="owner"] .svg-shot-btn { display: none !important; }
         .svg-item:hover {
             box-shadow: 0 8px 30px rgba(0,0,0,0.15);
             transform: translateY(-4px);
@@ -2159,9 +2148,8 @@
                     Wadi
                 </h1>
                 <div class="subtitle">3D Home Designer</div>
-                <!-- Cross-navigation between the two persona surfaces (Gharkul
-                     owner ⇄ Nakasha architect). href + label set by applyPersona(). -->
-                <a id="persona-switch" class="persona-switch" href="?"></a>
+                <!-- (Persona split retired — one mode with the configurator + WDL
+                     editor as the two edit surfaces.) -->
                 <!-- Apps menu: the companion tools (WDL editor, Floor planner,
                      Staircase explorer). Each opens in its OWN window on desktop
                      (Tauri show_tool) and a new browser tab otherwise. Wired in
@@ -2392,9 +2380,9 @@
                 id="viewer-3d-scene"
                 style="width: 100%; height: 100%; position: relative; background: #0a0f14;">
             </div>
-            <!-- Permanent slim toolbar (architect only) — layer quick-toggles +
-                 capture tools. Mounted by React (Viewer3DToolbar). Hidden for
-                 owners via body[data-persona="owner"] #viewer-3d-toolbar. -->
+            <!-- Permanent slim toolbar — layer quick-toggles ("Show/hide layers"),
+                 "Change view", and the always-visible capture tools. Mounted by
+                 React (Viewer3DToolbar). -->
             <div id="viewer-3d-toolbar"></div>
             <!-- Read-only "layers hidden" indicator, driven by wireLayerStatus()
                  in main.ts. Appears only when layers are hidden (the skill drives

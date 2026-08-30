@@ -64,7 +64,6 @@ import {
 } from "../io/fileIO";
 import { wdlToConfig, configToWdlText } from "../io/wdl";
 import { isTauri, invoke } from "@tauri-apps/api/core";
-import { getPersona, isOwner, otherPersona, PERSONA_NAME, PERSONA_TAGLINE, setPersona, type Persona } from "./persona";
 import {
   fetchCatalogBytes,
   loadCatalog,
@@ -433,8 +432,8 @@ async function bootViewer(): Promise<void> {
   // same writeValue path window.wadi.setKnob / a WebMCP agent uses.
   mountConfiguratorPanel();
 
-  // Persona (Gharkul owner / Nakasha architect). Resolve + brand before mounting.
-  applyPersona();
+  // Viewer chrome (embed mode + edit-mode flag). Personas are retired — one mode.
+  applyViewerChrome();
 
   // Mount the editor's Sidebar (object tree) and PropertyPanel (per-object form).
   // Always mounted (React state via useConfigStore is shared) but hidden by CSS in
@@ -448,9 +447,7 @@ async function bootViewer(): Promise<void> {
 
   // Header buttons: Edit toggle, Load, Save, Undo, Redo.
   wireHeaderButtons();
-  // Persona cross-nav (Gharkul ⇄ Nakasha), switched in place.
-  wirePersonaSwitch();
-  // Header ☰ — collapse/expand the left panel (config dock or sidebar).
+  // Header ☰ — collapse/expand the left configurator panel.
   wireLeftToggle();
   // Standard keyboard shortcuts (⌘/Ctrl + S / ⇧S / O / N / Z / ⇧Z, ⌘Y).
   wireKeyboardShortcuts();
@@ -500,7 +497,10 @@ async function bootViewer(): Promise<void> {
   // renderer driven by its host — the picker would fight the pushed config.
   const q = new URLSearchParams(location.search);
   const embedded = q.get("panels") === "off" || q.get("embed") === "1";
-  if (isOwner() && !embedded && !loadedFromOpenFile && !loadedFromHash && !loadedFromLoadParam) {
+  // Fresh start (no model from a file/link/param) → open the gallery so a visitor
+  // can pick a sample home or open one of their own. Not in embed mode (an agent
+  // pushes the model there).
+  if (!embedded && !loadedFromOpenFile && !loadedFromHash && !loadedFromLoadParam) {
     void openNewHouseModal();
   }
 }
@@ -932,9 +932,6 @@ export interface WadiApi {
   load: (config: unknown) => { ok: true };
   /** The current in-store config (for reading / round-tripping / saving). */
   getConfig: () => unknown;
-  /** Flip the viewer persona in place (no reload). "owner" | "architect" |
-   *  "studio" (studio == architect). Keeps the loaded model + camera. */
-  setPersona: (target: string) => { ok: true; persona: "owner" | "architect" };
   /** Set one configurator knob — "House.W"/"House.L" hit points, bare names
    *  hit variables — exactly like moving that slider. Values are raw units
    *  (plot: 10 units = 1 ft; roof_style 0=Flat,1=Shed,2=Gable,3=Hip). */
@@ -2116,16 +2113,12 @@ function updateHistoryButtons(): void {
   if (btnRedo) btnRedo.disabled = t.futureStates.length === 0;
 }
 
-// Apply the resolved persona: set body data attributes (which the CSS uses to
-// show/hide the architect-only edit UI), and brand the header. In owner
-// (Gharkul) mode structural editing is never available; in architect (Nakasha)
-// mode the edit panels default visible (respecting the stored collapse pref).
-function applyPersona(): void {
-  const persona = getPersona();
-  document.body.dataset.persona = persona;
-  // Minimal-chrome / embed: `?panels=off` (or `?embed=1`) hides every side
-  // panel so the model gets the full width. The home-architect skill loads
-  // the viewer this way and drives the config from chat, not the UI.
+// Apply the viewer chrome. Personas are retired: there's ONE mode with two edit
+// surfaces — the configurator (left) and the WDL editor (right). This just handles
+// embed mode and the (permanently off) form-studio edit flag.
+function applyViewerChrome(): void {
+  // Minimal-chrome / embed: `?panels=off` (or `?embed=1`) hides every side panel
+  // so the model gets the full width (used when an agent drives from chat).
   try {
     const q = new URLSearchParams(location.search);
     if (q.get("panels") === "off" || q.get("embed") === "1") {
@@ -2134,20 +2127,9 @@ function applyPersona(): void {
       delete document.body.dataset.embed;
     }
   } catch { /* no location — leave chrome as-is */ }
-  // FORM-STUDIO EDITING RETIRED: the WDL editor is the only surface that changes
-  // the model, so the form panels (architect property forms + object tree, owner
-  // configurator) never open. Edit mode stays off for every persona.
+  // FORM-STUDIO EDITING RETIRED: the WDL editor + configurator are the only edit
+  // surfaces, so the old object-tree/property-form edit mode stays off.
   document.body.dataset.editMode = "off";
-  const sub = document.querySelector("header .subtitle");
-  if (sub) sub.textContent = `${PERSONA_NAME[persona]} · ${PERSONA_TAGLINE[persona]}`;
-  const sw = document.getElementById("persona-switch") as HTMLAnchorElement | null;
-  if (sw) {
-    const o = otherPersona();
-    sw.href = o.url;
-    sw.textContent =
-      persona === "architect" ? "Preview as owner (Gharkul) →" : "Design mode (Nakasha) →";
-    sw.title = `Switch to ${o.name}`;
-  }
 }
 
 // Collapse/expand the left panel (Gharkul configurator dock or Nakasha sidebar)
@@ -2475,16 +2457,6 @@ function wireWadiApi(): void {
 
     getConfig() {
       return store().config;
-    },
-
-    // Flip the viewer persona IN PLACE (no reload → the loaded model + camera are
-    // kept). The WDL editor's Publish flow calls this to preview as owner/studio
-    // without rebooting the iframe (a reboot blacks out the 3D). Accepts
-    // "owner" | "architect" | "studio" (studio == architect).
-    setPersona(target: string) {
-      const p: Persona = target === "studio" || target === "architect" ? "architect" : "owner";
-      applyPersonaSwitch(p);
-      return { ok: true as const, persona: p };
     },
 
     setKnob(target: string, value: number) {
@@ -3340,36 +3312,6 @@ function wireWebMcpTools(): void {
   console.info(`[webmcp] registered ${n} wadi tools on document.modelContext`);
 }
 
-// Switch persona IN PLACE (no page reload) so the currently-loaded model is
-// preserved. Reload-based navigation would drop back to the default config (which
-// has no configurator) — and, in an embedded preview, reloading blacks out the 3D.
-// Shared by the header toggle and window.wadi.setPersona (the WDL editor's Publish
-// flow flips studio↔owner through it).
-function applyPersonaSwitch(target: Persona): void {
-  setPersona(target);
-  // Entering architect means working with the loaded model — never show the
-  // owner welcome overlay over it (e.g. after switching back to owner).
-  if (target === "architect") markHomeChosen();
-  try {
-    const u = new URL(location.href);
-    u.searchParams.set("mode", target === "architect" ? "studio" : "owner");
-    history.replaceState(null, "", u.pathname + u.search + u.hash);
-  } catch {
-    /* ignore */
-  }
-  applyPersona();
-  window.dispatchEvent(new Event("wadi:persona-changed"));
-}
-
-// Wired once; applyPersona() reruns the gating.
-function wirePersonaSwitch(): void {
-  const sw = document.getElementById("persona-switch");
-  sw?.addEventListener("click", (e) => {
-    e.preventDefault();
-    applyPersonaSwitch(otherPersona().persona);
-  });
-}
-
 // -----------------------------------------------------------------
 // Template picker modal
 // -----------------------------------------------------------------
@@ -3445,16 +3387,17 @@ async function openNewHouseModal(): Promise<void> {
   if (!modal || !grid) return;
   modal.style.display = "block";
 
-  // Persona-aware framing: owners are "choosing a home to make theirs";
-  // architects are "starting a new house from a template".
-  const owner = isOwner();
+  // Source-aware framing: the DEFAULT source is Wadi's sample homes (a casual
+  // visitor picks one to make their own); a user who has pointed the app at their
+  // OWN models location (a local folder or Google Drive) is opening their designs.
+  const samples = templateSource().kind === "default";
   const titleEl = document.getElementById("new-house-modal-title");
   const subEl = document.getElementById("new-house-modal-subtitle");
-  if (titleEl) titleEl.textContent = owner ? "Choose your home" : "Start a new house";
+  if (titleEl) titleEl.textContent = samples ? "Choose your home" : "Open a model";
   if (subEl)
-    subEl.textContent = owner
+    subEl.textContent = samples
       ? "Browse ready-made homes and pick one to make your own. Filter by size and rooms, then customize everything."
-      : "Pick a template to start from. You can edit everything after loading.";
+      : "Open one of your saved models — or start from one and customize it.";
 
   // Reset filters each open so a fresh visit starts unfiltered.
   tplFilters = emptyFilters();
@@ -3701,14 +3644,15 @@ function templatePasses(t: TemplateEntry): boolean {
   return true;
 }
 
-// Render the filtered card grid. Owners never see the "Blank plot" card —
-// they're choosing a finished home, not starting from an empty slab.
+// Render the filtered card grid. The "Blank plot" starter is hidden when browsing
+// Wadi's sample homes (you're choosing a finished home, not an empty slab); it
+// shows when you're browsing your own models location.
 function renderTemplateCards(): void {
   const grid = document.getElementById("new-house-modal-grid");
   if (!grid) return;
-  const owner = isOwner();
+  const hideBlank = templateSource().kind === "default";
   const matches = galleryTemplates.filter(
-    (t) => (!owner || t.id !== "blank") && templatePasses(t),
+    (t) => (!hideBlank || t.id !== "blank") && templatePasses(t),
   );
 
   const countEl = document.getElementById("tpl-filters-count");
