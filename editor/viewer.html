@@ -113,17 +113,13 @@
         body[data-edit-mode="on"] #btn-edit-toggle:hover:not(:disabled) {
             background: #a04620;
         }
-        /* Persona split: Gharkul (owner) never shows structural-editing
-           controls; Nakasha (architect) keeps them. */
+        /* Persona split: the retired form-studio panels stay hidden (WDL is the
+           only edit surface). Screenshot capture is NOT hidden any more — it's a
+           normal, always-visible facility now that studio + owner have collapsed
+           into the single WDL-editor mode. */
         body[data-persona="owner"] #btn-edit-toggle,
-        body[data-persona="owner"] #layout-capture-btn,
         body[data-persona="owner"] #viewer-sidebar,
         body[data-persona="owner"] #viewer-property-panel {
-            display: none !important;
-        }
-        /* Owners get the always-visible layer chips too, but not the capture
-           tools (those are architect-only). */
-        body[data-persona="owner"] #viewer-3d-toolbar .v3d-actions {
             display: none !important;
         }
         /* Retire the old 📚 layer popup and 🎥 camera popup — the toolbar's
