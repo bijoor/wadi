@@ -4045,10 +4045,18 @@ function wireWdlEditor(): void {
     #viewer-wdl textarea { flex: 1 1 auto; min-height: 0; resize: none; border: none; outline: none;
       background: #0b1220; color: #e2e8f0; font: 13px/1.55 ui-monospace, Menlo, Consolas, monospace;
       padding: 12px 14px; tab-size: 2; white-space: pre; overflow: auto; }
-    #viewer-wdl .wdl-status { flex: none; padding: 8px 12px; border-top: 1px solid #1e293b;
-      font: 12px/1.4 ui-monospace, monospace; max-height: 34%; overflow: auto; white-space: pre-wrap; color: #94a3b8; }
+    #viewer-wdl .wdl-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+      border-top: 1px solid #1e293b; background: #0d1526; }
+    #viewer-wdl .wdl-apply { flex: none; background: #2563eb; color: #fff; border: none; border-radius: 7px;
+      padding: 7px 14px; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+    #viewer-wdl .wdl-apply:disabled { background: #1e293b; color: #64748b; cursor: default; }
+    #viewer-wdl .wdl-apply .k { opacity: .7; font-weight: 400; margin-left: 5px; }
+    body[data-wdl-dirty="on"] #viewer-wdl .wdl-apply { box-shadow: 0 0 0 2px rgba(37,99,235,.35); }
+    #viewer-wdl .wdl-status { flex: 1 1 auto; min-width: 0; font: 12px/1.4 ui-monospace, monospace;
+      max-height: 5.6em; overflow: auto; white-space: pre-wrap; color: #94a3b8; }
     #viewer-wdl .wdl-status.ok { color: #4ade80; } #viewer-wdl .wdl-status.warn { color: #fbbf24; }
     #viewer-wdl .wdl-status.err { color: #f87171; } #viewer-wdl .wdl-status.busy { color: #93c5fd; }
+    #viewer-wdl .wdl-status.dirty { color: #93c5fd; }
     #viewer-wdl .wdl-btn { background: none; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px;
       padding: 2px 9px; cursor: pointer; font: inherit; }
     #wdl-reopen { position: absolute; top: 60px; right: 0; z-index: 6; background: #111827; color: #e2e8f0;
@@ -4064,7 +4072,9 @@ function wireWdlEditor(): void {
     `<div class="wdl-head"><span>WDL <span class="sub">the model's source · ⌘↵ to apply</span></span>` +
     `<button class="wdl-btn" id="wdl-hide" title="Hide the WDL pane">Hide ⟩</button></div>` +
     `<textarea id="wdl-editor" spellcheck="false" placeholder="house House { … }"></textarea>` +
-    `<div class="wdl-status" id="wdl-status"></div>`;
+    `<div class="wdl-foot">` +
+    `<button class="wdl-apply" id="wdl-apply" disabled>Apply changes<span class="k">⌘↵</span></button>` +
+    `<span class="wdl-status" id="wdl-status"></span></div>`;
   container.appendChild(aside);
 
   const reopen = document.createElement("button");
@@ -4100,19 +4110,31 @@ function wireWdlEditor(): void {
 
   const ta = document.getElementById("wdl-editor") as HTMLTextAreaElement;
   const status = document.getElementById("wdl-status") as HTMLElement;
+  const applyBtn = document.getElementById("wdl-apply") as HTMLButtonElement;
   const setStatus = (cls: string, msg: string): void => { status.className = "wdl-status " + cls; status.textContent = msg; };
 
-  // Mirror the model's WDL into the editor when it changes from elsewhere (loading
-  // a template, undo/redo, an interim form edit). Skip while the user is typing so
-  // we never clobber their text mid-edit.
-  let editing = false;
+  // `applied` = the WDL currently realized in the 3D model. The editor is DIRTY
+  // when its text differs. Changes are applied ONLY on demand (the Apply button or
+  // ⌘/Ctrl+Enter) — never automatically — so a half-typed edit never compiles.
+  let applied = useConfigStore.getState().wdl ?? "";
+  const isDirty = (): boolean => ta.value !== applied;
+  const reflectDirty = (): void => {
+    const dirty = isDirty();
+    applyBtn.disabled = !dirty;
+    document.body.dataset.wdlDirty = dirty ? "on" : "off";
+    if (dirty) setStatus("dirty", "Unapplied changes — Apply (⌘↵) to update the 3D.");
+    else if (status.classList.contains("dirty")) setStatus("", "");
+  };
+
+  // Adopt the model's WDL when it changes from ELSEWHERE (a template load, undo) —
+  // but never clobber the user's in-progress edits.
   const syncFromStore = (): void => {
-    if (editing) return;
     const wdl = useConfigStore.getState().wdl ?? "";
-    if (ta.value !== wdl) { ta.value = wdl; setStatus("", ""); }
+    if (wdl === applied || isDirty()) return;
+    ta.value = wdl; applied = wdl; setStatus("", ""); reflectDirty();
   };
   useConfigStore.subscribe(syncFromStore);
-  syncFromStore();
+  ta.value = applied; reflectDirty();
 
   const apply = async (): Promise<void> => {
     const src = ta.value;
@@ -4123,10 +4145,9 @@ function wireWdlEditor(): void {
     // WDL is the SOURCE: keep the author's exact text (don't re-decompile).
     st.loadConfig(res.config, st.filename ?? undefined, st.filePath, src);
     markHomeChosen();
-    // The scene renders on demand; a compile from the debounce (no user gesture)
-    // updates the React scene but wouldn't paint to the visible canvas until the
-    // next interaction (e.g. clicking out of the editor). Force the repaint now,
-    // and once more on the next frame after React has flushed the new geometry.
+    applied = src; reflectDirty();
+    // The scene renders on demand, and Apply is a click/keydown, but force the
+    // repaint anyway (now + next frame) so the new model paints immediately.
     window.wadiInvalidate?.();
     requestAnimationFrame(() => window.wadiInvalidate?.());
     const chk = checkBrief(useConfigStore.getState().config);
@@ -4135,20 +4156,11 @@ function wireWdlEditor(): void {
     else setStatus("ok", "✓ Applied — no structural issues.");
   };
 
-  let timer: number | undefined;
-  ta.addEventListener("input", () => {
-    editing = true;
-    setStatus("busy", "…");
-    window.clearTimeout(timer);
-    timer = window.setTimeout(() => { void apply().finally(() => { editing = false; }); }, 450);
-  });
+  ta.addEventListener("input", reflectDirty);
   ta.addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      e.preventDefault();
-      window.clearTimeout(timer);
-      void apply().finally(() => { editing = false; });
-    }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); if (isDirty()) void apply(); }
   });
+  applyBtn.onclick = () => { void apply(); };
 
   (document.getElementById("wdl-hide") as HTMLElement).onclick = () => { document.body.dataset.wdl = "off"; refit(); };
   reopen.onclick = () => { document.body.dataset.wdl = "on"; syncFromStore(); refit(); };
