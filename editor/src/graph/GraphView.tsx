@@ -40,11 +40,10 @@ function tileAxis(origin: number, step: number, lo: number, hi: number, out: num
 // and is read-only — edit the .wdl there). Read from the shell each render; the
 // component re-renders on every store change, so this tracks the current mode.
 function graphSelectable(): boolean {
-  if (typeof document === "undefined") return false;
-  if (document.body.dataset.persona === "owner") return false;
-  const q = new URLSearchParams(window.location.search);
-  if (q.get("panels") === "off" || q.get("embed") === "1") return false;
-  return true;
+  // Form-studio editing is retired: the graph's click-to-edit opened the property
+  // panel, which no longer exists. The graph is now purely a read-only plan
+  // everywhere; the model is edited only through the WDL editor.
+  return false;
 }
 
 // One floor's graph: its own SVG with guides, the plot outline, room blocks, and

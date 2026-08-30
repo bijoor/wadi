@@ -99,7 +99,6 @@ import { registerServiceWorker, setupInstallPrompt } from "./pwa";
 // hits the network, so only these real-file fetches need the leading "/".
 const CONFIG_URL = "/house_config.json";
 const EAVE_CROSS_SECTION_URL = "/2d/roof/roof-cross-section.svg";
-const EDIT_MODE_KEY = "wadi:edit-mode";
 const LEFT_PANEL_KEY = "wadi:left-panel";
 
 // State shared with the fetch patch — mutated whenever the config
@@ -460,9 +459,10 @@ async function bootViewer(): Promise<void> {
   if (lightingContainer) mountViewerLightingPanel(lightingContainer);
   const interiorContainer = document.getElementById("viewer-interior-panel");
   if (interiorContainer) mountViewerInteriorPanel(interiorContainer);
-  // Gharkul (owner) Configurator panel — self-gates on persona + a template's
-  // `configurator` section; stays hidden otherwise.
-  mountConfiguratorPanel();
+  // Gharkul (owner) Configurator panel RETIRED — form-based editing (knob sliders)
+  // is gone; the WDL editor is the only edit surface. (Not mounted; the void keeps
+  // the import referenced for a future re-enable.)
+  void mountConfiguratorPanel;
 
   // Persona (Gharkul owner / Nakasha architect). Resolve + brand before mounting.
   applyPersona();
@@ -2089,13 +2089,9 @@ function wireHeaderButtons(): void {
     }
   });
 
-  // Edit toggle: always wired; it's CSS-hidden on the owner (Gharkul) surface so
-  // owners never reach it, but architects keep it after an in-place persona switch.
-  btnEdit?.addEventListener("click", () => {
-    const next = document.body.dataset.editMode === "on" ? "off" : "on";
-    document.body.dataset.editMode = next;
-    try { localStorage.setItem(EDIT_MODE_KEY, next); } catch { /* ignore */ }
-  });
+  // Edit toggle RETIRED: form-studio editing is gone (WDL is the only edit
+  // surface), so there is no edit mode to toggle — hide the button entirely.
+  if (btnEdit) btnEdit.style.display = "none";
 
   btnNew?.addEventListener("click", () => {
     void openNewHouseModal();
@@ -2242,19 +2238,10 @@ function applyPersona(): void {
       delete document.body.dataset.embed;
     }
   } catch { /* no location — leave chrome as-is */ }
-  if (persona === "architect") {
-    let stored: string | null = null;
-    try { stored = localStorage.getItem(EDIT_MODE_KEY); } catch { /* ignore */ }
-    // On phones the edit panels open as a full-screen overlay, so starting with
-    // them ON would cover the 3D model on load. Default OFF on narrow screens
-    // (model + bottom tab bar first; the ✏️ toggle opens the panels on demand);
-    // honor an explicit stored choice on any screen.
-    const narrow = window.matchMedia("(max-width: 640px)").matches;
-    document.body.dataset.editMode =
-      stored === "off" ? "off" : stored === "on" ? "on" : narrow ? "off" : "on";
-  } else {
-    document.body.dataset.editMode = "off";
-  }
+  // FORM-STUDIO EDITING RETIRED: the WDL editor is the only surface that changes
+  // the model, so the form panels (architect property forms + object tree, owner
+  // configurator) never open. Edit mode stays off for every persona.
+  document.body.dataset.editMode = "off";
   const sub = document.querySelector("header .subtitle");
   if (sub) sub.textContent = `${PERSONA_NAME[persona]} · ${PERSONA_TAGLINE[persona]}`;
   const sw = document.getElementById("persona-switch") as HTMLAnchorElement | null;
