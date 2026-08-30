@@ -3856,9 +3856,8 @@ function wireWdlEditor(): void {
     #viewer-wdl .wdl-head { flex: none; display: flex; align-items: center; justify-content: space-between;
       padding: 8px 12px; background: #111827; border-bottom: 1px solid #1e293b; font: 600 13px system-ui, sans-serif; }
     #viewer-wdl .wdl-head .sub { color: #94a3b8; font-weight: 400; font-size: 11px; margin-left: 8px; }
-    #viewer-wdl textarea { flex: 1 1 auto; min-height: 0; resize: none; border: none; outline: none;
-      background: #0b1220; color: #e2e8f0; font: 13px/1.55 ui-monospace, Menlo, Consolas, monospace;
-      padding: 12px 14px; tab-size: 2; white-space: pre; overflow: auto; }
+    /* Monaco editor host — fills the pane; Monaco paints its own dark theme. */
+    #viewer-wdl #wdl-editor { flex: 1 1 auto; min-height: 0; width: 100%; background: #1e1e1e; }
     #viewer-wdl .wdl-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px;
       border-top: 1px solid #1e293b; background: #0d1526; }
     #viewer-wdl .wdl-apply { flex: none; background: #2563eb; color: #fff; border: none; border-radius: 7px;
@@ -3895,7 +3894,7 @@ function wireWdlEditor(): void {
   aside.innerHTML =
     `<div class="wdl-head"><span>WDL <span class="sub">the model's source · ⌘↵ to apply</span></span>` +
     `<button class="wdl-btn" id="wdl-max" title="Expand the WDL editor to full width">⤢</button></div>` +
-    `<textarea id="wdl-editor" spellcheck="false" placeholder="house House { … }"></textarea>` +
+    `<div id="wdl-editor"></div>` +
     `<div class="wdl-foot">` +
     `<button class="wdl-apply" id="wdl-apply" disabled>Apply changes<span class="k">⌘↵</span></button>` +
     `<button class="wdl-btn" id="wdl-save" title="Save the WDL source as a .wdl file">💾 Save .wdl</button>` +
@@ -3943,16 +3942,26 @@ function wireWdlEditor(): void {
   };
   window.setTimeout(kick, 80);
 
-  const ta = document.getElementById("wdl-editor") as HTMLTextAreaElement;
+  const host = document.getElementById("wdl-editor") as HTMLElement;
   const status = document.getElementById("wdl-status") as HTMLElement;
   const applyBtn = document.getElementById("wdl-apply") as HTMLButtonElement;
   const setStatus = (cls: string, msg: string): void => { status.className = "wdl-status " + cls; status.textContent = msg; };
+
+  // The code editor is Monaco (syntax highlighting + Langium completion/hover/
+  // go-to-def/rename), reused from the DSL playground and LAZY-loaded on first
+  // open. Until it mounts, the text lives in `pending`; get/set go through the
+  // handle once it's up. See wdlMonaco.ts.
+  let handle: import("./wdlMonaco").WdlEditorHandle | null = null;
+  let mounting = false;
+  let pending = useConfigStore.getState().wdl ?? "";
+  const getVal = (): string => (handle ? handle.getValue() : pending);
+  const setVal = (v: string): void => { pending = v; handle?.setValue(v); };
 
   // `applied` = the WDL currently realized in the 3D model. The editor is DIRTY
   // when its text differs. Changes are applied ONLY on demand (the Apply button or
   // ⌘/Ctrl+Enter) — never automatically — so a half-typed edit never compiles.
   let applied = useConfigStore.getState().wdl ?? "";
-  const isDirty = (): boolean => ta.value !== applied;
+  const isDirty = (): boolean => getVal() !== applied;
   const reflectDirty = (): void => {
     const dirty = isDirty();
     applyBtn.disabled = !dirty;
@@ -3961,18 +3970,41 @@ function wireWdlEditor(): void {
     else if (status.classList.contains("dirty")) setStatus("", "");
   };
 
-  // Adopt the model's WDL when it changes from ELSEWHERE (a template load, undo) —
-  // but never clobber the user's in-progress edits.
+  // Adopt the model's WDL when it changes from ELSEWHERE (a template load, undo, a
+  // screenshot adding a thumbnail path) — but never clobber the user's in-progress
+  // edits.
   const syncFromStore = (): void => {
     const wdl = useConfigStore.getState().wdl ?? "";
     if (wdl === applied || isDirty()) return;
-    ta.value = wdl; applied = wdl; setStatus("", ""); reflectDirty();
+    setVal(wdl); applied = wdl; setStatus("", ""); reflectDirty();
   };
   useConfigStore.subscribe(syncFromStore);
-  ta.value = applied; reflectDirty();
+  reflectDirty();
+
+  // Lazily bring up Monaco the first time the pane is shown. Heavy (Monaco +
+  // Langium LSP), so it never loads for a visitor who leaves the WDL pane closed.
+  const ensureMounted = async (): Promise<void> => {
+    if (handle || mounting) return;
+    mounting = true;
+    setStatus("busy", "Loading the code editor…");
+    try {
+      const { mountWdlMonaco } = await import("./wdlMonaco");
+      handle = mountWdlMonaco(host, pending);
+      handle.onChange(() => { pending = handle!.getValue(); reflectDirty(); });
+      handle.onApplyShortcut(() => { if (isDirty()) void apply(); });
+      setStatus("", "");
+      syncFromStore(); // adopt anything that changed while loading
+      reflectDirty();
+      handle.focus();
+    } catch (e) {
+      setStatus("err", "Couldn't load the code editor: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      mounting = false;
+    }
+  };
 
   const apply = async (): Promise<void> => {
-    const src = ta.value;
+    const src = getVal();
     setStatus("busy", "Compiling…");
     const res = await wdlToConfig(src);
     if (!res.ok || !res.config) { setStatus("err", "✖ " + res.errors.join("\n")); return; }
@@ -3991,10 +4023,6 @@ function wireWdlEditor(): void {
     else setStatus("ok", "✓ Applied — no structural issues.");
   };
 
-  ta.addEventListener("input", reflectDirty);
-  ta.addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); if (isDirty()) void apply(); }
-  });
   applyBtn.onclick = () => { void apply(); };
 
   // Save the WDL source itself as a standalone `.wdl` file (raw code, no
@@ -4009,7 +4037,7 @@ function wireWdlEditor(): void {
       .replace(/\.(wadi|json|wdl)$/i, "")
       .trim() || "house";
     try {
-      const saved = await saveText(ta.value, `${base}.wdl`, "WDL source", ["wdl"], "text/plain");
+      const saved = await saveText(getVal(), `${base}.wdl`, "WDL source", ["wdl"], "text/plain");
       setStatus("ok", saved ? `✓ Saved ${base}.wdl` : "✓ Downloaded .wdl");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -4032,7 +4060,7 @@ function wireWdlEditor(): void {
     const next = document.body.dataset.wdl === "on" ? "off" : "on";
     document.body.dataset.wdl = next;
     if (next === "off") delete document.body.dataset.wdlMax; // collapsing exits full-width
-    else syncFromStore();
+    else { void ensureMounted(); syncFromStore(); handle?.layout(); }
     try { localStorage.setItem(WDL_PANEL_KEY, next); } catch { /* ignore */ }
     setToggleIcon();
     setMaxIcon();
@@ -4047,7 +4075,11 @@ function wireWdlEditor(): void {
     try { localStorage.setItem(WDL_MAX_KEY, on ? "off" : "on"); } catch { /* ignore */ }
     setMaxIcon();
     refit();
+    handle?.layout();
   };
+
+  // If the pane is open on load (a stored "on" preference), bring Monaco up now.
+  if (document.body.dataset.wdl === "on") void ensureMounted();
 }
 
 // browsers and iPadOS (a file dragged from the Files app arrives here regardless

@@ -92,6 +92,11 @@ export default defineConfig({
       // src/types/wadi-wdl.d.ts; here the bare names resolve to the real source.
       'wadi-wdl-compiler': path.resolve(__dirname, '..', 'wadi-dsl', 'src', 'generator', 'toHouseConfig.ts'),
       'wadi-wdl-emitter': path.resolve(__dirname, '..', 'wadi-dsl', 'src', 'generator', 'fromHouseConfig.ts'),
+      // The Monaco WDL language: highlighting (Monarch tokenizer) + the in-process
+      // Langium LSP adapters, reused from the DSL playground. Reached only via the
+      // lazy wdlMonaco chunk (Monaco loads when the WDL editor pane first opens).
+      'wadi-wdl-monaco-lang': path.resolve(__dirname, '..', 'wadi-dsl', 'playground', 'dsl-language.ts'),
+      'wadi-wdl-monaco-lsp': path.resolve(__dirname, '..', 'wadi-dsl', 'playground', 'lsp.ts'),
     },
   },
   server: {

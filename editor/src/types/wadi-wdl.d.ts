@@ -15,3 +15,23 @@ declare module "wadi-wdl-emitter" {
   /** Decompile a HouseConfig back to editable .wdl text. */
   export function emitWdl(config: Record<string, unknown>, houseName?: string): string;
 }
+
+// The Monaco WDL language, reused from the DSL playground (highlighting + the
+// in-process Langium LSP adapters). Only the lazy wdlMonaco chunk imports these,
+// so editor's tsc doesn't deep-check wadi-dsl/playground.
+declare module "wadi-wdl-monaco-lang" {
+  export const LANG_ID: string;
+  /** Register the WDL Monarch tokenizer + language config on a Monaco namespace. */
+  export function registerWadiDsl(monaco: unknown): void;
+}
+
+declare module "wadi-wdl-monaco-lsp" {
+  export interface LspHooks {
+    resolveModule: (name: string) => string | undefined;
+    version: () => number;
+    languageId: string;
+  }
+  /** Wire completion / hover / go-to-def / find-refs / rename (in-process Langium
+   *  LSP) into Monaco for the WDL language. */
+  export function registerWadiLsp(hooks: LspHooks): void;
+}
