@@ -120,7 +120,6 @@ function page({ slug, title, body, toc }) {
   <span class="crumb">Docs</span>
   <nav class="top-links">
     <a href="/app/">Open the app</a>
-    <a href="/dsl/">DSL playground</a>
     <a href="https://github.com/bijoor/wadi">GitHub</a>
   </nav>
   <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>

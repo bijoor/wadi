@@ -65,7 +65,6 @@ a:hover{text-decoration:underline}
   <span class="crumb">Docs</span>
   <nav class="top-links">
     <a href="/app/">Open the app</a>
-    <a href="/dsl/">DSL playground</a>
     <a href="https://github.com/bijoor/wadi">GitHub</a>
   </nav>
   <button class="menu" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
@@ -225,10 +224,16 @@ roof default to 0.</li>
 <td>Reusable-component library (in-file). Map of id → ComponentDef. A <code>component</code> object instantiates one by <code>ref</code>. Stored once; referenced by many instances; edit here to update every instance.</td>
 </tr>
 <tr>
-<td><code>grids</code></td>
-<td>map: string → <code>gridDef</code></td>
+<td><code>guides</code></td>
+<td>map: string → <code>guidesDef</code></td>
 <td></td>
-<td>First-class parametric grids (plans/grid-convention.md). Map of id → GridDef (named X/Y wall centrelines). Rooms/slabs bind via <code>grid</code>+<code>cell</code>, pillars via <code>grid</code>+<code>node</code>; the resolver derives their geometry from the centrelines + wall thickness. Optional; reusable across templates.</td>
+<td>First-class parametric GUIDES (plans/floor-planner-graph-integration.md). Map of id → a named XOR generated guides object; objects place themselves by referencing a guide in ordinary formulas (<code>main.x2</code>, <code>module.x8</code>). Optional; reusable across templates. <code>grids</code> is the deprecated former name — still read for backward-compat; the resolver merges both (guides wins on collision).</td>
+</tr>
+<tr>
+<td><code>grids</code></td>
+<td>map: string → <code>guidesDef</code></td>
+<td></td>
+<td></td>
 </tr>
 <tr>
 <td><code>configurator</code></td>
@@ -1068,6 +1073,12 @@ roof default to 0.</li>
 <td></td>
 </tr>
 <tr>
+<td><code>connections</code></td>
+<td>array of string</td>
+<td></td>
+<td>Rooms this room connects to, by name (same floor). Design intent + a functional test (constraint C11): a declared connection must be adjacent AND joined by a door. Symmetric and deduped; NOT geometry — it never moves or sizes anything, and the renderer ignores it.</td>
+</tr>
+<tr>
 <td><code>z_offset</code></td>
 <td>number</td>
 <td></td>
@@ -1270,10 +1281,22 @@ roof default to 0.</li>
 <td></td>
 </tr>
 <tr>
+<td><code>width</code></td>
+<td>number &gt; 0</td>
+<td></td>
+<td>BOX MODEL (preferred): give a <code>width</code> (X) × <code>length</code> (Y) rectangle and the WHOLE staircase — flights + turn landings — is packed to fit INSIDE it. (start_x,start_y) is then the box&#39;s min corner, NOT the first step, and each flight&#39;s width is DERIVED from the box: two switchback lanes = (lateral − flight_gap)/2, or the full box for a single flight. <code>direction</code> picks the run axis (N/S → run along length/Y; E/W → run along width/X). The model errors if the box is too small for even the tightest split. Omit both to use the legacy <code>step_width</code> + <code>max_run</code> form below.</td>
+</tr>
+<tr>
+<td><code>length</code></td>
+<td>number &gt; 0</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
 <td><code>step_width</code></td>
 <td>number &gt; 0</td>
-<td><strong>yes</strong></td>
 <td></td>
+<td>Legacy per-step width (required by the old form; derived from the box in the box model). The expanded single-flight staircases the renderer consumes always carry it.</td>
 </tr>
 <tr>
 <td><code>direction</code></td>
