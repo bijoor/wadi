@@ -33,17 +33,9 @@
            components inside them assume browser defaults + Tailwind
            Preflight, and a global reset here beats Tailwind's own
            element-level rules by cascade order.
-           `:where()` is used inside `:not()` so the whole selector keeps
-           the specificity of `*` (0) rather than inheriting the ID
-           specificity from `#viewer-sidebar` — otherwise this rule
-           would override every class-based padding on the page. */
-        * { box-sizing: border-box; }
-        *:not(:where(#viewer-sidebar, #viewer-sidebar *,
-                     #viewer-property-panel, #viewer-property-panel *,
-                     #viewer-layers-editor, #viewer-layers-editor *)) {
-            margin: 0;
-            padding: 0;
-        }
+           (The old form-studio panels that needed a padding exception here are
+           retired, so this is a plain reset now.) */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -2383,14 +2375,8 @@
                 <h4>Walk into a room</h4>
                 <div id="viewer-interior-panel"></div>
             </div>
-            <!-- Layer toggles (top-left, below 🎥) — populated by React on
-                 load. The 📚 button reveals the panel. Positioning +
-                 styling come from the .layers-panel / .layers-toggle CSS. -->
-            <div class="layers-toggle" onclick="toggleLayers('viewer-layer-panel')" title="Show layers">📚</div>
-            <div class="layers-panel" id="viewer-layer-panel">
-                <h4>Show layers</h4>
-                <div class="layers-list" id="viewer-layer-list"></div>
-            </div>
+            <!-- (Old layer-visibility panel retired — the Toolbar3D
+                 "Show/hide layers" dropdown is the live visibility UI.) -->
             <!-- Lighting controls (top-right) — the ⚙️ button opens a panel
                  of sliders populated by React (src/viewer/mount3D.tsx). -->
             <div class="settings-toggle" onclick="toggleSettings()" title="Lighting">⚙️</div>
@@ -2642,22 +2628,9 @@
         </div><!-- /viewer-content-area -->
     </div>
 
-    <!-- Layers editor modal (React, mounted by main.ts). Renders nothing until
-         opened via the layer menu's "Edit layers…" or House settings. Overlay is
-         position:fixed, so it sits anywhere in the DOM. -->
-    <div id="viewer-layers-editor"></div>
+    <!-- (Layer-definition editor modal retired — layers are authored in the WDL.) -->
 
     <script>
-        // Toggle a layer/settings panel's visibility. Reused by the
-        // mobile-only .layers-toggle button. On desktop the panel is
-        // always visible (see the media queries at the top).
-        function toggleLayers(panelId) {
-            const panel = document.getElementById(panelId);
-            if (panel) panel.classList.toggle('active');
-            // Only one top-left popup open at a time (they share a slot).
-            document.getElementById('viewer-camera-panel')?.classList.remove('active');
-        }
-
         // Walk-through camera (🎥) panel — the room list is mounted by
         // React; this just shows/hides the panel and closes the layers
         // popup so the two don't overlap.

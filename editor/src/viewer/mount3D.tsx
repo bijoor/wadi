@@ -20,8 +20,6 @@ import { ToneMappingMode } from "postprocessing";
 import { House3D } from "../three/House3D";
 import { readPlotBounds } from "../three/coords";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
-import { ViewerLayerPanel } from "./LayerPanel";
-import { LayersEditor } from "../components/LayersEditor";
 import { ViewerLightingPanel } from "./LightingPanel";
 import { ViewerInteriorPanel } from "./InteriorPanel";
 import { useConfigStore } from "../state/configStore";
@@ -754,21 +752,9 @@ export function mountViewer3D(container: HTMLElement): void {
   useConfigStore.subscribe(kick);
 }
 
-// Mount the layer-visibility checkboxes into a separate HTML slot.
-// Both the scene and the panel share the same Zustand `useLayerStore`,
-// so toggling here immediately re-renders the scene without any glue.
-export function mountViewerLayerPanel(container: HTMLElement): void {
-  const root = createRoot(container);
-  root.render(<ViewerLayerPanel />);
-}
-
-// Mount the Layers editor modal (renders null until opened via useLayersUiStore).
-// Shares the config store with the rest of the viewer, so edits persist to
-// config.layers and the layer menu + 3D follow immediately.
-export function mountViewerLayersEditor(container: HTMLElement): void {
-  const root = createRoot(container);
-  root.render(<LayersEditor />);
-}
+// (The old layer-visibility panel and the layer-DEFINITION editor modal are
+// retired — the Toolbar3D "Show/hide layers" dropdown is the live visibility UI,
+// and layer definitions are authored in the WDL.)
 
 // Mount the lighting sliders into the ⚙️ settings panel. Shares the
 // useLightingStore with ViewerScene, so dragging a slider re-lights the

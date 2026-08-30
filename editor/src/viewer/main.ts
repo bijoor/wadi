@@ -76,11 +76,10 @@ import {
 import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
 import { writeValue } from "../configurator/spec";
 import { listRooms, useInteriorStore } from "../three/interiorView";
-import { useLayersUiStore } from "../state/layersUiStore";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { GraphView } from "../graph/GraphView";
-import { mountViewer3D, mountViewerLayerPanel, mountViewerLightingPanel, mountViewerInteriorPanel, mountViewerLayersEditor } from "./mount3D";
+import { mountViewer3D, mountViewerLightingPanel, mountViewerInteriorPanel } from "./mount3D";
 import { mountViewer3DToolbar } from "./Toolbar3D";
 import { startConfigWatcher } from "./configWatcher";
 import { registerServiceWorker, setupInstallPrompt } from "./pwa";
@@ -420,10 +419,8 @@ async function bootViewer(): Promise<void> {
   // via CSS; always mounted so an in-place persona switch needs no re-mount.
   const toolbarContainer = document.getElementById("viewer-3d-toolbar");
   if (toolbarContainer) mountViewer3DToolbar(toolbarContainer);
-  const layerContainer = document.getElementById("viewer-layer-list");
-  if (layerContainer) mountViewerLayerPanel(layerContainer);
-  const layersEditorContainer = document.getElementById("viewer-layers-editor");
-  if (layersEditorContainer) mountViewerLayersEditor(layersEditorContainer);
+  // (Old layer-visibility panel + layer-definition editor retired — the Toolbar3D
+  // "Show/hide layers" dropdown is the live visibility UI; layers live in the WDL.)
   const lightingContainer = document.getElementById("viewer-lighting-list");
   if (lightingContainer) mountViewerLightingPanel(lightingContainer);
   const interiorContainer = document.getElementById("viewer-interior-panel");
@@ -466,8 +463,6 @@ async function bootViewer(): Promise<void> {
   // Read-only "layers hidden" badge — keeps the homeowner oriented when the
   // skill hides layers and the layer panel isn't visible.
   wireLayerStatus();
-  // Opener for the Layers editor modal (also on the layer menu + House settings).
-  window.wadiOpenLayersEditor = () => useLayersUiStore.getState().setOpen(true);
   // Register the wadi controls as WebMCP tools so any WebMCP browser agent
   // (Gemini in Chrome, Claude, …) can drive the model. No-op without WebMCP.
   wireWebMcpTools();
@@ -915,9 +910,6 @@ declare global {
     // WebMCP tool descriptors — also registered via document.modelContext when
     // the browser supports WebMCP. Exposed for inspection/testing/demo.
     wadiMcpTools?: WebMcpTool[];
-    // Open the Layers editor modal (also reachable from the layer menu + House
-    // settings). Handy for automation/testing.
-    wadiOpenLayersEditor?: () => void;
   }
 }
 
