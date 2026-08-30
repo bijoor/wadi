@@ -91,6 +91,8 @@ import { registerServiceWorker, setupInstallPrompt } from "./pwa";
 const CONFIG_URL = "/house_config.json";
 const EAVE_CROSS_SECTION_URL = "/2d/roof/roof-cross-section.svg";
 const LEFT_PANEL_KEY = "wadi:left-panel";
+const WDL_PANEL_KEY = "wadi:wdl-panel";
+const WDL_MAX_KEY = "wadi:wdl-max";
 
 // State shared with the fetch patch — mutated whenever the config
 // changes so that subsequent fetches return the fresh SVG strings.
@@ -3903,6 +3905,10 @@ function wireWdlEditor(): void {
     #viewer-wdl { width: 460px; max-width: 46vw; flex: none; display: flex; flex-direction: column;
       background: #0b1220; color: #e2e8f0; border-left: 1px solid #1e293b; }
     body[data-wdl="off"] #viewer-wdl { display: none; }
+    /* Maximized: the WDL fills the row minus the configurator (the centre 3D/tabs
+       area is hidden). */
+    body[data-wdl-max="on"] #viewer-wdl { flex: 1 1 auto; width: auto; max-width: none; }
+    body[data-wdl-max="on"] #viewer-content-area { display: none; }
     #viewer-wdl .wdl-head { flex: none; display: flex; align-items: center; justify-content: space-between;
       padding: 8px 12px; background: #111827; border-bottom: 1px solid #1e293b; font: 600 13px system-ui, sans-serif; }
     #viewer-wdl .wdl-head .sub { color: #94a3b8; font-weight: 400; font-size: 11px; margin-left: 8px; }
@@ -3923,10 +3929,20 @@ function wireWdlEditor(): void {
     #viewer-wdl .wdl-status.dirty { color: #93c5fd; }
     #viewer-wdl .wdl-btn { background: none; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px;
       padding: 2px 9px; cursor: pointer; font: inherit; }
-    #wdl-reopen { position: absolute; top: 60px; right: 0; z-index: 6; background: #111827; color: #e2e8f0;
-      border: 1px solid #1e293b; border-right: none; border-radius: 8px 0 0 8px; padding: 6px 11px; cursor: pointer;
-      font: 600 12px system-ui, sans-serif; display: none; }
-    body[data-wdl="off"] #wdl-reopen { display: block; }`;
+    /* Right-edge show/hide chevron — mirrors #left-toggle on the RIGHT so both
+       panels collapse the same way. Sits at the WDL pane's inner edge when open,
+       at the screen edge when closed. Hidden while maximized (use the ⤢ button to
+       restore) and in the embedded surface. */
+    #wdl-toggle {
+      display: flex; align-items: center; justify-content: center;
+      position: fixed; top: 50%; right: 0; transform: translateY(-50%);
+      z-index: 55; width: 24px; height: 54px;
+      border: 1px solid #1e293b; border-right: none; border-radius: 10px 0 0 10px;
+      background: #0d1526; color: #93c5fd; font-size: 1rem; line-height: 1;
+      cursor: pointer; box-shadow: -2px 0 10px rgba(0,0,0,0.25); }
+    body[data-wdl="on"] #wdl-toggle { right: min(460px, 46vw); }
+    body[data-wdl-max="on"] #wdl-toggle,
+    body[data-embed="1"] #wdl-toggle { display: none; }`;
   document.head.appendChild(style);
 
   const aside = document.createElement("aside");
@@ -3934,21 +3950,29 @@ function wireWdlEditor(): void {
   aside.setAttribute("aria-label", "WDL source");
   aside.innerHTML =
     `<div class="wdl-head"><span>WDL <span class="sub">the model's source · ⌘↵ to apply</span></span>` +
-    `<button class="wdl-btn" id="wdl-hide" title="Hide the WDL pane">Hide ⟩</button></div>` +
+    `<button class="wdl-btn" id="wdl-max" title="Expand the WDL editor to full width">⤢</button></div>` +
     `<textarea id="wdl-editor" spellcheck="false" placeholder="house House { … }"></textarea>` +
     `<div class="wdl-foot">` +
     `<button class="wdl-apply" id="wdl-apply" disabled>Apply changes<span class="k">⌘↵</span></button>` +
     `<span class="wdl-status" id="wdl-status"></span></div>`;
   container.appendChild(aside);
 
-  const reopen = document.createElement("button");
-  reopen.id = "wdl-reopen";
-  reopen.textContent = "⟨ WDL";
-  container.appendChild(reopen);
+  // Right-edge show/hide chevron, mirroring the left configurator's #left-toggle.
+  const wdlToggle = document.createElement("button");
+  wdlToggle.id = "wdl-toggle";
+  wdlToggle.type = "button";
+  wdlToggle.title = "Show / hide the WDL editor";
+  wdlToggle.setAttribute("aria-label", "Toggle WDL editor");
+  container.appendChild(wdlToggle);
 
   // Always-on for humans; hidden in the embedded/agent surface (?panels=off).
   const embedded = new URLSearchParams(window.location.search).get("panels") === "off";
-  document.body.dataset.wdl = embedded ? "off" : "on";
+  let storedWdl: string | null = null;
+  try { storedWdl = localStorage.getItem(WDL_PANEL_KEY); } catch { /* ignore */ }
+  document.body.dataset.wdl = embedded ? "off" : storedWdl === "off" ? "off" : "on";
+  let storedMax: string | null = null;
+  try { storedMax = localStorage.getItem(WDL_MAX_KEY); } catch { /* ignore */ }
+  if (storedMax === "on" && !embedded) document.body.dataset.wdlMax = "on";
 
   // The 3D canvas measured the full width before this pane shrank the content
   // area. Refit it whenever the content area's size changes (pane toggled, window
@@ -4026,8 +4050,37 @@ function wireWdlEditor(): void {
   });
   applyBtn.onclick = () => { void apply(); };
 
-  (document.getElementById("wdl-hide") as HTMLElement).onclick = () => { document.body.dataset.wdl = "off"; refit(); };
-  reopen.onclick = () => { document.body.dataset.wdl = "on"; syncFromStore(); refit(); };
+  // Show/hide via the right-edge chevron (mirrors the left configurator toggle):
+  // ❯ collapse when open, ❮ expand when closed. Persisted like the left panel.
+  const maxBtn = document.getElementById("wdl-max") as HTMLButtonElement;
+  const setToggleIcon = () => { wdlToggle.textContent = document.body.dataset.wdl === "on" ? "❯" : "❮"; };
+  const setMaxIcon = () => {
+    const on = document.body.dataset.wdlMax === "on";
+    maxBtn.textContent = on ? "⤡" : "⤢";
+    maxBtn.title = on ? "Restore the WDL editor width" : "Expand the WDL editor to full width";
+  };
+  setToggleIcon();
+  setMaxIcon();
+  wdlToggle.onclick = () => {
+    const next = document.body.dataset.wdl === "on" ? "off" : "on";
+    document.body.dataset.wdl = next;
+    if (next === "off") delete document.body.dataset.wdlMax; // collapsing exits full-width
+    else syncFromStore();
+    try { localStorage.setItem(WDL_PANEL_KEY, next); } catch { /* ignore */ }
+    setToggleIcon();
+    setMaxIcon();
+    refit();
+  };
+  // Expand the WDL editor to full width (minus the configurator if it's showing);
+  // the centre 3D/tabs area hides. Toggle again (⤡) to restore the docked width.
+  maxBtn.onclick = () => {
+    const on = document.body.dataset.wdlMax === "on";
+    if (on) delete document.body.dataset.wdlMax;
+    else document.body.dataset.wdlMax = "on";
+    try { localStorage.setItem(WDL_MAX_KEY, on ? "off" : "on"); } catch { /* ignore */ }
+    setMaxIcon();
+    refit();
+  };
 }
 
 // browsers and iPadOS (a file dragged from the Files app arrives here regardless
