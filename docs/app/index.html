@@ -33,17 +33,9 @@
            components inside them assume browser defaults + Tailwind
            Preflight, and a global reset here beats Tailwind's own
            element-level rules by cascade order.
-           `:where()` is used inside `:not()` so the whole selector keeps
-           the specificity of `*` (0) rather than inheriting the ID
-           specificity from `#viewer-sidebar` — otherwise this rule
-           would override every class-based padding on the page. */
-        * { box-sizing: border-box; }
-        *:not(:where(#viewer-sidebar, #viewer-sidebar *,
-                     #viewer-property-panel, #viewer-property-panel *,
-                     #viewer-layers-editor, #viewer-layers-editor *)) {
-            margin: 0;
-            padding: 0;
-        }
+           (The old form-studio panels that needed a padding exception here are
+           retired, so this is a plain reset now.) */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -102,30 +94,9 @@
         body > header {
             position: relative;
         }
-        /* Edit-mode indicator: the button lights up in laterite when
-           edit mode is on, sits neutral when off. Driven by
-           body[data-edit-mode="on"|"off"] which main.ts toggles. */
-        body[data-edit-mode="on"] #btn-edit-toggle {
-            background: #B85028;
-            color: #fff;
-            border-color: #B85028;
-        }
-        body[data-edit-mode="on"] #btn-edit-toggle:hover:not(:disabled) {
-            background: #a04620;
-        }
-        /* Persona split: Gharkul (owner) never shows structural-editing
-           controls; Nakasha (architect) keeps them. */
-        body[data-persona="owner"] #btn-edit-toggle,
-        body[data-persona="owner"] #layout-capture-btn,
-        body[data-persona="owner"] #viewer-sidebar,
-        body[data-persona="owner"] #viewer-property-panel {
-            display: none !important;
-        }
-        /* Owners get the always-visible layer chips too, but not the capture
-           tools (those are architect-only). */
-        body[data-persona="owner"] #viewer-3d-toolbar .v3d-actions {
-            display: none !important;
-        }
+        /* (Personas + the form-studio edit toggle are retired: one mode, with the
+           configurator + WDL editor as the two edit surfaces. Capture is always
+           visible.) */
         /* Retire the old 📚 layer popup and 🎥 camera popup — the toolbar's
            "Show/hide layers" and "Change view" dropdowns replace them. (The
            interior walk-through panel stays MOUNTED but hidden so its joystick
@@ -148,8 +119,8 @@
             justify-content: center;
             padding: 1.5rem;
         }
-        /* Show only for an owner who hasn't chosen a home yet. */
-        body[data-persona="owner"][data-home-chosen="no"] #owner-welcome {
+        /* Show the welcome only until a home has been chosen. */
+        body[data-home-chosen="no"] #owner-welcome {
             display: flex;
         }
         .ow-card {
@@ -565,9 +536,6 @@
             cursor: pointer;
             user-select: none;
         }
-        /* Layer editing is an architect (Nakasha) concern — hide the "Edit
-           layers…" launcher from the owner (Gharkul) layer menu. */
-        body[data-persona="owner"] .layer-edit-btn { display: none; }
         .layers-panel input[type="checkbox"] {
             accent-color: #667eea;
         }
@@ -1012,7 +980,6 @@
         }
         .svg-item:hover .svg-shot-btn { opacity: 0.9; }
         .svg-shot-btn:hover { opacity: 1 !important; }
-        body[data-persona="owner"] .svg-shot-btn { display: none !important; }
         .svg-item:hover {
             box-shadow: 0 8px 30px rgba(0,0,0,0.15);
             transform: translateY(-4px);
@@ -2160,9 +2127,9 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-BWVPjbtJ.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-Dxjb-Quu.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
-  <link rel="stylesheet" crossorigin href="./assets/viewer-At0tiqjU.css">
+  <link rel="stylesheet" crossorigin href="./assets/viewer-CD_pMlsy.css">
 </head>
 <body>
     <header>
@@ -2173,9 +2140,8 @@
                     Wadi
                 </h1>
                 <div class="subtitle">3D Home Designer</div>
-                <!-- Cross-navigation between the two persona surfaces (Gharkul
-                     owner ⇄ Nakasha architect). href + label set by applyPersona(). -->
-                <a id="persona-switch" class="persona-switch" href="?"></a>
+                <!-- (Persona split retired — one mode with the configurator + WDL
+                     editor as the two edit surfaces.) -->
                 <!-- Apps menu: the companion tools (WDL editor, Floor planner,
                      Staircase explorer). Each opens in its OWN window on desktop
                      (Tauri show_tool) and a new browser tab otherwise. Wired in
@@ -2242,13 +2208,11 @@
                             title="Show geometry issues" aria-label="Geometry issues">✓ OK</button>
                     <button id="btn-undo" class="hdr-btn" title="Undo (⌘Z)" aria-label="Undo">↶</button>
                     <button id="btn-redo" class="hdr-btn" title="Redo (⇧⌘Z)" aria-label="Redo">↷</button>
-                    <button id="btn-load" class="hdr-btn hdr-btn-text" title="Open a Wadi house — .wadi (⌘O)">📂 Load</button>
-                    <button id="btn-save" class="hdr-btn hdr-btn-text" title="Save — write in place (⌘S)">💾 Save</button>
-                    <button id="btn-save-as" class="hdr-btn hdr-btn-text" title="Save to a new .wadi file (⇧⌘S)">📝 Save As</button>
-                    <button id="btn-share" class="hdr-btn hdr-btn-text" title="Copy a shareable link to this house">🔗 Share</button>
-                    <button id="btn-export-wadi" class="hdr-btn hdr-btn-text" title="Save as a .wadi file (double-clicks open in the desktop app)">📦 .wadi</button>
-                    <button id="btn-new" class="hdr-btn hdr-btn-text" title="Start a new house from a template (⌘N)">✨ New</button>
-                    <button id="btn-edit-toggle" class="hdr-btn hdr-btn-text" title="Toggle edit panels">✏️ Edit</button>
+                    <button id="btn-new" class="hdr-btn hdr-btn-text" title="Start a new model from the gallery (⌘N)">✨ New</button>
+                    <button id="btn-load" class="hdr-btn hdr-btn-text" title="Open a model — .wadi (⌘O)">📂 Load</button>
+                    <button id="btn-save" class="hdr-btn hdr-btn-text" title="Save — write the current .wadi in place (⌘S)">💾 Save</button>
+                    <button id="btn-save-as" class="hdr-btn hdr-btn-text" title="Save a copy to a new .wadi (⇧⌘S)">📝 Save As</button>
+                    <button id="btn-install" class="hdr-btn hdr-btn-text" title="Install Wadi as an app" style="display:none">⬇ Install app</button>
                 </div>
                 <input id="file-input-json" type="file" accept="application/json,.json" hidden />
             </div>
@@ -2294,9 +2258,8 @@
             <h4 id="cfg-dock-title">Configure your home</h4>
             <div id="viewer-config-list"></div>
         </aside>
-        <!-- Edit-mode slots: React roots for the editor's Sidebar (left)
-             and PropertyPanel (right). Hidden unless body[data-edit-mode=on]. -->
-        <aside id="viewer-sidebar"></aside>
+        <!-- (Form-studio Sidebar + PropertyPanel retired — WDL is the only edit
+             surface. Their React mount slots are gone.) -->
         <div id="viewer-content-area">
         <!-- View tabs: docked at the top of the content area so they
              don't overlap the edit-mode sidebar. On mobile the same
@@ -2390,14 +2353,8 @@
                 <h4>Walk into a room</h4>
                 <div id="viewer-interior-panel"></div>
             </div>
-            <!-- Layer toggles (top-left, below 🎥) — populated by React on
-                 load. The 📚 button reveals the panel. Positioning +
-                 styling come from the .layers-panel / .layers-toggle CSS. -->
-            <div class="layers-toggle" onclick="toggleLayers('viewer-layer-panel')" title="Show layers">📚</div>
-            <div class="layers-panel" id="viewer-layer-panel">
-                <h4>Show layers</h4>
-                <div class="layers-list" id="viewer-layer-list"></div>
-            </div>
+            <!-- (Old layer-visibility panel retired — the Toolbar3D
+                 "Show/hide layers" dropdown is the live visibility UI.) -->
             <!-- Lighting controls (top-right) — the ⚙️ button opens a panel
                  of sliders populated by React (src/viewer/mount3D.tsx). -->
             <div class="settings-toggle" onclick="toggleSettings()" title="Lighting">⚙️</div>
@@ -2413,9 +2370,9 @@
                 id="viewer-3d-scene"
                 style="width: 100%; height: 100%; position: relative; background: #0a0f14;">
             </div>
-            <!-- Permanent slim toolbar (architect only) — layer quick-toggles +
-                 capture tools. Mounted by React (Viewer3DToolbar). Hidden for
-                 owners via body[data-persona="owner"] #viewer-3d-toolbar. -->
+            <!-- Permanent slim toolbar — layer quick-toggles ("Show/hide layers"),
+                 "Change view", and the always-visible capture tools. Mounted by
+                 React (Viewer3DToolbar). -->
             <div id="viewer-3d-toolbar"></div>
             <!-- Read-only "layers hidden" indicator, driven by wireLayerStatus()
                  in main.ts. Appears only when layers are hidden (the skill drives
@@ -2647,25 +2604,11 @@
         </div>
         </div><!-- /viewer-views -->
         </div><!-- /viewer-content-area -->
-        <aside id="viewer-property-panel"></aside>
     </div>
 
-    <!-- Layers editor modal (React, mounted by main.ts). Renders nothing until
-         opened via the layer menu's "Edit layers…" or House settings. Overlay is
-         position:fixed, so it sits anywhere in the DOM. -->
-    <div id="viewer-layers-editor"></div>
+    <!-- (Layer-definition editor modal retired — layers are authored in the WDL.) -->
 
     <script>
-        // Toggle a layer/settings panel's visibility. Reused by the
-        // mobile-only .layers-toggle button. On desktop the panel is
-        // always visible (see the media queries at the top).
-        function toggleLayers(panelId) {
-            const panel = document.getElementById(panelId);
-            if (panel) panel.classList.toggle('active');
-            // Only one top-left popup open at a time (they share a slot).
-            document.getElementById('viewer-camera-panel')?.classList.remove('active');
-        }
-
         // Walk-through camera (🎥) panel — the room list is mounted by
         // React; this just shows/hides the panel and closes the layers
         // popup so the two don't overlap.
