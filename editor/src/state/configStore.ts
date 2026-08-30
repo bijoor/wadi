@@ -3,6 +3,7 @@ import { temporal } from "zundo";
 import type { HouseConfig, HouseObject } from "../schema/houseConfig";
 import { makeDefault, makeDefaultFloor, type AddableObjectType } from "./defaultFactory";
 import { composeResolve } from "../pipeline/compose";
+import { configToWdlText } from "../io/wdl";
 import { reportFormulaWarnings } from "../param/warnings";
 import { registerExposedComponents } from "../registry/promote";
 
@@ -16,6 +17,10 @@ export interface Selection {
 
 interface ConfigState {
   config: HouseConfig | null;
+  // The model's .wdl source, kept ALWAYS in sync with `config` (decompiled on
+  // every change — cheap, no Langium). WDL is Wadi's native working format; the
+  // model always carries it. `.wadi` is only the distribution/export form.
+  wdl: string;
   filename: string | null;
   // Full filesystem path — populated only when running inside Tauri and
   // the config was opened/saved via a native dialog. Used to distinguish
@@ -157,7 +162,9 @@ export const useConfigStore = create<ConfigState>()(
               (patch as { config: HouseConfig }).config,
             );
             reportFormulaWarnings(warnings);
-            return { ...(patch as object), config };
+            // Keep the model's .wdl in lockstep with the config (cheap decompile).
+            // This is what makes WDL native — the model always carries its source.
+            return { ...(patch as object), config, wdl: configToWdlText(config) };
           }
           return patch;
         };
@@ -173,6 +180,7 @@ export const useConfigStore = create<ConfigState>()(
 
       return {
       config: null,
+      wdl: "",
       filename: null,
       filePath: null,
       selection: null,

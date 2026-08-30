@@ -5,6 +5,22 @@
 // the exact compiler source the separate /dsl editor uses, no second copy.
 
 import { validate, type HouseConfig } from "../schema/houseConfig";
+// STATIC import: the decompiler is Langium-free (config -> text walk), so it costs
+// almost nothing and can run on every model change. It stays out of the lazy
+// compiler chunk. Only compiling WDL -> model (below) needs the heavy Langium path.
+import { emitWdl } from "wadi-wdl-emitter";
+
+// SYNC decompile: the current model -> its .wdl text. Cheap enough that the store
+// keeps it ALWAYS in sync, so the model natively carries its WDL. Guarded: a
+// malformed config yields "" rather than throwing (never breaks a store update).
+export function configToWdlText(config: HouseConfig | null | undefined): string {
+  if (!config) return "";
+  try {
+    return emitWdl(config as unknown as Record<string, unknown>);
+  } catch {
+    return "";
+  }
+}
 
 export interface WdlCompileResult {
   ok: boolean;
@@ -39,9 +55,3 @@ export async function wdlToConfig(text: string): Promise<WdlCompileResult> {
   return { ok: true, config: parsed.data, errors: [] };
 }
 
-// Decompile a HouseConfig back to .wdl text (so an agent can read + modify the
-// current model as WDL). Lazily imports the emitter chunk.
-export async function configToWdl(config: HouseConfig): Promise<string> {
-  const { emitWdl } = await import("wadi-wdl-emitter");
-  return emitWdl(config as unknown as Record<string, unknown>);
-}

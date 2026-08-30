@@ -62,7 +62,7 @@ import {
   serializeConfig,
   toShareName,
 } from "../io/fileIO";
-import { wdlToConfig, configToWdl } from "../io/wdl";
+import { wdlToConfig, configToWdlText } from "../io/wdl";
 import {
   encodeConfigToHash,
   decodeConfigFromHash,
@@ -2976,9 +2976,10 @@ function wireWadiApi(): void {
       return { loaded: true as const, ...checkBrief(store().config) };
     },
     async getWdl() {
-      const cfg = store().config;
-      if (!cfg) return "";
-      return configToWdl(cfg as unknown as ValidatedHouseConfig);
+      // The model always carries its WDL (synced in the store). Fall back to a
+      // fresh decompile if the synced copy is somehow empty.
+      const s = store();
+      return s.wdl || configToWdlText(s.config as unknown as ValidatedHouseConfig);
     },
     async checkWdl(wdl: string) {
       const res = await wdlToConfig(String(wdl ?? ""));
