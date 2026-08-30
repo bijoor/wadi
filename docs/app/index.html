@@ -573,7 +573,10 @@
            Shown only when a left panel exists (owner config OR architect edit). */
         #left-toggle {
             display: none;
-            position: fixed; top: 50%; left: 0; transform: translateY(-50%);
+            /* Offset ABOVE centre so it never overlaps the WDL editor's edge
+               control (offset BELOW centre) when the WDL is maximised beside the
+               open configurator and both sit at the configurator's right edge. */
+            position: fixed; top: calc(50% - 44px); left: 0; transform: translateY(-50%);
             z-index: 55;
             width: 24px; height: 54px;
             border: 1px solid #e0dfda; border-left: none;
@@ -2127,9 +2130,9 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-Dxjb-Quu.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-8KgDKmsP.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
-  <link rel="stylesheet" crossorigin href="./assets/viewer-CD_pMlsy.css">
+  <link rel="stylesheet" crossorigin href="./assets/viewer-DV3-yYod.css">
 </head>
 <body>
     <header>
