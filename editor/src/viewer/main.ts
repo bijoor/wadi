@@ -3377,8 +3377,12 @@ async function refreshGallery(): Promise<void> {
 
   const src = templateSource();
   if (src.kind === "default") {
-    // No models folder chosen → offer to open a file (above) or pick a folder. No samples.
-    buildTemplateFilterBar(); // clears the filter bar
+    // No models folder chosen → offer to open a file (above) or pick a folder. No
+    // samples, and no filter bar (there's nothing to filter). Drop any stale
+    // gallery entries so a leftover sample list can't render filters.
+    galleryTemplates = [];
+    const filterBar = document.getElementById("new-house-modal-filters");
+    if (filterBar) filterBar.innerHTML = "";
     const folderBtn = canPickFolder()
       ? `<button type="button" class="tpl-source-btn" id="tpl-choose-folder" style="margin-top:12px">📁 Choose a folder of your designs</button>`
       : `<div style="margin-top:10px;font-size:.85em;opacity:.7">Choosing a folder needs the desktop app or Chrome / Edge.</div>`;
@@ -3442,28 +3446,27 @@ function canPickFolder(): boolean {
 }
 
 // The OPEN modal's source bar. When a folder IS configured it shows the folder +
-// Change / Reset / Refresh. When none is configured (default), the bar just offers
-// "Choose a folder" — the grid's empty state carries the rest. It never mentions
-// samples (those live in the New modal).
+// Change / Close / Refresh. When NONE is configured, the bar is EMPTY — the single
+// "Choose a folder" affordance lives in the grid's empty state (one, not two). It
+// never mentions samples (those live in the New modal).
 function renderOpenSourceBar(): void {
   const bar = document.getElementById("new-house-modal-source");
   if (!bar) return;
   const hasFolder = templateSource().kind !== "default";
-  const changeLabel = hasFolder ? "📁 Change folder…" : "📁 Choose a folder…";
-  const changeBtn = canPickFolder()
-    ? `<button type="button" class="tpl-source-btn" id="tpl-source-set">${changeLabel}</button>`
-    : "";
   if (!hasFolder) {
-    bar.innerHTML = changeBtn;
-  } else {
-    // sourceLabel already reads "folder: X" — strip the prefix so the bar isn't "Folder: folder: X".
-    const folder = sourceLabel().replace(/^folder:\s*/i, "");
-    bar.innerHTML =
-      `<span class="tpl-source-label">Folder: <b>${escapeHtml(folder)}</b></span>
-       ${changeBtn}
-       <button type="button" class="tpl-source-btn" id="tpl-source-reset">✕ Close folder</button>
-       <button type="button" class="tpl-source-btn" id="tpl-source-refresh">↻ Refresh</button>`;
+    bar.innerHTML = ""; // no folder → the empty-state's "Choose a folder" is the only one
+    return;
   }
+  const changeBtn = canPickFolder()
+    ? `<button type="button" class="tpl-source-btn" id="tpl-source-set">📁 Change folder…</button>`
+    : "";
+  // sourceLabel already reads "folder: X" — strip the prefix so the bar isn't "Folder: folder: X".
+  const folder = sourceLabel().replace(/^folder:\s*/i, "");
+  bar.innerHTML =
+    `<span class="tpl-source-label">Folder: <b>${escapeHtml(folder)}</b></span>
+     ${changeBtn}
+     <button type="button" class="tpl-source-btn" id="tpl-source-reset">✕ Close folder</button>
+     <button type="button" class="tpl-source-btn" id="tpl-source-refresh">↻ Refresh</button>`;
   document.getElementById("tpl-source-refresh")?.addEventListener("click", () => {
     resetCatalogSource();
     thumbCache.clear();
