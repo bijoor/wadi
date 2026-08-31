@@ -1356,6 +1356,21 @@
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 1rem;
         }
+        /* Plain name list for the user's own models folder (no thumbnails/meta —
+           those download on click, one file at a time). Spans the whole grid. */
+        .file-list { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; }
+        .file-row {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            padding: 9px 12px; border: 1px solid #e7e2da; border-radius: 8px;
+            background: #fafaf7; cursor: pointer; text-align: left; font: inherit;
+            color: #23201c; transition: background 0.12s ease, border-color 0.12s ease;
+        }
+        .file-row:hover { background: #f2ede4; border-color: #d8cfc1; }
+        .file-row .file-icon { flex: 0 0 auto; font-size: 1.05rem; }
+        .file-row .file-name { flex: 1 1 auto; min-width: 0; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+        .file-row .file-open { flex: 0 0 auto; color: #B85028; font-size: .85rem; opacity: 0; transition: opacity 0.12s ease; }
+        .file-row:hover .file-open { opacity: 1; }
         .template-card {
             border: 1px solid #e0dfda;
             border-radius: 10px;
@@ -2093,7 +2108,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-DapaAFMv.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-BdaIkpRD.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-DV3-yYod.css">
 </head>

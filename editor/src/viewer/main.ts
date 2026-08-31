@@ -73,6 +73,7 @@ import { isTauri, invoke } from "@tauri-apps/api/core";
 import {
   fetchCatalogBytes,
   loadCatalog,
+  listCatalogFiles,
   templateSource,
   setTemplateSource,
   resetCatalogSource,
@@ -3407,24 +3408,82 @@ async function refreshGallery(): Promise<void> {
     return;
   }
 
-  // Scan the folder (guarded — a cloud folder is slow and must not clobber a newer load).
+  // List the folder's file NAMES only — the fast, local part (directory metadata).
+  // We deliberately do NOT download/index each file for thumbnails + meta: a cloud
+  // folder's files are dataless, so eager indexing would download every bundle up
+  // front and set an expectation cloud latency can't meet. The user clicks a file
+  // to load it (one download, bound by their click). Rich cards + thumbnails are for
+  // the SAMPLES gallery (New), where they help recognise UNFAMILIAR homes.
+  const filterBar = document.getElementById("new-house-modal-filters");
+  if (filterBar) filterBar.innerHTML = ""; // no per-file meta → nothing to filter
+  galleryTemplates = [];
   const seq = ++catalogLoadSeq;
-  grid.innerHTML =
-    `<div class="new-house-modal-empty">Loading models from ${escapeHtml(sourceLabel())}…<br>
-     <span style="font-size:.85em;opacity:.7">A cloud folder may take a moment the first time (files download on demand).</span></div>`;
-  let loaded: TemplateEntry[];
+  grid.innerHTML = `<div class="new-house-modal-empty">Listing files…</div>`;
+  let names: string[];
   try {
-    loaded = await loadCatalog();
+    names = await listCatalogFiles();
   } catch (e) {
     if (seq !== catalogLoadSeq) return;
     grid.innerHTML =
-      `<div class="new-house-modal-empty" style="color:#b00">Couldn't load models from (${escapeHtml(sourceLabel())}): ${escapeHtml(e instanceof Error ? e.message : String(e))}</div>`;
+      `<div class="new-house-modal-empty" style="color:#b00">Couldn't list (${escapeHtml(sourceLabel())}): ${escapeHtml(e instanceof Error ? e.message : String(e))}</div>`;
     return;
   }
   if (seq !== catalogLoadSeq) return;
-  galleryTemplates = loaded;
-  buildTemplateFilterBar();
-  renderTemplateCards();
+  renderFolderFileList(names);
+}
+
+// A plain, instant list of the folder's `.wadi` files (names only). Clicking one
+// loads THAT file — the single download happens then, bound by the user's click.
+function renderFolderFileList(names: string[]): void {
+  const grid = document.getElementById("new-house-modal-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  const files = names.filter((n) => /\.(wadi|json)$/i.test(n)).sort((a, b) => a.localeCompare(b));
+  if (!files.length) {
+    grid.innerHTML =
+      `<div class="new-house-modal-empty">This folder has no <b>.wadi</b> files yet.<br>Save a design into it, or choose a different folder.</div>`;
+    return;
+  }
+  const list = document.createElement("div");
+  list.className = "file-list";
+  for (const name of files) {
+    const pretty = name.replace(/\.(wadi|json)$/i, "");
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "file-row";
+    row.innerHTML = `<span class="file-icon">🏠</span><span class="file-name">${escapeHtml(pretty)}</span><span class="file-open">Open →</span>`;
+    row.addEventListener("click", () => void openFolderFile(name));
+    list.appendChild(row);
+  }
+  grid.appendChild(list);
+}
+
+// Open ONE file from the current models folder as a document: read + parse it (the
+// download happens here, on the click), set its filename + a writable target so
+// Save writes back to the same file.
+async function openFolderFile(name: string): Promise<void> {
+  if (!(await guardUnsaved("opening a model"))) return;
+  const row = document.querySelector(".file-list") as HTMLElement | null;
+  if (row) row.style.opacity = "0.6"; // faint "loading" cue while the file downloads
+  try {
+    const bytes = await fetchCatalogBytes(name);
+    const loaded = await parseConfigBytes(bytes, name);
+    const src = templateSource();
+    let filePath: string | null;
+    if (src.kind === "browser-dir") {
+      await adoptModelsDirFile(name);
+      filePath = name;
+    } else {
+      filePath = localCatalogFilePath(name);
+    }
+    useConfigStore.getState().loadConfig(loaded.config, name, filePath, loaded.wdl);
+    markHomeChosen();
+    useConfigStore.temporal.getState().clear();
+    closeNewHouseModal();
+  } catch (e) {
+    if (row) row.style.opacity = "1";
+    alert(`Couldn't open ${name}: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 // A human label for a templates source, used in the bar and error messages.
