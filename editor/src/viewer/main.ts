@@ -3973,9 +3973,16 @@ function renderTemplateCards(): void {
   }
 
   grid.innerHTML = "";
+  // In the New gallery, lead with a "Start from scratch" card so there's an obvious
+  // way to begin with an empty plot (the blank starter is otherwise not shown). It
+  // stays regardless of the tag/size filters.
+  if (galleryMode === "new") grid.appendChild(buildStartBlankCard());
+
   if (matches.length === 0) {
-    grid.innerHTML =
-      `<div class="new-house-modal-empty">No homes match these filters. Try widening your plot size or clearing a filter.</div>`;
+    const empty = document.createElement("div");
+    empty.className = "new-house-modal-empty";
+    empty.textContent = "No homes match these filters. Try widening your plot size or clearing a filter.";
+    grid.appendChild(empty);
     return;
   }
 
@@ -3983,6 +3990,45 @@ function renderTemplateCards(): void {
     const card = buildTemplateCardEl(t, () => void selectTemplate(t));
     grid.appendChild(card);
     void loadTemplateThumb(t, card.querySelector(".template-card-thumb") as HTMLElement);
+  }
+}
+
+// A "Start from scratch" card for the New gallery: loads the empty plot so the user
+// (or an agent) can build the whole house in the WDL editor.
+function buildStartBlankCard(): HTMLElement {
+  const card = document.createElement("div");
+  card.className = "template-card start-blank";
+  card.setAttribute("role", "button");
+  card.setAttribute("tabindex", "0");
+  card.innerHTML = `
+      <div class="template-card-thumb start-blank-thumb"><span class="start-blank-plus" aria-hidden="true">+</span></div>
+      <div class="template-card-body">
+        <div class="template-card-title">Start from scratch</div>
+        <div class="template-card-desc">An empty plot with a ground slab. Build the whole house in the WDL editor, or with an AI agent.</div>
+      </div>`;
+  const go = () => void startBlank();
+  card.addEventListener("click", go);
+  card.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); }
+  });
+  return card;
+}
+
+// Load the empty starter model as a fresh, untitled house (no file yet, so Save
+// asks where to put it). Same load path as picking a template, minus the "(template)"
+// framing.
+async function startBlank(): Promise<void> {
+  if (!(await guardUnsaved("creating a new house"))) return;
+  try {
+    const blank = galleryTemplates.find((t) => t.id === "blank");
+    const bytes = await fetchCatalogBytes(blank?.file ?? "blank.wadi", { kind: "default" });
+    const loaded = await parseConfigBytes(bytes, "blank.wadi");
+    useConfigStore.getState().loadConfig(loaded.config, "Untitled house", null, loaded.wdl);
+    markHomeChosen();
+    useConfigStore.temporal.getState().clear();
+    closeNewHouseModal();
+  } catch (e) {
+    alert(`Couldn't start a blank house: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
 
