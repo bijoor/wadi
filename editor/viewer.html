@@ -1377,17 +1377,19 @@
             align-items: center; gap: 14px; padding-top: 4px;
         }
         .folder-preview-empty { color: #8a8378; text-align: center; padding: 60px 20px; line-height: 1.5; }
-        .folder-preview-thumb { width: 100%; max-width: 460px; border: 1px solid #e0dfda;
-            border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.10); position: relative; }
-        /* No .template-card parent here, so reveal the carousel controls on hover. */
-        .folder-preview-thumb:hover .tpl-arrow, .folder-preview-thumb:hover .tpl-magnify { opacity: 1; }
-        .folder-preview-badge {
-            position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
-            color: #fff; font-size: .8rem; text-shadow: 0 1px 3px rgba(0,0,0,.6);
+        /* The preview reuses the SAME gallery card — just a single, non-clickable one. */
+        .folder-preview-card { width: 100%; max-width: 340px; display: flex; }
+        .folder-preview-card .template-card { width: 100%; cursor: default; }
+        .folder-preview-badge { color: #8a8378; font-size: .85rem; }
+        .folder-preview-noimg { color: #8a8378; text-align: center; padding: 20px 16px; font-size: .9rem; line-height: 1.4; }
+        .folder-preview-noimg span { display: block; font-size: .82rem; margin-top: 4px; }
+        .file-preview-open {
+            background: #B85028; color: #fff; border: none; border-radius: 8px;
+            padding: 10px 22px; font: 600 .95rem system-ui, sans-serif; cursor: pointer;
+            transition: background 0.12s ease;
         }
-        .folder-preview-noimg { color: #8a8378; text-align: center; padding: 30px 16px; font-size: 1.6rem; line-height: 1.35; }
-        .folder-preview-noimg span { font-size: .82rem; }
-        .folder-preview-name { font-weight: 700; font-size: 1.05rem; text-align: center; }
+        .file-preview-open:hover { background: #a04620; }
+        .file-preview-open:disabled { background: #c9a898; cursor: default; }
         @media (max-width: 720px) {
             .folder-browser { flex-direction: column; }
             .folder-list { flex-basis: auto; width: 100%; max-height: 34vh; }

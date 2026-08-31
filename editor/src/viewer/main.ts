@@ -74,6 +74,7 @@ import {
   fetchCatalogBytes,
   loadCatalog,
   listCatalogFiles,
+  entryFromBundleBytes,
   templateSource,
   setTemplateSource,
   resetCatalogSource,
@@ -3473,40 +3474,48 @@ function renderFolderFileList(names: string[]): void {
   grid.appendChild(browser);
 }
 
-// Select a file: highlight it and show its preview (thumbnail loads async; the Open
-// button is ready right away, so you needn't wait for the thumbnail).
+// Select a file: highlight it and show its preview as the SAME gallery card
+// (thumbnail + title + description + meta chips). The card + thumbnail load async,
+// but "Open this model" is ready right away, so you needn't wait.
 function selectFolderFile(name: string, row: HTMLElement): void {
   row.parentElement?.querySelectorAll(".folder-row.sel").forEach((r) => r.classList.remove("sel"));
   row.classList.add("sel");
   const preview = document.getElementById("folder-preview");
   if (!preview) return;
   const pretty = name.replace(/\.(wadi|json)$/i, "");
+  // Skeleton (same card shell, filename as title) + an Open button that works now.
   preview.innerHTML =
-    `<div class="template-card-thumb folder-preview-thumb" id="folder-preview-thumb"><span class="thumb-placeholder">🏠</span><span class="folder-preview-badge">Loading preview…</span></div>
-     <div class="folder-preview-name">${escapeHtml(pretty)}</div>
+    `<div class="folder-preview-card" id="folder-preview-card">
+       <div class="template-card">
+         <div class="template-card-thumb"><span class="folder-preview-badge">Loading preview…</span></div>
+         <div class="template-card-body"><div class="template-card-title">${escapeHtml(pretty)}</div></div>
+       </div>
+     </div>
      <button type="button" class="file-preview-open" id="folder-preview-open">Open this model</button>`;
   const openBtn = document.getElementById("folder-preview-open") as HTMLButtonElement;
   openBtn.addEventListener("click", () => void openFolderFile(name, openBtn));
-  void loadFolderThumb(name, document.getElementById("folder-preview-thumb") as HTMLElement);
+  void fillFolderPreviewCard(name);
 }
 
-// Load the selected file's cover thumbnail(s) into the preview pane (the templates
-// carousel). If a newer file is selected first, thumbEl is detached — bail so a
-// slow load can't overwrite it.
-async function loadFolderThumb(name: string, thumbEl: HTMLElement | null): Promise<void> {
-  if (!thumbEl) return;
+// Fill the preview with the selected file's full gallery card (title/description/
+// meta from its manifest + the thumbnail carousel). Guarded: a newer selection
+// detaches the holder, so a slow load can't overwrite it.
+async function fillFolderPreviewCard(name: string): Promise<void> {
+  const holder = document.getElementById("folder-preview-card");
+  if (!holder) return;
   try {
     const bytes = await folderFileBytes(name);
+    if (!holder.isConnected) return; // a different file was selected meanwhile
+    const entry = await entryFromBundleBytes(name, bytes);
+    if (!holder.isConnected) return;
+    const card = buildTemplateCardEl(entry); // identical to a gallery card (no click)
+    holder.replaceChildren(card);
+    const thumb = card.querySelector(".template-card-thumb") as HTMLElement;
     const covers = isWadiBundle(bytes) ? await readBundleCoverUrls(bytes) : [];
-    if (!thumbEl.isConnected) return; // a different file was selected meanwhile
-    if (covers.length) {
-      buildTemplateCarousel(thumbEl, covers, name);
-    } else {
-      thumbEl.innerHTML = `<div class="folder-preview-noimg">🏠<br><span>No preview image saved in this file.</span></div>`;
-    }
+    if (holder.isConnected && thumb && covers.length) buildTemplateCarousel(thumb, covers, entry.title);
   } catch (e) {
-    if (thumbEl.isConnected)
-      thumbEl.innerHTML = `<div class="folder-preview-noimg">Preview unavailable<br><span>${escapeHtml(e instanceof Error ? e.message : String(e))}</span></div>`;
+    if (holder.isConnected)
+      holder.innerHTML = `<div class="folder-preview-noimg">Preview unavailable<br><span>${escapeHtml(e instanceof Error ? e.message : String(e))}</span></div>`;
   }
 }
 
@@ -3775,19 +3784,26 @@ function renderTemplateCards(): void {
   }
 
   for (const t of matches) {
-    const card = document.createElement("div");
-    card.className = "template-card";
-    card.innerHTML = `
+    const card = buildTemplateCardEl(t, () => void selectTemplate(t));
+    grid.appendChild(card);
+    void loadTemplateThumb(t, card.querySelector(".template-card-thumb") as HTMLElement);
+  }
+}
+
+// The gallery card component (thumbnail + title + description + meta chips), shared
+// by the samples gallery and the folder-Open preview so both look identical.
+function buildTemplateCardEl(t: TemplateEntry, onClick?: () => void): HTMLElement {
+  const card = document.createElement("div");
+  card.className = "template-card";
+  card.innerHTML = `
       <div class="template-card-thumb"><span class="thumb-placeholder">🏠</span></div>
       <div class="template-card-body">
         <div class="template-card-title">${escapeHtml(t.title)}</div>
         <div class="template-card-desc">${escapeHtml(t.description)}</div>
         ${templateMetaChips(t.meta)}
       </div>`;
-    card.addEventListener("click", () => void selectTemplate(t));
-    grid.appendChild(card);
-    void loadTemplateThumb(t, card.querySelector(".template-card-thumb") as HTMLElement);
-  }
+  if (onClick) card.addEventListener("click", onClick);
+  return card;
 }
 
 // Encode fetched image bytes as a data URL for an <img src>, MIME by extension.

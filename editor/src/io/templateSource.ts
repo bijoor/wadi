@@ -527,6 +527,15 @@ async function bundleEntry(id: string, file: string, bytes: Uint8Array): Promise
   } };
 }
 
+/** Build a gallery TemplateEntry (title, description, meta, tags) from a `.wadi`
+ *  file's bytes, so a folder file can render the SAME card as a template. */
+export async function entryFromBundleBytes(file: string, bytes: Uint8Array): Promise<TemplateEntry> {
+  const id = file.replace(/\.(wadi|json)$/i, "");
+  return isWadiBundle(bytes)
+    ? bundleEntry(id, file, bytes)
+    : entryFromConfig(id, JSON.parse(textFromBytes(bytes)) as Record<string, unknown>, file);
+}
+
 function numOr(v: unknown, d: number): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : d;
