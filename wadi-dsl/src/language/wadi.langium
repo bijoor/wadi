@@ -40,12 +40,15 @@ entry Model:
     | components+=ComponentDef
     )*
     ( 'house' name=ID '{'
-        ('convention' convention=('center' | 'outer'))?
-        (units=Units)?
-        (site=Site)?
-        (defaults=Defaults)?
-        (template=TemplateMeta)?
-        ( imports+=Import
+        // Every section is ORDER-INDEPENDENT (one repeated alternation): the header
+        // singletons (convention/units/site/defaults/template) interleave freely
+        // with the collections, so authors never have to remember a section order.
+        ( 'convention' convention=('center' | 'outer')
+        | units=Units
+        | site=Site
+        | defaults=Defaults
+        | template=TemplateMeta
+        | imports+=Import
         | assets+=AssetDecl
         | vars+=Var
         | points+=Point
@@ -106,15 +109,22 @@ GridLine:
 // ---- Template catalog metadata: makes the compiled .wadi self-describing so a
 //      folder of templates can be auto-indexed (see io/templateSource.ts). The
 //      editorial fields a gallery card needs that geometry can't derive. ----
+// Fields are ORDER-INDEPENDENT: a repeated alternation `(a | b | ...)*` lets each
+// appear (at most once, by convention) in ANY order. This matters because
+// thumbnails are auto-appended on capture, so a hand-added field like `tags`
+// naturally lands after them — a fixed order would reject that (parse error → a
+// failed Apply that silently drops the edit).
 TemplateMeta:
     'template' '{'
-        ('title' title=STRING)?
-        ('description' description=STRING)?
-        ('style' style=STRING)?
-        ('roof' roof=STRING)?
-        ('tags' tags+=STRING (',' tags+=STRING)*)?
-        ('thumbnails' thumbs+=STRING (',' thumbs+=STRING)*)?
-        ('min_plot' '(' minW=NUMBER ',' minL=NUMBER ')')?
+        (
+            'title' title=STRING |
+            'description' description=STRING |
+            'style' style=STRING |
+            'roof' roof=STRING |
+            'tags' tags+=STRING (',' tags+=STRING)* |
+            'thumbnails' thumbs+=STRING (',' thumbs+=STRING)* |
+            'min_plot' '(' minW=NUMBER ',' minL=NUMBER ')'
+        )*
     '}';
 
 Configurator:
@@ -202,10 +212,10 @@ Site:
 
 Defaults:
     'defaults' '{'
-        ('floor_height' floor_height=NUMBER)?
-        ('wall_height' wall_height=NUMBER)?
-        ('slab_thickness' slab_thickness=NUMBER)?
-        ('wall_thickness' wall_thickness=NUMBER)?
+        ( 'floor_height' floor_height=NUMBER
+        | 'wall_height' wall_height=NUMBER
+        | 'slab_thickness' slab_thickness=NUMBER
+        | 'wall_thickness' wall_thickness=NUMBER )*
     '}';
 
 // ---- Per-house layer registry (display grouping) ----
@@ -220,10 +230,13 @@ ComponentDef:
         // then be used like any core object type, named `exposeType` (namespaced,
         // e.g. `pack.water_tank`).
         ('expose' 'as' exposeType=QualifiedName
-            ('layer' exposeLayer=STRING)? ('label' exposeLabel=STRING)?)? '{'
-        (params+=ComponentParam)*
-        ( vars+=Var | points+=Point )*
-        (objects+=FloorObject)*
+            ( 'layer' exposeLayer=STRING | 'label' exposeLabel=STRING )*)? '{'
+        // Params, local vars/points, and objects interleave freely (order-independent).
+        ( params+=ComponentParam
+        | vars+=Var
+        | points+=Point
+        | objects+=FloorObject
+        )*
     '}';
 ComponentParam:
     'param' name=ID ('=' default=NUMBER)? ('label' label=STRING)?
@@ -233,10 +246,10 @@ ComponentParam:
 
 Floor:
     'floor' number=NUMBER name=STRING
-    ('height' height=NUMBER)?
-    ('wall_height' wall_height=NUMBER)?
-    ('slab_thickness' slab_thickness=NUMBER)?
-    ('enabled' enabled=Expr)?
+    ( 'height' height=NUMBER
+    | 'wall_height' wall_height=NUMBER
+    | 'slab_thickness' slab_thickness=NUMBER
+    | 'enabled' enabled=Expr )*
     '{' objects+=FloorObject* '}';
 
 // The full discriminated union — every model object type has a first-class rule.
@@ -256,9 +269,7 @@ GlbModel:
     'model' ('name' name=STRING)?
         (assetRef=[AssetDecl:AssetName] | 'asset' asset=Asset)
         'at' '(' x=Expr ',' y=Expr ')'
-        ('rotation' rotation=Expr)?
-        ('scale' scale=Expr)?
-        Common
+        ( 'rotation' rotation=Expr | 'scale' scale=Expr | CommonFields )*
         ('{' rig+=RigOp* '}')?;
 // Each op leads with a distinct keyword then names the node: `rotate "lid" (0, 45, 0)`,
 // `array "rung" count 6 step {…}`. translate/rotate/scale share a shape, so they are one
@@ -288,7 +299,7 @@ ObjectDecl:
     type=QualifiedName name=NameRef?
     ('(' args+=Value (',' args+=Value)* ')')?
     ('{' fields+=FieldAssign* '}')?
-    Common;
+    ( CommonFields )*;
 FieldAssign:
     key=FieldKey value=Value;
 // A generic field key: a bare id, the `x`/`y` coordinate keywords, or a quoted
@@ -301,12 +312,15 @@ FieldKey returns string:
 Value infers Value:
     {infer StrVal} str=STRING | Expr;
 
-// ---- Shared optional attribute tail: z-offset + the enabled/layer switches
-//      that EVERY object carries (fragment → inlined, no wrapper AST node). ----
-fragment Common:
-    ('z_offset' z_offset=Expr)?
-    ('enabled' enabled=Expr)?
-    ('layer' layer=STRING)?;
+// ---- Shared optional attributes every object carries: z-offset + the
+//      enabled/layer switches (fragment → inlined, no wrapper AST node). ----
+// `CommonFields` is a single-field ALTERNATION meant to be dropped as one branch
+// into an object's order-independent field group `( … | CommonFields )*`, so the
+// tail fields interleave freely with the per-type ones (no fixed order).
+fragment CommonFields:
+      'z_offset' z_offset=Expr
+    | 'enabled' enabled=Expr
+    | 'layer' layer=STRING;
 
 // ---- Rooms + their walls / openings / anchored furniture ----
 // An object name: a bare identifier, or a quoted string when it has hyphens/
@@ -318,8 +332,7 @@ Room:
     'room' name=NameRef
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
-        ('height' height=Expr)?
-        Common ('material' material=STRING)?
+        ( 'height' height=Expr | 'material' material=STRING | CommonFields )*
         // Inside the block, `connect`, `wall`, and `item` statements may appear in
         // ANY order (and `connect` may repeat — names accumulate). Authors don't
         // have to remember that connections come first.
@@ -346,9 +359,8 @@ Wall:
     'wall' name=NameRef
         'from' '(' start_x=Expr ',' start_y=Expr ')'
         'to' '(' end_x=Expr ',' end_y=Expr ')'
-        ('height' height=Expr)? ('height_end' height_end=Expr)?
-        ('facing' facing=Side)?
-        Common ('material' material=STRING)?
+        ( 'height' height=Expr | 'height_end' height_end=Expr | 'facing' facing=Side
+        | 'material' material=STRING | CommonFields )*
         ('{' openings+=Opening* '}')?;
 
 Pillar:
@@ -358,36 +370,34 @@ Pillar:
         // written `auto` and falls back to the wall thickness at render time
         // (a column embedded in a wall is only as deep as the wall).
         'size' '(' (w_auto?='auto' | w=Expr) ',' (l_auto?='auto' | l=Expr) ')'
-        ('height' height=Expr)?
-        Common;
+        ( 'height' height=Expr | CommonFields )*;
 
 Beam:
     'beam' ('name' name=STRING)?
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
-        ('height' height=Expr)?
-        Common;
+        ( 'height' height=Expr | CommonFields )*;
 
 FloorSlab:
     'slab' ('name' name=STRING)?
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
-        ('thickness' thickness=Expr)?
-        Common;
+        ( 'thickness' thickness=Expr | CommonFields )*;
 
 Plinth:
     'plinth' ('name' name=STRING)?
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
+        // `height` is required for a plinth; it stays a fixed leader (the rest are
+        // order-independent).
         'height' height=Expr
-        Common ('material' material=STRING)?;
+        ( 'material' material=STRING | CommonFields )*;
 
 Ground:
     'ground' ('name' name=STRING)?
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
-        ('height' height=Expr)?
-        Common ('material' material=STRING)?;
+        ( 'height' height=Expr | 'material' material=STRING | CommonFields )*;
 
 Staircase:
     'staircase' ('name' name=STRING)?
@@ -399,14 +409,15 @@ Staircase:
         // the legacy fixed-width + max_run form.
         'step' '(' step_rise=Expr ',' step_tread=Expr (',' step_width=Expr)? ')'
         'direction' direction=Side
-        ('climb' climb=('up' | 'down'))?
-        ('total_height' rise_height=Expr)?
-        ('max_run' max_run=Expr)?
-        ('landing_depth' landing_depth=Expr)?
-        ('landing_thickness' landing_thickness=Expr)?
-        ('turn' turn=('clockwise' | 'anticlockwise'))?
-        ('flight_gap' flight_gap=Expr)?
-        Common ('material' material=STRING)?;
+        ( 'climb' climb=('up' | 'down')
+        | 'total_height' rise_height=Expr
+        | 'max_run' max_run=Expr
+        | 'landing_depth' landing_depth=Expr
+        | 'landing_thickness' landing_thickness=Expr
+        | 'turn' turn=('clockwise' | 'anticlockwise')
+        | 'flight_gap' flight_gap=Expr
+        | 'material' material=STRING
+        | CommonFields )*;
 
 // A PROMOTED primitive (plans/primitive-componentization.md §2.6): spiral_staircase
 // started life on the generic `ObjectDecl` path, then graduated to this bespoke sugar
@@ -417,19 +428,15 @@ SpiralStaircase:
         'at' '(' x=Expr ',' y=Expr ')'
         'radius' radius=Expr
         'total_height' total_height=Expr
-        ('turns' turns=Expr)?
-        ('steps' steps=Expr)?
-        ('tread_thickness' tread_thickness=Expr)?
-        ('pole_radius' pole_radius=Expr)?
-        Common;
+        ( 'turns' turns=Expr | 'steps' steps=Expr | 'tread_thickness' tread_thickness=Expr
+        | 'pole_radius' pole_radius=Expr | CommonFields )*;
 
 KitchenPlatform:
     'kitchen' ('name' name=STRING)?
         'path' '(' pts+=Pt (',' pts+=Pt)* ')'
         'side' side=('left' | 'right')
         'depth' depth=Expr 'height' height=Expr
-        ('base_z' base_z=Expr)?
-        Common ('material' material=STRING)?;
+        ( 'base_z' base_z=Expr | 'material' material=STRING | CommonFields )*;
 Pt:
     '(' x=NUMBER ',' y=NUMBER ')';
 
@@ -438,21 +445,14 @@ Item:
     'item' ('name' name=STRING)?
         (assetRef=[AssetDecl:AssetName] | 'asset' asset=Asset)
         'at' '(' x=Expr ',' y=Expr ')'
-        ('rotation' rotation=Expr)?
-        ('scale' scale=Expr)?
-        ('anchor_to' anchor_to=STRING)?
-        ('anchor' anchor=Anchor)?
-        ('gap' '(' gap_x=Expr ',' gap_y=Expr ')')?
-        Common;
+        ( 'rotation' rotation=Expr | 'scale' scale=Expr | 'anchor_to' anchor_to=STRING
+        | 'anchor' anchor=Anchor | 'gap' '(' gap_x=Expr ',' gap_y=Expr ')' | CommonFields )*;
 // Furniture anchored inside a room (no x/y — placed relative to the room box).
 RoomItem:
     'item' ('name' name=STRING)?
         (assetRef=[AssetDecl:AssetName] | 'asset' asset=Asset)
-        ('anchor' anchor=Anchor)?
-        ('gap' '(' gap_x=Expr ',' gap_y=Expr ')')?
-        ('rotation' rotation=Expr)?
-        ('scale' scale=Expr)?
-        Common;
+        ( 'anchor' anchor=Anchor | 'gap' '(' gap_x=Expr ',' gap_y=Expr ')'
+        | 'rotation' rotation=Expr | 'scale' scale=Expr | CommonFields )*;
 // An asset reference name: bare (`"bed_double"`, same-file or a std module) or
 // namespaced (`f."bed_double"`, from `import "…" as f`). Used as the cross-
 // reference name for `item assetRef=[AssetDecl:AssetName]`; the ScopeProvider
@@ -477,9 +477,9 @@ Component:
         'at' '(' x=Expr ',' y=Expr ')'
         // Standard placement: yaw° (0=south, 90=east). Right angles are exact for
         // any component; a free angle is allowed only for furniture-only ones.
-        ('rotation' rotation=Expr)?
-        ('with' '{' args+=ComponentArg (',' args+=ComponentArg)* '}')?
-        Common;
+        ( 'rotation' rotation=Expr
+        | 'with' '{' args+=ComponentArg (',' args+=ComponentArg)* '}'
+        | CommonFields )*;
 ComponentArg:
     name=ID '=' value=Expr;
 
@@ -493,20 +493,20 @@ QualifiedName returns string:
 //      hip_setback_start, …); truss positions serialize to pos0/pos1/… ----
 Roof:
     'roof' ('name' name=STRING)? roof_type=('flat' | 'shed' | 'pitched')
-        ('endpoint' default_endpoint=('open' | 'closed'))?
-        (slope=Slope)?
-        ('overhang' min_overhang=Expr)?
-        ('slab_thickness' slab_thickness=Expr)?
-        ('parapet' parapet_height=Expr 'x' parapet_thickness=Expr)?
-        ('gable_wall_thickness' gable_wall_thickness=Expr)?
-        // Detailed structural framing (rafter/purlin/ridge/truss member sizes)
-        // as a raw JSON block — an advanced, rarely-hand-authored spec.
-        ('framing' framing=JsonObject)?
-        // First-class rafter/purlin spacing (a.k.a. pitch), in INCHES — sugar
-        // that writes framing.rafter_spacing_in / purlin_spacing_in.
-        ('rafter_pitch' rafter_pitch=Expr)?
-        ('purlin_pitch' purlin_pitch=Expr)?
-        Common ('material' material=STRING)?
+        // Order-independent attributes. `framing` is an advanced raw JSON block of
+        // structural member sizes; `rafter_pitch`/`purlin_pitch` are inch-spacing
+        // sugar over framing.rafter_spacing_in / purlin_spacing_in.
+        ( 'endpoint' default_endpoint=('open' | 'closed')
+        | slope=Slope
+        | 'overhang' min_overhang=Expr
+        | 'slab_thickness' slab_thickness=Expr
+        | 'parapet' parapet_height=Expr 'x' parapet_thickness=Expr
+        | 'gable_wall_thickness' gable_wall_thickness=Expr
+        | 'framing' framing=JsonObject
+        | 'rafter_pitch' rafter_pitch=Expr
+        | 'purlin_pitch' purlin_pitch=Expr
+        | 'material' material=STRING
+        | CommonFields )*
         '{' (segments+=Segment | trusses+=Truss)* '}';
 // Roof pitch. A single value is a symmetric gable/hip; an ANGLE PAIR (left, right)
 // is an asymmetric (saltbox) gable — the two eaves stay put and the ridge shifts
@@ -525,20 +525,20 @@ Segment:
         // an OFF-CENTRE ridge: the two eaves stay at the span edges and the ridge
         // sits at `left` from the left eave. Span = left + right.
         ('width' width=Expr | 'widths' '(' width_left=Expr ',' width_right=Expr ')')
-        ('high_side' shed_high_side=('left' | 'right'))?
-        ('start_endpoint' start_endpoint=('open' | 'closed'))?
-        ('end_endpoint' end_endpoint=('open' | 'closed'))?
-        ('hip_setback' '(' hip_setback_start=Expr ',' hip_setback_end=Expr ')')?
-        ('gable_overhang' '(' gable_overhang_start=Expr ',' gable_overhang_end=Expr ')')?
-        ('hip_ridge_extension' '(' hip_ridge_extension_start=Expr ',' hip_ridge_extension_end=Expr ')')?
-        ('overhang' min_overhang=Expr)?
-        ('overhang_start' overhang_start=Expr)?
-        ('overhang_end' overhang_end=Expr)?
-        ('overhang_low' overhang_low=Expr)?
-        ('overhang_high' overhang_high=Expr)?
-        ('overhang_left' overhang_left=Expr)?
-        ('overhang_right' overhang_right=Expr)?
-        ('tie_beams' tie_beam_count=NUMBER)?;
+        ( 'high_side' shed_high_side=('left' | 'right')
+        | 'start_endpoint' start_endpoint=('open' | 'closed')
+        | 'end_endpoint' end_endpoint=('open' | 'closed')
+        | 'hip_setback' '(' hip_setback_start=Expr ',' hip_setback_end=Expr ')'
+        | 'gable_overhang' '(' gable_overhang_start=Expr ',' gable_overhang_end=Expr ')'
+        | 'hip_ridge_extension' '(' hip_ridge_extension_start=Expr ',' hip_ridge_extension_end=Expr ')'
+        | 'overhang' min_overhang=Expr
+        | 'overhang_start' overhang_start=Expr
+        | 'overhang_end' overhang_end=Expr
+        | 'overhang_low' overhang_low=Expr
+        | 'overhang_high' overhang_high=Expr
+        | 'overhang_left' overhang_left=Expr
+        | 'overhang_right' overhang_right=Expr
+        | 'tie_beams' tie_beam_count=NUMBER )*;
 Truss:
     'truss' segment_id=STRING type=('fink' | 'mono_pitch')
         'at' '(' positions+=Expr (',' positions+=Expr)* ')';

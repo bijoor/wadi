@@ -10,6 +10,12 @@ export const REFERENCE_HTML = `
 default). X is right, Y is down. In <code>center</code> convention, room and grid
 coordinates are wall <b>centrelines</b> — adjacent rooms simply abut on a shared
 line.</p>
+<p class="ref-note"><b>Field order is flexible.</b> Within any object (and the
+<code>house</code>, <code>template</code>, <code>defaults</code> blocks) the named
+fields may appear in <b>any order</b> — <code>room R at (…) size (…) layer "x"
+height 90</code> and <code>… height 90 layer "x"</code> are the same. Only the
+leading geometry (<code>at</code>, <code>size</code>) and required markers keep
+their place. The examples below use a conventional order, not a required one.</p>
 
 <h3>Skeleton</h3>
 <pre>house Name {

@@ -11,6 +11,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
+// fflate lives in editor/node_modules (the test already imports from editor/src).
+import { unzipSync, strFromU8 } from "../../editor/node_modules/fflate/esm/browser.js";
 import { compileDsl } from "../src/generator/toHouseConfig.js";
 import { emitWdl } from "../src/generator/fromHouseConfig.js";
 import { resolveParametric } from "../../editor/src/param/resolve";
@@ -133,11 +135,24 @@ describe("decompiler — emit(cfg) rebuilds the same house", () => {
     expect(stair.landing_depth).toBeGreaterThan(0);
   });
 
+  // A `.wadi` is now a ZIP BUNDLE (wadi.json + model.wdl + thumbnails/), though
+  // some library fixtures are still legacy JSON. Load either into a config: a
+  // bundle compiles its model.wdl; a legacy JSON parses directly. Magic bytes
+  // ("PK\x03\x04" vs "{") tell them apart.
+  const loadWadi = (path: string): unknown => {
+    const bytes = readFileSync(path);
+    if (bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04) {
+      const files = unzipSync(new Uint8Array(bytes));
+      const wdl = strFromU8(files["model.wdl"]);
+      return compileDsl(wdl, opts); // bundle model.wdl → config
+    }
+    return JSON.parse(bytes.toString("utf8"));
+  };
   for (const dir of wadiDirs) {
     if (!existsSync(dir)) continue;
     for (const f of readdirSync(dir).filter((x) => x.endsWith(".wadi"))) {
       it(`${f} (.wadi): decompiles to .wdl with identical geometry`, () => {
-        const a = JSON.parse(readFileSync(join(dir, f), "utf8"));
+        const a = loadWadi(join(dir, f));
         const wdl = emitWdl(a);
         const b = compileDsl(wdl, opts);
         expect(floors(b)).toEqual(floors(a));

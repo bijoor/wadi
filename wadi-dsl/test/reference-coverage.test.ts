@@ -20,7 +20,9 @@ import { dirname, resolve } from "node:path";
 import { collectGrammarKeywords } from "../src/language/grammar-keywords.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const REFERENCE_TS = resolve(here, "../playground/reference.ts");
+// The Reference cheat-sheet moved from the retired playground into the viewer's
+// WDL editor (the 📖 button); it stays hand-written, so this guard still applies.
+const REFERENCE_TS = resolve(here, "../../editor/src/viewer/wdlReference.ts");
 
 // Keywords intentionally NOT required in the quick-reference panel. Keep this
 // tiny and justified — prefer documenting a keyword over exempting it.
@@ -47,7 +49,7 @@ describe("Reference panel keeps up with the grammar", () => {
       .sort();
     expect(
       undocumented,
-      `These grammar field keywords are missing from playground/reference.ts. ` +
+      `These grammar field keywords are missing from editor/src/viewer/wdlReference.ts. ` +
         `Add them to the Reference panel, or (only for value literals) to DOC_EXEMPT:\n  ${undocumented.join(", ")}`,
     ).toEqual([]);
   });
