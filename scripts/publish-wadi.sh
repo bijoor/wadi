@@ -45,11 +45,15 @@ BASE="$(basename "$FILE")"
 ID="${2:-${BASE%.*}}"
 
 echo "▶ [1/4] Upgrading $BASE → $SRCDIR/$ID.wadi"
-"$ROOT/scripts/upgrade-wadi.sh" "$FILE" --out "$SRCDIR"
-# upgrade-wadi names the output by the SOURCE basename; rename if a catalog-id was given.
-if [ "$ID" != "${BASE%.*}" ]; then
-  mv -f "$SRCDIR/${BASE%.*}.wadi" "$SRCDIR/$ID.wadi"
-fi
+# Upgrade into a TEMP dir first (upgrade-wadi names its output by the SOURCE
+# basename), then place it as <id>.wadi. Going via a temp dir avoids clobbering an
+# unrelated template that happens to share the source's basename.
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+"$ROOT/scripts/upgrade-wadi.sh" "$FILE" --out "$TMP"
+UP="$TMP/${BASE%.*}.wadi"
+[ -f "$UP" ] || { echo "error: upgrade produced no output for $BASE" >&2; exit 1; }
+cp -f "$UP" "$SRCDIR/$ID.wadi"
 
 echo "▶ [2/4] Regenerating the catalog index"
 "$ROOT/editor/node_modules/.bin/tsx" "$ROOT/scripts/gen-catalog-index.ts" >/dev/null
