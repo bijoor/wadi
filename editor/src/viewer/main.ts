@@ -2558,8 +2558,8 @@ function wireWadiApi(): void {
         );
       }
       store().loadConfig(parsed.data, "wadi.load");
-      // Count this as a chosen home so the owner welcome overlay doesn't cover it.
-      document.body.dataset.homeChosen = "yes";
+      // Count this as a chosen home so the owner welcome overlay + New dialog clear.
+      markHomeChosen();
       return { ok: true as const };
     },
 
@@ -2928,7 +2928,7 @@ function wireWadiApi(): void {
         throw new Error("wadi.buildHouse: generated an invalid house — " + JSON.stringify(parsed.errors));
       }
       store().loadConfig(parsed.data, "wadi.buildHouse");
-      document.body.dataset.homeChosen = "yes";
+      markHomeChosen();
       return { ok: true as const, rooms: placed.length, doors, plot_ft: [Math.round(maxX / per), Math.round(maxY / per)], notes };
     },
 
@@ -2942,7 +2942,7 @@ function wireWadiApi(): void {
       if (!res.ok || !res.config) return { ok: false as const, errors: res.errors };
       // Keep the agent's exact WDL as the model's source (WDL is the source of truth).
       store().loadConfig(res.config, "wadi.setWdl", null, src);
-      document.body.dataset.homeChosen = "yes";
+      markHomeChosen(); // dismiss the New dialog if it's still up
       return { loaded: true as const, ...checkBrief(store().config) };
     },
     async getWdl() {
@@ -4855,6 +4855,10 @@ function wireFileDrop(): void {
 // "yes" once they choose a template, open a file, or enter architect mode.
 function markHomeChosen(): void {
   document.body.dataset.homeChosen = "yes";
+  // A model was loaded (by the user OR programmatically, e.g. an agent's setWdl or
+  // a live co-edit push). Dismiss the "Choose your home" dialog if it's still up,
+  // so the loaded model is visible instead of hidden behind it.
+  closeNewHouseModal();
 }
 
 function wireOwnerWelcome(): void {
