@@ -203,6 +203,18 @@ retained after the session ends.
   store, session-scoped MCP tools, and the app's "connect to session" subscribe mode.
   Delivers "a remote agent co-designs your live model," the biggest lift here.
 
+## Hosted preview images — DECIDED AGAINST (2026-08-31)
+
+Gemini Spark can't display inline MCP `image` content (it renders text + fetchable
+URLs only), so `wadi_preview`'s PNGs don't show there. Considered hosting each render
+at a public R2 URL (`mcp.wadi.house/preview/<sha256>.png`) and returning the link.
+**Declined:** Phase 2's live app view supersedes the need (the user watches the design
+render in the Wadi app, so no agent-side image display is needed), and it would push
+private design previews onto public URLs against the local-first posture. `wadi_preview`
+stays inline-only — useful for image-capable clients (Claude Desktop, etc.) and as the
+agent's own self-check; a Gemini user relies on `wadi_check` (text) for correctness and
+the app for the picture.
+
 ## Open decisions
 
 1. Host: Cloudflare Worker (2D) vs Node (3D) for v1. (Recommend Worker.)
