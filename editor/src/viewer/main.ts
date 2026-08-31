@@ -1027,6 +1027,9 @@ export interface WadiApi {
   getWdl: () => Promise<string>;
   /** Compile-check .wdl WITHOUT loading it (dry run) — returns errors or ok. */
   checkWdl: (wdl: string) => Promise<unknown>;
+  /** A self-contained primer for an AI agent driving this page: the window.wadi
+   *  authoring loop plus the .wdl syntax. Call this first, then follow it. */
+  help: () => string;
 }
 
 // WebMCP tool descriptor — document.modelContext.registerTool (W3C WebMCP,
@@ -1862,6 +1865,10 @@ function wireAppsMenu(): void {
   });
   for (const item of Array.from(dropdown.querySelectorAll<HTMLElement>(".apps-item"))) {
     item.addEventListener("click", () => {
+      if (item.id === "apps-item-agent") {
+        void copyAgentPrompt();
+        return; // keep the menu open long enough to show the "Copied" cue
+      }
       const name = item.dataset.app ?? "";
       const url = item.dataset.url ?? "/";
       setOpen(false);
@@ -1883,6 +1890,46 @@ function wireAppsMenu(): void {
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && !dropdown.hidden) setOpen(false);
     });
+  }
+}
+
+// The prompt copied by the "Use with your AI agent" menu item. It points any
+// in-browser agent (Claude for Chrome, ChatGPT, …) at the page's window.wadi API
+// and tells it to fetch the full primer from window.wadi.help() — so the user's
+// (trusted) message is short and the detailed instructions come from the app.
+const AGENT_PROMPT =
+  "You are on wadi.house, a live 3D home designer. This page exposes a `window.wadi` " +
+  "JavaScript API for AI agents. In the page, run `await window.wadi.help()` and follow " +
+  "the instructions it returns: read the current house as Wadi's .wdl design language " +
+  "with `window.wadi.getWdl()`, edit the text, and apply it with `window.wadi.setWdl(newWdl)` " +
+  "(which returns compile errors or a structural check). Use `window.wadi.captureView()` to see the result.";
+
+async function copyAgentPrompt(): Promise<void> {
+  const sub = document.getElementById("apps-item-agent-sub");
+  const original = sub?.textContent ?? "";
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(AGENT_PROMPT);
+    ok = true;
+  } catch {
+    // Clipboard API can be blocked (permission / insecure context) — fall back to
+    // a hidden textarea + execCommand so the copy still works.
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = AGENT_PROMPT;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ok = document.execCommand("copy");
+      ta.remove();
+    } catch {
+      ok = false;
+    }
+  }
+  if (sub) {
+    sub.textContent = ok ? "Copied — paste into your AI agent" : "Copy failed — select window.wadi.help() manually";
+    window.setTimeout(() => { if (sub.textContent?.startsWith("Copied") || sub.textContent?.startsWith("Copy failed")) sub.textContent = original; }, 2600);
   }
 }
 
@@ -2771,6 +2818,7 @@ function wireWadiApi(): void {
         ? { ok: true as const, message: "Compiles and validates. Load it with wadi_set_wdl to render it and get the structural (C1-C12) check." }
         : { ok: false as const, errors: res.errors };
     },
+    help() { return WADI_AGENT_HELP; },
   };
 }
 
@@ -2841,6 +2889,38 @@ const WDL_PRIMER = [
   "- Parametric: declare variables and use them / write formulas (e.g. main.x4 - main.x1) in any numeric slot; reusable components and the unified `roof` object are supported.",
   "",
   "For complete, correct examples (roofs, variables, grids, components), call wadi_choose_home then wadi_get_wdl to read a full house's WDL, edit it, and apply with wadi_set_wdl. wadi_set_wdl returns compile errors + the C1-C12 structural check so you can iterate.",
+].join("\n");
+
+// A self-contained primer for an AI agent driving this page from JavaScript (the
+// window.wadi API). Handed out by window.wadi.help(), the "Use with your AI agent"
+// prompt, and /llms.txt — so an agent that can run JS on the page can author a
+// house without any WebMCP tool discovery.
+const WADI_AGENT_HELP = [
+  "Wadi (wadi.house) — author a live 3D house from JavaScript.",
+  "",
+  "This page exposes a `window.wadi` API. A design is authored in Wadi's .wdl DSL:",
+  "you READ the current house as .wdl text, EDIT the text, and APPLY it. It renders live.",
+  "All methods return Promises where noted; await them.",
+  "",
+  "AUTHORING LOOP (do this):",
+  "  const homes = await window.wadi.listTemplates();        // [{id,title,meta}] to start from",
+  "  await window.wadi.chooseTemplate('single_story_cottage'); // load any id from the list",
+  "  const wdl = await window.wadi.getWdl();                   // read the live house as .wdl",
+  "  // …edit the wdl string…",
+  "  const dry = await window.wadi.checkWdl(newWdl);          // OPTIONAL: {ok:true} or {errors:[…]}",
+  "  const res = await window.wadi.setWdl(newWdl);            // compile + load live",
+  "  //   on a compile/schema error: { ok:false, errors:[…] } and the model is UNCHANGED — fix and retry",
+  "  //   on success: { loaded:true, errors, warnings, summary } from the C1-C12 structural check — act on warnings",
+  "Repeat get → edit → set. The .wdl text is the single source of truth.",
+  "",
+  "SEE THE RESULT / INSPECT:",
+  "  window.wadi.captureView()      // -> a JPEG data URL of the current 3D view",
+  "  window.wadi.check()            // run the structural linter on the live house",
+  "  window.wadi.listRooms(); window.wadi.enterRoom(key); window.wadi.exitRoom();  // interior views",
+  "",
+  "Then follow the .wdl syntax below.",
+  "",
+  WDL_PRIMER,
 ].join("\n");
 
 function buildWadiMcpTools(): WebMcpTool[] {

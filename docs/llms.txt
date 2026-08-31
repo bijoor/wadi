@@ -1,0 +1,55 @@
+# Wadi
+
+> Wadi (https://wadi.house) is an AI-native parametric home designer. A house is authored in Wadi's `.wdl` design language and rendered live as a 3D model, 2D floor plans, elevations, and dimensioned drawings. The app is built so that an AI agent can author the house directly.
+
+There are two ways for an agent to drive Wadi.
+
+## For an in-browser agent (runs JavaScript on the page)
+
+The viewer at https://wadi.house/app exposes a `window.wadi` API. Call `await window.wadi.help()` on the page for a self-contained primer, then use this loop:
+
+- `await window.wadi.listTemplates()` — ready-made homes to start from: `[{id, title, meta}]`.
+- `await window.wadi.chooseTemplate(id)` — load one (e.g. `"single_story_cottage"`).
+- `await window.wadi.getWdl()` — read the current house as `.wdl` text (the single source of truth).
+- `await window.wadi.checkWdl(wdl)` — optional dry-run compile: `{ok:true}` or `{errors:[…]}`.
+- `await window.wadi.setWdl(wdl)` — compile and load live. On a compile/schema error returns `{ok:false, errors:[…]}` and leaves the model unchanged; on success returns the C1-C12 structural check (`{loaded:true, errors, warnings, summary}`). Act on warnings.
+- `window.wadi.captureView()` — a JPEG data URL of the current 3D view, so you can see the result.
+- `window.wadi.check()` — run the structural linter on the live house.
+- `window.wadi.listRooms()` / `enterRoom(key)` / `exitRoom()` — first-person interior views.
+
+Typical loop: `getWdl` → edit the text → `setWdl` → read warnings → repeat.
+
+The same capabilities are also registered as WebMCP tools on `navigator.modelContext` (`wadi_get_wdl`, `wadi_set_wdl`, `wadi_check_wdl`, `wadi_wdl_reference`, and more) for agents that consume WebMCP. Where WebMCP tool-calling is not surfaced, use `window.wadi` directly as above.
+
+## `.wdl` syntax essentials
+
+- A minimal house:
+
+  ```
+  house House {
+    convention center                 // room x/y/size are wall CENTRELINES, so abutting rooms share a wall (alternative: outer)
+    site { plot (400, 300) }          // plot W, L in project units (10 units = 1 ft by default)
+    defaults { floor_height 100 wall_height 92 slab_thickness 8 wall_thickness 8 }
+    floor 1 "Ground Floor" {
+      slab_thickness 0                // a floor of only rooms/walls needs slab 0 (or add a slab)
+      room Living at (0, 0) size (160, 140) material "living" {
+        wall north south west
+        wall east { door D1 at 55 size (30, 84) }   // a door needs a name; `at` = offset along the wall
+      }
+      room Kitchen at (160, 0) size (120, 140) { wall north south east }  // west omitted -> open passage to Living
+    }
+  }
+  ```
+
+- Names are BARE identifiers (`room Living`, `door D1`), not quoted. `"strings"` are only for titles/materials.
+- Object types inside a floor: `room`, `wall`, `pillar`, `beam`, `slab`, `roof`, `staircase`, `kitchen_platform`, `item` (furniture GLB), `component` (reusable).
+- Openings live inside `wall SIDE { … }`: `door NAME at OFFSET size (w,h) [open]`, `window NAME at OFFSET size (w,h) [sill N]`.
+- Two rooms are connected when they abut and the shared wall has a door on one room (omitted on the other), or is omitted on both (open passage).
+- Coordinates: origin top-left, X right, Y DOWN. Positions/sizes are project units (10 = 1 ft by default).
+- Parametric: declare variables and write formulas in any numeric slot; reusable components and the unified `roof` object are supported.
+
+For complete, correct examples, load a template with `chooseTemplate` then read its full `.wdl` with `getWdl`.
+
+## For a coding agent (no browser)
+
+Use the Wadi MCP server (`wadi-mcp`), which bundles the compiler, reference docs, and a rasteriser so an agent can check, preview, and reference `.wdl` files without the repository. Tools include `wadi_check`, `wadi_preview`, `wadi_reference`, `wadi_scope`, and `wadi_view_3d`.
