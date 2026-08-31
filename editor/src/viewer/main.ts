@@ -77,6 +77,7 @@ import {
   setTemplateSource,
   resetCatalogSource,
   localCatalogFilePath,
+  withSource,
   type TemplateSource,
 } from "../io/templateSource";
 import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
@@ -513,7 +514,7 @@ async function bootViewer(): Promise<void> {
   // can pick a sample home or open one of their own. Not in embed mode (an agent
   // pushes the model there).
   if (!embedded && !loadedFromOpenFile && !loadedFromHash && !loadedFromLoadParam) {
-    void openNewHouseModal();
+    void openNewModal();
   }
 }
 
@@ -1896,11 +1897,11 @@ function wireHeaderButtons(): void {
 
 
   btnNew?.addEventListener("click", () => {
-    void openNewHouseModal();
+    void openNewModal();
   });
 
 
-  btnLoad?.addEventListener("click", () => void openExistingFromDisk());
+  btnLoad?.addEventListener("click", () => void openMyModelsModal());
 
   btnSave?.addEventListener("click", async () => {
     if (!(await flushWdlBeforeSave())) return;
@@ -3276,6 +3277,12 @@ const thumbCache = new Map<string, string[]>();
 // files must download before they can be indexed) can't overwrite a newer one, and
 // the gallery shows a loading state instead of freezing on the previous list.
 let catalogLoadSeq = 0;
+// The gallery modal serves two DISTINCT intents (one screen, two framings):
+//   "new"  — start a fresh design from Wadi's SAMPLES (always samples, never the
+//            user's folder). Opened by the New button / "Choose your home".
+//   "open" — open the user's OWN work: their models folder (if set), plus opening a
+//            single .wadi from disk. Never shows samples. Opened by the Open button.
+let galleryMode: "new" | "open" = "new";
 
 // The WDL editor registers a "flush" here: apply its unapplied edits (compile the
 // current text) so a Save writes what's in the editor, not the last-applied WDL.
@@ -3317,75 +3324,101 @@ const emptyFilters = (): TemplateFilters => ({
 });
 let tplFilters: TemplateFilters = emptyFilters();
 
-async function openNewHouseModal(): Promise<void> {
+// New = start a fresh design from Wadi's SAMPLES (always, regardless of the user's
+// configured folder). Open = the user's own models (their folder, plus open-a-file).
+function openNewModal(): Promise<void> { galleryMode = "new"; return refreshGallery(); }
+function openMyModelsModal(): Promise<void> { galleryMode = "open"; return refreshGallery(); }
+
+async function refreshGallery(): Promise<void> {
   const modal = document.getElementById("new-house-modal");
   const grid = document.getElementById("new-house-modal-grid");
   if (!modal || !grid) return;
   modal.style.display = "block";
+  tplFilters = emptyFilters(); // a fresh open starts unfiltered
 
-  // Source-aware framing: the DEFAULT source is Wadi's sample homes (a casual
-  // visitor picks one to make their own); a user who has pointed the app at their
-  // OWN models location (a local folder or Google Drive) is opening their designs.
-  const samples = templateSource().kind === "default";
   const titleEl = document.getElementById("new-house-modal-title");
   const subEl = document.getElementById("new-house-modal-subtitle");
-  if (titleEl) titleEl.textContent = samples ? "Choose your home" : "Open a model";
-  if (subEl)
-    subEl.textContent = samples
-      ? "Browse ready-made homes and pick one to make your own. Filter by size and rooms, then customize everything."
-      : "Open one of your saved models — or start from one and customize it.";
+  const openRow = document.querySelector(".new-house-open-row") as HTMLElement | null;
+  const sourceBar = document.getElementById("new-house-modal-source");
 
-  // Reset filters each open so a fresh visit starts unfiltered.
-  tplFilters = emptyFilters();
+  if (galleryMode === "new") {
+    // ---- NEW: Wadi's sample homes, forced regardless of the models folder. ----
+    if (titleEl) titleEl.textContent = "Choose your home";
+    if (subEl) subEl.textContent =
+      "Browse ready-made homes and pick one to make your own. Filter by size and rooms, then customize everything.";
+    if (openRow) openRow.style.display = "none"; // "start fresh" — no open-existing here
+    if (sourceBar) sourceBar.innerHTML = ""; // no folder controls in New
+    const seq = ++catalogLoadSeq;
+    grid.innerHTML = `<div class="new-house-modal-empty">Loading homes…</div>`;
+    let loaded: TemplateEntry[];
+    try {
+      loaded = await withSource({ kind: "default" }, () => loadCatalog());
+    } catch (e) {
+      if (seq !== catalogLoadSeq) return;
+      grid.innerHTML = `<div class="new-house-modal-empty" style="color:#b00">Couldn't load the sample homes: ${escapeHtml(e instanceof Error ? e.message : String(e))}</div>`;
+      return;
+    }
+    if (seq !== catalogLoadSeq) return;
+    galleryTemplates = loaded;
+    buildTemplateFilterBar();
+    renderTemplateCards();
+    return;
+  }
 
-  // Always re-index on open — caching it meant users saw a stale list until they
-  // hard-reloaded. A cloud folder (Drive/OneDrive) can be SLOW: its files are often
-  // "dataless" (online-only) and must download before they can be indexed. So show
-  // a loading state up front (the modal used to freeze on the previous list after a
-  // location change), and guard with a sequence so a slow stale load can't clobber
-  // a newer one.
+  // ---- OPEN: the user's own models. NEVER shows samples. ----
+  if (titleEl) titleEl.textContent = "Open a model";
+  if (subEl) subEl.textContent = "Open one of your saved designs — from a folder, or a single .wadi file.";
+  if (openRow) openRow.style.display = "";
+  const openBtn = document.getElementById("new-house-open-existing");
+  if (openBtn) (openBtn as HTMLButtonElement).onclick = async () => {
+    if (await openExistingFromDisk()) closeNewHouseModal();
+  };
+  renderOpenSourceBar();
+
+  const src = templateSource();
+  if (src.kind === "default") {
+    // No models folder chosen → offer to open a file (above) or pick a folder. No samples.
+    buildTemplateFilterBar(); // clears the filter bar
+    const folderBtn = canPickFolder()
+      ? `<button type="button" class="tpl-source-btn" id="tpl-choose-folder" style="margin-top:12px">📁 Choose a folder of your designs</button>`
+      : `<div style="margin-top:10px;font-size:.85em;opacity:.7">Choosing a folder needs the desktop app or Chrome / Edge.</div>`;
+    grid.innerHTML =
+      `<div class="new-house-modal-empty">No models folder chosen yet.<br>
+       Open a single <b>.wadi</b> file above, or point at a folder of your designs.<br>${folderBtn}</div>`;
+    document.getElementById("tpl-choose-folder")?.addEventListener("click", () =>
+      isTauri() ? void pickLocalModelsFolder() : void pickBrowserModelsFolder(),
+    );
+    return;
+  }
+
   // A browser folder restored from a previous session needs a one-time permission
-  // re-grant, which requires a user gesture — so show a Reconnect prompt (the click
-  // is the gesture) instead of failing the scan.
-  if (templateSource().kind === "browser-dir" && (await modelsDirNeedsPermission())) {
-    renderCatalogSourceBar();
+  // re-grant (a user gesture) — show a Reconnect prompt instead of failing the scan.
+  if (src.kind === "browser-dir" && (await modelsDirNeedsPermission())) {
     grid.innerHTML =
       `<div class="new-house-modal-empty">Reconnect <b>${escapeHtml(modelsDirName() ?? "your folder")}</b> to list your models.<br>
        <button type="button" class="tpl-source-btn" id="tpl-reconnect" style="margin-top:10px">Reconnect folder</button></div>`;
     document.getElementById("tpl-reconnect")?.addEventListener("click", async () => {
-      if (await reconnectModelsDir()) { resetCatalogSource(); void openNewHouseModal(); }
+      if (await reconnectModelsDir()) { resetCatalogSource(); void openMyModelsModal(); }
     });
     return;
   }
 
+  // Scan the folder (guarded — a cloud folder is slow and must not clobber a newer load).
   const seq = ++catalogLoadSeq;
   grid.innerHTML =
     `<div class="new-house-modal-empty">Loading models from ${escapeHtml(sourceLabel())}…<br>
      <span style="font-size:.85em;opacity:.7">A cloud folder may take a moment the first time (files download on demand).</span></div>`;
-  renderCatalogSourceBar(); // reflect the NEW location in the bar while loading
   let loaded: TemplateEntry[];
   try {
     loaded = await loadCatalog();
   } catch (e) {
-    if (seq !== catalogLoadSeq) return; // superseded by a newer load
+    if (seq !== catalogLoadSeq) return;
     grid.innerHTML =
-      `<div class="new-house-modal-empty" style="color:#b00">
-        Couldn't load models from (${escapeHtml(sourceLabel())}): ${e instanceof Error ? e.message : String(e)}
-      </div>`;
+      `<div class="new-house-modal-empty" style="color:#b00">Couldn't load models from (${escapeHtml(sourceLabel())}): ${escapeHtml(e instanceof Error ? e.message : String(e))}</div>`;
     return;
   }
-  if (seq !== catalogLoadSeq) return; // a newer change-location superseded this load
+  if (seq !== catalogLoadSeq) return;
   galleryTemplates = loaded;
-
-  // "Open a saved .wadi" — reuse the disk-load flow, close the modal on success.
-  const openBtn = document.getElementById("new-house-open-existing");
-  if (openBtn) {
-    (openBtn as HTMLButtonElement).onclick = async () => {
-      if (await openExistingFromDisk()) closeNewHouseModal();
-    };
-  }
-
-  renderCatalogSourceBar();
   buildTemplateFilterBar();
   renderTemplateCards();
 }
@@ -3402,48 +3435,48 @@ function sourceLabel(s: TemplateSource = templateSource()): string {
   }
 }
 
-// Footer control: shows where templates come from and lets anyone pick a source.
-// A single "kind" selector drives which field(s) show, so the four source types
-// (Wadi hosted / bundled / local folder / web address / Google Drive) are one
-// well-defined preference instead of three overlapping settings.
-// The models-location bar has just two moves now — no source-type dropdown:
-//   • Change folder…  — point at a LOCAL folder (the one supported custom
-//     location; desktop only). Its .wadi files open as documents that Save writes
-//     back to (see selectTemplate).
-//   • Reset to samples — back to the DEFAULT Wadi sample homes at
-//     templates.wadi.house, the one source whose picks are treated as templates.
-// (Legacy URL / Drive-API-key / bundled sources still LOAD if one is persisted, but
-// there's no longer any UI to create them — a local folder covers "my own models".)
-function renderCatalogSourceBar(): void {
+// A local folder is available on the desktop (Tauri) and in Chromium browsers
+// (File System Access directory picker).
+function canPickFolder(): boolean {
+  return isTauri() || supportsDirectoryPicker();
+}
+
+// The OPEN modal's source bar. When a folder IS configured it shows the folder +
+// Change / Reset / Refresh. When none is configured (default), the bar just offers
+// "Choose a folder" — the grid's empty state carries the rest. It never mentions
+// samples (those live in the New modal).
+function renderOpenSourceBar(): void {
   const bar = document.getElementById("new-house-modal-source");
   if (!bar) return;
-  const isDefault = templateSource().kind === "default";
-  // A local folder is available on the desktop (Tauri) and in Chromium browsers
-  // (File System Access directory picker).
-  const canPickFolder = isTauri() || supportsDirectoryPicker();
-  const changeBtn = canPickFolder
-    ? `<button type="button" class="tpl-source-btn" id="tpl-source-set">📁 Change folder…</button>`
+  const hasFolder = templateSource().kind !== "default";
+  const changeLabel = hasFolder ? "📁 Change folder…" : "📁 Choose a folder…";
+  const changeBtn = canPickFolder()
+    ? `<button type="button" class="tpl-source-btn" id="tpl-source-set">${changeLabel}</button>`
     : "";
-  const resetBtn = isDefault
-    ? ""
-    : `<button type="button" class="tpl-source-btn" id="tpl-source-reset">↩ Reset to samples</button>`;
-  bar.innerHTML =
-    `<span class="tpl-source-label">Models: <b>${escapeHtml(sourceLabel())}</b></span>
-     ${changeBtn}${resetBtn}
-     <button type="button" class="tpl-source-btn" id="tpl-source-refresh">↻ Refresh</button>`;
+  if (!hasFolder) {
+    bar.innerHTML = changeBtn;
+  } else {
+    // sourceLabel already reads "folder: X" — strip the prefix so the bar isn't "Folder: folder: X".
+    const folder = sourceLabel().replace(/^folder:\s*/i, "");
+    bar.innerHTML =
+      `<span class="tpl-source-label">Folder: <b>${escapeHtml(folder)}</b></span>
+       ${changeBtn}
+       <button type="button" class="tpl-source-btn" id="tpl-source-reset">✕ Close folder</button>
+       <button type="button" class="tpl-source-btn" id="tpl-source-refresh">↻ Refresh</button>`;
+  }
   document.getElementById("tpl-source-refresh")?.addEventListener("click", () => {
     resetCatalogSource();
     thumbCache.clear();
-    void openNewHouseModal();
+    void openMyModelsModal();
   });
   document.getElementById("tpl-source-set")?.addEventListener("click", () =>
     isTauri() ? void pickLocalModelsFolder() : void pickBrowserModelsFolder(),
   );
   document.getElementById("tpl-source-reset")?.addEventListener("click", () => {
-    setTemplateSource({ kind: "default" });
+    setTemplateSource({ kind: "default" }); // "default" here means: no folder set
     resetCatalogSource();
     thumbCache.clear();
-    void openNewHouseModal();
+    void openMyModelsModal();
   });
 }
 
@@ -3456,12 +3489,12 @@ async function pickLocalModelsFolder(): Promise<void> {
   setTemplateSource({ kind: "local", dir: picked });
   resetCatalogSource();
   thumbCache.clear();
-  void openNewHouseModal();
+  void openMyModelsModal();
 }
 
 // Browser (Chromium) equivalent: pick a folder via the File System Access API.
 // Its handle is persisted (IndexedDB) so it survives reloads; a return visit
-// re-grants permission with one click (the reconnect prompt in openNewHouseModal).
+// re-grants permission with one click (the reconnect prompt in the Open modal).
 async function pickBrowserModelsFolder(): Promise<void> {
   let name: string | null;
   try {
@@ -3474,7 +3507,7 @@ async function pickBrowserModelsFolder(): Promise<void> {
   setTemplateSource({ kind: "browser-dir" });
   resetCatalogSource();
   thumbCache.clear();
-  void openNewHouseModal();
+  void openMyModelsModal();
 }
 
 // Distinct non-placeholder values of a meta field across the loaded templates.
@@ -3585,7 +3618,9 @@ function templatePasses(t: TemplateEntry): boolean {
 function renderTemplateCards(): void {
   const grid = document.getElementById("new-house-modal-grid");
   if (!grid) return;
-  const hideBlank = templateSource().kind === "default";
+  // Hide the "blank" starter in the SAMPLES gallery (New); show every file when
+  // browsing the user's own folder (Open).
+  const hideBlank = galleryMode === "new";
   const matches = galleryTemplates.filter(
     (t) => (!hideBlank || t.id !== "blank") && templatePasses(t),
   );
@@ -4279,10 +4314,10 @@ function markHomeChosen(): void {
 function wireOwnerWelcome(): void {
   document
     .getElementById("ow-choose")
-    ?.addEventListener("click", () => void openNewHouseModal());
+    ?.addEventListener("click", () => void openNewModal());
   document
     .getElementById("ow-open")
-    ?.addEventListener("click", () => void openExistingFromDisk());
+    ?.addEventListener("click", () => void openMyModelsModal());
 }
 
 async function selectTemplate(t: TemplateEntry): Promise<void> {

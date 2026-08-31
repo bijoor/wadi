@@ -86,8 +86,25 @@ function migrateLegacy(): TemplateSource | null {
   return null;
 }
 
+// A scoped override so the "New" gallery can load Wadi's SAMPLES regardless of the
+// user's configured models folder (the folder drives "Open", not "New").
+let sourceOverride: TemplateSource | null = null;
+
+/** Run `fn` with the templates source forced to `src` (scoped to the awaited
+ *  call). Used so the "New" gallery always shows the sample homes. */
+export async function withSource<T>(src: TemplateSource, fn: () => Promise<T>): Promise<T> {
+  const prev = sourceOverride;
+  sourceOverride = src;
+  try {
+    return await fn();
+  } finally {
+    sourceOverride = prev;
+  }
+}
+
 /** The active templates-source preference (single source of truth). */
 export function templateSource(): TemplateSource {
+  if (sourceOverride) return sourceOverride;
   const raw = readKey(SOURCE_KEY);
   if (raw) {
     try {
