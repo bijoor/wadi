@@ -579,10 +579,15 @@ function confirmUnsaved(actionLabel: string): Promise<UnsavedChoice> {
 // cancelled save dialog or write error aborts the action too.
 async function guardUnsaved(actionLabel: string): Promise<boolean> {
   const st = useConfigStore.getState();
-  if (!st.dirty || !st.config) return true;
+  // Unapplied WDL-editor edits don't mark the STORE dirty (they change no config
+  // until Apply), so also guard on the WDL editor's own dirty flag — otherwise a
+  // New/Open/Close would silently drop them.
+  const wdlDirty = document.body.dataset.wdlDirty === "on";
+  if ((!st.dirty && !wdlDirty) || !st.config) return true;
   const choice = await confirmUnsaved(actionLabel);
   if (choice === "cancel") return false;
   if (choice === "discard") return true;
+  if (!(await flushWdlBeforeSave())) return false;
   try {
     const saved = await saveConfig(st.config, st.filePath, st.filename ?? undefined, st.wdl);
     if (saved) st.setFilePath(saved);
@@ -1884,6 +1889,7 @@ function wireHeaderButtons(): void {
   btnLoad?.addEventListener("click", () => void openExistingFromDisk());
 
   btnSave?.addEventListener("click", async () => {
+    if (!(await flushWdlBeforeSave())) return;
     const state = useConfigStore.getState();
     const cfg = state.config;
     if (!cfg) return;
@@ -1904,6 +1910,7 @@ function wireHeaderButtons(): void {
   // forces the native save dialog in Tauri (or a fresh download in the
   // browser), and we adopt the chosen path as the new working file.
   btnSaveAs?.addEventListener("click", async () => {
+    if (!(await flushWdlBeforeSave())) return;
     const state = useConfigStore.getState();
     const cfg = state.config;
     if (!cfg) return;
@@ -3251,6 +3258,27 @@ function templateMetaChips(m: TemplateMeta | undefined): string {
 // template file are reused across filter changes.
 let galleryTemplates: TemplateEntry[] = [];
 const thumbCache = new Map<string, string[]>();
+
+// The WDL editor registers a "flush" here: apply its unapplied edits (compile the
+// current text) so a Save writes what's in the editor, not the last-applied WDL.
+// Returns true when store.wdl is current afterwards (nothing pending, or the
+// pending edit compiled); false when the pending edit FAILS to compile. Null when
+// the WDL editor isn't wired (embedded surface).
+let flushWdlEditor: (() => Promise<boolean>) | null = null;
+
+// Call before any Save/Save As. Flushes the WDL editor; if the pending edit won't
+// compile, asks whether to save the last applied version instead. Returns true to
+// proceed with the save, false to abort so the user can fix the WDL.
+async function flushWdlBeforeSave(): Promise<boolean> {
+  if (!flushWdlEditor) return true;
+  if (await flushWdlEditor()) return true;
+  // Unapplied WDL edits that don't compile — a bundle's model.wdl must compile, so
+  // don't silently bake a broken source. Let the user save the last good version.
+  return window.confirm(
+    "Your latest WDL edits have errors and weren't applied — see the ✖ Errors panel. " +
+      "Save the last applied version instead? Your unapplied edits won't be included.",
+  );
+}
 interface TemplateFilters {
   bedrooms: number; // minimum
   bathrooms: number; // minimum
@@ -4102,6 +4130,16 @@ function wireWdlEditor(): void {
   };
 
   applyBtn.onclick = () => { void apply(); };
+
+  // Register the flush hook so a header Save writes what's in THIS editor: apply
+  // any unapplied edit (compile it → store.wdl updates) before the bundle is
+  // written. Returns true when store.wdl is current (nothing pending, or the
+  // pending edit compiled), false when the pending edit fails to compile.
+  flushWdlEditor = async (): Promise<boolean> => {
+    if (!isDirty()) return true;
+    await apply();
+    return !isDirty(); // apply() clears dirty only on a successful compile
+  };
 
   // Save the WDL source itself as a standalone `.wdl` file (raw code, no
   // thumbnails) — the in-viewer editor replaces the retired DSL playground, so it
