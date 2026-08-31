@@ -66,15 +66,22 @@ list); the model still renders so you can see the problem.
 
 ---
 
-## Planned conventions (not yet enforced)
+## Design guidelines (advisory — NOT linted)
 
-Documented so authors know they matter; not linted yet:
+Good-practice guidance the linter does not check. Apply your judgement; these are
+style, not rules:
 
-- **Interior partition gaps** — where two rooms share a centreline and *neither*
-  declares that wall, there is no partition between them. (C2 only covers
-  *exterior* sides.)
-- **Slab thickness ↔ slab object** — when a floor *does* carry a `floor_slab`,
-  its `slab_thickness` should match the slab's own thickness so walls sit on the
-  real deck.
-- **Roof footprint coverage** — the roof segments should span the top occupied
-  floor's footprint (no uncovered rooms).
+- **Compact, rectangular layout.** Keep the plan as rectangular as possible, with
+  the minimum of nooks and crannies. A blocky footprint is cheaper to build, easier
+  to roof, and wastes less wall.
+- **Room sizes follow use.** Size each room to its utilisation. The living room is
+  usually the largest, then rooms like the kitchen, workshop, and bedrooms; a
+  bathroom should be smaller than the bedroom it serves.
+- **Verandahs & balconies get half-height walls.** Give a verandah or balcony a
+  half-height (parapet) wall rather than a full-height one — a full-height verandah
+  reads as an enclosed room. (Not linted: Wadi has no verandah/balcony marker, so
+  there is nothing to key a warning on without matching room names.)
+- **Staircase in a multi-storey house.** Reserve a dedicated stair space on each
+  floor. The staircase starts on the lowest floor and rises to the underside of the
+  topmost occupied floor (not the roof floor). Size the stair space so climbing one
+  storey takes at most two flights (use `max_run` on the `staircase` to switchback).

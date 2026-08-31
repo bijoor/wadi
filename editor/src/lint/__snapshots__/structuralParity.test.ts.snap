@@ -4,6 +4,13 @@ exports[`structural lint — findings parity (C1-C7) > C1_float findings are sta
 [
   {
     "floor": 0,
+    "level": "warn",
+    "message": "The highest floor (Floor 0 "Plinth") carries no roof. A house should be capped by a roof on its highest floor — add a \`roof\` object there.",
+    "rule": "C14",
+    "where": undefined,
+  },
+  {
+    "floor": 0,
     "level": "error",
     "message": "Floor 0 "Plinth": floor \`height\` (100) ≠ plinth "P" height (40). The floor above floats 60 units. Make the floor height and the plinth height equal.",
     "rule": "C1",
@@ -14,6 +21,20 @@ exports[`structural lint — findings parity (C1-C7) > C1_float findings are sta
 
 exports[`structural lint — findings parity (C1-C7) > C2_open findings are stable 1`] = `
 [
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "The lowest floor (Floor 1 "Ground") carries no plinth. A house should rest on a plinth on its lowest floor — add a \`plinth\` object there.",
+    "rule": "C13",
+    "where": undefined,
+  },
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "The highest floor (Floor 1 "Ground") carries no roof. A house should be capped by a roof on its highest floor — add a \`roof\` object there.",
+    "rule": "C14",
+    "where": undefined,
+  },
   {
     "floor": 1,
     "level": "warn",
@@ -35,6 +56,20 @@ exports[`structural lint — findings parity (C1-C7) > C3_noslab findings are st
 [
   {
     "floor": 1,
+    "level": "warn",
+    "message": "The lowest floor (Floor 1 "Ground") carries no plinth. A house should rest on a plinth on its lowest floor — add a \`plinth\` object there.",
+    "rule": "C13",
+    "where": undefined,
+  },
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "The highest floor (Floor 1 "Ground") carries no roof. A house should be capped by a roof on its highest floor — add a \`roof\` object there.",
+    "rule": "C14",
+    "where": undefined,
+  },
+  {
+    "floor": 1,
     "level": "error",
     "message": "Floor 1 "Ground" has 1 wall/room object but no floor slab, yet slab_thickness is 8 (default). The walls float 8 units above the floor base. Set \`slab_thickness 0\` on this floor, or add a \`slab\`.",
     "rule": "C3",
@@ -45,6 +80,20 @@ exports[`structural lint — findings parity (C1-C7) > C3_noslab findings are st
 
 exports[`structural lint — findings parity (C1-C7) > C4_gap findings are stable 1`] = `
 [
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "The lowest floor (Floor 1 "Ground") carries no plinth. A house should rest on a plinth on its lowest floor — add a \`plinth\` object there.",
+    "rule": "C13",
+    "where": undefined,
+  },
+  {
+    "floor": 2,
+    "level": "warn",
+    "message": "The highest floor (Floor 2 "Upper") carries no roof. A house should be capped by a roof on its highest floor — add a \`roof\` object there.",
+    "rule": "C14",
+    "where": undefined,
+  },
   {
     "floor": 1,
     "level": "warn",
@@ -60,6 +109,13 @@ exports[`structural lint — findings parity (C1-C7) > C5_buried findings are st
   {
     "floor": 1,
     "level": "warn",
+    "message": "The highest floor (Floor 1 "Ground") carries no roof. A house should be capped by a roof on its highest floor — add a \`roof\` object there.",
+    "rule": "C14",
+    "where": undefined,
+  },
+  {
+    "floor": 1,
+    "level": "warn",
     "message": "Staircase "S" on floor 1 "Ground" descends to z=-75 — below the ground plane, so it draws in 2D plans but is buried (invisible) in 3D. Staircases are TOP-anchored: place them on the UPPER floor and they DESCEND to the floor below (\`direction\` is the descent). Move it up a floor or reduce total_height.",
     "rule": "C5",
     "where": ""S"",
@@ -69,6 +125,20 @@ exports[`structural lint — findings parity (C1-C7) > C5_buried findings are st
 
 exports[`structural lint — findings parity (C1-C7) > C6_overlap findings are stable 1`] = `
 [
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "The lowest floor (Floor 1 "Ground") carries no plinth. A house should rest on a plinth on its lowest floor — add a \`plinth\` object there.",
+    "rule": "C13",
+    "where": undefined,
+  },
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "The highest floor (Floor 1 "Ground") carries no roof. A house should be capped by a roof on its highest floor — add a \`roof\` object there.",
+    "rule": "C14",
+    "where": undefined,
+  },
   {
     "floor": 1,
     "level": "error",
@@ -81,6 +151,20 @@ exports[`structural lint — findings parity (C1-C7) > C6_overlap findings are s
 
 exports[`structural lint — findings parity (C1-C7) > C7_furniture findings are stable 1`] = `
 [
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "The lowest floor (Floor 1 "Ground") carries no plinth. A house should rest on a plinth on its lowest floor — add a \`plinth\` object there.",
+    "rule": "C13",
+    "where": undefined,
+  },
+  {
+    "floor": 1,
+    "level": "warn",
+    "message": "The highest floor (Floor 1 "Ground") carries no roof. A house should be capped by a roof on its highest floor — add a \`roof\` object there.",
+    "rule": "C14",
+    "where": undefined,
+  },
   {
     "floor": 1,
     "level": "warn",

@@ -19,9 +19,15 @@ import { C9 } from "./c9_slab_thickness_match";
 import { C10 } from "./c10_roof_coverage";
 import { C11 } from "./c11_declared_connection";
 import { C12 } from "./c12_room_overlap";
+import { C13 } from "./c13_plinth_lowest_floor";
+import { C14 } from "./c14_roof_highest_floor";
+import { C15 } from "./c15_plinth_covers_rooms";
+import { C16 } from "./c16_cantilever_support";
 
 /** House-level constraints, in convention-id order. */
-export const CONSTRAINTS: Constraint[] = [C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12];
+export const CONSTRAINTS: Constraint[] = [
+  C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16,
+];
 
 /** Every active constraint: the house-level registry + any per-primitive
  *  constraints contributed by registered primitives (NodeDefinition.constraints). */

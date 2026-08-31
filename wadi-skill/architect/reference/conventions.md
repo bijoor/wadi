@@ -244,6 +244,54 @@ If the overlap is unintended, move or resize one room so they only touch on a sh
 
 ---
 
+## C13 — The lowest floor should carry a plinth · **warning**
+
+**Statement.** A house should rest on a plinth: the lowest floor should contain a `plinth` object.
+
+**Rationale.** The plinth is the raised base the building sits on — it lifts the ground floor above grade and gives the walls a footing. A lowest floor with rooms but no plinth reads as a slab-on-grade shortcut; most Konkan houses want an explicit plinth. (A style guide, so it only warns — a deliberately plinth-less design is allowed.)
+
+**Fix.**
+
+Add a `plinth` to the lowest floor (usually the Plinth floor 0, alongside the `ground`), sized to cover the built footprint.
+
+---
+
+## C14 — The highest floor should carry a roof · **warning**
+
+**Statement.** A house should be capped by a roof: the highest floor should contain a `roof` object.
+
+**Rationale.** The roof sits on its own floor stacked above the walls (see the roof convention). A design whose top floor has no roof leaves the house open — usually a roof that was forgotten, or a floor added above the roof. (A style guide, so it only warns — a deliberate flat terrace with no roof is allowed.)
+
+**Fix.**
+
+Add a `roof` to the highest floor (a floor stacked above the top occupied floor), with segments spanning the footprint.
+
+---
+
+## C15 — The plinth should cover the rooms that rest on it · **warning**
+
+**Statement.** The plinth footprint should contain every room on the lowest occupied floor — no ground-floor room sticking out past the plinth.
+
+**Rationale.** The plinth is the base the ground floor stands on. A room whose footprint extends beyond the plinth has part of its floor unsupported by the base. (Upper floors that cantilever past the plinth are a different case — those want pillars; see the cantilever guidance. This checks only the floor that sits directly on the plinth.)
+
+**Fix.**
+
+Grow the plinth (its size, or the plot variables it derives from) to cover the room, or pull the room back within the plinth.
+
+---
+
+## C16 — A room overhanging the floor below should have pillars under it · **warning**
+
+**Statement.** If a room on floor N extends beyond the rooms of the floor below (a cantilever), there should be pillars supporting the overhang.
+
+**Rationale.** An upper-floor room that sticks out past the walls below has nothing under its overhang. In a real build that extension needs columns at its outside edge. This warns when an overhanging room has no pillar anywhere near it. (A style guide — a genuinely cantilevered slab design is allowed; the warning just flags the missing support.)
+
+**Fix.**
+
+Add `pillar` objects at the outside of the extension (under the overhanging edge), or pull the room back over the floor below.
+
+---
+
 ## SP1 — A spiral staircase's central pole must be smaller than its radius · **error**
 
 **Statement.** A `spiral_staircase`'s `pole_radius` must be less than its outer `radius`.
@@ -272,15 +320,22 @@ list); the model still renders so you can see the problem.
 
 ---
 
-## Planned conventions (not yet enforced)
+## Design guidelines (advisory — NOT linted)
 
-Documented so authors know they matter; not linted yet:
+Good-practice guidance the linter does not check. Apply your judgement; these are
+style, not rules:
 
-- **Interior partition gaps** — where two rooms share a centreline and *neither*
-  declares that wall, there is no partition between them. (C2 only covers
-  *exterior* sides.)
-- **Slab thickness ↔ slab object** — when a floor *does* carry a `floor_slab`,
-  its `slab_thickness` should match the slab's own thickness so walls sit on the
-  real deck.
-- **Roof footprint coverage** — the roof segments should span the top occupied
-  floor's footprint (no uncovered rooms).
+- **Compact, rectangular layout.** Keep the plan as rectangular as possible, with
+  the minimum of nooks and crannies. A blocky footprint is cheaper to build, easier
+  to roof, and wastes less wall.
+- **Room sizes follow use.** Size each room to its utilisation. The living room is
+  usually the largest, then rooms like the kitchen, workshop, and bedrooms; a
+  bathroom should be smaller than the bedroom it serves.
+- **Verandahs & balconies get half-height walls.** Give a verandah or balcony a
+  half-height (parapet) wall rather than a full-height one — a full-height verandah
+  reads as an enclosed room. (Not linted: Wadi has no verandah/balcony marker, so
+  there is nothing to key a warning on without matching room names.)
+- **Staircase in a multi-storey house.** Reserve a dedicated stair space on each
+  floor. The staircase starts on the lowest floor and rises to the underside of the
+  topmost occupied floor (not the roof floor). Size the stair space so climbing one
+  storey takes at most two flights (use `max_run` on the `staircase` to switchback).
