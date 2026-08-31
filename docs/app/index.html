@@ -43,8 +43,8 @@
         { name: "wadi_get_wdl", title: "Read the current house as .wdl",
           description: "Return the current live house as editable .wdl source. Read this before modifying an existing design.",
           inputSchema: NO_INPUT, annotations: { readOnlyHint: true }, execute: async function () { return text(await api().getWdl()); } },
-        { name: "wadi_set_wdl", title: "Author the house from .wdl",
-          description: "Compile .wdl and load it into the live 3D model. On a compile/schema error the model is unchanged and errors are returned; on success returns the C1-C12 structural check. The full DSL (rooms, walls, roofs, variables, imports) is available. Loop: wadi_get_wdl -> edit -> wadi_set_wdl -> read warnings -> repeat.",
+        { name: "wadi_set_wdl", title: "Apply edited .wdl to the live model",
+          description: "Compile .wdl and load it into the live 3D model. STRONGLY PREFER EDITING A TEMPLATE over building from scratch: wadi_list_homes -> wadi_choose_home (closest match) -> wadi_get_wdl -> edit -> wadi_set_wdl. Authoring a whole house from a blank .wdl is error-prone (wall alignment, roof sizing, cantilever support, staircase); only do it if no template fits. On a compile/schema error the model is unchanged and errors are returned; on success returns the structural check — READ IT AND FIX WARNINGS before telling the user it is ready. Loop: get -> edit -> set -> fix -> repeat.",
           inputSchema: WDL_IN, execute: async function (i) { return text(await api().setWdl(String((i && i.wdl) || ""))); } },
         { name: "wadi_check_wdl", title: "Check .wdl without loading",
           description: "Compile-check .wdl WITHOUT loading it (dry run). Returns errors, or ok.",
@@ -52,8 +52,8 @@
         { name: "wadi_list_homes", title: "List ready-made homes",
           description: "List the ready-made home designs to start from (id, title, meta).",
           inputSchema: NO_INPUT, annotations: { readOnlyHint: true }, execute: async function () { return text(await api().listTemplates()); } },
-        { name: "wadi_choose_home", title: "Load a ready-made home",
-          description: "Load one ready-made home by id (from wadi_list_homes). Rebuilds the live model.",
+        { name: "wadi_choose_home", title: "Load a ready-made home to edit",
+          description: "Load one ready-made home by id (from wadi_list_homes) as your STARTING POINT — pick the one closest to what the user wants, then read it with wadi_get_wdl and edit it. This is the recommended way to begin; it is far more reliable than authoring from scratch.",
           inputSchema: { type: "object", properties: { id: { type: "string", description: "template id, e.g. family_home" } }, required: ["id"] },
           execute: async function (i) { return text(await api().chooseTemplate(String(i && i.id))); } },
         { name: "wadi_describe_house", title: "Describe the house",
@@ -2292,7 +2292,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-Dmq9G9bL.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-BEh6YOnI.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>

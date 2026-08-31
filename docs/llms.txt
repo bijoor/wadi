@@ -6,18 +6,22 @@ There are two ways for an agent to drive Wadi.
 
 ## For an in-browser agent (runs JavaScript on the page)
 
-The viewer at https://wadi.house/app exposes a `window.wadi` API. Call `await window.wadi.help()` on the page for a self-contained primer, then use this loop:
+The viewer at https://wadi.house/app exposes a `window.wadi` API. Call `await window.wadi.help()` on the page for a self-contained primer.
 
-- `await window.wadi.listTemplates()` — ready-made homes to start from: `[{id, title, meta}]`.
-- `await window.wadi.chooseTemplate(id)` — load one (e.g. `"single_story_cottage"`).
-- `await window.wadi.getWdl()` — read the current house as `.wdl` text (the single source of truth).
-- `await window.wadi.checkWdl(wdl)` — optional dry-run compile: `{ok:true}` or `{errors:[…]}`.
-- `await window.wadi.setWdl(wdl)` — compile and load live. On a compile/schema error returns `{ok:false, errors:[…]}` and leaves the model unchanged; on success returns the C1-C12 structural check (`{loaded:true, errors, warnings, summary}`). Act on warnings.
-- `window.wadi.captureView()` — a JPEG data URL of the current 3D view, so you can see the result.
-- `window.wadi.check()` — run the structural linter on the live house.
+**Strongly prefer editing a template over building from scratch.** Authoring a whole house from a blank `.wdl` is error-prone (wall alignment across floors, roof sizing, cantilever support, plinth, staircase). Start from the ready-made home closest to what the user wants and change it:
+
+- `await window.wadi.listTemplates()` — ready-made homes: `[{id, title, meta}]`. Pick the closest.
+- `await window.wadi.chooseTemplate(id)` — load it as your starting point.
+- `await window.wadi.getWdl()` — read its `.wdl` (the single source of truth).
+- Edit the text: resize, rename, add/remove rooms; prefer adjusting a parametric template's variables (the whole house re-flows) over rewriting geometry.
+- `await window.wadi.setWdl(wdl)` — compile and load live. On a compile/schema error returns `{ok:false, errors:[…]}` and leaves the model unchanged; on success returns the structural check (`{loaded:true, errors, warnings, summary}`) — **read it and fix warnings before telling the user it is ready.**
+- `await window.wadi.checkWdl(wdl)` — optional dry-run compile.
+- `window.wadi.captureView()` — a JPEG data URL of the current 3D view.
 - `window.wadi.listRooms()` / `enterRoom(key)` / `exitRoom()` — first-person interior views.
 
-Typical loop: `getWdl` → edit the text → `setWdl` → read warnings → repeat.
+Only build from scratch if no template fits. If you must, follow this order and re-check as you go: plinth on the lowest floor → ground-floor rooms + a slab per floor → upper floors laid over the floor below with walls ALIGNED to those beneath (only small partitions may lack support) + a slab → pillars under any cantilever (rising only to the underside of the top floor's slab) → a roof covering the WHOLE top floor → a staircase spanning the floors.
+
+Typical loop: `chooseTemplate` → `getWdl` → edit → `setWdl` → fix warnings → repeat.
 
 The same capabilities are also registered as WebMCP tools on `navigator.modelContext` (`wadi_get_wdl`, `wadi_set_wdl`, `wadi_check_wdl`, `wadi_wdl_reference`, and more) for agents that consume WebMCP. Where WebMCP tool-calling is not surfaced, use `window.wadi` directly as above.
 
