@@ -27,7 +27,27 @@ The last two reach the desktop app over a localhost bridge (`127.0.0.1:8765`, ov
 `WADI_APP_PORT`); when the app isn't running they return a "open the Wadi app" message and
 you fall back to `wadi_preview` (headless 2D). The first four never need the app.
 
-## Run it
+## Hosted server (online) — no install
+
+A hosted copy runs at **`https://mcp.wadi.house/mcp`** (MCP Streamable HTTP), so any
+agent that connects to a remote MCP server by URL can author/check/preview `.wdl`
+with nothing installed. It exposes the 8 repo-free tools (the two app-bridge tools,
+`wadi_view_3d`/`wadi_capture_3d`, are stdio-only — they reach a *local* app); previews
+come back as inline PNGs. It is stateless: pass the full `.wdl` on each call.
+
+- **Gemini:** `gemini.google.com/apps` → *Add a custom app* → paste
+  `https://mcp.wadi.house/mcp`. No auth.
+- **Claude.ai** (custom connectors) / **ChatGPT** (MCP): add the same URL.
+
+Handoff to the app: the agent returns the `.wdl`; paste it into the Wadi app's WDL
+editor and Apply. (The app opens `.wadi`, not raw `.wdl`.)
+
+The hosted server is the Cloudflare Container deployment in this folder
+(`wrangler.jsonc` + `Dockerfile` + `src/worker.ts`, serving `src/http.ts`):
+`npm run cloud:deploy` (needs Workers Paid + Containers + local Docker),
+`npm run cloud:dev` to run it locally.
+
+## Run it (local stdio)
 
 From a checkout (dev):
 

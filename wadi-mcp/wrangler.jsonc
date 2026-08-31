@@ -3,6 +3,9 @@
   "name": "wadi-mcp",
   "main": "src/worker.ts",
   "compatibility_date": "2025-06-01",
+  // Custom domain — Cloudflare auto-creates the DNS record + cert (wadi.house is a
+  // Cloudflare-managed zone on this account).
+  "routes": [{ "pattern": "mcp.wadi.house", "custom_domain": true }],
   // The containerised Node server bundled from dist/http.mjs. `wrangler deploy`
   // builds this Dockerfile (needs local Docker) and pushes the image.
   "containers": [

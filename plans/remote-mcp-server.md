@@ -1,6 +1,14 @@
-# Remote MCP server for Wadi (scoping)
+# Remote MCP server for Wadi
 
-Status: scoping only, no build yet. Decision doc before any code.
+Status: **v1 SHIPPED** (2026-08-31) — hosted at `https://mcp.wadi.house/mcp` on a
+Cloudflare Container (not a Worker: the tool pipeline statically pulls in React-Three,
+so a pure Worker would need a headless refactor; the Container runs the existing 16MB
+Node bundle unchanged). Stateless Streamable HTTP; 8 repo-free tools (check, scope,
+preview[2D inline PNG], examples, reference, modules, module, glb_inspect); the two
+app-bridge tools stay stdio-only. Handoff is copy-paste (decided). Code in `wadi-mcp/`
+(`src/http.ts`, `src/worker.ts`, `Dockerfile`, `wrangler.jsonc`); deploy via
+`npm --prefix wadi-mcp run cloud:deploy`. Phase 2 (live co-editing relay) below is the
+remaining work.
 
 ## Goal
 
