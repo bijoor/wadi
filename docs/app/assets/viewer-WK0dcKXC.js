@@ -1,4 +1,4 @@
-import{i as e,n as t,r as n,t as r}from"./viewer-CNC7AqOf.js";import{ct as i,dt as a,ft as o,lt as s,ut as c}from"./viewer-hySa3BLe.js";function l(e){return typeof e==`object`&&!!e&&typeof e.$type==`string`}function u(e){return typeof e==`object`&&!!e&&typeof e.$refText==`string`&&`ref`in e}function d(e){return typeof e==`object`&&!!e&&typeof e.$refText==`string`&&`items`in e}function f(e){return typeof e==`object`&&!!e&&typeof e.name==`string`&&typeof e.type==`string`&&typeof e.path==`string`}function p(e){return typeof e==`object`&&!!e&&typeof e.info==`object`&&typeof e.message==`string`}var m=class{constructor(){this.subtypes={},this.allSubtypes={}}getAllTypes(){return Object.keys(this.types)}getReferenceType(e){let t=this.types[e.container.$type];if(!t)throw Error(`Type ${e.container.$type||`undefined`} not found.`);let n=t.properties[e.property]?.referenceType;if(!n)throw Error(`Property ${e.property||`undefined`} of type ${e.container.$type} is not a reference.`);return n}getTypeMetaData(e){return this.types[e]||{name:e,properties:{},superTypes:[]}}isInstance(e,t){return l(e)&&this.isSubtype(e.$type,t)}isSubtype(e,t){if(e===t)return!0;let n=this.subtypes[e];n||=this.subtypes[e]={};let r=n[t];if(r!==void 0)return r;{let r=this.types[e],i=r?r.superTypes.some(e=>this.isSubtype(e,t)):!1;return n[t]=i,i}}getAllSubTypes(e){let t=this.allSubtypes[e];if(t)return t;{let t=this.getAllTypes(),n=[];for(let r of t)this.isSubtype(r,e)&&n.push(r);return this.allSubtypes[e]=n,n}}isComplete(e){let t=this.getTypeMetaData(e.$type);for(let n of Object.keys(t.properties)){let r=t.properties[n];if(!r.optional&&e[r.name]==null)return!1}return!0}};function h(e){return typeof e==`object`&&!!e&&Array.isArray(e.content)}function g(e){return typeof e==`object`&&!!e&&typeof e.tokenType==`object`}function _(e){return h(e)&&typeof e.fullText==`string`}var v=class e{constructor(e,t){this.startFn=e,this.nextFn=t}iterator(){let e={state:this.startFn(),next:()=>this.nextFn(e.state),[Symbol.iterator]:()=>e};return e}[Symbol.iterator](){return this.iterator()}isEmpty(){return!!this.iterator().next().done}count(){let e=this.iterator(),t=0,n=e.next();for(;!n.done;)t++,n=e.next();return t}toArray(){let e=[],t=this.iterator(),n;do n=t.next(),n.value!==void 0&&e.push(n.value);while(!n.done);return e}toSet(){return new Set(this)}toMap(e,t){let n=this.map(n=>[e?e(n):n,t?t(n):n]);return new Map(n)}toString(){return this.join()}concat(t){return new e(()=>({first:this.startFn(),firstDone:!1,iterator:t[Symbol.iterator]()}),e=>{let t;if(!e.firstDone){do if(t=this.nextFn(e.first),!t.done)return t;while(!t.done);e.firstDone=!0}do if(t=e.iterator.next(),!t.done)return t;while(!t.done);return x})}join(e=`,`){let t=this.iterator(),n=``,r,i=!1;do r=t.next(),r.done||(i&&(n+=e),n+=y(r.value)),i=!0;while(!r.done);return n}indexOf(e,t=0){let n=this.iterator(),r=0,i=n.next();for(;!i.done;){if(r>=t&&i.value===e)return r;i=n.next(),r++}return-1}every(e){let t=this.iterator(),n=t.next();for(;!n.done;){if(!e(n.value))return!1;n=t.next()}return!0}some(e){let t=this.iterator(),n=t.next();for(;!n.done;){if(e(n.value))return!0;n=t.next()}return!1}forEach(e){let t=this.iterator(),n=0,r=t.next();for(;!r.done;)e(r.value,n),r=t.next(),n++}map(t){return new e(this.startFn,e=>{let{done:n,value:r}=this.nextFn(e);return n?x:{done:!1,value:t(r)}})}filter(t){return new e(this.startFn,e=>{let n;do if(n=this.nextFn(e),!n.done&&t(n.value))return n;while(!n.done);return x})}nonNullable(){return this.filter(e=>e!=null)}reduce(e,t){let n=this.iterator(),r=t,i=n.next();for(;!i.done;)r=r===void 0?i.value:e(r,i.value),i=n.next();return r}reduceRight(e,t){return this.recursiveReduce(this.iterator(),e,t)}recursiveReduce(e,t,n){let r=e.next();if(r.done)return n;let i=this.recursiveReduce(e,t,n);return i===void 0?r.value:t(i,r.value)}find(e){let t=this.iterator(),n=t.next();for(;!n.done;){if(e(n.value))return n.value;n=t.next()}}findIndex(e){let t=this.iterator(),n=0,r=t.next();for(;!r.done;){if(e(r.value))return n;r=t.next(),n++}return-1}includes(e){let t=this.iterator(),n=t.next();for(;!n.done;){if(n.value===e)return!0;n=t.next()}return!1}flatMap(t){return new e(()=>({this:this.startFn()}),e=>{do{if(e.iterator){let t=e.iterator.next();if(t.done)e.iterator=void 0;else return t}let{done:n,value:r}=this.nextFn(e.this);if(!n){let n=t(r);if(ee(n))e.iterator=n[Symbol.iterator]();else return{done:!1,value:n}}}while(e.iterator);return x})}flat(t){if(t===void 0&&(t=1),t<=0)return this;let n=t>1?this.flat(t-1):this;return new e(()=>({this:n.startFn()}),e=>{do{if(e.iterator){let t=e.iterator.next();if(t.done)e.iterator=void 0;else return t}let{done:t,value:r}=n.nextFn(e.this);if(!t)if(ee(r))e.iterator=r[Symbol.iterator]();else return{done:!1,value:r}}while(e.iterator);return x})}head(){let e=this.iterator().next();if(!e.done)return e.value}tail(t=1){return new e(()=>{let e=this.startFn();for(let n=0;n<t;n++)if(this.nextFn(e).done)return e;return e},this.nextFn)}limit(t){return new e(()=>({size:0,state:this.startFn()}),e=>(e.size++,e.size>t?x:this.nextFn(e.state)))}distinct(t){return new e(()=>({set:new Set,internalState:this.startFn()}),e=>{let n;do if(n=this.nextFn(e.internalState),!n.done){let r=t?t(n.value):n.value;if(!e.set.has(r))return e.set.add(r),n}while(!n.done);return x})}exclude(e,t){let n=new Set;for(let r of e){let e=t?t(r):r;n.add(e)}return this.filter(e=>{let r=t?t(e):e;return!n.has(r)})}};function y(e){return typeof e==`string`?e:e===void 0?`undefined`:typeof e.toString==`function`?e.toString():Object.prototype.toString.call(e)}function ee(e){return!!e&&typeof e[Symbol.iterator]==`function`}var b=new v(()=>void 0,()=>x),x=Object.freeze({done:!0,value:void 0});function S(...e){if(e.length===1){let t=e[0];if(t instanceof v)return t;if(ee(t))return new v(()=>t[Symbol.iterator](),e=>e.next());if(typeof t.length==`number`)return new v(()=>({index:0}),e=>e.index<t.length?{done:!1,value:t[e.index++]}:x)}return e.length>1?new v(()=>({collIndex:0,arrIndex:0}),t=>{do{if(t.iterator){let e=t.iterator.next();if(!e.done)return e;t.iterator=void 0}if(t.array){if(t.arrIndex<t.array.length)return{done:!1,value:t.array[t.arrIndex++]};t.array=void 0,t.arrIndex=0}if(t.collIndex<e.length){let n=e[t.collIndex++];ee(n)?t.iterator=n[Symbol.iterator]():n&&typeof n.length==`number`&&(t.array=n)}}while(t.iterator||t.array||t.collIndex<e.length);return x}):b}var te=class extends v{constructor(e,t,n){super(()=>({iterators:n?.includeRoot?[[e][Symbol.iterator]()]:[t(e)[Symbol.iterator]()],pruned:!1}),e=>{for(e.pruned&&=(e.iterators.pop(),!1);e.iterators.length>0;){let n=e.iterators[e.iterators.length-1].next();if(n.done)e.iterators.pop();else return e.iterators.push(t(n.value)[Symbol.iterator]()),n}return x})}iterator(){let e={state:this.startFn(),next:()=>this.nextFn(e.state),prune:()=>{e.state.pruned=!0},[Symbol.iterator]:()=>e};return e}},C;(function(e){function t(e){return e.reduce((e,t)=>e+t,0)}e.sum=t;function n(e){return e.reduce((e,t)=>e*t,0)}e.product=n;function r(e){return e.reduce((e,t)=>Math.min(e,t))}e.min=r;function i(e){return e.reduce((e,t)=>Math.max(e,t))}e.max=i})(C||={});function w(e,t={}){for(let[n,r]of Object.entries(e))n.startsWith(`$`)||(Array.isArray(r)?r.forEach((r,i)=>{l(r)&&(r.$container=e,r.$containerProperty=n,r.$containerIndex=i,t.deep&&w(r,t))}):l(r)&&(r.$container=e,r.$containerProperty=n,t.deep&&w(r,t)))}function T(e,t){let n=e;for(;n;){if(t(n))return n;n=n.$container}}function E(e){let t=ne(e).$document;if(!t)throw Error(`AST node has no document.`);return t}function ne(e){for(;e.$container;)e=e.$container;return e}function D(e){return u(e)?e.ref?[e.ref]:[]:d(e)?e.items.map(e=>e.ref):[]}function O(e,t){if(!e)throw Error(`Node must be an AstNode.`);let n=t?.range;return new v(()=>({keys:Object.keys(e),keyIndex:0,arrayIndex:0}),t=>{for(;t.keyIndex<t.keys.length;){let r=t.keys[t.keyIndex];if(!r.startsWith(`$`)){let i=e[r];if(l(i)){if(t.keyIndex++,re(i,n))return{done:!1,value:i}}else if(Array.isArray(i)){for(;t.arrayIndex<i.length;){let e=i[t.arrayIndex++];if(l(e)&&re(e,n))return{done:!1,value:e}}t.arrayIndex=0}}t.keyIndex++}return x})}function k(e,t){if(!e)throw Error(`Root node must be an AstNode.`);return new te(e,e=>O(e,t))}function A(e,t){if(!e)throw Error(`Root node must be an AstNode.`);return t?.range&&!re(e,t.range)?new te(e,()=>[]):new te(e,e=>O(e,t),{includeRoot:!0})}function re(e,t){if(!t)return!0;let n=e.$cstNode?.range;return n?Bt(n,t):!1}function ie(e){return new v(()=>({keys:Object.keys(e),keyIndex:0,arrayIndex:0}),t=>{for(;t.keyIndex<t.keys.length;){let n=t.keys[t.keyIndex];if(!n.startsWith(`$`)){let r=e[n];if(u(r)||d(r))return t.keyIndex++,{done:!1,value:{reference:r,container:e,property:n}};if(Array.isArray(r)){for(;t.arrayIndex<r.length;){let i=t.arrayIndex++,a=r[i];if(u(a)||d(r))return{done:!1,value:{reference:a,container:e,property:n,index:i}}}t.arrayIndex=0}}t.keyIndex++}return x})}function ae(e,t){let n=e.getTypeMetaData(t.$type),r=t;for(let e of Object.values(n.properties))e.defaultValue!==void 0&&r[e.name]===void 0&&(r[e.name]=j(e.defaultValue))}function j(e){return Array.isArray(e)?[...e.map(j)]:e}var M={$type:`AbstractElement`,cardinality:`cardinality`};function oe(e){return I.isInstance(e,M.$type)}var se={$type:`AbstractParserRule`};function N(e){return I.isInstance(e,se.$type)}var ce={$type:`AbstractRule`},P={$type:`AbstractType`},F={$type:`Action`,cardinality:`cardinality`,feature:`feature`,inferredType:`inferredType`,operator:`operator`,type:`type`};function le(e){return I.isInstance(e,F.$type)}var ue={$type:`Alternatives`,cardinality:`cardinality`,elements:`elements`};function de(e){return I.isInstance(e,ue.$type)}var fe={$type:`ArrayLiteral`,elements:`elements`},pe={$type:`ArrayType`,elementType:`elementType`},me={$type:`Assignment`,cardinality:`cardinality`,feature:`feature`,operator:`operator`,predicate:`predicate`,terminal:`terminal`};function he(e){return I.isInstance(e,me.$type)}var ge={$type:`BooleanLiteral`,true:`true`};function _e(e){return I.isInstance(e,ge.$type)}var ve={$type:`CharacterRange`,cardinality:`cardinality`,left:`left`,lookahead:`lookahead`,parenthesized:`parenthesized`,right:`right`};function ye(e){return I.isInstance(e,ve.$type)}var be={$type:`Condition`},xe={$type:`Conjunction`,left:`left`,right:`right`};function Se(e){return I.isInstance(e,xe.$type)}var Ce={$type:`CrossReference`,cardinality:`cardinality`,deprecatedSyntax:`deprecatedSyntax`,isMulti:`isMulti`,terminal:`terminal`,type:`type`};function we(e){return I.isInstance(e,Ce.$type)}var Te={$type:`Disjunction`,left:`left`,right:`right`};function Ee(e){return I.isInstance(e,Te.$type)}var De={$type:`EndOfFile`,cardinality:`cardinality`};function Oe(e){return I.isInstance(e,De.$type)}var ke={$type:`Grammar`,imports:`imports`,interfaces:`interfaces`,isDeclared:`isDeclared`,name:`name`,rules:`rules`,types:`types`},Ae={$type:`GrammarImport`,path:`path`},je={$type:`Group`,cardinality:`cardinality`,elements:`elements`,guardCondition:`guardCondition`,predicate:`predicate`};function Me(e){return I.isInstance(e,je.$type)}var Ne={$type:`InferredType`,name:`name`};function Pe(e){return I.isInstance(e,Ne.$type)}var Fe={$type:`InfixRule`,call:`call`,dataType:`dataType`,inferredType:`inferredType`,name:`name`,operators:`operators`,parameters:`parameters`,returnType:`returnType`};function Ie(e){return I.isInstance(e,Fe.$type)}var Le={$type:`InfixRuleOperatorList`,associativity:`associativity`,operators:`operators`},Re={$type:`InfixRuleOperators`,precedences:`precedences`},ze={$type:`Interface`,attributes:`attributes`,name:`name`,superTypes:`superTypes`};function Be(e){return I.isInstance(e,ze.$type)}var Ve={$type:`Keyword`,cardinality:`cardinality`,predicate:`predicate`,value:`value`};function He(e){return I.isInstance(e,Ve.$type)}var Ue={$type:`NamedArgument`,calledByName:`calledByName`,parameter:`parameter`,value:`value`},We={$type:`NegatedToken`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`,terminal:`terminal`};function Ge(e){return I.isInstance(e,We.$type)}var Ke={$type:`Negation`,value:`value`};function qe(e){return I.isInstance(e,Ke.$type)}var Je={$type:`NumberLiteral`,value:`value`},Ye={$type:`Parameter`,name:`name`},Xe={$type:`ParameterReference`,parameter:`parameter`};function Ze(e){return I.isInstance(e,Xe.$type)}var Qe={$type:`ParserRule`,dataType:`dataType`,definition:`definition`,entry:`entry`,fragment:`fragment`,inferredType:`inferredType`,name:`name`,parameters:`parameters`,returnType:`returnType`};function $e(e){return I.isInstance(e,Qe.$type)}var et={$type:`ReferenceType`,isMulti:`isMulti`,referenceType:`referenceType`},tt={$type:`RegexToken`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`,regex:`regex`};function nt(e){return I.isInstance(e,tt.$type)}var rt={$type:`ReturnType`,name:`name`};function it(e){return I.isInstance(e,rt.$type)}var at={$type:`RuleCall`,arguments:`arguments`,cardinality:`cardinality`,predicate:`predicate`,rule:`rule`};function ot(e){return I.isInstance(e,at.$type)}var st={$type:`SimpleType`,primitiveType:`primitiveType`,stringType:`stringType`,typeRef:`typeRef`};function ct(e){return I.isInstance(e,st.$type)}var lt={$type:`StringLiteral`,value:`value`},ut={$type:`TerminalAlternatives`,cardinality:`cardinality`,elements:`elements`,lookahead:`lookahead`,parenthesized:`parenthesized`};function dt(e){return I.isInstance(e,ut.$type)}var ft={$type:`TerminalElement`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`},pt={$type:`TerminalGroup`,cardinality:`cardinality`,elements:`elements`,lookahead:`lookahead`,parenthesized:`parenthesized`};function mt(e){return I.isInstance(e,pt.$type)}var ht={$type:`TerminalRule`,definition:`definition`,fragment:`fragment`,hidden:`hidden`,name:`name`,type:`type`};function gt(e){return I.isInstance(e,ht.$type)}var _t={$type:`TerminalRuleCall`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`,rule:`rule`};function vt(e){return I.isInstance(e,_t.$type)}var yt={$type:`Type`,name:`name`,type:`type`};function bt(e){return I.isInstance(e,yt.$type)}var xt={$type:`TypeAttribute`,defaultValue:`defaultValue`,isOptional:`isOptional`,name:`name`,type:`type`},St={$type:`TypeDefinition`},Ct={$type:`UnionType`,types:`types`},wt={$type:`UnorderedGroup`,cardinality:`cardinality`,elements:`elements`};function Tt(e){return I.isInstance(e,wt.$type)}var Et={$type:`UntilToken`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`,terminal:`terminal`};function Dt(e){return I.isInstance(e,Et.$type)}var Ot={$type:`ValueLiteral`},kt={$type:`Wildcard`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`};function At(e){return I.isInstance(e,kt.$type)}var jt=class extends m{constructor(){super(...arguments),this.types={AbstractElement:{name:M.$type,properties:{cardinality:{name:M.cardinality,optional:!0}},superTypes:[]},AbstractParserRule:{name:se.$type,properties:{},superTypes:[ce.$type,P.$type]},AbstractRule:{name:ce.$type,properties:{},superTypes:[]},AbstractType:{name:P.$type,properties:{},superTypes:[]},Action:{name:F.$type,properties:{cardinality:{name:F.cardinality,optional:!0},feature:{name:F.feature,optional:!0},inferredType:{name:F.inferredType,optional:!0},operator:{name:F.operator,optional:!0},type:{name:F.type,referenceType:P.$type,optional:!0}},superTypes:[M.$type]},Alternatives:{name:ue.$type,properties:{cardinality:{name:ue.cardinality,optional:!0},elements:{name:ue.elements,defaultValue:[]}},superTypes:[M.$type]},ArrayLiteral:{name:fe.$type,properties:{elements:{name:fe.elements,defaultValue:[]}},superTypes:[Ot.$type]},ArrayType:{name:pe.$type,properties:{elementType:{name:pe.elementType}},superTypes:[St.$type]},Assignment:{name:me.$type,properties:{cardinality:{name:me.cardinality,optional:!0},feature:{name:me.feature},operator:{name:me.operator},predicate:{name:me.predicate,optional:!0},terminal:{name:me.terminal}},superTypes:[M.$type]},BooleanLiteral:{name:ge.$type,properties:{true:{name:ge.true,defaultValue:!1}},superTypes:[be.$type,Ot.$type]},CharacterRange:{name:ve.$type,properties:{cardinality:{name:ve.cardinality,optional:!0},left:{name:ve.left},lookahead:{name:ve.lookahead,optional:!0},parenthesized:{name:ve.parenthesized,defaultValue:!1,optional:!0},right:{name:ve.right,optional:!0}},superTypes:[ft.$type]},Condition:{name:be.$type,properties:{},superTypes:[]},Conjunction:{name:xe.$type,properties:{left:{name:xe.left},right:{name:xe.right}},superTypes:[be.$type]},CrossReference:{name:Ce.$type,properties:{cardinality:{name:Ce.cardinality,optional:!0},deprecatedSyntax:{name:Ce.deprecatedSyntax,defaultValue:!1},isMulti:{name:Ce.isMulti,defaultValue:!1},terminal:{name:Ce.terminal,optional:!0},type:{name:Ce.type,referenceType:P.$type}},superTypes:[M.$type]},Disjunction:{name:Te.$type,properties:{left:{name:Te.left},right:{name:Te.right}},superTypes:[be.$type]},EndOfFile:{name:De.$type,properties:{cardinality:{name:De.cardinality,optional:!0}},superTypes:[M.$type]},Grammar:{name:ke.$type,properties:{imports:{name:ke.imports,defaultValue:[]},interfaces:{name:ke.interfaces,defaultValue:[]},isDeclared:{name:ke.isDeclared,defaultValue:!1},name:{name:ke.name,optional:!0},rules:{name:ke.rules,defaultValue:[]},types:{name:ke.types,defaultValue:[]}},superTypes:[]},GrammarImport:{name:Ae.$type,properties:{path:{name:Ae.path}},superTypes:[]},Group:{name:je.$type,properties:{cardinality:{name:je.cardinality,optional:!0},elements:{name:je.elements,defaultValue:[]},guardCondition:{name:je.guardCondition,optional:!0},predicate:{name:je.predicate,optional:!0}},superTypes:[M.$type]},InferredType:{name:Ne.$type,properties:{name:{name:Ne.name}},superTypes:[P.$type]},InfixRule:{name:Fe.$type,properties:{call:{name:Fe.call},dataType:{name:Fe.dataType,optional:!0},inferredType:{name:Fe.inferredType,optional:!0},name:{name:Fe.name},operators:{name:Fe.operators},parameters:{name:Fe.parameters,defaultValue:[]},returnType:{name:Fe.returnType,referenceType:P.$type,optional:!0}},superTypes:[se.$type]},InfixRuleOperatorList:{name:Le.$type,properties:{associativity:{name:Le.associativity,optional:!0},operators:{name:Le.operators,defaultValue:[]}},superTypes:[]},InfixRuleOperators:{name:Re.$type,properties:{precedences:{name:Re.precedences,defaultValue:[]}},superTypes:[]},Interface:{name:ze.$type,properties:{attributes:{name:ze.attributes,defaultValue:[]},name:{name:ze.name},superTypes:{name:ze.superTypes,defaultValue:[],referenceType:P.$type}},superTypes:[P.$type]},Keyword:{name:Ve.$type,properties:{cardinality:{name:Ve.cardinality,optional:!0},predicate:{name:Ve.predicate,optional:!0},value:{name:Ve.value}},superTypes:[M.$type]},NamedArgument:{name:Ue.$type,properties:{calledByName:{name:Ue.calledByName,defaultValue:!1},parameter:{name:Ue.parameter,referenceType:Ye.$type,optional:!0},value:{name:Ue.value}},superTypes:[]},NegatedToken:{name:We.$type,properties:{cardinality:{name:We.cardinality,optional:!0},lookahead:{name:We.lookahead,optional:!0},parenthesized:{name:We.parenthesized,defaultValue:!1,optional:!0},terminal:{name:We.terminal}},superTypes:[ft.$type]},Negation:{name:Ke.$type,properties:{value:{name:Ke.value}},superTypes:[be.$type]},NumberLiteral:{name:Je.$type,properties:{value:{name:Je.value}},superTypes:[Ot.$type]},Parameter:{name:Ye.$type,properties:{name:{name:Ye.name}},superTypes:[]},ParameterReference:{name:Xe.$type,properties:{parameter:{name:Xe.parameter,referenceType:Ye.$type}},superTypes:[be.$type]},ParserRule:{name:Qe.$type,properties:{dataType:{name:Qe.dataType,optional:!0},definition:{name:Qe.definition},entry:{name:Qe.entry,defaultValue:!1},fragment:{name:Qe.fragment,defaultValue:!1},inferredType:{name:Qe.inferredType,optional:!0},name:{name:Qe.name},parameters:{name:Qe.parameters,defaultValue:[]},returnType:{name:Qe.returnType,referenceType:P.$type,optional:!0}},superTypes:[se.$type]},ReferenceType:{name:et.$type,properties:{isMulti:{name:et.isMulti,defaultValue:!1},referenceType:{name:et.referenceType}},superTypes:[St.$type]},RegexToken:{name:tt.$type,properties:{cardinality:{name:tt.cardinality,optional:!0},lookahead:{name:tt.lookahead,optional:!0},parenthesized:{name:tt.parenthesized,defaultValue:!1,optional:!0},regex:{name:tt.regex}},superTypes:[ft.$type]},ReturnType:{name:rt.$type,properties:{name:{name:rt.name}},superTypes:[]},RuleCall:{name:at.$type,properties:{arguments:{name:at.arguments,defaultValue:[]},cardinality:{name:at.cardinality,optional:!0},predicate:{name:at.predicate,optional:!0},rule:{name:at.rule,referenceType:ce.$type}},superTypes:[M.$type]},SimpleType:{name:st.$type,properties:{primitiveType:{name:st.primitiveType,optional:!0},stringType:{name:st.stringType,optional:!0},typeRef:{name:st.typeRef,referenceType:P.$type,optional:!0}},superTypes:[St.$type]},StringLiteral:{name:lt.$type,properties:{value:{name:lt.value}},superTypes:[Ot.$type]},TerminalAlternatives:{name:ut.$type,properties:{cardinality:{name:ut.cardinality,optional:!0},elements:{name:ut.elements,defaultValue:[]},lookahead:{name:ut.lookahead,optional:!0},parenthesized:{name:ut.parenthesized,defaultValue:!1,optional:!0}},superTypes:[ft.$type]},TerminalElement:{name:ft.$type,properties:{cardinality:{name:ft.cardinality,optional:!0},lookahead:{name:ft.lookahead,optional:!0},parenthesized:{name:ft.parenthesized,defaultValue:!1,optional:!0}},superTypes:[M.$type]},TerminalGroup:{name:pt.$type,properties:{cardinality:{name:pt.cardinality,optional:!0},elements:{name:pt.elements,defaultValue:[]},lookahead:{name:pt.lookahead,optional:!0},parenthesized:{name:pt.parenthesized,defaultValue:!1,optional:!0}},superTypes:[ft.$type]},TerminalRule:{name:ht.$type,properties:{definition:{name:ht.definition},fragment:{name:ht.fragment,defaultValue:!1},hidden:{name:ht.hidden,defaultValue:!1},name:{name:ht.name},type:{name:ht.type,optional:!0}},superTypes:[ce.$type]},TerminalRuleCall:{name:_t.$type,properties:{cardinality:{name:_t.cardinality,optional:!0},lookahead:{name:_t.lookahead,optional:!0},parenthesized:{name:_t.parenthesized,defaultValue:!1,optional:!0},rule:{name:_t.rule,referenceType:ht.$type}},superTypes:[ft.$type]},Type:{name:yt.$type,properties:{name:{name:yt.name},type:{name:yt.type}},superTypes:[P.$type]},TypeAttribute:{name:xt.$type,properties:{defaultValue:{name:xt.defaultValue,optional:!0},isOptional:{name:xt.isOptional,defaultValue:!1},name:{name:xt.name},type:{name:xt.type}},superTypes:[]},TypeDefinition:{name:St.$type,properties:{},superTypes:[]},UnionType:{name:Ct.$type,properties:{types:{name:Ct.types,defaultValue:[]}},superTypes:[St.$type]},UnorderedGroup:{name:wt.$type,properties:{cardinality:{name:wt.cardinality,optional:!0},elements:{name:wt.elements,defaultValue:[]}},superTypes:[M.$type]},UntilToken:{name:Et.$type,properties:{cardinality:{name:Et.cardinality,optional:!0},lookahead:{name:Et.lookahead,optional:!0},parenthesized:{name:Et.parenthesized,defaultValue:!1,optional:!0},terminal:{name:Et.terminal}},superTypes:[ft.$type]},ValueLiteral:{name:Ot.$type,properties:{},superTypes:[]},Wildcard:{name:kt.$type,properties:{cardinality:{name:kt.cardinality,optional:!0},lookahead:{name:kt.lookahead,optional:!0},parenthesized:{name:kt.parenthesized,defaultValue:!1,optional:!0}},superTypes:[ft.$type]}}}},I=new jt;function Mt(e){let t=e,n=!1;for(;t;){let e=T(t.grammarSource,$e);if(e&&e.dataType)t=t.container,n=!0;else if(n)return t;else return}}function Nt(e){return new te(e,e=>h(e)?e.content:[],{includeRoot:!0})}function Pt(e){return Nt(e).filter(g)}function Ft(e,t){for(;e.container;)if(e=e.container,e===t)return!0;return!1}function It(e){return{start:{character:e.startColumn-1,line:e.startLine-1},end:{character:e.endColumn,line:e.endLine-1}}}function Lt(e){if(!e)return;let{offset:t,end:n,range:r}=e;return{range:r,offset:t,end:n,length:n-t}}var Rt;(function(e){e[e.Before=0]=`Before`,e[e.After=1]=`After`,e[e.OverlapFront=2]=`OverlapFront`,e[e.OverlapBack=3]=`OverlapBack`,e[e.Inside=4]=`Inside`,e[e.Outside=5]=`Outside`})(Rt||={});function zt(e,t){if(e.end.line<t.start.line||e.end.line===t.start.line&&e.end.character<=t.start.character)return Rt.Before;if(e.start.line>t.end.line||e.start.line===t.end.line&&e.start.character>=t.end.character)return Rt.After;let n=e.start.line>t.start.line||e.start.line===t.start.line&&e.start.character>=t.start.character,r=e.end.line<t.end.line||e.end.line===t.end.line&&e.end.character<=t.end.character;return n&&r?Rt.Inside:n?Rt.OverlapBack:r?Rt.OverlapFront:Rt.Outside}function Bt(e,t){return zt(e,t)>Rt.After}var Vt=/^[\w\p{L}]$/u;function Ht(e,t,n=Vt){if(e){if(t>0){let r=t-e.offset,i=e.text.charAt(r);n.test(i)||t--}return Gt(e,t)}}function Ut(e,t){if(e){let n=Jt(e,!0);if(n&&Wt(n,t))return n;if(_(e)){let n=e.content.findIndex(e=>!e.hidden);for(let r=n-1;r>=0;r--){let n=e.content[r];if(Wt(n,t))return n}}}}function Wt(e,t){return g(e)&&t.includes(e.tokenType.name)}function Gt(e,t){if(g(e))return e;if(h(e)){let n=qt(e,t,!1);if(n)return Gt(n,t)}}function Kt(e,t){if(g(e))return e;if(h(e)){let n=qt(e,t,!0);if(n)return Kt(n,t)}}function qt(e,t,n){let r=0,i=e.content.length-1,a;for(;r<=i;){let o=Math.floor((r+i)/2),s=e.content[o];if(s.offset<=t&&s.end>t)return s;s.end<=t?(a=n?s:void 0,r=o+1):i=o-1}return a}function Jt(e,t=!0){for(;e.container;){let n=e.container,r=n.content.indexOf(e);for(;r>0;){r--;let e=n.content[r];if(t||!e.hidden)return e}e=n}}var Yt=class extends Error{constructor(e,t){super(e?`${t} at ${e.range.start.line}:${e.range.start.character}`:t)}};function Xt(e,t=`Error: Got unexpected value.`){throw Error(t)}function L(e){return e.charCodeAt(0)}function Zt(e,t){Array.isArray(e)?e.forEach(function(e){t.push(e)}):t.push(e)}function Qt(e,t){if(e[t]===!0)throw`duplicate flag `+t;e[t],e[t]=!0}function $t(e){if(e===void 0)throw Error(`Internal Error - Should never get here!`);return!0}function en(){throw Error(`Internal Error - Should never get here!`)}function tn(e){return e.type===`Character`}var nn=[];for(let e=L(`0`);e<=L(`9`);e++)nn.push(e);var rn=[L(`_`)].concat(nn);for(let e=L(`a`);e<=L(`z`);e++)rn.push(e);for(let e=L(`A`);e<=L(`Z`);e++)rn.push(e);var an=[L(` `),L(`\f`),L(`
+import{i as e,n as t,r as n,t as r}from"./viewer-CNC7AqOf.js";import{ct as i,dt as a,ft as o,lt as s,ut as c}from"./viewer-Dbqb_nj_.js";function l(e){return typeof e==`object`&&!!e&&typeof e.$type==`string`}function u(e){return typeof e==`object`&&!!e&&typeof e.$refText==`string`&&`ref`in e}function d(e){return typeof e==`object`&&!!e&&typeof e.$refText==`string`&&`items`in e}function f(e){return typeof e==`object`&&!!e&&typeof e.name==`string`&&typeof e.type==`string`&&typeof e.path==`string`}function p(e){return typeof e==`object`&&!!e&&typeof e.info==`object`&&typeof e.message==`string`}var m=class{constructor(){this.subtypes={},this.allSubtypes={}}getAllTypes(){return Object.keys(this.types)}getReferenceType(e){let t=this.types[e.container.$type];if(!t)throw Error(`Type ${e.container.$type||`undefined`} not found.`);let n=t.properties[e.property]?.referenceType;if(!n)throw Error(`Property ${e.property||`undefined`} of type ${e.container.$type} is not a reference.`);return n}getTypeMetaData(e){return this.types[e]||{name:e,properties:{},superTypes:[]}}isInstance(e,t){return l(e)&&this.isSubtype(e.$type,t)}isSubtype(e,t){if(e===t)return!0;let n=this.subtypes[e];n||=this.subtypes[e]={};let r=n[t];if(r!==void 0)return r;{let r=this.types[e],i=r?r.superTypes.some(e=>this.isSubtype(e,t)):!1;return n[t]=i,i}}getAllSubTypes(e){let t=this.allSubtypes[e];if(t)return t;{let t=this.getAllTypes(),n=[];for(let r of t)this.isSubtype(r,e)&&n.push(r);return this.allSubtypes[e]=n,n}}isComplete(e){let t=this.getTypeMetaData(e.$type);for(let n of Object.keys(t.properties)){let r=t.properties[n];if(!r.optional&&e[r.name]==null)return!1}return!0}};function h(e){return typeof e==`object`&&!!e&&Array.isArray(e.content)}function g(e){return typeof e==`object`&&!!e&&typeof e.tokenType==`object`}function _(e){return h(e)&&typeof e.fullText==`string`}var v=class e{constructor(e,t){this.startFn=e,this.nextFn=t}iterator(){let e={state:this.startFn(),next:()=>this.nextFn(e.state),[Symbol.iterator]:()=>e};return e}[Symbol.iterator](){return this.iterator()}isEmpty(){return!!this.iterator().next().done}count(){let e=this.iterator(),t=0,n=e.next();for(;!n.done;)t++,n=e.next();return t}toArray(){let e=[],t=this.iterator(),n;do n=t.next(),n.value!==void 0&&e.push(n.value);while(!n.done);return e}toSet(){return new Set(this)}toMap(e,t){let n=this.map(n=>[e?e(n):n,t?t(n):n]);return new Map(n)}toString(){return this.join()}concat(t){return new e(()=>({first:this.startFn(),firstDone:!1,iterator:t[Symbol.iterator]()}),e=>{let t;if(!e.firstDone){do if(t=this.nextFn(e.first),!t.done)return t;while(!t.done);e.firstDone=!0}do if(t=e.iterator.next(),!t.done)return t;while(!t.done);return x})}join(e=`,`){let t=this.iterator(),n=``,r,i=!1;do r=t.next(),r.done||(i&&(n+=e),n+=y(r.value)),i=!0;while(!r.done);return n}indexOf(e,t=0){let n=this.iterator(),r=0,i=n.next();for(;!i.done;){if(r>=t&&i.value===e)return r;i=n.next(),r++}return-1}every(e){let t=this.iterator(),n=t.next();for(;!n.done;){if(!e(n.value))return!1;n=t.next()}return!0}some(e){let t=this.iterator(),n=t.next();for(;!n.done;){if(e(n.value))return!0;n=t.next()}return!1}forEach(e){let t=this.iterator(),n=0,r=t.next();for(;!r.done;)e(r.value,n),r=t.next(),n++}map(t){return new e(this.startFn,e=>{let{done:n,value:r}=this.nextFn(e);return n?x:{done:!1,value:t(r)}})}filter(t){return new e(this.startFn,e=>{let n;do if(n=this.nextFn(e),!n.done&&t(n.value))return n;while(!n.done);return x})}nonNullable(){return this.filter(e=>e!=null)}reduce(e,t){let n=this.iterator(),r=t,i=n.next();for(;!i.done;)r=r===void 0?i.value:e(r,i.value),i=n.next();return r}reduceRight(e,t){return this.recursiveReduce(this.iterator(),e,t)}recursiveReduce(e,t,n){let r=e.next();if(r.done)return n;let i=this.recursiveReduce(e,t,n);return i===void 0?r.value:t(i,r.value)}find(e){let t=this.iterator(),n=t.next();for(;!n.done;){if(e(n.value))return n.value;n=t.next()}}findIndex(e){let t=this.iterator(),n=0,r=t.next();for(;!r.done;){if(e(r.value))return n;r=t.next(),n++}return-1}includes(e){let t=this.iterator(),n=t.next();for(;!n.done;){if(n.value===e)return!0;n=t.next()}return!1}flatMap(t){return new e(()=>({this:this.startFn()}),e=>{do{if(e.iterator){let t=e.iterator.next();if(t.done)e.iterator=void 0;else return t}let{done:n,value:r}=this.nextFn(e.this);if(!n){let n=t(r);if(ee(n))e.iterator=n[Symbol.iterator]();else return{done:!1,value:n}}}while(e.iterator);return x})}flat(t){if(t===void 0&&(t=1),t<=0)return this;let n=t>1?this.flat(t-1):this;return new e(()=>({this:n.startFn()}),e=>{do{if(e.iterator){let t=e.iterator.next();if(t.done)e.iterator=void 0;else return t}let{done:t,value:r}=n.nextFn(e.this);if(!t)if(ee(r))e.iterator=r[Symbol.iterator]();else return{done:!1,value:r}}while(e.iterator);return x})}head(){let e=this.iterator().next();if(!e.done)return e.value}tail(t=1){return new e(()=>{let e=this.startFn();for(let n=0;n<t;n++)if(this.nextFn(e).done)return e;return e},this.nextFn)}limit(t){return new e(()=>({size:0,state:this.startFn()}),e=>(e.size++,e.size>t?x:this.nextFn(e.state)))}distinct(t){return new e(()=>({set:new Set,internalState:this.startFn()}),e=>{let n;do if(n=this.nextFn(e.internalState),!n.done){let r=t?t(n.value):n.value;if(!e.set.has(r))return e.set.add(r),n}while(!n.done);return x})}exclude(e,t){let n=new Set;for(let r of e){let e=t?t(r):r;n.add(e)}return this.filter(e=>{let r=t?t(e):e;return!n.has(r)})}};function y(e){return typeof e==`string`?e:e===void 0?`undefined`:typeof e.toString==`function`?e.toString():Object.prototype.toString.call(e)}function ee(e){return!!e&&typeof e[Symbol.iterator]==`function`}var b=new v(()=>void 0,()=>x),x=Object.freeze({done:!0,value:void 0});function S(...e){if(e.length===1){let t=e[0];if(t instanceof v)return t;if(ee(t))return new v(()=>t[Symbol.iterator](),e=>e.next());if(typeof t.length==`number`)return new v(()=>({index:0}),e=>e.index<t.length?{done:!1,value:t[e.index++]}:x)}return e.length>1?new v(()=>({collIndex:0,arrIndex:0}),t=>{do{if(t.iterator){let e=t.iterator.next();if(!e.done)return e;t.iterator=void 0}if(t.array){if(t.arrIndex<t.array.length)return{done:!1,value:t.array[t.arrIndex++]};t.array=void 0,t.arrIndex=0}if(t.collIndex<e.length){let n=e[t.collIndex++];ee(n)?t.iterator=n[Symbol.iterator]():n&&typeof n.length==`number`&&(t.array=n)}}while(t.iterator||t.array||t.collIndex<e.length);return x}):b}var te=class extends v{constructor(e,t,n){super(()=>({iterators:n?.includeRoot?[[e][Symbol.iterator]()]:[t(e)[Symbol.iterator]()],pruned:!1}),e=>{for(e.pruned&&=(e.iterators.pop(),!1);e.iterators.length>0;){let n=e.iterators[e.iterators.length-1].next();if(n.done)e.iterators.pop();else return e.iterators.push(t(n.value)[Symbol.iterator]()),n}return x})}iterator(){let e={state:this.startFn(),next:()=>this.nextFn(e.state),prune:()=>{e.state.pruned=!0},[Symbol.iterator]:()=>e};return e}},C;(function(e){function t(e){return e.reduce((e,t)=>e+t,0)}e.sum=t;function n(e){return e.reduce((e,t)=>e*t,0)}e.product=n;function r(e){return e.reduce((e,t)=>Math.min(e,t))}e.min=r;function i(e){return e.reduce((e,t)=>Math.max(e,t))}e.max=i})(C||={});function w(e,t={}){for(let[n,r]of Object.entries(e))n.startsWith(`$`)||(Array.isArray(r)?r.forEach((r,i)=>{l(r)&&(r.$container=e,r.$containerProperty=n,r.$containerIndex=i,t.deep&&w(r,t))}):l(r)&&(r.$container=e,r.$containerProperty=n,t.deep&&w(r,t)))}function T(e,t){let n=e;for(;n;){if(t(n))return n;n=n.$container}}function E(e){let t=ne(e).$document;if(!t)throw Error(`AST node has no document.`);return t}function ne(e){for(;e.$container;)e=e.$container;return e}function D(e){return u(e)?e.ref?[e.ref]:[]:d(e)?e.items.map(e=>e.ref):[]}function O(e,t){if(!e)throw Error(`Node must be an AstNode.`);let n=t?.range;return new v(()=>({keys:Object.keys(e),keyIndex:0,arrayIndex:0}),t=>{for(;t.keyIndex<t.keys.length;){let r=t.keys[t.keyIndex];if(!r.startsWith(`$`)){let i=e[r];if(l(i)){if(t.keyIndex++,re(i,n))return{done:!1,value:i}}else if(Array.isArray(i)){for(;t.arrayIndex<i.length;){let e=i[t.arrayIndex++];if(l(e)&&re(e,n))return{done:!1,value:e}}t.arrayIndex=0}}t.keyIndex++}return x})}function k(e,t){if(!e)throw Error(`Root node must be an AstNode.`);return new te(e,e=>O(e,t))}function A(e,t){if(!e)throw Error(`Root node must be an AstNode.`);return t?.range&&!re(e,t.range)?new te(e,()=>[]):new te(e,e=>O(e,t),{includeRoot:!0})}function re(e,t){if(!t)return!0;let n=e.$cstNode?.range;return n?Bt(n,t):!1}function ie(e){return new v(()=>({keys:Object.keys(e),keyIndex:0,arrayIndex:0}),t=>{for(;t.keyIndex<t.keys.length;){let n=t.keys[t.keyIndex];if(!n.startsWith(`$`)){let r=e[n];if(u(r)||d(r))return t.keyIndex++,{done:!1,value:{reference:r,container:e,property:n}};if(Array.isArray(r)){for(;t.arrayIndex<r.length;){let i=t.arrayIndex++,a=r[i];if(u(a)||d(r))return{done:!1,value:{reference:a,container:e,property:n,index:i}}}t.arrayIndex=0}}t.keyIndex++}return x})}function ae(e,t){let n=e.getTypeMetaData(t.$type),r=t;for(let e of Object.values(n.properties))e.defaultValue!==void 0&&r[e.name]===void 0&&(r[e.name]=j(e.defaultValue))}function j(e){return Array.isArray(e)?[...e.map(j)]:e}var M={$type:`AbstractElement`,cardinality:`cardinality`};function oe(e){return I.isInstance(e,M.$type)}var se={$type:`AbstractParserRule`};function N(e){return I.isInstance(e,se.$type)}var ce={$type:`AbstractRule`},P={$type:`AbstractType`},F={$type:`Action`,cardinality:`cardinality`,feature:`feature`,inferredType:`inferredType`,operator:`operator`,type:`type`};function le(e){return I.isInstance(e,F.$type)}var ue={$type:`Alternatives`,cardinality:`cardinality`,elements:`elements`};function de(e){return I.isInstance(e,ue.$type)}var fe={$type:`ArrayLiteral`,elements:`elements`},pe={$type:`ArrayType`,elementType:`elementType`},me={$type:`Assignment`,cardinality:`cardinality`,feature:`feature`,operator:`operator`,predicate:`predicate`,terminal:`terminal`};function he(e){return I.isInstance(e,me.$type)}var ge={$type:`BooleanLiteral`,true:`true`};function _e(e){return I.isInstance(e,ge.$type)}var ve={$type:`CharacterRange`,cardinality:`cardinality`,left:`left`,lookahead:`lookahead`,parenthesized:`parenthesized`,right:`right`};function ye(e){return I.isInstance(e,ve.$type)}var be={$type:`Condition`},xe={$type:`Conjunction`,left:`left`,right:`right`};function Se(e){return I.isInstance(e,xe.$type)}var Ce={$type:`CrossReference`,cardinality:`cardinality`,deprecatedSyntax:`deprecatedSyntax`,isMulti:`isMulti`,terminal:`terminal`,type:`type`};function we(e){return I.isInstance(e,Ce.$type)}var Te={$type:`Disjunction`,left:`left`,right:`right`};function Ee(e){return I.isInstance(e,Te.$type)}var De={$type:`EndOfFile`,cardinality:`cardinality`};function Oe(e){return I.isInstance(e,De.$type)}var ke={$type:`Grammar`,imports:`imports`,interfaces:`interfaces`,isDeclared:`isDeclared`,name:`name`,rules:`rules`,types:`types`},Ae={$type:`GrammarImport`,path:`path`},je={$type:`Group`,cardinality:`cardinality`,elements:`elements`,guardCondition:`guardCondition`,predicate:`predicate`};function Me(e){return I.isInstance(e,je.$type)}var Ne={$type:`InferredType`,name:`name`};function Pe(e){return I.isInstance(e,Ne.$type)}var Fe={$type:`InfixRule`,call:`call`,dataType:`dataType`,inferredType:`inferredType`,name:`name`,operators:`operators`,parameters:`parameters`,returnType:`returnType`};function Ie(e){return I.isInstance(e,Fe.$type)}var Le={$type:`InfixRuleOperatorList`,associativity:`associativity`,operators:`operators`},Re={$type:`InfixRuleOperators`,precedences:`precedences`},ze={$type:`Interface`,attributes:`attributes`,name:`name`,superTypes:`superTypes`};function Be(e){return I.isInstance(e,ze.$type)}var Ve={$type:`Keyword`,cardinality:`cardinality`,predicate:`predicate`,value:`value`};function He(e){return I.isInstance(e,Ve.$type)}var Ue={$type:`NamedArgument`,calledByName:`calledByName`,parameter:`parameter`,value:`value`},We={$type:`NegatedToken`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`,terminal:`terminal`};function Ge(e){return I.isInstance(e,We.$type)}var Ke={$type:`Negation`,value:`value`};function qe(e){return I.isInstance(e,Ke.$type)}var Je={$type:`NumberLiteral`,value:`value`},Ye={$type:`Parameter`,name:`name`},Xe={$type:`ParameterReference`,parameter:`parameter`};function Ze(e){return I.isInstance(e,Xe.$type)}var Qe={$type:`ParserRule`,dataType:`dataType`,definition:`definition`,entry:`entry`,fragment:`fragment`,inferredType:`inferredType`,name:`name`,parameters:`parameters`,returnType:`returnType`};function $e(e){return I.isInstance(e,Qe.$type)}var et={$type:`ReferenceType`,isMulti:`isMulti`,referenceType:`referenceType`},tt={$type:`RegexToken`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`,regex:`regex`};function nt(e){return I.isInstance(e,tt.$type)}var rt={$type:`ReturnType`,name:`name`};function it(e){return I.isInstance(e,rt.$type)}var at={$type:`RuleCall`,arguments:`arguments`,cardinality:`cardinality`,predicate:`predicate`,rule:`rule`};function ot(e){return I.isInstance(e,at.$type)}var st={$type:`SimpleType`,primitiveType:`primitiveType`,stringType:`stringType`,typeRef:`typeRef`};function ct(e){return I.isInstance(e,st.$type)}var lt={$type:`StringLiteral`,value:`value`},ut={$type:`TerminalAlternatives`,cardinality:`cardinality`,elements:`elements`,lookahead:`lookahead`,parenthesized:`parenthesized`};function dt(e){return I.isInstance(e,ut.$type)}var ft={$type:`TerminalElement`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`},pt={$type:`TerminalGroup`,cardinality:`cardinality`,elements:`elements`,lookahead:`lookahead`,parenthesized:`parenthesized`};function mt(e){return I.isInstance(e,pt.$type)}var ht={$type:`TerminalRule`,definition:`definition`,fragment:`fragment`,hidden:`hidden`,name:`name`,type:`type`};function gt(e){return I.isInstance(e,ht.$type)}var _t={$type:`TerminalRuleCall`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`,rule:`rule`};function vt(e){return I.isInstance(e,_t.$type)}var yt={$type:`Type`,name:`name`,type:`type`};function bt(e){return I.isInstance(e,yt.$type)}var xt={$type:`TypeAttribute`,defaultValue:`defaultValue`,isOptional:`isOptional`,name:`name`,type:`type`},St={$type:`TypeDefinition`},Ct={$type:`UnionType`,types:`types`},wt={$type:`UnorderedGroup`,cardinality:`cardinality`,elements:`elements`};function Tt(e){return I.isInstance(e,wt.$type)}var Et={$type:`UntilToken`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`,terminal:`terminal`};function Dt(e){return I.isInstance(e,Et.$type)}var Ot={$type:`ValueLiteral`},kt={$type:`Wildcard`,cardinality:`cardinality`,lookahead:`lookahead`,parenthesized:`parenthesized`};function At(e){return I.isInstance(e,kt.$type)}var jt=class extends m{constructor(){super(...arguments),this.types={AbstractElement:{name:M.$type,properties:{cardinality:{name:M.cardinality,optional:!0}},superTypes:[]},AbstractParserRule:{name:se.$type,properties:{},superTypes:[ce.$type,P.$type]},AbstractRule:{name:ce.$type,properties:{},superTypes:[]},AbstractType:{name:P.$type,properties:{},superTypes:[]},Action:{name:F.$type,properties:{cardinality:{name:F.cardinality,optional:!0},feature:{name:F.feature,optional:!0},inferredType:{name:F.inferredType,optional:!0},operator:{name:F.operator,optional:!0},type:{name:F.type,referenceType:P.$type,optional:!0}},superTypes:[M.$type]},Alternatives:{name:ue.$type,properties:{cardinality:{name:ue.cardinality,optional:!0},elements:{name:ue.elements,defaultValue:[]}},superTypes:[M.$type]},ArrayLiteral:{name:fe.$type,properties:{elements:{name:fe.elements,defaultValue:[]}},superTypes:[Ot.$type]},ArrayType:{name:pe.$type,properties:{elementType:{name:pe.elementType}},superTypes:[St.$type]},Assignment:{name:me.$type,properties:{cardinality:{name:me.cardinality,optional:!0},feature:{name:me.feature},operator:{name:me.operator},predicate:{name:me.predicate,optional:!0},terminal:{name:me.terminal}},superTypes:[M.$type]},BooleanLiteral:{name:ge.$type,properties:{true:{name:ge.true,defaultValue:!1}},superTypes:[be.$type,Ot.$type]},CharacterRange:{name:ve.$type,properties:{cardinality:{name:ve.cardinality,optional:!0},left:{name:ve.left},lookahead:{name:ve.lookahead,optional:!0},parenthesized:{name:ve.parenthesized,defaultValue:!1,optional:!0},right:{name:ve.right,optional:!0}},superTypes:[ft.$type]},Condition:{name:be.$type,properties:{},superTypes:[]},Conjunction:{name:xe.$type,properties:{left:{name:xe.left},right:{name:xe.right}},superTypes:[be.$type]},CrossReference:{name:Ce.$type,properties:{cardinality:{name:Ce.cardinality,optional:!0},deprecatedSyntax:{name:Ce.deprecatedSyntax,defaultValue:!1},isMulti:{name:Ce.isMulti,defaultValue:!1},terminal:{name:Ce.terminal,optional:!0},type:{name:Ce.type,referenceType:P.$type}},superTypes:[M.$type]},Disjunction:{name:Te.$type,properties:{left:{name:Te.left},right:{name:Te.right}},superTypes:[be.$type]},EndOfFile:{name:De.$type,properties:{cardinality:{name:De.cardinality,optional:!0}},superTypes:[M.$type]},Grammar:{name:ke.$type,properties:{imports:{name:ke.imports,defaultValue:[]},interfaces:{name:ke.interfaces,defaultValue:[]},isDeclared:{name:ke.isDeclared,defaultValue:!1},name:{name:ke.name,optional:!0},rules:{name:ke.rules,defaultValue:[]},types:{name:ke.types,defaultValue:[]}},superTypes:[]},GrammarImport:{name:Ae.$type,properties:{path:{name:Ae.path}},superTypes:[]},Group:{name:je.$type,properties:{cardinality:{name:je.cardinality,optional:!0},elements:{name:je.elements,defaultValue:[]},guardCondition:{name:je.guardCondition,optional:!0},predicate:{name:je.predicate,optional:!0}},superTypes:[M.$type]},InferredType:{name:Ne.$type,properties:{name:{name:Ne.name}},superTypes:[P.$type]},InfixRule:{name:Fe.$type,properties:{call:{name:Fe.call},dataType:{name:Fe.dataType,optional:!0},inferredType:{name:Fe.inferredType,optional:!0},name:{name:Fe.name},operators:{name:Fe.operators},parameters:{name:Fe.parameters,defaultValue:[]},returnType:{name:Fe.returnType,referenceType:P.$type,optional:!0}},superTypes:[se.$type]},InfixRuleOperatorList:{name:Le.$type,properties:{associativity:{name:Le.associativity,optional:!0},operators:{name:Le.operators,defaultValue:[]}},superTypes:[]},InfixRuleOperators:{name:Re.$type,properties:{precedences:{name:Re.precedences,defaultValue:[]}},superTypes:[]},Interface:{name:ze.$type,properties:{attributes:{name:ze.attributes,defaultValue:[]},name:{name:ze.name},superTypes:{name:ze.superTypes,defaultValue:[],referenceType:P.$type}},superTypes:[P.$type]},Keyword:{name:Ve.$type,properties:{cardinality:{name:Ve.cardinality,optional:!0},predicate:{name:Ve.predicate,optional:!0},value:{name:Ve.value}},superTypes:[M.$type]},NamedArgument:{name:Ue.$type,properties:{calledByName:{name:Ue.calledByName,defaultValue:!1},parameter:{name:Ue.parameter,referenceType:Ye.$type,optional:!0},value:{name:Ue.value}},superTypes:[]},NegatedToken:{name:We.$type,properties:{cardinality:{name:We.cardinality,optional:!0},lookahead:{name:We.lookahead,optional:!0},parenthesized:{name:We.parenthesized,defaultValue:!1,optional:!0},terminal:{name:We.terminal}},superTypes:[ft.$type]},Negation:{name:Ke.$type,properties:{value:{name:Ke.value}},superTypes:[be.$type]},NumberLiteral:{name:Je.$type,properties:{value:{name:Je.value}},superTypes:[Ot.$type]},Parameter:{name:Ye.$type,properties:{name:{name:Ye.name}},superTypes:[]},ParameterReference:{name:Xe.$type,properties:{parameter:{name:Xe.parameter,referenceType:Ye.$type}},superTypes:[be.$type]},ParserRule:{name:Qe.$type,properties:{dataType:{name:Qe.dataType,optional:!0},definition:{name:Qe.definition},entry:{name:Qe.entry,defaultValue:!1},fragment:{name:Qe.fragment,defaultValue:!1},inferredType:{name:Qe.inferredType,optional:!0},name:{name:Qe.name},parameters:{name:Qe.parameters,defaultValue:[]},returnType:{name:Qe.returnType,referenceType:P.$type,optional:!0}},superTypes:[se.$type]},ReferenceType:{name:et.$type,properties:{isMulti:{name:et.isMulti,defaultValue:!1},referenceType:{name:et.referenceType}},superTypes:[St.$type]},RegexToken:{name:tt.$type,properties:{cardinality:{name:tt.cardinality,optional:!0},lookahead:{name:tt.lookahead,optional:!0},parenthesized:{name:tt.parenthesized,defaultValue:!1,optional:!0},regex:{name:tt.regex}},superTypes:[ft.$type]},ReturnType:{name:rt.$type,properties:{name:{name:rt.name}},superTypes:[]},RuleCall:{name:at.$type,properties:{arguments:{name:at.arguments,defaultValue:[]},cardinality:{name:at.cardinality,optional:!0},predicate:{name:at.predicate,optional:!0},rule:{name:at.rule,referenceType:ce.$type}},superTypes:[M.$type]},SimpleType:{name:st.$type,properties:{primitiveType:{name:st.primitiveType,optional:!0},stringType:{name:st.stringType,optional:!0},typeRef:{name:st.typeRef,referenceType:P.$type,optional:!0}},superTypes:[St.$type]},StringLiteral:{name:lt.$type,properties:{value:{name:lt.value}},superTypes:[Ot.$type]},TerminalAlternatives:{name:ut.$type,properties:{cardinality:{name:ut.cardinality,optional:!0},elements:{name:ut.elements,defaultValue:[]},lookahead:{name:ut.lookahead,optional:!0},parenthesized:{name:ut.parenthesized,defaultValue:!1,optional:!0}},superTypes:[ft.$type]},TerminalElement:{name:ft.$type,properties:{cardinality:{name:ft.cardinality,optional:!0},lookahead:{name:ft.lookahead,optional:!0},parenthesized:{name:ft.parenthesized,defaultValue:!1,optional:!0}},superTypes:[M.$type]},TerminalGroup:{name:pt.$type,properties:{cardinality:{name:pt.cardinality,optional:!0},elements:{name:pt.elements,defaultValue:[]},lookahead:{name:pt.lookahead,optional:!0},parenthesized:{name:pt.parenthesized,defaultValue:!1,optional:!0}},superTypes:[ft.$type]},TerminalRule:{name:ht.$type,properties:{definition:{name:ht.definition},fragment:{name:ht.fragment,defaultValue:!1},hidden:{name:ht.hidden,defaultValue:!1},name:{name:ht.name},type:{name:ht.type,optional:!0}},superTypes:[ce.$type]},TerminalRuleCall:{name:_t.$type,properties:{cardinality:{name:_t.cardinality,optional:!0},lookahead:{name:_t.lookahead,optional:!0},parenthesized:{name:_t.parenthesized,defaultValue:!1,optional:!0},rule:{name:_t.rule,referenceType:ht.$type}},superTypes:[ft.$type]},Type:{name:yt.$type,properties:{name:{name:yt.name},type:{name:yt.type}},superTypes:[P.$type]},TypeAttribute:{name:xt.$type,properties:{defaultValue:{name:xt.defaultValue,optional:!0},isOptional:{name:xt.isOptional,defaultValue:!1},name:{name:xt.name},type:{name:xt.type}},superTypes:[]},TypeDefinition:{name:St.$type,properties:{},superTypes:[]},UnionType:{name:Ct.$type,properties:{types:{name:Ct.types,defaultValue:[]}},superTypes:[St.$type]},UnorderedGroup:{name:wt.$type,properties:{cardinality:{name:wt.cardinality,optional:!0},elements:{name:wt.elements,defaultValue:[]}},superTypes:[M.$type]},UntilToken:{name:Et.$type,properties:{cardinality:{name:Et.cardinality,optional:!0},lookahead:{name:Et.lookahead,optional:!0},parenthesized:{name:Et.parenthesized,defaultValue:!1,optional:!0},terminal:{name:Et.terminal}},superTypes:[ft.$type]},ValueLiteral:{name:Ot.$type,properties:{},superTypes:[]},Wildcard:{name:kt.$type,properties:{cardinality:{name:kt.cardinality,optional:!0},lookahead:{name:kt.lookahead,optional:!0},parenthesized:{name:kt.parenthesized,defaultValue:!1,optional:!0}},superTypes:[ft.$type]}}}},I=new jt;function Mt(e){let t=e,n=!1;for(;t;){let e=T(t.grammarSource,$e);if(e&&e.dataType)t=t.container,n=!0;else if(n)return t;else return}}function Nt(e){return new te(e,e=>h(e)?e.content:[],{includeRoot:!0})}function Pt(e){return Nt(e).filter(g)}function Ft(e,t){for(;e.container;)if(e=e.container,e===t)return!0;return!1}function It(e){return{start:{character:e.startColumn-1,line:e.startLine-1},end:{character:e.endColumn,line:e.endLine-1}}}function Lt(e){if(!e)return;let{offset:t,end:n,range:r}=e;return{range:r,offset:t,end:n,length:n-t}}var Rt;(function(e){e[e.Before=0]=`Before`,e[e.After=1]=`After`,e[e.OverlapFront=2]=`OverlapFront`,e[e.OverlapBack=3]=`OverlapBack`,e[e.Inside=4]=`Inside`,e[e.Outside=5]=`Outside`})(Rt||={});function zt(e,t){if(e.end.line<t.start.line||e.end.line===t.start.line&&e.end.character<=t.start.character)return Rt.Before;if(e.start.line>t.end.line||e.start.line===t.end.line&&e.start.character>=t.end.character)return Rt.After;let n=e.start.line>t.start.line||e.start.line===t.start.line&&e.start.character>=t.start.character,r=e.end.line<t.end.line||e.end.line===t.end.line&&e.end.character<=t.end.character;return n&&r?Rt.Inside:n?Rt.OverlapBack:r?Rt.OverlapFront:Rt.Outside}function Bt(e,t){return zt(e,t)>Rt.After}var Vt=/^[\w\p{L}]$/u;function Ht(e,t,n=Vt){if(e){if(t>0){let r=t-e.offset,i=e.text.charAt(r);n.test(i)||t--}return Gt(e,t)}}function Ut(e,t){if(e){let n=Jt(e,!0);if(n&&Wt(n,t))return n;if(_(e)){let n=e.content.findIndex(e=>!e.hidden);for(let r=n-1;r>=0;r--){let n=e.content[r];if(Wt(n,t))return n}}}}function Wt(e,t){return g(e)&&t.includes(e.tokenType.name)}function Gt(e,t){if(g(e))return e;if(h(e)){let n=qt(e,t,!1);if(n)return Gt(n,t)}}function Kt(e,t){if(g(e))return e;if(h(e)){let n=qt(e,t,!0);if(n)return Kt(n,t)}}function qt(e,t,n){let r=0,i=e.content.length-1,a;for(;r<=i;){let o=Math.floor((r+i)/2),s=e.content[o];if(s.offset<=t&&s.end>t)return s;s.end<=t?(a=n?s:void 0,r=o+1):i=o-1}return a}function Jt(e,t=!0){for(;e.container;){let n=e.container,r=n.content.indexOf(e);for(;r>0;){r--;let e=n.content[r];if(t||!e.hidden)return e}e=n}}var Yt=class extends Error{constructor(e,t){super(e?`${t} at ${e.range.start.line}:${e.range.start.character}`:t)}};function Xt(e,t=`Error: Got unexpected value.`){throw Error(t)}function L(e){return e.charCodeAt(0)}function Zt(e,t){Array.isArray(e)?e.forEach(function(e){t.push(e)}):t.push(e)}function Qt(e,t){if(e[t]===!0)throw`duplicate flag `+t;e[t],e[t]=!0}function $t(e){if(e===void 0)throw Error(`Internal Error - Should never get here!`);return!0}function en(){throw Error(`Internal Error - Should never get here!`)}function tn(e){return e.type===`Character`}var nn=[];for(let e=L(`0`);e<=L(`9`);e++)nn.push(e);var rn=[L(`_`)].concat(nn);for(let e=L(`a`);e<=L(`z`);e++)rn.push(e);for(let e=L(`A`);e<=L(`Z`);e++)rn.push(e);var an=[L(` `),L(`\f`),L(`
 `),L(`\r`),L(`	`),L(`\v`),L(`	`),L(`\xA0`),L(` `),L(` `),L(` `),L(` `),L(` `),L(` `),L(` `),L(` `),L(` `),L(` `),L(` `),L(` `),L(`\u2028`),L(`\u2029`),L(` `),L(` `),L(`　`),L(`﻿`)],on=/[0-9a-fA-F]/,sn=/[0-9]/,cn=/[1-9]/,ln=class{constructor(){this.idx=0,this.input=``,this.groupIdx=0}saveState(){return{idx:this.idx,input:this.input,groupIdx:this.groupIdx}}restoreState(e){this.idx=e.idx,this.input=e.input,this.groupIdx=e.groupIdx}pattern(e){this.idx=0,this.input=e,this.groupIdx=0,this.consumeChar(`/`);let t=this.disjunction();this.consumeChar(`/`);let n={type:`Flags`,loc:{begin:this.idx,end:e.length},global:!1,ignoreCase:!1,multiLine:!1,unicode:!1,sticky:!1};for(;this.isRegExpFlag();)switch(this.popChar()){case`g`:Qt(n,`global`);break;case`i`:Qt(n,`ignoreCase`);break;case`m`:Qt(n,`multiLine`);break;case`u`:Qt(n,`unicode`);break;case`y`:Qt(n,`sticky`);break}if(this.idx!==this.input.length)throw Error(`Redundant input: `+this.input.substring(this.idx));return{type:`Pattern`,flags:n,value:t,loc:this.loc(0)}}disjunction(){let e=[],t=this.idx;for(e.push(this.alternative());this.peekChar()===`|`;)this.consumeChar(`|`),e.push(this.alternative());return{type:`Disjunction`,value:e,loc:this.loc(t)}}alternative(){let e=[],t=this.idx;for(;this.isTerm();)e.push(this.term());return{type:`Alternative`,value:e,loc:this.loc(t)}}term(){return this.isAssertion()?this.assertion():this.atom()}assertion(){let e=this.idx;switch(this.popChar()){case`^`:return{type:`StartAnchor`,loc:this.loc(e)};case`$`:return{type:`EndAnchor`,loc:this.loc(e)};case`\\`:switch(this.popChar()){case`b`:return{type:`WordBoundary`,loc:this.loc(e)};case`B`:return{type:`NonWordBoundary`,loc:this.loc(e)}}throw Error(`Invalid Assertion Escape`);case`(`:this.consumeChar(`?`);let t;switch(this.popChar()){case`=`:t=`Lookahead`;break;case`!`:t=`NegativeLookahead`;break;case`<`:switch(this.popChar()){case`=`:t=`Lookbehind`;break;case`!`:t=`NegativeLookbehind`}break}$t(t);let n=this.disjunction();return this.consumeChar(`)`),{type:t,value:n,loc:this.loc(e)}}return en()}quantifier(e=!1){let t,n=this.idx;switch(this.popChar()){case`*`:t={atLeast:0,atMost:1/0};break;case`+`:t={atLeast:1,atMost:1/0};break;case`?`:t={atLeast:0,atMost:1};break;case`{`:let n=this.integerIncludingZero();switch(this.popChar()){case`}`:t={atLeast:n,atMost:n};break;case`,`:let e;this.isDigit()?(e=this.integerIncludingZero(),t={atLeast:n,atMost:e}):t={atLeast:n,atMost:1/0},this.consumeChar(`}`);break}if(e===!0&&t===void 0)return;$t(t);break}if(!(e===!0&&t===void 0)&&$t(t))return this.peekChar(0)===`?`?(this.consumeChar(`?`),t.greedy=!1):t.greedy=!0,t.type=`Quantifier`,t.loc=this.loc(n),t}atom(){let e,t=this.idx;switch(this.peekChar()){case`.`:e=this.dotAll();break;case`\\`:e=this.atomEscape();break;case`[`:e=this.characterClass();break;case`(`:e=this.group();break}return e===void 0&&this.isPatternCharacter()&&(e=this.patternCharacter()),$t(e)?(e.loc=this.loc(t),this.isQuantifier()&&(e.quantifier=this.quantifier()),e):en()}dotAll(){return this.consumeChar(`.`),{type:`Set`,complement:!0,value:[L(`
 `),L(`\r`),L(`\u2028`),L(`\u2029`)]}}atomEscape(){switch(this.consumeChar(`\\`),this.peekChar()){case`1`:case`2`:case`3`:case`4`:case`5`:case`6`:case`7`:case`8`:case`9`:return this.decimalEscapeAtom();case`d`:case`D`:case`s`:case`S`:case`w`:case`W`:return this.characterClassEscape();case`f`:case`n`:case`r`:case`t`:case`v`:return this.controlEscapeAtom();case`c`:return this.controlLetterEscapeAtom();case`0`:return this.nulCharacterAtom();case`x`:return this.hexEscapeSequenceAtom();case`u`:return this.regExpUnicodeEscapeSequenceAtom();default:return this.identityEscapeAtom()}}decimalEscapeAtom(){return{type:`GroupBackReference`,value:this.positiveInteger()}}characterClassEscape(){let e,t=!1;switch(this.popChar()){case`d`:e=nn;break;case`D`:e=nn,t=!0;break;case`s`:e=an;break;case`S`:e=an,t=!0;break;case`w`:e=rn;break;case`W`:e=rn,t=!0;break}return $t(e)?{type:`Set`,value:e,complement:t}:en()}controlEscapeAtom(){let e;switch(this.popChar()){case`f`:e=L(`\f`);break;case`n`:e=L(`
 `);break;case`r`:e=L(`\r`);break;case`t`:e=L(`	`);break;case`v`:e=L(`\v`);break}return $t(e)?{type:`Character`,value:e}:en()}controlLetterEscapeAtom(){this.consumeChar(`c`);let e=this.popChar();if(/[a-zA-Z]/.test(e)===!1)throw Error(`Invalid `);return{type:`Character`,value:e.toUpperCase().charCodeAt(0)-64}}nulCharacterAtom(){return this.consumeChar(`0`),{type:`Character`,value:L(`\0`)}}hexEscapeSequenceAtom(){return this.consumeChar(`x`),this.parseHexDigits(2)}regExpUnicodeEscapeSequenceAtom(){return this.consumeChar(`u`),this.parseHexDigits(4)}identityEscapeAtom(){return{type:`Character`,value:L(this.popChar())}}classPatternCharacterAtom(){switch(this.peekChar()){case`
@@ -220,88 +220,83 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
                 "value": "{"
               },
               {
-                "$type": "Group",
+                "$type": "Alternatives",
                 "elements": [
                   {
-                    "$type": "Keyword",
-                    "value": "convention"
+                    "$type": "Group",
+                    "elements": [
+                      {
+                        "$type": "Keyword",
+                        "value": "convention"
+                      },
+                      {
+                        "$type": "Assignment",
+                        "feature": "convention",
+                        "operator": "=",
+                        "terminal": {
+                          "$type": "Alternatives",
+                          "elements": [
+                            {
+                              "$type": "Keyword",
+                              "value": "center"
+                            },
+                            {
+                              "$type": "Keyword",
+                              "value": "outer"
+                            }
+                          ]
+                        }
+                      }
+                    ]
                   },
                   {
                     "$type": "Assignment",
-                    "feature": "convention",
+                    "feature": "units",
                     "operator": "=",
                     "terminal": {
-                      "$type": "Alternatives",
-                      "elements": [
-                        {
-                          "$type": "Keyword",
-                          "value": "center"
-                        },
-                        {
-                          "$type": "Keyword",
-                          "value": "outer"
-                        }
-                      ]
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@27"
+                      },
+                      "arguments": []
                     }
-                  }
-                ],
-                "cardinality": "?"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "units",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@27"
                   },
-                  "arguments": []
-                },
-                "cardinality": "?"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "site",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@28"
+                  {
+                    "$type": "Assignment",
+                    "feature": "site",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@28"
+                      },
+                      "arguments": []
+                    }
                   },
-                  "arguments": []
-                },
-                "cardinality": "?"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "defaults",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@29"
+                  {
+                    "$type": "Assignment",
+                    "feature": "defaults",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@29"
+                      },
+                      "arguments": []
+                    }
                   },
-                  "arguments": []
-                },
-                "cardinality": "?"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "template",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@7"
+                  {
+                    "$type": "Assignment",
+                    "feature": "template",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@7"
+                      },
+                      "arguments": []
+                    }
                   },
-                  "arguments": []
-                },
-                "cardinality": "?"
-              },
-              {
-                "$type": "Alternatives",
-                "elements": [
                   {
                     "$type": "Assignment",
                     "feature": "imports",
@@ -1137,118 +1132,98 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": "{"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "title"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "title",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "title"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "description"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "description",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "style"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "style",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "roof"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "roof",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "tags"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "tags",
-                "operator": "+=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
+                  {
+                    "$type": "Assignment",
+                    "feature": "title",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
                 "$type": "Group",
                 "elements": [
                   {
                     "$type": "Keyword",
-                    "value": ","
+                    "value": "description"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "description",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "style"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "style",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "roof"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "roof",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "tags"
                   },
                   {
                     "$type": "Assignment",
@@ -1261,38 +1236,37 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
                       },
                       "arguments": []
                     }
-                  }
-                ],
-                "cardinality": "*"
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "thumbnails"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "thumbs",
-                "operator": "+=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
                   },
-                  "arguments": []
-                }
+                  {
+                    "$type": "Group",
+                    "elements": [
+                      {
+                        "$type": "Keyword",
+                        "value": ","
+                      },
+                      {
+                        "$type": "Assignment",
+                        "feature": "tags",
+                        "operator": "+=",
+                        "terminal": {
+                          "$type": "RuleCall",
+                          "rule": {
+                            "$ref": "#/rules@80"
+                          },
+                          "arguments": []
+                        }
+                      }
+                    ],
+                    "cardinality": "*"
+                  }
+                ]
               },
               {
                 "$type": "Group",
                 "elements": [
                   {
                     "$type": "Keyword",
-                    "value": ","
+                    "value": "thumbnails"
                   },
                   {
                     "$type": "Assignment",
@@ -1305,58 +1279,78 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
                       },
                       "arguments": []
                     }
+                  },
+                  {
+                    "$type": "Group",
+                    "elements": [
+                      {
+                        "$type": "Keyword",
+                        "value": ","
+                      },
+                      {
+                        "$type": "Assignment",
+                        "feature": "thumbs",
+                        "operator": "+=",
+                        "terminal": {
+                          "$type": "RuleCall",
+                          "rule": {
+                            "$ref": "#/rules@80"
+                          },
+                          "arguments": []
+                        }
+                      }
+                    ],
+                    "cardinality": "*"
                   }
-                ],
-                "cardinality": "*"
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "min_plot"
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": "("
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "minW",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ","
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "minL",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ")"
+                  }
+                ]
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "min_plot"
-              },
-              {
-                "$type": "Keyword",
-                "value": "("
-              },
-              {
-                "$type": "Assignment",
-                "feature": "minW",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ","
-              },
-              {
-                "$type": "Assignment",
-                "feature": "minL",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ")"
-              }
-            ],
-            "cardinality": "?"
+            "cardinality": "*"
           },
           {
             "$type": "Keyword",
@@ -2945,92 +2939,94 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": "{"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "floor_height"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "floor_height"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "floor_height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "floor_height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "wall_height"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "wall_height"
+                  {
+                    "$type": "Assignment",
+                    "feature": "wall_height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "wall_height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "slab_thickness"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "slab_thickness"
+                  {
+                    "$type": "Assignment",
+                    "feature": "slab_thickness",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "slab_thickness",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "wall_thickness"
                   },
-                  "arguments": []
-                }
+                  {
+                    "$type": "Assignment",
+                    "feature": "wall_thickness",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "wall_thickness"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "wall_thickness",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
+            "cardinality": "*"
           },
           {
             "$type": "Keyword",
@@ -3194,48 +3190,52 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
                 }
               },
               {
-                "$type": "Group",
+                "$type": "Alternatives",
                 "elements": [
                   {
-                    "$type": "Keyword",
-                    "value": "layer"
+                    "$type": "Group",
+                    "elements": [
+                      {
+                        "$type": "Keyword",
+                        "value": "layer"
+                      },
+                      {
+                        "$type": "Assignment",
+                        "feature": "exposeLayer",
+                        "operator": "=",
+                        "terminal": {
+                          "$type": "RuleCall",
+                          "rule": {
+                            "$ref": "#/rules@80"
+                          },
+                          "arguments": []
+                        }
+                      }
+                    ]
                   },
                   {
-                    "$type": "Assignment",
-                    "feature": "exposeLayer",
-                    "operator": "=",
-                    "terminal": {
-                      "$type": "RuleCall",
-                      "rule": {
-                        "$ref": "#/rules@80"
+                    "$type": "Group",
+                    "elements": [
+                      {
+                        "$type": "Keyword",
+                        "value": "label"
                       },
-                      "arguments": []
-                    }
+                      {
+                        "$type": "Assignment",
+                        "feature": "exposeLabel",
+                        "operator": "=",
+                        "terminal": {
+                          "$type": "RuleCall",
+                          "rule": {
+                            "$ref": "#/rules@80"
+                          },
+                          "arguments": []
+                        }
+                      }
+                    ]
                   }
                 ],
-                "cardinality": "?"
-              },
-              {
-                "$type": "Group",
-                "elements": [
-                  {
-                    "$type": "Keyword",
-                    "value": "label"
-                  },
-                  {
-                    "$type": "Assignment",
-                    "feature": "exposeLabel",
-                    "operator": "=",
-                    "terminal": {
-                      "$type": "RuleCall",
-                      "rule": {
-                        "$ref": "#/rules@80"
-                      },
-                      "arguments": []
-                    }
-                  }
-                ],
-                "cardinality": "?"
+                "cardinality": "*"
               }
             ],
             "cardinality": "?"
@@ -3245,21 +3245,20 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": "{"
           },
           {
-            "$type": "Assignment",
-            "feature": "params",
-            "operator": "+=",
-            "terminal": {
-              "$type": "RuleCall",
-              "rule": {
-                "$ref": "#/rules@32"
-              },
-              "arguments": []
-            },
-            "cardinality": "*"
-          },
-          {
             "$type": "Alternatives",
             "elements": [
+              {
+                "$type": "Assignment",
+                "feature": "params",
+                "operator": "+=",
+                "terminal": {
+                  "$type": "RuleCall",
+                  "rule": {
+                    "$ref": "#/rules@32"
+                  },
+                  "arguments": []
+                }
+              },
               {
                 "$type": "Assignment",
                 "feature": "vars",
@@ -3283,21 +3282,20 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
                   },
                   "arguments": []
                 }
+              },
+              {
+                "$type": "Assignment",
+                "feature": "objects",
+                "operator": "+=",
+                "terminal": {
+                  "$type": "RuleCall",
+                  "rule": {
+                    "$ref": "#/rules@34"
+                  },
+                  "arguments": []
+                }
               }
             ],
-            "cardinality": "*"
-          },
-          {
-            "$type": "Assignment",
-            "feature": "objects",
-            "operator": "+=",
-            "terminal": {
-              "$type": "RuleCall",
-              "rule": {
-                "$ref": "#/rules@34"
-              },
-              "arguments": []
-            },
             "cardinality": "*"
           },
           {
@@ -3461,92 +3459,94 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             }
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "height"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "height"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "wall_height"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "wall_height"
+                  {
+                    "$type": "Assignment",
+                    "feature": "wall_height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "wall_height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "slab_thickness"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "slab_thickness"
+                  {
+                    "$type": "Assignment",
+                    "feature": "slab_thickness",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "slab_thickness",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "enabled"
                   },
-                  "arguments": []
-                }
+                  {
+                    "$type": "Assignment",
+                    "feature": "enabled",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "enabled"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "enabled",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
+            "cardinality": "*"
           },
           {
             "$type": "Keyword",
@@ -3818,55 +3818,59 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": ")"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "rotation"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "rotation"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "rotation",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "rotation",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "scale"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "scale"
+                  {
+                    "$type": "Assignment",
+                    "feature": "scale",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "scale",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
+            "cardinality": "*"
           },
           {
             "$type": "Group",
@@ -4399,7 +4403,8 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "rule": {
               "$ref": "#/rules@46"
             },
-            "arguments": []
+            "arguments": [],
+            "cardinality": "*"
           }
         ]
       },
@@ -4528,9 +4533,9 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
     {
       "$type": "ParserRule",
       "fragment": true,
-      "name": "Common",
+      "name": "CommonFields",
       "definition": {
-        "$type": "Group",
+        "$type": "Alternatives",
         "elements": [
           {
             "$type": "Group",
@@ -4551,8 +4556,7 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
                   "arguments": []
                 }
               }
-            ],
-            "cardinality": "?"
+            ]
           },
           {
             "$type": "Group",
@@ -4573,8 +4577,7 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
                   "arguments": []
                 }
               }
-            ],
-            "cardinality": "?"
+            ]
           },
           {
             "$type": "Group",
@@ -4595,8 +4598,7 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
                   "arguments": []
                 }
               }
-            ],
-            "cardinality": "?"
+            ]
           }
         ]
       },
@@ -4733,55 +4735,59 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": ")"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "height"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "height"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "material"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "material"
+                  {
+                    "$type": "Assignment",
+                    "feature": "material",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "material",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
+            "cardinality": "*"
           },
           {
             "$type": "Group",
@@ -5310,99 +5316,101 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": ")"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "height"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "height"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "height_end"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "height_end"
+                  {
+                    "$type": "Assignment",
+                    "feature": "height_end",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "height_end",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "facing"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "facing"
+                  {
+                    "$type": "Assignment",
+                    "feature": "facing",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@52"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "facing",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@52"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "material"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "material"
+                  {
+                    "$type": "Assignment",
+                    "feature": "material",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "material",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
+            "cardinality": "*"
           },
           {
             "$type": "Group",
@@ -5568,33 +5576,38 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": ")"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "height"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "height"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
+            "cardinality": "*"
           }
         ]
       },
@@ -5715,33 +5728,38 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": ")"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "height"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "height"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
+            "cardinality": "*"
           }
         ]
       },
@@ -5862,33 +5880,38 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": ")"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "thickness"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "thickness"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "thickness",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "thickness",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
+            "cardinality": "*"
           }
         ]
       },
@@ -6025,33 +6048,38 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             }
           },
           {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
-          },
-          {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "material"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "material"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "material",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "material",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
+            "cardinality": "*"
           }
         ]
       },
@@ -6172,55 +6200,59 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": ")"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "height"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "height"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "material"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "material"
+                  {
+                    "$type": "Assignment",
+                    "feature": "material",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "material",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
+            "cardinality": "*"
           }
         ]
       },
@@ -6425,199 +6457,197 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             }
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "climb"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "climb",
-                "operator": "=",
-                "terminal": {
-                  "$type": "Alternatives",
-                  "elements": [
-                    {
-                      "$type": "Keyword",
-                      "value": "up"
-                    },
-                    {
-                      "$type": "Keyword",
-                      "value": "down"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "climb"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "climb",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "Alternatives",
+                      "elements": [
+                        {
+                          "$type": "Keyword",
+                          "value": "up"
+                        },
+                        {
+                          "$type": "Keyword",
+                          "value": "down"
+                        }
+                      ]
                     }
-                  ]
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "total_height"
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "rise_height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "total_height"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "max_run"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "max_run",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "landing_depth"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "landing_depth",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "landing_thickness"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "landing_thickness",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "turn"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "turn",
-                "operator": "=",
-                "terminal": {
-                  "$type": "Alternatives",
-                  "elements": [
-                    {
-                      "$type": "Keyword",
-                      "value": "clockwise"
-                    },
-                    {
-                      "$type": "Keyword",
-                      "value": "anticlockwise"
+                  {
+                    "$type": "Assignment",
+                    "feature": "rise_height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
                     }
-                  ]
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "flight_gap"
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "flight_gap",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "max_run"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "material"
+                  {
+                    "$type": "Assignment",
+                    "feature": "max_run",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "material",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "landing_depth"
                   },
-                  "arguments": []
-                }
+                  {
+                    "$type": "Assignment",
+                    "feature": "landing_depth",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "landing_thickness"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "landing_thickness",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "turn"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "turn",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "Alternatives",
+                      "elements": [
+                        {
+                          "$type": "Keyword",
+                          "value": "clockwise"
+                        },
+                        {
+                          "$type": "Keyword",
+                          "value": "anticlockwise"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "flight_gap"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "flight_gap",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "material"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "material",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
+            "cardinality": "*"
           }
         ]
       },
@@ -6721,99 +6751,101 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             }
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "turns"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "turns"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "turns",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "turns",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "steps"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "steps"
+                  {
+                    "$type": "Assignment",
+                    "feature": "steps",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "steps",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "tread_thickness"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "tread_thickness"
+                  {
+                    "$type": "Assignment",
+                    "feature": "tread_thickness",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "tread_thickness",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "pole_radius"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "pole_radius"
+                  {
+                    "$type": "Assignment",
+                    "feature": "pole_radius",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "pole_radius",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
+            "cardinality": "*"
           }
         ]
       },
@@ -6954,55 +6986,59 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             }
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "base_z"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "base_z"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "base_z",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "base_z",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "material"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "material"
+                  {
+                    "$type": "Assignment",
+                    "feature": "material",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "material",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
+            "cardinality": "*"
           }
         ]
       },
@@ -7177,145 +7213,146 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": ")"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "rotation"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "rotation"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "rotation",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "rotation",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "scale"
                   },
-                  "arguments": []
-                }
+                  {
+                    "$type": "Assignment",
+                    "feature": "scale",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "anchor_to"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "anchor_to",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "anchor"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "anchor",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@67"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "gap"
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": "("
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "gap_x",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ","
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "gap_y",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ")"
+                  }
+                ]
+              },
+              {
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "scale"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "scale",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "anchor_to"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "anchor_to",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "anchor"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "anchor",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@67"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "gap"
-              },
-              {
-                "$type": "Keyword",
-                "value": "("
-              },
-              {
-                "$type": "Assignment",
-                "feature": "gap_x",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ","
-              },
-              {
-                "$type": "Assignment",
-                "feature": "gap_y",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ")"
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
+            "cardinality": "*"
           }
         ]
       },
@@ -7402,123 +7439,125 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             ]
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "anchor"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "anchor"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "anchor",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@67"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "anchor",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@67"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "gap"
                   },
-                  "arguments": []
-                }
+                  {
+                    "$type": "Keyword",
+                    "value": "("
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "gap_x",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ","
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "gap_y",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ")"
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "rotation"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "rotation",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "scale"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "scale",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "gap"
-              },
-              {
-                "$type": "Keyword",
-                "value": "("
-              },
-              {
-                "$type": "Assignment",
-                "feature": "gap_x",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ","
-              },
-              {
-                "$type": "Assignment",
-                "feature": "gap_y",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ")"
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "rotation"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "rotation",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "scale"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "scale",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
+            "cardinality": "*"
           }
         ]
       },
@@ -7857,56 +7896,39 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             "value": ")"
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "rotation"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "rotation",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "rotation"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "with"
-              },
-              {
-                "$type": "Keyword",
-                "value": "{"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "args",
-                "operator": "+=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@69"
-                  },
-                  "arguments": []
-                }
+                  {
+                    "$type": "Assignment",
+                    "feature": "rotation",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
                 "$type": "Group",
                 "elements": [
                   {
                     "$type": "Keyword",
-                    "value": ","
+                    "value": "with"
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": "{"
                   },
                   {
                     "$type": "Assignment",
@@ -7919,23 +7941,44 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
                       },
                       "arguments": []
                     }
+                  },
+                  {
+                    "$type": "Group",
+                    "elements": [
+                      {
+                        "$type": "Keyword",
+                        "value": ","
+                      },
+                      {
+                        "$type": "Assignment",
+                        "feature": "args",
+                        "operator": "+=",
+                        "terminal": {
+                          "$type": "RuleCall",
+                          "rule": {
+                            "$ref": "#/rules@69"
+                          },
+                          "arguments": []
+                        }
+                      }
+                    ],
+                    "cardinality": "*"
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": "}"
                   }
-                ],
-                "cardinality": "*"
+                ]
               },
               {
-                "$type": "Keyword",
-                "value": "}"
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
+            "cardinality": "*"
           }
         ]
       },
@@ -8075,244 +8118,240 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             }
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "endpoint"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "default_endpoint",
-                "operator": "=",
-                "terminal": {
-                  "$type": "Alternatives",
-                  "elements": [
-                    {
-                      "$type": "Keyword",
-                      "value": "open"
-                    },
-                    {
-                      "$type": "Keyword",
-                      "value": "closed"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "endpoint"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "default_endpoint",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "Alternatives",
+                      "elements": [
+                        {
+                          "$type": "Keyword",
+                          "value": "open"
+                        },
+                        {
+                          "$type": "Keyword",
+                          "value": "closed"
+                        }
+                      ]
                     }
-                  ]
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Assignment",
-            "feature": "slope",
-            "operator": "=",
-            "terminal": {
-              "$type": "RuleCall",
-              "rule": {
-                "$ref": "#/rules@72"
-              },
-              "arguments": []
-            },
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "overhang"
+                  }
+                ]
               },
               {
                 "$type": "Assignment",
-                "feature": "min_overhang",
+                "feature": "slope",
                 "operator": "=",
                 "terminal": {
                   "$type": "RuleCall",
                   "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "slab_thickness"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "slab_thickness",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "parapet"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "parapet_height",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                    "$ref": "#/rules@72"
                   },
                   "arguments": []
                 }
               },
               {
-                "$type": "Keyword",
-                "value": "x"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "overhang"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "min_overhang",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "parapet_thickness",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "slab_thickness"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "gable_wall_thickness"
+                  {
+                    "$type": "Assignment",
+                    "feature": "slab_thickness",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "gable_wall_thickness",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "parapet"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "framing"
+                  {
+                    "$type": "Assignment",
+                    "feature": "parapet_height",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": "x"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "parapet_thickness",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "framing",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@24"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "gable_wall_thickness"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "rafter_pitch"
+                  {
+                    "$type": "Assignment",
+                    "feature": "gable_wall_thickness",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "rafter_pitch",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "framing"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "purlin_pitch"
+                  {
+                    "$type": "Assignment",
+                    "feature": "framing",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@24"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "purlin_pitch",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "rafter_pitch"
                   },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "RuleCall",
-            "rule": {
-              "$ref": "#/rules@46"
-            },
-            "arguments": []
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "material"
+                  {
+                    "$type": "Assignment",
+                    "feature": "rafter_pitch",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "material",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@80"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "purlin_pitch"
                   },
-                  "arguments": []
-                }
+                  {
+                    "$type": "Assignment",
+                    "feature": "purlin_pitch",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "material"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "material",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@80"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "RuleCall",
+                "rule": {
+                  "$ref": "#/rules@46"
+                },
+                "arguments": []
               }
             ],
-            "cardinality": "?"
+            "cardinality": "*"
           },
           {
             "$type": "Keyword",
@@ -8641,402 +8680,394 @@ For Further details.`,r}function lp(e){if(e instanceof or)return`SUBRULE`;if(e i
             ]
           },
           {
-            "$type": "Group",
+            "$type": "Alternatives",
             "elements": [
               {
-                "$type": "Keyword",
-                "value": "high_side"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "shed_high_side",
-                "operator": "=",
-                "terminal": {
-                  "$type": "Alternatives",
-                  "elements": [
-                    {
-                      "$type": "Keyword",
-                      "value": "left"
-                    },
-                    {
-                      "$type": "Keyword",
-                      "value": "right"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "high_side"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "shed_high_side",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "Alternatives",
+                      "elements": [
+                        {
+                          "$type": "Keyword",
+                          "value": "left"
+                        },
+                        {
+                          "$type": "Keyword",
+                          "value": "right"
+                        }
+                      ]
                     }
-                  ]
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "start_endpoint"
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "start_endpoint",
-                "operator": "=",
-                "terminal": {
-                  "$type": "Alternatives",
-                  "elements": [
-                    {
-                      "$type": "Keyword",
-                      "value": "open"
-                    },
-                    {
-                      "$type": "Keyword",
-                      "value": "closed"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "start_endpoint"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "start_endpoint",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "Alternatives",
+                      "elements": [
+                        {
+                          "$type": "Keyword",
+                          "value": "open"
+                        },
+                        {
+                          "$type": "Keyword",
+                          "value": "closed"
+                        }
+                      ]
                     }
-                  ]
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "end_endpoint"
+                  }
+                ]
               },
               {
-                "$type": "Assignment",
-                "feature": "end_endpoint",
-                "operator": "=",
-                "terminal": {
-                  "$type": "Alternatives",
-                  "elements": [
-                    {
-                      "$type": "Keyword",
-                      "value": "open"
-                    },
-                    {
-                      "$type": "Keyword",
-                      "value": "closed"
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "end_endpoint"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "end_endpoint",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "Alternatives",
+                      "elements": [
+                        {
+                          "$type": "Keyword",
+                          "value": "open"
+                        },
+                        {
+                          "$type": "Keyword",
+                          "value": "closed"
+                        }
+                      ]
                     }
-                  ]
-                }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "hip_setback"
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": "("
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "hip_setback_start",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ","
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "hip_setback_end",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ")"
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "gable_overhang"
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": "("
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "gable_overhang_start",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ","
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "gable_overhang_end",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ")"
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "hip_ridge_extension"
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": "("
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "hip_ridge_extension_start",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ","
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "hip_ridge_extension_end",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  },
+                  {
+                    "$type": "Keyword",
+                    "value": ")"
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "overhang"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "min_overhang",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "overhang_start"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "overhang_start",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "overhang_end"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "overhang_end",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "overhang_low"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "overhang_low",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "overhang_high"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "overhang_high",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "overhang_left"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "overhang_left",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "overhang_right"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "overhang_right",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@17"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
+              },
+              {
+                "$type": "Group",
+                "elements": [
+                  {
+                    "$type": "Keyword",
+                    "value": "tie_beams"
+                  },
+                  {
+                    "$type": "Assignment",
+                    "feature": "tie_beam_count",
+                    "operator": "=",
+                    "terminal": {
+                      "$type": "RuleCall",
+                      "rule": {
+                        "$ref": "#/rules@79"
+                      },
+                      "arguments": []
+                    }
+                  }
+                ]
               }
             ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "hip_setback"
-              },
-              {
-                "$type": "Keyword",
-                "value": "("
-              },
-              {
-                "$type": "Assignment",
-                "feature": "hip_setback_start",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ","
-              },
-              {
-                "$type": "Assignment",
-                "feature": "hip_setback_end",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ")"
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "gable_overhang"
-              },
-              {
-                "$type": "Keyword",
-                "value": "("
-              },
-              {
-                "$type": "Assignment",
-                "feature": "gable_overhang_start",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ","
-              },
-              {
-                "$type": "Assignment",
-                "feature": "gable_overhang_end",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ")"
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "hip_ridge_extension"
-              },
-              {
-                "$type": "Keyword",
-                "value": "("
-              },
-              {
-                "$type": "Assignment",
-                "feature": "hip_ridge_extension_start",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ","
-              },
-              {
-                "$type": "Assignment",
-                "feature": "hip_ridge_extension_end",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              },
-              {
-                "$type": "Keyword",
-                "value": ")"
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "overhang"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "min_overhang",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "overhang_start"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "overhang_start",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "overhang_end"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "overhang_end",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "overhang_low"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "overhang_low",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "overhang_high"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "overhang_high",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "overhang_left"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "overhang_left",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "overhang_right"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "overhang_right",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@17"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
-          },
-          {
-            "$type": "Group",
-            "elements": [
-              {
-                "$type": "Keyword",
-                "value": "tie_beams"
-              },
-              {
-                "$type": "Assignment",
-                "feature": "tie_beam_count",
-                "operator": "=",
-                "terminal": {
-                  "$type": "RuleCall",
-                  "rule": {
-                    "$ref": "#/rules@79"
-                  },
-                  "arguments": []
-                }
-              }
-            ],
-            "cardinality": "?"
+            "cardinality": "*"
           }
         ]
       },
