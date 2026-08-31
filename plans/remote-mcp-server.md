@@ -108,15 +108,22 @@ with OAuth DCR.)
 The server is stateless and not tied to any open tab, so "author here, view in the
 app" needs an explicit bridge. Options, cheapest first:
 
-1. **Open-in-app URL** — `wadi_open_in_app` returns a link the user clicks to load
-   the WDL in the full app. Reuse the existing share-link encoding
-   (`#w1=…`, commit c79c545) or a fresh `?wdl=` param. NOTE: verify the share-link
-   DECODE path first — there is a known viewer gunzip bug
-   (`Response(blob.stream())` "Failed to fetch", see the share/open-in-app memory).
-   Fix or route around it before relying on this.
-2. **Return the `.wdl` text** — the agent shows it; the user saves it and opens it in
-   the app (drag-drop / Open). Always works, no link needed.
+1. **Copy-paste the WDL text (the v1 handoff — DECIDED).** The agent returns the WDL;
+   the user pastes it into the app's always-on WDL editor and hits Apply. It compiles
+   and renders in place (no reload, camera preserved), and Save then writes a proper
+   `.wadi`. Works today with zero new plumbing. Note the app does NOT open a raw `.wdl`
+   FILE (only `.wadi` / legacy JSON), so this is paste-into-the-editor, not
+   save-a-file-and-open-it — and loose `.wdl` files are being deprecated anyway.
+2. **Open-in-app URL (deferred, not needed for v1).** `wadi_open_in_app` returns a
+   link that opens the app with the WDL loaded (reuse the `#w1=…` share encoding,
+   commit c79c545, or a fresh `?wdl=` param). Downsides that make it worse than paste
+   for iteration: each edit needs a NEW link and a click, and clicking RELOADS (loses
+   view state, spawns tabs); it also depends on first fixing the known share-link
+   DECODE bug (`Response(blob.stream())` "Failed to fetch", see the share/open-in-app
+   memory). Skip for v1; revisit only if a one-click first-open is wanted.
 3. **Live co-editing** — the session-relay bridge, fully specified as Phase 2 below.
+   This is what actually removes the per-edit manual step; the v1 copy-paste is its
+   manual precursor.
 
 ## Phase 2 — live co-editing bridge (session relay)
 
@@ -179,10 +186,10 @@ retained after the session ends.
 ## Phasing
 
 - **v1 (Worker, stateless, 2D):** Streamable HTTP transport + the reuse tools +
-  resvg-wasm 2D previews + `wadi_open_in_app` returning a link (once the decode path
-  is verified) and/or the raw `.wdl`. Deploy to `mcp.wadi.house`. Document the Gemini
-  "Add a custom app" steps in the README. The local stdio `wadi-mcp` keeps shipping
-  unchanged.
+  resvg-wasm 2D previews. Handoff = the agent returns the WDL, the user copy-pastes it
+  into the app's WDL editor (no open-in-app link in v1 — see Handoff). Deploy to
+  `mcp.wadi.house`. Document the Gemini "Add a custom app" steps in the README. The
+  local stdio `wadi-mcp` keeps shipping unchanged.
 - **v1.1:** 3D previews (Node host or render worker) if wanted.
 - **v2 (live co-editing):** the session-relay bridge above — Durable Object session
   store, session-scoped MCP tools, and the app's "connect to session" subscribe mode.
@@ -191,9 +198,9 @@ retained after the session ends.
 ## Open decisions
 
 1. Host: Cloudflare Worker (2D) vs Node (3D) for v1. (Recommend Worker.)
-2. Handoff: fix the share-link decode bug and use open-in-app links, or start with
-   returning raw `.wdl`. (Recommend: return `.wdl` immediately; add the link once
-   decode is verified.)
+2. Handoff: DECIDED — v1 uses copy-paste of the returned WDL into the app's WDL
+   editor. The open-in-app link is deferred (worse for iteration, needs the decode
+   bug fixed); reconsider only if a one-click first-open is wanted.
 3. Domain: `mcp.wadi.house` (needs a DNS record + a Worker route).
 4. Keep the reference/primer text single-sourced across `wadi_reference`,
    `window.wadi.help()`, and `docs/llms.txt` so they never drift.
