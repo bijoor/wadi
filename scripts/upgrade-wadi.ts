@@ -108,6 +108,11 @@ function setThumbs(
   return thumbs;
 }
 
+// A FIXED timestamp so re-upgrading identical content yields byte-identical bytes
+// (fflate stamps entries with the current time by default — that would make every
+// re-publish a spurious git diff / R2 re-upload).
+const FIXED_MTIME = new Date("2024-01-01T00:00:00Z");
+
 function buildBundle(
   wdl: string,
   thumbs: Record<string, Uint8Array>,
@@ -117,11 +122,12 @@ function buildBundle(
   const manifest: Record<string, unknown> = { format: "wadi-bundle", version: 2, main: "model.wdl" };
   if (meta !== undefined) manifest.meta = meta;
   if (cover) manifest.cover = cover;
-  const entries: Record<string, Uint8Array> = {
-    "wadi.json": strToU8(JSON.stringify(manifest, null, 2) + "\n"),
-    "model.wdl": strToU8(wdl),
-    ...thumbs,
+  const attr = { mtime: FIXED_MTIME };
+  const entries: Record<string, [Uint8Array, typeof attr]> = {
+    "wadi.json": [strToU8(JSON.stringify(manifest, null, 2) + "\n"), attr],
+    "model.wdl": [strToU8(wdl), attr],
   };
+  for (const [name, data] of Object.entries(thumbs)) entries[name] = [data, attr];
   return zipSync(entries, { level: 6 });
 }
 
