@@ -1,5 +1,22 @@
 [
   {
+    "id": "tiny_home_single_bedroom",
+    "file": "tiny_home_single_bedroom.wadi",
+    "title": "A Tiny One Bedroom House",
+    "description": "A small single bedroom house with living room, kitchen, bathroom and bedroom. A verandah in the front and a nice terrace at the back to relax and enjoy the outdoors",
+    "meta": {
+      "bedrooms": 1,
+      "bathrooms": 1,
+      "floors": 1,
+      "style": "—",
+      "roof": "—",
+      "minWidthFt": 30,
+      "minLengthFt": 40,
+      "parametric": true
+    },
+    "cover": "covers/tiny_home_single_bedroom.jpg"
+  },
+  {
     "id": "blank",
     "file": "blank.wadi",
     "title": "Blank plot",
@@ -33,20 +50,61 @@
     "cover": "covers/family_home.jpg"
   },
   {
+    "id": "large_country_house",
+    "file": "large_country_house.wadi",
+    "title": "Large Country House",
+    "description": "Large four bedroom bungalow with open central courtyard, master bedroom with walk in wardrobe, attached bathrooms for all bedrooms, Verandah and terraces to enjoy the outdoors on all sides. Customizable to a two bedroom single floor option.",
+    "meta": {
+      "bedrooms": 4,
+      "bathrooms": 4,
+      "floors": 2,
+      "style": "—",
+      "roof": "—",
+      "minWidthFt": 30,
+      "minLengthFt": 40,
+      "parametric": true
+    },
+    "cover": "covers/large_country_house.jpg"
+  },
+  {
     "id": "single_story_cottage",
     "file": "single_story_cottage.wadi",
-    "title": "Single-story cottage (parametric)",
+    "title": "Single-story cottage",
     "description": "Fully-parametric Konkan cottage: front verandah, bedroom, central hall (Majghar), living, kitchen, bathroom, and a rear Padvi — hip roof. Resize the plot and the rooms re-flow. Default 30 × 46 ft.",
     "meta": {
       "bedrooms": 1,
       "bathrooms": 1,
       "floors": 1,
       "style": "Konkan",
-      "roof": "Hip",
-      "minWidthFt": 22,
-      "minLengthFt": 34,
-      "parametric": true
+      "roof": "Flexible",
+      "minWidthFt": 30,
+      "minLengthFt": 40,
+      "parametric": true,
+      "tags": [
+        "2-bed",
+        "1-floor",
+        "konkan",
+        "verandah",
+        "balcony"
+      ]
     },
     "cover": "covers/single_story_cottage.jpg"
+  },
+  {
+    "id": "five_bedroom_villa",
+    "file": "five_bedroom_villa.wadi",
+    "title": "Two Storeyed Five Bedroom Villa",
+    "description": "Five bedroom villa. Upper floor designed to be let out as three individual bedrooms with attached bathroom. Ground floor residence with 2BHK",
+    "meta": {
+      "bedrooms": 5,
+      "bathrooms": 5,
+      "floors": 2,
+      "style": "—",
+      "roof": "—",
+      "minWidthFt": 110,
+      "minLengthFt": 170,
+      "parametric": false
+    },
+    "cover": "covers/five_bedroom_villa.png"
   }
 ]
