@@ -54,6 +54,11 @@ const WADI_TYPES = [
   { description: "Wadi house", accept: { "application/octet-stream": [".wadi"], "application/json": [".json"] } },
 ];
 
+// A shared picker id so the browser REMEMBERS the last folder across sessions (and
+// between Open and Save) — so a user who navigates to their Drive/OneDrive sync
+// folder once lands back there next time. `startIn` seeds the very first use.
+const PICKER_ID = "wadi-house";
+
 // Ensure we may WRITE to a handle (a fresh picker handle is already granted;
 // this covers a re-save later in the session). Returns false if the user denies.
 async function ensureWritable(h: FsFileHandle): Promise<boolean> {
@@ -66,6 +71,8 @@ async function ensureWritable(h: FsFileHandle): Promise<boolean> {
  *  and remembers the handle so Save writes back to the same file. */
 export async function openWadiViaPicker(): Promise<{ bytes: Uint8Array; name: string }> {
   const handles = await fsWin().showOpenFilePicker!({
+    id: PICKER_ID,
+    startIn: "documents",
     types: WADI_TYPES,
     multiple: false,
     excludeAcceptAllOption: false,
@@ -81,6 +88,8 @@ export async function openWadiViaPicker(): Promise<{ bytes: Uint8Array; name: st
  *  Writes the bytes and remembers the handle for later in-place Saves. */
 export async function saveWadiViaPicker(bytes: Uint8Array, suggestedName: string): Promise<string> {
   const handle = await fsWin().showSaveFilePicker!({
+    id: PICKER_ID,
+    startIn: "documents",
     suggestedName,
     types: WADI_TYPES,
     excludeAcceptAllOption: false,
