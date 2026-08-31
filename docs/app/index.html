@@ -15,6 +15,90 @@
          https://developer.chrome.com/origintrials before it expires. -->
     <meta http-equiv="origin-trial" content="AlE8c1z5+t5hWin6/YnAghSle93BMl1bz6aRXu58yGvstjPqrMyDiq5kGrVP+1Bcvsew7Gxzj3L/cK7LhN7QVQAAAABKeyJvcmlnaW4iOiJodHRwczovL3dhZGkuaG91c2U6NDQzIiwiZmVhdHVyZSI6IldlYk1DUCIsImV4cGlyeSI6MTc5NDg3MzYwMH0=">
 
+    <!-- WebMCP EARLY registration. Register the tools SYNCHRONOUSLY in the top-level
+         document at load, so an agent browser's tool detector (e.g. ChatGPT Site
+         Tools, which checks at page load and does not re-check on ontoolchange)
+         discovers them. Doing it here — before the heavy app bundle — is why the
+         standalone /webmcp-test page is detected while /app's deferred registration
+         is not. Each tool's `execute` delegates to window.wadi, which the app bundle
+         sets up before any tool is actually invoked. Prefers document.modelContext
+         (the current API; navigator.modelContext is the legacy fallback). -->
+    <script>
+    (function () {
+      function api() {
+        if (!window.wadi) throw new Error("Wadi is still loading — try again in a moment.");
+        return window.wadi;
+      }
+      function text(v) { return { content: [{ type: "text", text: typeof v === "string" ? v : JSON.stringify(v, null, 2) }] }; }
+      function image(dataUrl) {
+        var m = /^data:([^;]+);base64,(.*)$/.exec(dataUrl || "");
+        return m ? { content: [{ type: "image", data: m[2], mimeType: m[1] }] } : text("No view available.");
+      }
+      var NO_INPUT = { type: "object", properties: {} };
+      var WDL_IN = { type: "object", properties: { wdl: { type: "string", description: "The full .wdl source." } }, required: ["wdl"] };
+      var TOOLS = [
+        { name: "wadi_wdl_reference", title: "Wadi .wdl primer",
+          description: "A self-contained primer for Wadi's .wdl design language and the authoring loop. Call this FIRST before writing WDL.",
+          inputSchema: NO_INPUT, execute: async function () { return text(await api().help()); } },
+        { name: "wadi_get_wdl", title: "Read the current house as .wdl",
+          description: "Return the current live house as editable .wdl source. Read this before modifying an existing design.",
+          inputSchema: NO_INPUT, annotations: { readOnlyHint: true }, execute: async function () { return text(await api().getWdl()); } },
+        { name: "wadi_set_wdl", title: "Author the house from .wdl",
+          description: "Compile .wdl and load it into the live 3D model. On a compile/schema error the model is unchanged and errors are returned; on success returns the C1-C12 structural check. The full DSL (rooms, walls, roofs, variables, imports) is available. Loop: wadi_get_wdl -> edit -> wadi_set_wdl -> read warnings -> repeat.",
+          inputSchema: WDL_IN, execute: async function (i) { return text(await api().setWdl(String((i && i.wdl) || ""))); } },
+        { name: "wadi_check_wdl", title: "Check .wdl without loading",
+          description: "Compile-check .wdl WITHOUT loading it (dry run). Returns errors, or ok.",
+          inputSchema: WDL_IN, execute: async function (i) { return text(await api().checkWdl(String((i && i.wdl) || ""))); } },
+        { name: "wadi_list_homes", title: "List ready-made homes",
+          description: "List the ready-made home designs to start from (id, title, meta).",
+          inputSchema: NO_INPUT, annotations: { readOnlyHint: true }, execute: async function () { return text(await api().listTemplates()); } },
+        { name: "wadi_choose_home", title: "Load a ready-made home",
+          description: "Load one ready-made home by id (from wadi_list_homes). Rebuilds the live model.",
+          inputSchema: { type: "object", properties: { id: { type: "string", description: "template id, e.g. family_home" } }, required: ["id"] },
+          execute: async function (i) { return text(await api().chooseTemplate(String(i && i.id))); } },
+        { name: "wadi_describe_house", title: "Describe the house",
+          description: "The whole house as structured data (floors, rooms with sizes/positions in feet, connections, roof, plot, variables, and a structural summary). Read this to understand the current design.",
+          inputSchema: NO_INPUT, annotations: { readOnlyHint: true }, execute: async function () { return text(api().describeHouse()); } },
+        { name: "wadi_check", title: "Run the structural check",
+          description: "Run the C1-C12 structural linter over the live house and return errors + warnings.",
+          inputSchema: NO_INPUT, annotations: { readOnlyHint: true }, execute: async function () { return text(api().check()); } },
+        { name: "wadi_capture_view", title: "Capture the 3D view",
+          description: "Render the current 3D model to a PNG image so you can see the result.",
+          inputSchema: NO_INPUT, annotations: { readOnlyHint: true }, execute: async function () { return image(api().captureView(1000)); } },
+        { name: "wadi_undo", title: "Undo", description: "Undo the last change.", inputSchema: NO_INPUT, execute: async function () { return text(api().undo()); } },
+        { name: "wadi_redo", title: "Redo", description: "Redo the last undone change.", inputSchema: NO_INPUT, execute: async function () { return text(api().redo()); } }
+      ];
+
+      function ctx() {
+        var d = (typeof document !== "undefined") ? document.modelContext : undefined;
+        var n = (typeof navigator !== "undefined") ? navigator.modelContext : undefined;
+        return (d && typeof d.registerTool === "function") ? d : (n && typeof n.registerTool === "function") ? n : null;
+      }
+      var registered = false;
+      function register() {
+        if (registered) return true;
+        var mc = ctx();
+        if (!mc) return false;
+        var n = 0;
+        for (var i = 0; i < TOOLS.length; i++) {
+          try { mc.registerTool(TOOLS[i]); n++; }
+          catch (e) { try { console.warn("[webmcp] registerTool " + TOOLS[i].name + " failed:", e); } catch (x) {} }
+        }
+        if (n > 0) { registered = true; try { console.info("[webmcp] registered " + n + " wadi tools (early)"); } catch (x) {} }
+        return registered;
+      }
+      window.wadiMcpTools = TOOLS;
+      window.wadiRegisterMcp = register;
+      window.__wadiWebmcpBooted = true;
+      if (!register()) {
+        var tries = 0;
+        var iv = setInterval(function () { if (register() || ++tries > 240) clearInterval(iv); }, 500);
+        if (typeof window !== "undefined") window.addEventListener("focus", register);
+        if (typeof document !== "undefined") document.addEventListener("visibilitychange", register);
+      }
+    })();
+    </script>
+
     <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
     <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
     <meta name="theme-color" content="#B85028"/>
@@ -2208,7 +2292,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-I5s6f12M.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-CNOJPPF4.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>

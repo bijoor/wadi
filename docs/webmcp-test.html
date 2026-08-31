@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wadi WebMCP test</title>
+<!-- Same WebMCP origin-trial token as the app, so a Chromium in the trial gets a
+     native document.modelContext here too. -->
+<meta http-equiv="origin-trial" content="AlE8c1z5+t5hWin6/YnAghSle93BMl1bz6aRXu58yGvstjPqrMyDiq5kGrVP+1Bcvsew7Gxzj3L/cK7LhN7QVQAAAABKeyJvcmlnaW4iOiJodHRwczovL3dhZGkuaG91c2U6NDQzIiwiZmVhdHVyZSI6IldlYk1DUCIsImV4cGlyeSI6MTc5NDg3MzYwMH0=">
+<!-- Register a single trivial WebMCP tool AS EARLY AS POSSIBLE, in the TOP-LEVEL
+     document, before anything else loads. This isolates ChatGPT Site Tools discovery
+     from the full app's (deferred) registration. -->
+<script>
+(function () {
+  var registered = false;
+  var lines = [];
+  function log(m) { lines.push(m); var el = document.getElementById("log"); if (el) el.textContent = lines.join("\n"); }
+  function status(m) { var el = document.getElementById("status"); if (el) el.textContent = m; }
+  function mc() {
+    var d = (typeof document !== "undefined") ? document.modelContext : undefined;
+    var n = (typeof navigator !== "undefined") ? navigator.modelContext : undefined;
+    return (d && typeof d.registerTool === "function") ? d
+         : (n && typeof n.registerTool === "function") ? n
+         : null;
+  }
+  function register() {
+    if (registered) return true;
+    var ctx = mc();
+    if (!ctx) return false;
+    try {
+      ctx.registerTool({
+        name: "wadi_webmcp_test",
+        title: "Wadi WebMCP test",
+        description: "Returns a fixed string, to prove this browser can discover Wadi WebMCP tools.",
+        inputSchema: { type: "object", properties: {} },
+        execute: function () { return { content: [{ type: "text", text: "Wadi WebMCP is working." }] }; }
+      });
+      registered = true;
+      var where = (typeof document !== "undefined" && document.modelContext) ? "document.modelContext" : "navigator.modelContext";
+      log("OK: registered wadi_webmcp_test on " + where);
+      status("Registered a WebMCP tool. If Site Tools works here, the address-bar arrow should appear.");
+      return true;
+    } catch (e) {
+      log("registerTool threw: " + (e && e.message ? e.message : e));
+      return false;
+    }
+  }
+
+  // Record what the API looks like at the earliest moment.
+  try {
+    log("at load — document.modelContext: " + (typeof document !== "undefined" && !!document.modelContext) +
+        " | navigator.modelContext: " + (typeof navigator !== "undefined" && !!navigator.modelContext));
+  } catch (e) {}
+
+  if (!register()) {
+    status("No WebMCP API present yet (document.modelContext / navigator.modelContext). Watching for it…");
+    var tries = 0;
+    var iv = setInterval(function () { if (register() || ++tries > 120) clearInterval(iv); }, 500);
+    if (typeof window !== "undefined") window.addEventListener("focus", register);
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", register);
+  }
+  // Expose a manual trigger for console testing.
+  try { window.wadiWebmcpTestRegister = register; } catch (e) {}
+})();
+</script>
+<style>
+  body { font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 20px; color: #2C2A26; }
+  h1 { font-size: 1.3rem; }
+  #status { padding: 12px 14px; background: #f7f3ee; border: 1px solid #e6ddd4; border-radius: 10px; }
+  pre { background: #1f2937; color: #d1d5db; padding: 12px; border-radius: 10px; overflow-x: auto; font-size: 12px; }
+  code { background: #f2ece4; padding: 0 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+  <h1>Wadi WebMCP test page</h1>
+  <p>A single trivial WebMCP tool (<code>wadi_webmcp_test</code>) is registered immediately in this top-level document. If your agent browser discovers WebMCP tools (e.g. ChatGPT Site Tools), its address-bar arrow should light up here.</p>
+  <p id="status">Initialising…</p>
+  <h3>Diagnostics</h3>
+  <pre id="log"></pre>
+  <p>Manual re-check (console): <code>wadiWebmcpTestRegister()</code></p>
+</body>
+</html>

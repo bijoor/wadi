@@ -3496,6 +3496,10 @@ function registerWadiMcpTools(): boolean {
 }
 
 function wireWebMcpTools(): void {
+  // The EARLY inline boot in viewer.html already registered the tools (synchronously
+  // at load, so agent tool-detectors discover them). Don't double-register here.
+  if ((window as unknown as { __wadiWebmcpBooted?: boolean }).__wadiWebmcpBooted) return;
+
   // Expose for inspection / testing / the demo, even where WebMCP is absent, and a
   // manual trigger an agent can call from the console if the API attached late.
   window.wadiMcpTools = buildWadiMcpTools();
