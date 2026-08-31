@@ -341,6 +341,8 @@ roof [name "N"] pitched|shed|flat
       [high_side left|right]                        // shed only
       [start_endpoint open|closed] [end_endpoint open|closed]
       [hip_setback (a,b)] [gable_overhang (a,b)] [hip_ridge_extension (a,b)]
+      //   hip_ridge_extension = a flying-rafter ridge stub PAST the hip apex; OFF by
+      //   default (0). Add it only for a deliberate ridge overhang, not routinely.
       [overhang <o>]                                // uniform eave, all four sides
       [overhang_start <o>] [overhang_end <o>]       // per-side along the axis (shed;
                                                     //   on a gable end = gable_overhang)
