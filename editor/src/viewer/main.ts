@@ -3865,13 +3865,28 @@ function wireWdlEditor(): void {
     #viewer-wdl .wdl-apply:disabled { background: #1e293b; color: #64748b; cursor: default; }
     #viewer-wdl .wdl-apply .k { opacity: .7; font-weight: 400; margin-left: 5px; }
     body[data-wdl-dirty="on"] #viewer-wdl .wdl-apply { box-shadow: 0 0 0 2px rgba(37,99,235,.35); }
-    #viewer-wdl .wdl-status { flex: 1 1 auto; min-width: 0; font: 12px/1.4 ui-monospace, monospace;
-      max-height: 5.6em; overflow: auto; white-space: pre-wrap; color: #94a3b8; }
-    #viewer-wdl .wdl-status.ok { color: #4ade80; } #viewer-wdl .wdl-status.warn { color: #fbbf24; }
-    #viewer-wdl .wdl-status.err { color: #f87171; } #viewer-wdl .wdl-status.busy { color: #93c5fd; }
-    #viewer-wdl .wdl-status.dirty { color: #93c5fd; }
     #viewer-wdl .wdl-btn { background: none; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px;
       padding: 2px 9px; cursor: pointer; font: inherit; }
+    /* Head action group: the compile-status pill + the reference button. */
+    #viewer-wdl .wdl-head-actions { flex: none; display: flex; align-items: center; gap: 8px; }
+    /* Compile-status pill — a state-coloured glyph+label that highlights on
+       warnings/errors and opens the status slide-over (full messages) on click.
+       Replaces the old cramped footer status line. */
+    #viewer-wdl .wdl-status-btn { flex: none; display: inline-flex; align-items: center; gap: 5px;
+      background: none; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px;
+      padding: 2px 9px; cursor: pointer; font: 600 12px system-ui, sans-serif; }
+    #viewer-wdl .wdl-status-btn:hover { background: #1e293b; }
+    #viewer-wdl .wdl-status-btn .sg { font-size: 12px; line-height: 1; }
+    #viewer-wdl .wdl-status-btn[data-state="ok"]    { color: #4ade80; border-color: #14532d; }
+    #viewer-wdl .wdl-status-btn[data-state="busy"]  { color: #93c5fd; border-color: #1e3a5f; }
+    #viewer-wdl .wdl-status-btn[data-state="dirty"] { color: #93c5fd; border-color: #1e3a5f; }
+    #viewer-wdl .wdl-status-btn[data-state="warn"]  { color: #fbbf24; border-color: #78350f; background: rgba(251,191,36,.10); }
+    #viewer-wdl .wdl-status-btn[data-state="err"]   { color: #f87171; border-color: #7f1d1d; background: rgba(248,113,113,.14); }
+    .wdl-status-body { margin: 0; white-space: pre-wrap; word-break: break-word;
+      font: 12px/1.55 ui-monospace, Menlo, Consolas, monospace; color: #94a3b8; }
+    .wdl-status-body.ok { color: #4ade80; } .wdl-status-body.warn { color: #fbbf24; }
+    .wdl-status-body.err { color: #f87171; } .wdl-status-body.busy { color: #93c5fd; }
+    .wdl-status-body.dirty { color: #93c5fd; }
     /* Stepped edge control on the WDL's LEFT edge: ❮ grows one step (off→on→max),
        ❯ shrinks one step (max→on→off). It follows the pane's inner edge (screen
        edge when closed, 460px in when docked, the configurator's right edge when
@@ -3902,15 +3917,16 @@ function wireWdlEditor(): void {
     #viewer-wdl .wdl-head .wdl-ref-btn { flex: none; background: none; border: 1px solid #334155;
       color: #cbd5e1; border-radius: 6px; padding: 2px 9px; cursor: pointer; font: 600 12px system-ui, sans-serif; }
     #viewer-wdl .wdl-head .wdl-ref-btn:hover { background: #1e293b; color: #e2e8f0; }
-    #wdl-reference { position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 96%);
+    /* Shared slide-over over the editor (language reference + compile status). */
+    .wdl-slideover { position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 96%);
       background: #0b1220; border-left: 1px solid #1e293b; box-shadow: -8px 0 24px rgba(0,0,0,.45);
       overflow-y: auto; z-index: 30; padding: 0 18px 40px; color: #e2e8f0; }
-    #wdl-reference[hidden] { display: none; }
-    #wdl-reference .ref-head { position: sticky; top: 0; background: #0b1220; padding: 10px 0 8px;
+    .wdl-slideover[hidden] { display: none; }
+    .wdl-slideover .ref-head { position: sticky; top: 0; background: #0b1220; padding: 10px 0 8px;
       display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e293b; margin-bottom: 8px; }
-    #wdl-reference .ref-head strong { font: 600 13px system-ui, sans-serif; color: #93c5fd; }
-    #wdl-reference .ref-close { background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; line-height: 1; }
-    #wdl-reference .ref-close:hover { color: #e2e8f0; }
+    .wdl-slideover .ref-head strong { font: 600 13px system-ui, sans-serif; color: #93c5fd; }
+    .wdl-slideover .ref-close { background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; line-height: 1; }
+    .wdl-slideover .ref-close:hover { color: #e2e8f0; }
     #wdl-reference h2 { font-size: 1.02rem; margin: 6px 0 4px; }
     #wdl-reference h3 { font-size: .9rem; margin: 18px 0 6px; color: #60a5fa; }
     #wdl-reference .ref-dim { color: #94a3b8; font-weight: 400; font-size: .8rem; }
@@ -3927,15 +3943,22 @@ function wireWdlEditor(): void {
   aside.setAttribute("aria-label", "WDL source");
   aside.innerHTML =
     `<div class="wdl-head"><span>WDL <span class="sub">the model's source · ⌘↵ to apply</span></span>` +
-    `<button class="wdl-ref-btn" id="wdl-ref-btn" title="Language reference (.wdl cheat-sheet)">📖 Reference</button></div>` +
+    `<div class="wdl-head-actions">` +
+    `<button class="wdl-status-btn" id="wdl-status-btn" data-state="ok" title="Compile status">` +
+    `<span class="sg">✓</span><span class="sl">OK</span></button>` +
+    `<button class="wdl-ref-btn" id="wdl-ref-btn" title="Language reference (.wdl cheat-sheet)">📖 Reference</button>` +
+    `</div></div>` +
     `<div id="wdl-editor"></div>` +
     `<div class="wdl-foot">` +
     `<button class="wdl-apply" id="wdl-apply" disabled>Apply changes<span class="k">⌘↵</span></button>` +
-    `<button class="wdl-btn" id="wdl-save" title="Save the WDL source as a .wdl file">💾 Save .wdl</button>` +
-    `<span class="wdl-status" id="wdl-status"></span></div>` +
-    `<div id="wdl-reference" hidden><div class="ref-head"><strong>.wdl language reference</strong>` +
+    `<button class="wdl-btn" id="wdl-save" title="Save the WDL source as a .wdl file">💾 Save .wdl</button></div>` +
+    `<div id="wdl-reference" class="wdl-slideover" hidden><div class="ref-head"><strong>.wdl language reference</strong>` +
     `<button class="ref-close" id="wdl-ref-close" title="Close" aria-label="Close reference">×</button></div>` +
-    `<div id="wdl-ref-body"></div></div>`;
+    `<div id="wdl-ref-body"></div></div>` +
+    `<div id="wdl-status-panel" class="wdl-slideover" hidden><div class="ref-head">` +
+    `<strong id="wdl-status-title">Compile status</strong>` +
+    `<button class="ref-close" id="wdl-status-close" title="Close" aria-label="Close status">×</button></div>` +
+    `<pre class="wdl-status-body ok" id="wdl-status-body">The WDL compiles cleanly — no issues.</pre></div>`;
   container.appendChild(aside);
 
   // Stepped right-edge control: ❮ grows (off→on→max), ❯ shrinks (max→on→off).
@@ -3980,9 +4003,49 @@ function wireWdlEditor(): void {
   window.setTimeout(kick, 80);
 
   const host = document.getElementById("wdl-editor") as HTMLElement;
-  const status = document.getElementById("wdl-status") as HTMLElement;
   const applyBtn = document.getElementById("wdl-apply") as HTMLButtonElement;
-  const setStatus = (cls: string, msg: string): void => { status.className = "wdl-status " + cls; status.textContent = msg; };
+
+  // Compile status lives in a HEADER pill (a state-coloured glyph+label) plus a
+  // slide-over that shows the full message — freeing the footer and giving parse
+  // errors real room. The pill highlights on warnings/errors; the panel auto-opens
+  // on an error so the message is seen without a click.
+  const statusBtn = document.getElementById("wdl-status-btn") as HTMLButtonElement;
+  const statusPanel = document.getElementById("wdl-status-panel") as HTMLElement;
+  const statusBody = document.getElementById("wdl-status-body") as HTMLElement;
+  const statusTitle = document.getElementById("wdl-status-title") as HTMLElement;
+  const refPanel = document.getElementById("wdl-reference") as HTMLElement;
+  const STATUS_META: Record<string, { glyph: string; label: string; title: string }> = {
+    "":    { glyph: "✓", label: "OK",        title: "Compile status" },
+    ok:    { glyph: "✓", label: "OK",        title: "No issues" },
+    busy:  { glyph: "⋯", label: "…",         title: "Compiling" },
+    dirty: { glyph: "●", label: "Unapplied", title: "Unapplied changes" },
+    warn:  { glyph: "⚠", label: "Warnings",  title: "Warnings" },
+    err:   { glyph: "✖", label: "Errors",    title: "Errors" },
+  };
+  let statusCls = "";
+  const setStatus = (cls: string, msg: string): void => {
+    statusCls = cls;
+    const m = STATUS_META[cls] ?? STATUS_META[""];
+    statusBtn.dataset.state = cls || "ok";
+    statusBtn.innerHTML = `<span class="sg">${m.glyph}</span><span class="sl">${m.label}</span>`;
+    statusBtn.title = msg ? msg.split("\n")[0] : m.title;
+    statusTitle.textContent = m.title;
+    statusBody.textContent = msg || "The WDL compiles cleanly — no issues.";
+    statusBody.className = "wdl-status-body " + (cls || "ok");
+    // Auto-open the panel on a fresh error so the parse error is seen at once; a
+    // warning just highlights the pill (the message is a click away).
+    if (cls === "err") { refPanel.hidden = true; statusPanel.hidden = false; statusPanel.scrollTop = 0; }
+  };
+  // Toggle the status slide-over; mutually exclusive with the reference panel.
+  (statusBtn).onclick = () => {
+    if (!statusPanel.hidden) { statusPanel.hidden = true; return; }
+    refPanel.hidden = true;
+    statusPanel.hidden = false;
+    statusPanel.scrollTop = 0;
+  };
+  (document.getElementById("wdl-status-close") as HTMLButtonElement).onclick = () => {
+    statusPanel.hidden = true;
+  };
 
   // The code editor is Monaco (syntax highlighting + Langium completion/hover/
   // go-to-def/rename), reused from the DSL playground and LAZY-loaded on first
@@ -4004,7 +4067,7 @@ function wireWdlEditor(): void {
     applyBtn.disabled = !dirty;
     document.body.dataset.wdlDirty = dirty ? "on" : "off";
     if (dirty) setStatus("dirty", "Unapplied changes — Apply (⌘↵) to update the 3D.");
-    else if (status.classList.contains("dirty")) setStatus("", "");
+    else if (statusCls === "dirty") setStatus("", "");
   };
 
   // Adopt the model's WDL when it changes from ELSEWHERE (a template load, undo, a
@@ -4086,7 +4149,7 @@ function wireWdlEditor(): void {
   // The content is a chunky static string, lazy-loaded on first open so it never
   // weighs on a closed pane. The in-editor Langium LSP still gives live
   // completion/hover; this is the at-a-glance overview.
-  const refPanel = document.getElementById("wdl-reference") as HTMLElement;
+  // (refPanel is declared with the status wiring above.)
   const refBody = document.getElementById("wdl-ref-body") as HTMLElement;
   let refLoaded = false;
   const toggleReference = async (): Promise<void> => {
@@ -4102,6 +4165,7 @@ function wireWdlEditor(): void {
           (e instanceof Error ? e.message : String(e)) + "</p>";
       }
     }
+    statusPanel.hidden = true; // mutually exclusive with the status slide-over
     refPanel.hidden = false;
     refPanel.scrollTop = 0;
   };
