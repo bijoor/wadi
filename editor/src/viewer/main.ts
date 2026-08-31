@@ -3460,14 +3460,30 @@ function renderFolderFileList(names: string[]): void {
 
 // Open ONE file from the current models folder as a document: read + parse it (the
 // download happens here, on the click), set its filename + a writable target so
-// Save writes back to the same file.
+// Save writes back to the same file. Shows a clear loading state (a cloud file
+// downloads on first open and can be slow) and surfaces any failure in the panel.
 async function openFolderFile(name: string): Promise<void> {
-  if (!(await guardUnsaved("opening a model"))) return;
-  const row = document.querySelector(".file-list") as HTMLElement | null;
-  if (row) row.style.opacity = "0.6"; // faint "loading" cue while the file downloads
+  if (!(await guardUnsaved("opening a model"))) return; // guard first (its own dialog)
+  const grid = document.getElementById("new-house-modal-grid");
+  const pretty = name.replace(/\.(wadi|json)$/i, "");
+  const showOpening = (extra = "") =>
+    grid && (grid.innerHTML =
+      `<div class="new-house-modal-empty">Opening <b>${escapeHtml(pretty)}</b>…${extra}</div>`);
+  showOpening(
+    `<br><span style="font-size:.85em;opacity:.7">A cloud file downloads on first open — this can take a moment.</span>`,
+  );
+  // Nudge if the read is dragging (an online-only file that Drive hasn't
+  // materialised). The download still continues; this is just feedback.
+  const slow = window.setTimeout(
+    () => showOpening(
+      `<br><span style="font-size:.85em;opacity:.7">Still downloading from the cloud… online-only files are faster if you mark them “Available offline” in Drive.</span>`,
+    ),
+    8000,
+  );
   try {
     const bytes = await fetchCatalogBytes(name);
     const loaded = await parseConfigBytes(bytes, name);
+    window.clearTimeout(slow);
     const src = templateSource();
     let filePath: string | null;
     if (src.kind === "browser-dir") {
@@ -3481,8 +3497,12 @@ async function openFolderFile(name: string): Promise<void> {
     useConfigStore.temporal.getState().clear();
     closeNewHouseModal();
   } catch (e) {
-    if (row) row.style.opacity = "1";
-    alert(`Couldn't open ${name}: ${e instanceof Error ? e.message : String(e)}`);
+    window.clearTimeout(slow);
+    if (grid)
+      grid.innerHTML =
+        `<div class="new-house-modal-empty" style="color:#b00">Couldn't open <b>${escapeHtml(pretty)}</b>:<br>${escapeHtml(e instanceof Error ? e.message : String(e))}<br>
+         <button type="button" class="tpl-source-btn" id="of-back" style="margin-top:10px">← Back to files</button></div>`;
+    document.getElementById("of-back")?.addEventListener("click", () => void openMyModelsModal());
   }
 }
 
