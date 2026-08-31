@@ -17,14 +17,24 @@ interface FsWritable {
 }
 interface FsFileHandle {
   name: string;
+  kind?: "file";
   createWritable(opts?: { keepExistingData?: boolean }): Promise<FsWritable>;
   getFile(): Promise<File>;
+  queryPermission?(d: { mode: "read" | "readwrite" }): Promise<FsPermissionState>;
+  requestPermission?(d: { mode: "read" | "readwrite" }): Promise<FsPermissionState>;
+}
+interface FsDirHandle {
+  name: string;
+  kind: "directory";
+  values(): AsyncIterableIterator<FsFileHandle | FsDirHandle>;
+  getFileHandle(name: string, opts?: { create?: boolean }): Promise<FsFileHandle>;
   queryPermission?(d: { mode: "read" | "readwrite" }): Promise<FsPermissionState>;
   requestPermission?(d: { mode: "read" | "readwrite" }): Promise<FsPermissionState>;
 }
 interface FsPickerWindow {
   showOpenFilePicker?(opts?: unknown): Promise<FsFileHandle[]>;
   showSaveFilePicker?(opts?: unknown): Promise<FsFileHandle>;
+  showDirectoryPicker?(opts?: unknown): Promise<FsDirHandle>;
 }
 
 const fsWin = (): FsPickerWindow => window as unknown as FsPickerWindow;
@@ -112,4 +122,167 @@ async function writeHandle(h: FsFileHandle, bytes: Uint8Array): Promise<void> {
   const w = await h.createWritable();
   await w.write(new Blob([bytes as BlobPart], { type: "application/zip" }));
   await w.close();
+}
+
+// ============================================================================
+// DIRECTORY source — a whole FOLDER as the models catalog (Chromium). The user
+// picks a folder once (e.g. a Google Drive sync folder); we list its .wadi files
+// in the gallery, open them, and Save writes back to the same file. The folder
+// handle is persisted in IndexedDB so it survives reloads (a return visit needs a
+// one-time permission re-grant, which requires a user gesture).
+// ============================================================================
+
+export function supportsDirectoryPicker(): boolean {
+  return typeof fsWin().showDirectoryPicker === "function";
+}
+
+let modelsDir: FsDirHandle | null = null;
+
+// --- tiny IndexedDB kv, just to persist the directory handle (handles are
+//     structured-cloneable, so they store/restore directly). ---
+const IDB_NAME = "wadi-fs";
+const IDB_STORE = "handles";
+const DIR_KEY = "models-dir";
+
+function idb(): Promise<IDBDatabase> {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function idbSet(key: string, val: unknown): Promise<void> {
+  const db = await idb();
+  try {
+    await new Promise<void>((res, rej) => {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(val, key);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+async function idbGet<T>(key: string): Promise<T | null> {
+  const db = await idb();
+  try {
+    return await new Promise<T | null>((res, rej) => {
+      const tx = db.transaction(IDB_STORE, "readonly");
+      const r = tx.objectStore(IDB_STORE).get(key);
+      r.onsuccess = () => res((r.result as T) ?? null);
+      r.onerror = () => rej(r.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+async function idbDel(key: string): Promise<void> {
+  const db = await idb();
+  try {
+    await new Promise<void>((res, rej) => {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+export function hasModelsDir(): boolean {
+  return modelsDir !== null;
+}
+export function modelsDirName(): string | null {
+  return modelsDir?.name ?? null;
+}
+
+/** Pick a folder as the models source (Chromium). Persists the handle so it
+ *  survives reloads. Returns the folder name, or null if the user cancelled. */
+export async function pickModelsDirectory(): Promise<string | null> {
+  try {
+    const dir = await fsWin().showDirectoryPicker!({ id: PICKER_ID, mode: "readwrite", startIn: "documents" });
+    modelsDir = dir;
+    try { await idbSet(DIR_KEY, dir); } catch { /* private window — memory-only */ }
+    return dir.name;
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") return null;
+    throw e;
+  }
+}
+
+/** Restore a previously-picked folder from IndexedDB (no permission request).
+ *  Returns the folder name if one was stored, else null. */
+export async function restoreModelsDirectory(): Promise<string | null> {
+  if (modelsDir) return modelsDir.name;
+  try {
+    const dir = await idbGet<FsDirHandle>(DIR_KEY);
+    if (dir && dir.kind === "directory") { modelsDir = dir; return dir.name; }
+  } catch { /* ignore */ }
+  return null;
+}
+
+/** Forget the models folder (memory + IndexedDB). */
+export async function clearModelsDir(): Promise<void> {
+  modelsDir = null;
+  try { await idbDel(DIR_KEY); } catch { /* ignore */ }
+}
+
+/** True when a folder is selected but not yet readable this session (a return
+ *  visit needs a one-time re-grant). Query only — no gesture required. */
+export async function modelsDirNeedsPermission(): Promise<boolean> {
+  if (!modelsDir) await restoreModelsDirectory();
+  if (!modelsDir || !modelsDir.queryPermission) return false;
+  return (await modelsDir.queryPermission({ mode: "read" })) !== "granted";
+}
+
+/** Re-grant read permission to the folder. MUST be called from a user gesture. */
+export async function reconnectModelsDir(): Promise<boolean> {
+  if (!modelsDir) await restoreModelsDirectory();
+  if (!modelsDir) return false;
+  if (!modelsDir.requestPermission) return true;
+  return (await modelsDir.requestPermission({ mode: "read" })) === "granted";
+}
+
+async function ensureDirRead(): Promise<void> {
+  if (!modelsDir) await restoreModelsDirectory();
+  if (!modelsDir) throw new Error("No models folder selected.");
+  if (modelsDir.queryPermission && (await modelsDir.queryPermission({ mode: "read" })) !== "granted") {
+    throw new Error("Permission needed — click 📁 Change folder to reconnect this folder.");
+  }
+}
+
+const isModelFile = (name: string): boolean =>
+  /\.(wadi|json)$/i.test(name) &&
+  name !== "index.json" && name !== "manifest.json" && name !== "catalog.json";
+
+/** List the model file names (.wadi / .json) directly in the folder. */
+export async function listModelsDirFiles(): Promise<string[]> {
+  await ensureDirRead();
+  const names: string[] = [];
+  for await (const entry of modelsDir!.values()) {
+    if (entry.kind !== "directory" && isModelFile(entry.name)) names.push(entry.name);
+  }
+  return names;
+}
+
+async function dirFileHandle(name: string): Promise<FsFileHandle> {
+  await ensureDirRead();
+  return modelsDir!.getFileHandle(name);
+}
+
+export async function readModelsDirBytes(name: string): Promise<Uint8Array> {
+  const f = await (await dirFileHandle(name)).getFile();
+  return new Uint8Array(await f.arrayBuffer());
+}
+export async function readModelsDirText(name: string): Promise<string> {
+  return (await (await dirFileHandle(name)).getFile()).text();
+}
+
+/** Adopt a folder file as the current save target, so a later Save writes back to
+ *  THIS file (in place) rather than opening a Save-As picker. */
+export async function adoptModelsDirFile(name: string): Promise<void> {
+  currentHandle = await dirFileHandle(name);
 }

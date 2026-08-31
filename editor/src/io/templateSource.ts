@@ -27,6 +27,11 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { entryFromConfig, titleCase, type TemplateEntry } from "../templatePackage/catalogMeta";
 import { isWadiBundle, readBundleManifest } from "./wadiBundle";
+import {
+  listModelsDirFiles,
+  readModelsDirText,
+  readModelsDirBytes,
+} from "./fsAccess";
 
 // Baked-in remote catalog: the Cloudflare R2 bucket on our custom domain. Serves
 // index.json + the template .wadi files with CORS `*`, so the web app, the
@@ -51,6 +56,10 @@ export type TemplateSource =
   | { kind: "default" }
   | { kind: "bundled" }
   | { kind: "local"; dir: string }
+  // A browser folder chosen via the File System Access API (Chromium). Only a
+  // MARKER is persisted here; the real directory handle lives in IndexedDB
+  // (io/fsAccess) and is restored on load — a handle can't be serialized.
+  | { kind: "browser-dir" }
   | { kind: "url"; url: string }
   | { kind: "gdrive"; url: string; apiKey: string };
 
@@ -314,6 +323,8 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
  *  `relPath` is the file name relative to the catalog (e.g. "index.json",
  *  "single_story_cottage.wadi"). */
 export async function fetchCatalogText(relPath: string): Promise<string> {
+  // A browser folder (File System Access) reads through its directory handle.
+  if (templateSource().kind === "browser-dir") return readModelsDirText(relPath);
   // A configured local folder (desktop) wins: read straight off disk.
   const localDir = localTemplatesDir();
   if (localDir) return localReadFile(localDir, relPath);
@@ -357,6 +368,7 @@ export async function fetchCatalogText(relPath: string): Promise<string> {
  *  adapter dispatch (local disk / Drive / static host); no offline text-cache
  *  (a zip isn't text) but keeps the bundled fallback for a remote miss. */
 export async function fetchCatalogBytes(relPath: string): Promise<Uint8Array> {
+  if (templateSource().kind === "browser-dir") return readModelsDirBytes(relPath);
   const localDir = localTemplatesDir();
   if (localDir) return localReadBytes(localDir, relPath);
 
@@ -392,6 +404,7 @@ export async function fetchCatalogBytes(relPath: string): Promise<Uint8Array> {
 
 /** List the template config filenames in the active source. */
 export async function listCatalogFiles(): Promise<string[]> {
+  if (templateSource().kind === "browser-dir") return listModelsDirFiles();
   const localDir = localTemplatesDir();
   if (localDir) return localListFiles(localDir);
 

@@ -59,6 +59,15 @@ import {
   saveText,
   saveBinary,
 } from "../io/fileIO";
+import {
+  supportsDirectoryPicker,
+  pickModelsDirectory,
+  restoreModelsDirectory,
+  modelsDirName,
+  modelsDirNeedsPermission,
+  reconnectModelsDir,
+  adoptModelsDirFile,
+} from "../io/fsAccess";
 import { wdlToConfig, configToWdlText } from "../io/wdl";
 import { isTauri, invoke } from "@tauri-apps/api/core";
 import {
@@ -443,6 +452,10 @@ async function bootViewer(): Promise<void> {
   // Reactivity: whenever config mutates, rebuild the SVG map and
   // force the currently-visible tab to reload from the fresh strings.
   subscribeConfig();
+
+  // Restore a browser models FOLDER (File System Access) picked in a prior session
+  // so its name shows in the gallery bar; permission is re-granted on first use.
+  void restoreModelsDirectory();
 
   // Header buttons: Edit toggle, Load, Save, Undo, Redo.
   wireHeaderButtons();
@@ -3331,6 +3344,20 @@ async function openNewHouseModal(): Promise<void> {
   // a loading state up front (the modal used to freeze on the previous list after a
   // location change), and guard with a sequence so a slow stale load can't clobber
   // a newer one.
+  // A browser folder restored from a previous session needs a one-time permission
+  // re-grant, which requires a user gesture — so show a Reconnect prompt (the click
+  // is the gesture) instead of failing the scan.
+  if (templateSource().kind === "browser-dir" && (await modelsDirNeedsPermission())) {
+    renderCatalogSourceBar();
+    grid.innerHTML =
+      `<div class="new-house-modal-empty">Reconnect <b>${escapeHtml(modelsDirName() ?? "your folder")}</b> to list your models.<br>
+       <button type="button" class="tpl-source-btn" id="tpl-reconnect" style="margin-top:10px">Reconnect folder</button></div>`;
+    document.getElementById("tpl-reconnect")?.addEventListener("click", async () => {
+      if (await reconnectModelsDir()) { resetCatalogSource(); void openNewHouseModal(); }
+    });
+    return;
+  }
+
   const seq = ++catalogLoadSeq;
   grid.innerHTML =
     `<div class="new-house-modal-empty">Loading models from ${escapeHtml(sourceLabel())}…<br>
@@ -3369,6 +3396,7 @@ function sourceLabel(s: TemplateSource = templateSource()): string {
     case "default": return "Wadi sample homes";
     case "bundled": return "bundled with the app";
     case "local": return `folder: ${s.dir}`;
+    case "browser-dir": return modelsDirName() ? `folder: ${modelsDirName()}` : "a local folder";
     case "url": return s.url;
     case "gdrive": return `${s.url} (Google Drive)`;
   }
@@ -3390,7 +3418,10 @@ function renderCatalogSourceBar(): void {
   const bar = document.getElementById("new-house-modal-source");
   if (!bar) return;
   const isDefault = templateSource().kind === "default";
-  const changeBtn = isTauri()
+  // A local folder is available on the desktop (Tauri) and in Chromium browsers
+  // (File System Access directory picker).
+  const canPickFolder = isTauri() || supportsDirectoryPicker();
+  const changeBtn = canPickFolder
     ? `<button type="button" class="tpl-source-btn" id="tpl-source-set">📁 Change folder…</button>`
     : "";
   const resetBtn = isDefault
@@ -3405,7 +3436,9 @@ function renderCatalogSourceBar(): void {
     thumbCache.clear();
     void openNewHouseModal();
   });
-  document.getElementById("tpl-source-set")?.addEventListener("click", () => void pickLocalModelsFolder());
+  document.getElementById("tpl-source-set")?.addEventListener("click", () =>
+    isTauri() ? void pickLocalModelsFolder() : void pickBrowserModelsFolder(),
+  );
   document.getElementById("tpl-source-reset")?.addEventListener("click", () => {
     setTemplateSource({ kind: "default" });
     resetCatalogSource();
@@ -3421,6 +3454,24 @@ async function pickLocalModelsFolder(): Promise<void> {
   const picked = await open({ directory: true, title: "Choose your models folder" });
   if (typeof picked !== "string") return; // cancelled
   setTemplateSource({ kind: "local", dir: picked });
+  resetCatalogSource();
+  thumbCache.clear();
+  void openNewHouseModal();
+}
+
+// Browser (Chromium) equivalent: pick a folder via the File System Access API.
+// Its handle is persisted (IndexedDB) so it survives reloads; a return visit
+// re-grants permission with one click (the reconnect prompt in openNewHouseModal).
+async function pickBrowserModelsFolder(): Promise<void> {
+  let name: string | null;
+  try {
+    name = await pickModelsDirectory();
+  } catch (e) {
+    alert(`Couldn't open that folder: ${e instanceof Error ? e.message : String(e)}`);
+    return;
+  }
+  if (!name) return; // cancelled
+  setTemplateSource({ kind: "browser-dir" });
   resetCatalogSource();
   thumbCache.clear();
   void openNewHouseModal();
@@ -4246,11 +4297,24 @@ async function selectTemplate(t: TemplateEntry): Promise<void> {
     const loaded = await parseConfigBytes(bytes, t.file);
     // The DEFAULT source is Wadi's sample gallery → treat a pick as a TEMPLATE (a
     // new, unsaved house). Any OTHER source is the user's own models location →
-    // OPEN that file as a document: keep its real filename, and (for a writable
-    // local folder) its path, so Save writes back to the SAME file.
-    const asTemplate = templateSource().kind === "default";
-    const filename = asTemplate ? `${t.title} (template)` : t.file;
-    const filePath = asTemplate ? null : localCatalogFilePath(t.file);
+    // OPEN that file as a document: keep its real filename, and a writable target
+    // (a local path on desktop, or the folder's file handle in the browser) so Save
+    // writes back to the SAME file.
+    const src = templateSource();
+    let filename: string;
+    let filePath: string | null;
+    if (src.kind === "default") {
+      filename = `${t.title} (template)`;
+      filePath = null;
+    } else {
+      filename = t.file;
+      if (src.kind === "browser-dir") {
+        await adoptModelsDirFile(t.file); // set the File System Access save-back handle
+        filePath = t.file; // non-null → the browser Save writes back in place
+      } else {
+        filePath = localCatalogFilePath(t.file); // desktop local path, or null (read-only remote)
+      }
+    }
     useConfigStore.getState().loadConfig(loaded.config, filename, filePath, loaded.wdl);
     markHomeChosen();
     // Clear undo history so the freshly-loaded template becomes the new
