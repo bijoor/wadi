@@ -1733,16 +1733,16 @@
         /* Live co-editing session panel (Phase 2). */
         .live-session-panel {
             position: fixed;
-            top: 64px; right: 16px;
-            z-index: 60;
+            bottom: 68px; left: 50%; transform: translateX(-50%);
+            z-index: 200;
             display: flex; align-items: center; gap: 10px;
             padding: 8px 10px 8px 12px;
             border-radius: 12px;
-            background: #fffdfb;
-            border: 1px solid #e6ddd4;
-            box-shadow: 0 6px 22px rgba(40, 30, 20, 0.16);
+            background: #fff;
+            border: 1px solid #dcd3c9;
+            box-shadow: 0 8px 28px rgba(40, 30, 20, 0.22);
             font-size: 0.82rem;
-            max-width: 340px;
+            max-width: min(92vw, 460px);
         }
         .live-session-panel[hidden] { display: none; }
         .live-session-panel.live-flash { animation: liveFlash 0.6s ease; }
