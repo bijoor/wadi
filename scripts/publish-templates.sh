@@ -57,6 +57,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 "$ROOT/editor/node_modules/.bin/tsx" "$ROOT/scripts/gen-catalog-index.ts"
 echo
 
+# Keep the bundled offline fallback copies under docs/ in step with the source.
+"$ROOT/scripts/sync-templates-docs.sh"
+echo
+
 echo "Publishing $SRC -> r2://$BUCKET"
 # Walk the whole tree so the covers/ subfolder ships too. The object KEY is the
 # path relative to SRC (e.g. "covers/family_home.jpg"), matching what the app's
