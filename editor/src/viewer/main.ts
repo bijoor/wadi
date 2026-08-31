@@ -1962,6 +1962,7 @@ interface LiveSession {
   lastWdl: string; // the last WDL sent OR applied — guards the echo loop
   updates: number;
   connected: boolean;
+  error?: string; // set when an agent's pushed WDL fails to load in the app
 }
 let liveSession: LiveSession | null = null;
 
@@ -1993,13 +1994,25 @@ function startLiveSession(): void {
       if (msg?.type === "wdl" && typeof msg.wdl === "string" && msg.wdl !== liveSession.lastWdl) {
         liveSession.lastWdl = msg.wdl; // set BEFORE applying so our store subscriber doesn't echo it back
         liveSession.updates++;
-        void window.wadi?.setWdl(msg.wdl);
+        void applyIncomingWdl(msg.wdl);
         renderLivePanel(true);
       }
     } catch { /* ignore malformed frames */ }
   });
   ws.addEventListener("close", () => { if (liveSession) { liveSession.connected = false; renderLivePanel(); } });
   ws.addEventListener("error", () => { if (liveSession) { liveSession.connected = false; renderLivePanel(); } });
+  renderLivePanel();
+}
+
+// Apply an agent's pushed WDL to the live model; on a compile/schema failure,
+// record the error so the panel can show it (instead of silently doing nothing —
+// which looks like "agent edited" but no change).
+async function applyIncomingWdl(wdl: string): Promise<void> {
+  const res = (await window.wadi?.setWdl(wdl)) as { ok?: boolean; errors?: string[] } | undefined;
+  if (!liveSession) return;
+  liveSession.error = res && res.ok === false
+    ? "the agent's edit didn't load: " + (res.errors?.[0] ?? "compile error")
+    : undefined;
   renderLivePanel();
 }
 
@@ -2029,11 +2042,14 @@ function renderLivePanel(flash = false): void {
     : liveSession.updates > 0
       ? `agent edited · ${liveSession.updates} update${liveSession.updates === 1 ? "" : "s"}`
       : "waiting for the agent…";
+  const statusHtml = liveSession.error
+    ? `<div class="live-status live-error" id="live-status">${escapeHtml(liveSession.error)}</div>`
+    : `<div class="live-status" id="live-status">${status}</div>`;
   panel.innerHTML = `
-    <div class="live-dot${liveSession.connected ? " on" : ""}"></div>
+    <div class="live-dot${liveSession.error ? " err" : liveSession.connected ? " on" : ""}"></div>
     <div class="live-body">
       <div class="live-title">Live session <code>${liveSession.code}</code></div>
-      <div class="live-status" id="live-status">${status}</div>
+      ${statusHtml}
     </div>
     <button type="button" id="live-copy" class="live-btn" title="Copy a prompt for your AI agent">Copy prompt</button>
     <button type="button" id="live-stop" class="live-btn live-stop" title="End the live session">Stop</button>`;

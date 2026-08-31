@@ -1752,7 +1752,9 @@
         .live-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
         .live-title { font-weight: 700; color: #2C2A26; white-space: nowrap; }
         .live-title code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82em; background: #f2ece4; padding: 0 5px; border-radius: 5px; color: #B85028; }
-        .live-status { color: #7a736a; font-size: 0.76rem; }
+        .live-status { color: #7a736a; font-size: 0.76rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .live-status.live-error { color: #b0403a; }
+        .live-dot.err { background: #d9534f; box-shadow: 0 0 0 3px rgba(217,83,79,0.18); }
         .live-btn {
             font-size: 0.76rem; font-weight: 600;
             border: 1px solid #d9d5cc; background: #fff; color: #5a564d;

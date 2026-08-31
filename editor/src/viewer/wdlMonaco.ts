@@ -19,6 +19,7 @@ import "monaco-editor/esm/vs/editor/contrib/peekView/browser/peekView.js";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { registerWadiDsl, LANG_ID } from "wadi-wdl-monaco-lang";
 import { registerWadiLsp } from "wadi-wdl-monaco-lsp";
+import { stdResolveModule } from "../io/stdModules";
 
 export interface WdlEditorHandle {
   getValue(): string;
@@ -41,10 +42,10 @@ function registerOnce(): void {
     getWorker: () => new editorWorker(),
   };
   registerWadiDsl(monaco);
-  // The in-viewer editor edits a single-file model.wdl (no module imports — the
-  // same as the viewer's own compile path), so resolveModule is a no-op and the
-  // module set never changes (version 0).
-  registerWadiLsp({ resolveModule: () => undefined, version: () => 0, languageId: LANG_ID });
+  // Resolve the bundled std modules (std-furniture, konkan/base) so the editor
+  // validates/completes WDL that `import`s them — matching the viewer's compile
+  // path and the wadi-mcp server. The bundled set never changes (version 0).
+  registerWadiLsp({ resolveModule: stdResolveModule, version: () => 0, languageId: LANG_ID });
 }
 
 export function mountWdlMonaco(container: HTMLElement, initialValue: string): WdlEditorHandle {

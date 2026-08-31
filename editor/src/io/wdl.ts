@@ -41,7 +41,8 @@ export async function wdlToConfig(text: string): Promise<WdlCompileResult> {
     // deep-checking wadi-dsl's internals — they version independently — while
     // Vite/esbuild bundles the real compiler into a lazy chunk.
     const { compileDsl } = await import("wadi-wdl-compiler");
-    raw = compileDsl(text);
+    const { stdResolveModule } = await import("./stdModules");
+    raw = compileDsl(text, { resolveModule: stdResolveModule });
   } catch (e) {
     return { ok: false, errors: [e instanceof Error ? e.message : String(e)] };
   }
