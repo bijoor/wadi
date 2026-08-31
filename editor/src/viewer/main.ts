@@ -3847,7 +3847,11 @@ async function loadTemplateThumb(t: TemplateEntry, thumbEl: HTMLElement | null):
         images = [];
       }
     }
-    thumbCache.set(file, images);
+    // Cache only a SUCCESSFUL (non-empty) result. Caching an empty [] would poison
+    // the thumbnail for the whole session on a TRANSIENT miss (e.g. a cover still
+    // propagating on R2 right after publish) — the card would keep its 🏠
+    // placeholder until a reload. Leaving a miss uncached lets the next open retry.
+    if (images.length > 0) thumbCache.set(file, images);
   }
   if (images.length > 0 && thumbEl.isConnected) buildTemplateCarousel(thumbEl, images, t.title);
 }
