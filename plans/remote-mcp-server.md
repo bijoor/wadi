@@ -1,5 +1,12 @@
 # Remote MCP server for Wadi
 
+Status: **v1 + Phase 2 SHIPPED** (2026-08-31). Phase 2 (live co-editing) is DONE: a
+`SessionRelay` Durable Object on the Worker holds the per-session WDL and fans updates
+to the app over WebSocket; `wadi_session_set`/`wadi_session_get` MCP tools let a remote
+agent push/read; the app's "Co-edit live with an agent" (Apps menu) mints a session
+code, subscribes, and re-renders live as the agent edits (bidirectional, echo-guarded;
+app owns Save). Verified end to end on prod. Everything below is the original v1 scope.
+
 Status: **v1 SHIPPED** (2026-08-31) — hosted at `https://mcp.wadi.house/mcp` on a
 Cloudflare Container (not a Worker: the tool pipeline statically pulls in React-Three,
 so a pure Worker would need a headless refactor; the Container runs the existing 16MB
