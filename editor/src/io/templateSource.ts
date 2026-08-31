@@ -120,6 +120,14 @@ export function localTemplatesDir(): string {
   return s.kind === "local" ? s.dir : "";
 }
 
+/** Absolute path of a catalog file when the source is a WRITABLE local folder
+ *  (desktop), so opening it can set the model's filePath and Save writes back to
+ *  the same file. Null for read-only sources (default / bundled / URL / Drive). */
+export function localCatalogFilePath(relPath: string): string | null {
+  const dir = localTemplatesDir();
+  return dir ? joinPath(dir, relPath) : null;
+}
+
 /** The active catalog base URL (for the generic/gdrive/default HTTP adapters). */
 export function templatesBaseUrl(): string {
   const s = templateSource();

@@ -67,6 +67,7 @@ import {
   templateSource,
   setTemplateSource,
   resetCatalogSource,
+  localCatalogFilePath,
   type TemplateSource,
 } from "../io/templateSource";
 import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
@@ -3258,6 +3259,10 @@ function templateMetaChips(m: TemplateMeta | undefined): string {
 // template file are reused across filter changes.
 let galleryTemplates: TemplateEntry[] = [];
 const thumbCache = new Map<string, string[]>();
+// Bumped on every catalog (re)load so a SLOW load (a cloud folder whose dataless
+// files must download before they can be indexed) can't overwrite a newer one, and
+// the gallery shows a loading state instead of freezing on the previous list.
+let catalogLoadSeq = 0;
 
 // The WDL editor registers a "flush" here: apply its unapplied edits (compile the
 // current text) so a Save writes what's in the editor, not the last-applied WDL.
@@ -3320,19 +3325,30 @@ async function openNewHouseModal(): Promise<void> {
   // Reset filters each open so a fresh visit starts unfiltered.
   tplFilters = emptyFilters();
 
-  // Always re-index on open — the folder listing is cheap, and caching it meant
-  // users saw a stale template list until they hard-reloaded. The catalog source
-  // (local folder / Drive / bundled / a cloud bucket) is resolved by
-  // templateSource, which lists the folder and indexes each self-describing file.
+  // Always re-index on open — caching it meant users saw a stale list until they
+  // hard-reloaded. A cloud folder (Drive/OneDrive) can be SLOW: its files are often
+  // "dataless" (online-only) and must download before they can be indexed. So show
+  // a loading state up front (the modal used to freeze on the previous list after a
+  // location change), and guard with a sequence so a slow stale load can't clobber
+  // a newer one.
+  const seq = ++catalogLoadSeq;
+  grid.innerHTML =
+    `<div class="new-house-modal-empty">Loading models from ${escapeHtml(sourceLabel())}…<br>
+     <span style="font-size:.85em;opacity:.7">A cloud folder may take a moment the first time (files download on demand).</span></div>`;
+  renderCatalogSourceBar(); // reflect the NEW location in the bar while loading
+  let loaded: TemplateEntry[];
   try {
-    galleryTemplates = await loadCatalog();
+    loaded = await loadCatalog();
   } catch (e) {
+    if (seq !== catalogLoadSeq) return; // superseded by a newer load
     grid.innerHTML =
       `<div class="new-house-modal-empty" style="color:#b00">
         Couldn't load models from (${escapeHtml(sourceLabel())}): ${e instanceof Error ? e.message : String(e)}
       </div>`;
     return;
   }
+  if (seq !== catalogLoadSeq) return; // a newer change-location superseded this load
+  galleryTemplates = loaded;
 
   // "Open a saved .wadi" — reuse the disk-load flow, close the modal on success.
   const openBtn = document.getElementById("new-house-open-existing");
@@ -4269,8 +4285,8 @@ function wireOwnerWelcome(): void {
 }
 
 async function selectTemplate(t: TemplateEntry): Promise<void> {
-  // Loading a template replaces the current house — offer to save first.
-  if (!(await guardUnsaved("creating a new house"))) return;
+  // Loading a model replaces the current house — offer to save first.
+  if (!(await guardUnsaved("opening a model"))) return;
   try {
     // Files are named relative to the catalog base (local folder / cloud bucket /
     // Drive). Read as BYTES so a `.wadi` zip bundle is detected and compiled from
@@ -4278,9 +4294,14 @@ async function selectTemplate(t: TemplateEntry): Promise<void> {
     // returns the model + (for a bundle) its WDL source and thumbnail files.
     const bytes = await fetchCatalogBytes(t.file);
     const loaded = await parseConfigBytes(bytes, t.file);
-    useConfigStore
-      .getState()
-      .loadConfig(loaded.config, `${t.title} (template)`, null, loaded.wdl);
+    // The DEFAULT source is Wadi's sample gallery → treat a pick as a TEMPLATE (a
+    // new, unsaved house). Any OTHER source is the user's own models location →
+    // OPEN that file as a document: keep its real filename, and (for a writable
+    // local folder) its path, so Save writes back to the SAME file.
+    const asTemplate = templateSource().kind === "default";
+    const filename = asTemplate ? `${t.title} (template)` : t.file;
+    const filePath = asTemplate ? null : localCatalogFilePath(t.file);
+    useConfigStore.getState().loadConfig(loaded.config, filename, filePath, loaded.wdl);
     markHomeChosen();
     // Clear undo history so the freshly-loaded template becomes the new
     // baseline — Ctrl+Z shouldn't revert to the pre-template state.
