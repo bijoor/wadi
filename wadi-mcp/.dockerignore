@@ -1,0 +1,10 @@
+# Only dist/http.mjs is needed in the image build context.
+node_modules
+src
+scripts
+dist/server.mjs
+*.md
+tsconfig.json
+esbuild.mjs
+wrangler.jsonc
+.wrangler

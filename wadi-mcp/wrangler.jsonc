@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wadi-mcp",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-06-01",
+  // The containerised Node server bundled from dist/http.mjs. `wrangler deploy`
+  // builds this Dockerfile (needs local Docker) and pushes the image.
+  "containers": [
+    {
+      "class_name": "WadiMcpContainer",
+      "image": "./Dockerfile",
+      "max_instances": 3,
+      "instance_type": "basic"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "class_name": "WadiMcpContainer", "name": "WADI_MCP_CONTAINER" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WadiMcpContainer"] }],
+  "observability": { "enabled": true }
+}

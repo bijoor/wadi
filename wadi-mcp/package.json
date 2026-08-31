@@ -21,7 +21,7 @@
     "dsl"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "bin": {
     "wadi-mcp": "dist/server.mjs"
@@ -36,6 +36,9 @@
     "smoke": "npm run gen-parser && npm run gen-assets && tsx scripts/smoke.mjs",
     "build": "npm run gen-parser && npm run gen-assets && node esbuild.mjs",
     "start": "node dist/server.mjs",
+    "http": "node dist/http.mjs",
+    "cloud:dev": "npm run build && wrangler dev",
+    "cloud:deploy": "npm run build && wrangler deploy",
     "prepublishOnly": "npm run build && npm run smoke"
   },
   "dependencies": {
@@ -44,7 +47,9 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@cloudflare/containers": "^0.3.7",
     "esbuild": "^0.24.0",
-    "tsx": "^4.19.0"
+    "tsx": "^4.19.0",
+    "wrangler": "^4.40.0"
   }
 }

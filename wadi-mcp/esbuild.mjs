@@ -16,9 +16,10 @@ if (!existsSync(resolve(HERE, "src/assets.generated.ts"))) {
   process.exit(1);
 }
 
-await build({
-  entryPoints: [resolve(HERE, "src/server.ts")],
-  outfile: resolve(HERE, "dist/server.mjs"),
+// Two entries share the same inlined pipeline:
+//   - server.mjs : the stdio bin (local coding agents).
+//   - http.mjs   : the Streamable HTTP server (hosted/online, Cloudflare Container).
+const common = {
   bundle: true,
   platform: "node",
   format: "esm",
@@ -39,6 +40,9 @@ await build({
     ].join("\n"),
   },
   logLevel: "info",
-});
+};
 
-console.error("built dist/server.mjs");
+await build({ ...common, entryPoints: [resolve(HERE, "src/server.ts")], outfile: resolve(HERE, "dist/server.mjs") });
+await build({ ...common, entryPoints: [resolve(HERE, "src/http.ts")], outfile: resolve(HERE, "dist/http.mjs") });
+
+console.error("built dist/server.mjs + dist/http.mjs");
