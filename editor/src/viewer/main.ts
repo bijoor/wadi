@@ -3820,9 +3820,14 @@ async function loadTemplateThumb(t: TemplateEntry, thumbEl: HTMLElement | null):
     // publish-templates.sh; if one is missing (e.g. the committed bundled
     // fallback, where covers aren't tracked) we fall back to the bundle's own
     // cover file, which always ships inside the .wadi.
+    // Sample cards ALWAYS load from Wadi's DEFAULT source (R2), even if the user
+    // has an Open FOLDER configured — otherwise we'd look for the sample's cover in
+    // their folder and 404 (leaving the 🏠 placeholder). An explicit source arg (not
+    // the withSource override) is race-safe here: thumbnails load concurrently.
+    const SAMPLES: TemplateSource = { kind: "default" };
     if (t.cover) {
       try {
-        const bytes = await fetchCatalogBytes(t.cover);
+        const bytes = await fetchCatalogBytes(t.cover, SAMPLES);
         images = [bytesToImgUrl(bytes, t.cover)];
       } catch {
         /* loose cover unavailable → fall back to the file's own previews */
@@ -3830,7 +3835,7 @@ async function loadTemplateThumb(t: TemplateEntry, thumbEl: HTMLElement | null):
     }
     if (images === undefined) {
       try {
-        const bytes = await fetchCatalogBytes(file);
+        const bytes = await fetchCatalogBytes(file, SAMPLES);
         if (isWadiBundle(bytes)) {
           // A bundle's previews are files; resolve the cover (+ any others).
           images = await readBundleCoverUrls(bytes);
@@ -4472,10 +4477,8 @@ async function selectTemplate(t: TemplateEntry): Promise<void> {
   // Loading a model replaces the current house — offer to save first.
   if (!(await guardUnsaved("creating a new house"))) return;
   try {
-    const loaded = await withSource({ kind: "default" }, async () => {
-      const bytes = await fetchCatalogBytes(t.file);
-      return parseConfigBytes(bytes, t.file);
-    });
+    const bytes = await fetchCatalogBytes(t.file, { kind: "default" });
+    const loaded = await parseConfigBytes(bytes, t.file);
     useConfigStore.getState().loadConfig(loaded.config, `${t.title} (template)`, null, loaded.wdl);
     markHomeChosen();
     // Clear undo history so the freshly-loaded template becomes the new

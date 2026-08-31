@@ -140,9 +140,8 @@ export function setTemplateSource(p: TemplateSource): void {
 
 /** A local templates FOLDER (desktop only): the app lists + indexes it, and the
  *  Publish panel saves into it. Empty string when the source isn't a local one. */
-export function localTemplatesDir(): string {
+export function localTemplatesDir(s: TemplateSource = templateSource()): string {
   if (!isTauri()) return "";
-  const s = templateSource();
   return s.kind === "local" ? s.dir : "";
 }
 
@@ -155,8 +154,7 @@ export function localCatalogFilePath(relPath: string): string | null {
 }
 
 /** The active catalog base URL (for the generic/gdrive/default HTTP adapters). */
-export function templatesBaseUrl(): string {
-  const s = templateSource();
+export function templatesBaseUrl(s: TemplateSource = templateSource()): string {
   if (s.kind === "url" || s.kind === "gdrive") return stripTrailingSlash(s.url);
   if (s.kind === "bundled" || s.kind === "local") return BUNDLED_BASE;
   return stripTrailingSlash(REMOTE_TEMPLATES_URL); // default
@@ -339,14 +337,14 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
 /** Fetch a catalog text resource (index.json / a .wadi), with cache + fallback.
  *  `relPath` is the file name relative to the catalog (e.g. "index.json",
  *  "single_story_cottage.wadi"). */
-export async function fetchCatalogText(relPath: string): Promise<string> {
+export async function fetchCatalogText(relPath: string, src: TemplateSource = templateSource()): Promise<string> {
   // A browser folder (File System Access) reads through its directory handle.
-  if (templateSource().kind === "browser-dir") return readModelsDirText(relPath);
+  if (src.kind === "browser-dir") return readModelsDirText(relPath);
   // A configured local folder (desktop) wins: read straight off disk.
-  const localDir = localTemplatesDir();
+  const localDir = localTemplatesDir(src);
   if (localDir) return localReadFile(localDir, relPath);
 
-  const base = templatesBaseUrl();
+  const base = templatesBaseUrl(src);
   const folderId = driveFolderId(base);
   const remote = base !== BUNDLED_BASE;
   try {
@@ -384,12 +382,12 @@ export async function fetchCatalogText(relPath: string): Promise<string> {
  *  its magic bytes and to read its thumbnail files. Mirrors fetchCatalogText's
  *  adapter dispatch (local disk / Drive / static host); no offline text-cache
  *  (a zip isn't text) but keeps the bundled fallback for a remote miss. */
-export async function fetchCatalogBytes(relPath: string): Promise<Uint8Array> {
-  if (templateSource().kind === "browser-dir") return readModelsDirBytes(relPath);
-  const localDir = localTemplatesDir();
+export async function fetchCatalogBytes(relPath: string, src: TemplateSource = templateSource()): Promise<Uint8Array> {
+  if (src.kind === "browser-dir") return readModelsDirBytes(relPath);
+  const localDir = localTemplatesDir(src);
   if (localDir) return localReadBytes(localDir, relPath);
 
-  const base = templatesBaseUrl();
+  const base = templatesBaseUrl(src);
   const folderId = driveFolderId(base);
   const remote = base !== BUNDLED_BASE;
   if (folderId) return driveFetchBytes(folderId, relPath);
