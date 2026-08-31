@@ -2083,7 +2083,9 @@ function wireLeftToggle(): void {
 // called before the modal is ever shown.
 async function ensureCatalog(): Promise<void> {
   if (galleryTemplates.length) return;
-  galleryTemplates = await loadCatalog();
+  // The programmatic template API (listTemplates / chooseTemplate) is about the
+  // SAMPLES, so load them from the default source even if the user has a folder set.
+  galleryTemplates = await withSource({ kind: "default" }, () => loadCatalog());
 }
 
 // ---- Co-design helpers: feet <-> project units + floor/room lookup ----------
@@ -4461,37 +4463,20 @@ function wireOwnerWelcome(): void {
     ?.addEventListener("click", () => void openMyModelsModal());
 }
 
+// Pick a SAMPLE from the New gallery. Samples always come from Wadi's DEFAULT
+// source (R2), even when the user has an Open FOLDER configured — otherwise we'd
+// look for the sample in their folder (File System Access) and hit "file not
+// found". A sample is a TEMPLATE: a new, unsaved house (no filePath → Save is Save
+// As). Opening the user's OWN files goes through openFolderFile, not here.
 async function selectTemplate(t: TemplateEntry): Promise<void> {
   // Loading a model replaces the current house — offer to save first.
-  if (!(await guardUnsaved("opening a model"))) return;
+  if (!(await guardUnsaved("creating a new house"))) return;
   try {
-    // Files are named relative to the catalog base (local folder / cloud bucket /
-    // Drive). Read as BYTES so a `.wadi` zip bundle is detected and compiled from
-    // its model.wdl; a legacy JSON `.wadi` validates as before. parseWadiBytes
-    // returns the model + (for a bundle) its WDL source and thumbnail files.
-    const bytes = await fetchCatalogBytes(t.file);
-    const loaded = await parseConfigBytes(bytes, t.file);
-    // The DEFAULT source is Wadi's sample gallery → treat a pick as a TEMPLATE (a
-    // new, unsaved house). Any OTHER source is the user's own models location →
-    // OPEN that file as a document: keep its real filename, and a writable target
-    // (a local path on desktop, or the folder's file handle in the browser) so Save
-    // writes back to the SAME file.
-    const src = templateSource();
-    let filename: string;
-    let filePath: string | null;
-    if (src.kind === "default") {
-      filename = `${t.title} (template)`;
-      filePath = null;
-    } else {
-      filename = t.file;
-      if (src.kind === "browser-dir") {
-        await adoptModelsDirFile(t.file); // set the File System Access save-back handle
-        filePath = t.file; // non-null → the browser Save writes back in place
-      } else {
-        filePath = localCatalogFilePath(t.file); // desktop local path, or null (read-only remote)
-      }
-    }
-    useConfigStore.getState().loadConfig(loaded.config, filename, filePath, loaded.wdl);
+    const loaded = await withSource({ kind: "default" }, async () => {
+      const bytes = await fetchCatalogBytes(t.file);
+      return parseConfigBytes(bytes, t.file);
+    });
+    useConfigStore.getState().loadConfig(loaded.config, `${t.title} (template)`, null, loaded.wdl);
     markHomeChosen();
     // Clear undo history so the freshly-loaded template becomes the new
     // baseline — Ctrl+Z shouldn't revert to the pre-template state.
