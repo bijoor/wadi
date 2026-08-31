@@ -3895,19 +3895,47 @@ function wireWdlEditor(): void {
     body[data-wdl="on"] #wdl-ctl { right: min(460px, 46vw); }
     body[data-wdl="max"] #wdl-ctl { right: auto; left: 0; }
     body[data-wdl="max"][data-config="on"][data-left="open"] #wdl-ctl { left: 288px; }
-    body[data-embed="1"] #wdl-ctl { display: none; }`;
+    body[data-embed="1"] #wdl-ctl { display: none; }
+    /* Language reference — a 📖 button in the head opens a slide-over cheat-sheet
+       over the editor (the in-editor Langium LSP still supplies live completion/
+       hover; this is the browsable overview). Scoped inside the WDL pane. */
+    #viewer-wdl .wdl-head .wdl-ref-btn { flex: none; background: none; border: 1px solid #334155;
+      color: #cbd5e1; border-radius: 6px; padding: 2px 9px; cursor: pointer; font: 600 12px system-ui, sans-serif; }
+    #viewer-wdl .wdl-head .wdl-ref-btn:hover { background: #1e293b; color: #e2e8f0; }
+    #wdl-reference { position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 96%);
+      background: #0b1220; border-left: 1px solid #1e293b; box-shadow: -8px 0 24px rgba(0,0,0,.45);
+      overflow-y: auto; z-index: 30; padding: 0 18px 40px; color: #e2e8f0; }
+    #wdl-reference[hidden] { display: none; }
+    #wdl-reference .ref-head { position: sticky; top: 0; background: #0b1220; padding: 10px 0 8px;
+      display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e293b; margin-bottom: 8px; }
+    #wdl-reference .ref-head strong { font: 600 13px system-ui, sans-serif; color: #93c5fd; }
+    #wdl-reference .ref-close { background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; line-height: 1; }
+    #wdl-reference .ref-close:hover { color: #e2e8f0; }
+    #wdl-reference h2 { font-size: 1.02rem; margin: 6px 0 4px; }
+    #wdl-reference h3 { font-size: .9rem; margin: 18px 0 6px; color: #60a5fa; }
+    #wdl-reference .ref-dim { color: #94a3b8; font-weight: 400; font-size: .8rem; }
+    #wdl-reference p { font-size: .84rem; line-height: 1.5; margin: 6px 0; }
+    #wdl-reference p.ref-note { color: #94a3b8; font-size: .82rem; }
+    #wdl-reference code { background: #1e293b; padding: 1px 5px; border-radius: 4px; font-size: .82em; }
+    #wdl-reference pre { background: #0d1526; border: 1px solid #1e293b; border-radius: 6px; padding: 10px 12px;
+      overflow-x: auto; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #d7d0c6; white-space: pre; }
+    #wdl-reference pre b { color: #e0a97a; font-weight: 700; }`;
   document.head.appendChild(style);
 
   const aside = document.createElement("aside");
   aside.id = "viewer-wdl";
   aside.setAttribute("aria-label", "WDL source");
   aside.innerHTML =
-    `<div class="wdl-head"><span>WDL <span class="sub">the model's source · ⌘↵ to apply</span></span></div>` +
+    `<div class="wdl-head"><span>WDL <span class="sub">the model's source · ⌘↵ to apply</span></span>` +
+    `<button class="wdl-ref-btn" id="wdl-ref-btn" title="Language reference (.wdl cheat-sheet)">📖 Reference</button></div>` +
     `<div id="wdl-editor"></div>` +
     `<div class="wdl-foot">` +
     `<button class="wdl-apply" id="wdl-apply" disabled>Apply changes<span class="k">⌘↵</span></button>` +
     `<button class="wdl-btn" id="wdl-save" title="Save the WDL source as a .wdl file">💾 Save .wdl</button>` +
-    `<span class="wdl-status" id="wdl-status"></span></div>`;
+    `<span class="wdl-status" id="wdl-status"></span></div>` +
+    `<div id="wdl-reference" hidden><div class="ref-head"><strong>.wdl language reference</strong>` +
+    `<button class="ref-close" id="wdl-ref-close" title="Close" aria-label="Close reference">×</button></div>` +
+    `<div id="wdl-ref-body"></div></div>`;
   container.appendChild(aside);
 
   // Stepped right-edge control: ❮ grows (off→on→max), ❯ shrinks (max→on→off).
@@ -4053,6 +4081,32 @@ function wireWdlEditor(): void {
       if (msg !== "Cancelled") setStatus("err", `Save failed: ${msg}`);
     }
   };
+
+  // Language-reference slide-over: a browsable .wdl cheat-sheet over the editor.
+  // The content is a chunky static string, lazy-loaded on first open so it never
+  // weighs on a closed pane. The in-editor Langium LSP still gives live
+  // completion/hover; this is the at-a-glance overview.
+  const refPanel = document.getElementById("wdl-reference") as HTMLElement;
+  const refBody = document.getElementById("wdl-ref-body") as HTMLElement;
+  let refLoaded = false;
+  const toggleReference = async (): Promise<void> => {
+    if (!refPanel.hidden) { refPanel.hidden = true; return; }
+    if (!refLoaded) {
+      refBody.innerHTML = "<p class=\"ref-note\">Loading…</p>";
+      try {
+        const { REFERENCE_HTML } = await import("./wdlReference");
+        refBody.innerHTML = REFERENCE_HTML;
+        refLoaded = true;
+      } catch (e) {
+        refBody.innerHTML = "<p class=\"ref-note\">Couldn't load the reference: " +
+          (e instanceof Error ? e.message : String(e)) + "</p>";
+      }
+    }
+    refPanel.hidden = false;
+    refPanel.scrollTop = 0;
+  };
+  (document.getElementById("wdl-ref-btn") as HTMLButtonElement).onclick = () => { void toggleReference(); };
+  (document.getElementById("wdl-ref-close") as HTMLButtonElement).onclick = () => { refPanel.hidden = true; };
 
   // The stepped control. ❮ grows one step (off→on→max), ❯ shrinks one step
   // (max→on→off). CSS shows/hides each button per state (❯ hidden when off, ❮
