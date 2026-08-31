@@ -20,10 +20,10 @@
 // Scope limits which PAGES it controls — not which requests it sees — so it
 // still intercepts the page's root-absolute and cross-origin fetches.
 
-const VERSION = "7a1e139d";
+const VERSION = "f29968a1";
 const SHELL_CACHE = `wadi-shell-${VERSION}`;
 const RUNTIME_CACHE = `wadi-runtime-${VERSION}`;
-const PRECACHE = ["./","./index.html","./assets/viewer-BARVMc_X.js","./assets/viewer-CNC7AqOf.js","./assets/viewer-DV3-yYod.css","./assets/viewer-khUgvuyq.js","./assets/viewer-w4qNjgYn.js","./assets/viewer-_71pHHXa.js","./assets/viewer-C15jy1Jz.js","./assets/viewer-BCo0pokv.js","./assets/viewer-ClJAfr6K.js","./assets/viewer-ZsUNQkRv.js","./assets/viewer-FLkQdOvf.css","./assets/viewer-CukkZe93.js","./assets/viewer-CfKPZ8A3.js","./assets/viewer-NTgVVwoZ.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.wadi","./templates/catalog.json","./templates/family_home.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
+const PRECACHE = ["./","./index.html","./assets/viewer-tvfzVIyo.js","./assets/viewer-CNC7AqOf.js","./assets/viewer-DV3-yYod.css","./assets/viewer-D4X7K8um.js","./assets/viewer-Cp0HTqv1.js","./assets/viewer-CfIWVcqU.js","./assets/viewer-C15jy1Jz.js","./assets/viewer-CkEb-Bms.js","./assets/viewer-ervo1kZQ.js","./assets/viewer-ZsUNQkRv.js","./assets/viewer-FLkQdOvf.css","./assets/viewer-cc-V3AGT.js","./assets/viewer-CfKPZ8A3.js","./assets/viewer-CakT9bQL.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.wadi","./templates/catalog.json","./templates/family_home.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
 
 // Web Share Target inbox: a shared .wadi file is stashed here (UNVERSIONED, so it
 // survives a worker update) for the app to pick up on its next boot.

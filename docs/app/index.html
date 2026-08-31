@@ -1356,21 +1356,44 @@
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 1rem;
         }
-        /* Plain name list for the user's own models folder (no thumbnails/meta —
-           those download on click, one file at a time). Spans the whole grid. */
+        /* Name list for the user's own models folder (no eager thumbnails/meta).
+           Each row: a NAME button that toggles an INLINE preview (loads async, list
+           stays live) + an Open button. Spans the whole grid. */
         .file-list { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; }
-        .file-row {
-            display: flex; align-items: center; gap: 10px; width: 100%;
-            padding: 9px 12px; border: 1px solid #e7e2da; border-radius: 8px;
-            background: #fafaf7; cursor: pointer; text-align: left; font: inherit;
-            color: #23201c; transition: background 0.12s ease, border-color 0.12s ease;
+        .file-item {
+            border: 1px solid #e7e2da; border-radius: 8px; background: #fafaf7; overflow: hidden;
+            transition: border-color 0.12s ease;
         }
-        .file-row:hover { background: #f2ede4; border-color: #d8cfc1; }
-        .file-row .file-icon { flex: 0 0 auto; font-size: 1.05rem; }
-        .file-row .file-name { flex: 1 1 auto; min-width: 0; overflow: hidden;
+        .file-item.open { border-color: #d8cfc1; }
+        .file-row { display: flex; align-items: stretch; }
+        .file-row:hover { background: #f2ede4; }
+        .file-name-btn {
+            flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px; background: none; border: none; cursor: pointer;
+            text-align: left; font: inherit; color: #23201c;
+        }
+        .file-name-btn .file-icon { flex: 0 0 auto; font-size: 1.05rem; }
+        .file-name-btn .file-name { flex: 1 1 auto; min-width: 0; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-        .file-row .file-open { flex: 0 0 auto; color: #B85028; font-size: .85rem; opacity: 0; transition: opacity 0.12s ease; }
-        .file-row:hover .file-open { opacity: 1; }
+        .file-name-btn .file-caret { flex: 0 0 auto; color: #a89c8c; font-size: .8rem; }
+        .file-open-btn {
+            flex: 0 0 auto; padding: 0 14px; background: none; border: none;
+            border-left: 1px solid #e7e2da; cursor: pointer; font: 600 .85rem inherit;
+            color: #B85028; transition: background 0.12s ease;
+        }
+        .file-open-btn:hover:not(:disabled) { background: #B85028; color: #fff; }
+        .file-open-btn:disabled { color: #a89c8c; cursor: default; }
+        /* Inline preview area (expands under a row). List stays visible around it. */
+        .file-preview-inline { padding: 4px 12px 12px; border-top: 1px dashed #e7e2da; background: #fff; }
+        .file-preview-inline .fp-loading { color: #8a8378; font-size: .9rem; }
+        .file-preview-inline .fp-hint { opacity: .65; font-size: .82em; }
+        .file-preview-inline .fp-err { color: #b00; font-size: .88rem; }
+        .file-preview-inline .fp-noimg { color: #8a8378; font-size: .88rem; padding: 6px 0; }
+        .file-preview-inline .fp-imgs { display: flex; flex-wrap: wrap; gap: 10px; }
+        .file-preview-inline .fp-imgs img {
+            max-width: min(320px, 100%); max-height: 220px; width: auto;
+            border: 1px solid #e0dfda; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.08);
+        }
         .template-card {
             border: 1px solid #e0dfda;
             border-radius: 10px;
@@ -2108,7 +2131,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-BARVMc_X.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-tvfzVIyo.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-DV3-yYod.css">
 </head>

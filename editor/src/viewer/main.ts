@@ -3284,6 +3284,9 @@ let catalogLoadSeq = 0;
 //   "open" — open the user's OWN work: their models folder (if set), plus opening a
 //            single .wadi from disk. Never shows samples. Opened by the Open button.
 let galleryMode: "new" | "open" = "new";
+// Downloaded bytes per folder file, cached so previewing then opening (or opening a
+// second time) doesn't re-download. Keyed by file name within the current folder.
+const folderBytesCache = new Map<string, Uint8Array>();
 
 // The WDL editor registers a "flush" here: apply its unapplied edits (compile the
 // current text) so a Save writes what's in the editor, not the last-applied WDL.
@@ -3432,8 +3435,12 @@ async function refreshGallery(): Promise<void> {
   renderFolderFileList(names);
 }
 
-// A plain, instant list of the folder's `.wadi` files (names only). Clicking one
-// loads THAT file — the single download happens then, bound by the user's click.
+// An instant list of the folder's `.wadi` files (names only — no downloads). Each
+// row: the NAME toggles an INLINE preview (loads its thumbnail on demand, without
+// touching the rest of the list), and an Open button opens the file directly. The
+// list stays visible + interactive the whole time — previews load in the
+// background, never blocking, so the user can click around while a slow cloud file
+// downloads.
 function renderFolderFileList(names: string[]): void {
   const grid = document.getElementById("new-house-modal-grid");
   if (!grid) return;
@@ -3448,62 +3455,106 @@ function renderFolderFileList(names: string[]): void {
   list.className = "file-list";
   for (const name of files) {
     const pretty = name.replace(/\.(wadi|json)$/i, "");
-    const row = document.createElement("button");
-    row.type = "button";
+    const item = document.createElement("div");
+    item.className = "file-item";
+    const row = document.createElement("div");
     row.className = "file-row";
-    row.innerHTML = `<span class="file-icon">🏠</span><span class="file-name">${escapeHtml(pretty)}</span><span class="file-open">Open →</span>`;
-    row.addEventListener("click", () => void openFolderFile(name));
-    list.appendChild(row);
+    const nameBtn = document.createElement("button");
+    nameBtn.type = "button";
+    nameBtn.className = "file-name-btn";
+    nameBtn.title = "Preview";
+    nameBtn.innerHTML = `<span class="file-icon">🏠</span><span class="file-name">${escapeHtml(pretty)}</span><span class="file-caret">▸</span>`;
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "file-open-btn";
+    openBtn.textContent = "Open →";
+    openBtn.title = "Open this file now";
+    openBtn.addEventListener("click", () => void openFolderFile(name, openBtn));
+    const preview = document.createElement("div");
+    preview.className = "file-preview-inline";
+    preview.hidden = true;
+    nameBtn.addEventListener("click", () => void togglePreview(name, item, preview, nameBtn));
+    row.append(nameBtn, openBtn);
+    item.append(row, preview);
+    list.appendChild(item);
   }
   grid.appendChild(list);
 }
 
-// Open ONE file from the current models folder as a document: read + parse it (the
-// download happens here, on the click), set its filename + a writable target so
-// Save writes back to the same file. Shows a clear loading state (a cloud file
-// downloads on first open and can be slow) and surfaces any failure in the panel.
-async function openFolderFile(name: string): Promise<void> {
-  if (!(await guardUnsaved("opening a model"))) return; // guard first (its own dialog)
-  const grid = document.getElementById("new-house-modal-grid");
-  const pretty = name.replace(/\.(wadi|json)$/i, "");
-  const showOpening = (extra = "") =>
-    grid && (grid.innerHTML =
-      `<div class="new-house-modal-empty">Opening <b>${escapeHtml(pretty)}</b>…${extra}</div>`);
-  showOpening(
-    `<br><span style="font-size:.85em;opacity:.7">A cloud file downloads on first open — this can take a moment.</span>`,
-  );
-  // Nudge if the read is dragging (an online-only file that Drive hasn't
-  // materialised). The download still continues; this is just feedback.
-  const slow = window.setTimeout(
-    () => showOpening(
-      `<br><span style="font-size:.85em;opacity:.7">Still downloading from the cloud… online-only files are faster if you mark them “Available offline” in Drive.</span>`,
-    ),
-    8000,
-  );
-  try {
-    const bytes = await fetchCatalogBytes(name);
-    const loaded = await parseConfigBytes(bytes, name);
-    window.clearTimeout(slow);
-    const src = templateSource();
-    let filePath: string | null;
-    if (src.kind === "browser-dir") {
-      await adoptModelsDirFile(name);
-      filePath = name;
-    } else {
-      filePath = localCatalogFilePath(name);
-    }
-    useConfigStore.getState().loadConfig(loaded.config, name, filePath, loaded.wdl);
-    markHomeChosen();
-    useConfigStore.temporal.getState().clear();
-    closeNewHouseModal();
-  } catch (e) {
-    window.clearTimeout(slow);
-    if (grid)
-      grid.innerHTML =
-        `<div class="new-house-modal-empty" style="color:#b00">Couldn't open <b>${escapeHtml(pretty)}</b>:<br>${escapeHtml(e instanceof Error ? e.message : String(e))}<br>
-         <button type="button" class="tpl-source-btn" id="of-back" style="margin-top:10px">← Back to files</button></div>`;
-    document.getElementById("of-back")?.addEventListener("click", () => void openMyModelsModal());
+// Cached download of a folder file (so preview → open, or a re-preview, is free).
+async function folderFileBytes(name: string): Promise<Uint8Array> {
+  const hit = folderBytesCache.get(name);
+  if (hit) return hit;
+  const bytes = await fetchCatalogBytes(name);
+  folderBytesCache.set(name, bytes);
+  return bytes;
+}
+
+// Toggle a row's inline preview: on first expand, download the file (cached) and
+// show its cover thumbnail(s). Fully async — the rest of the list stays live, and
+// several previews can load at once.
+async function togglePreview(name: string, item: HTMLElement, el: HTMLElement, nameBtn: HTMLElement): Promise<void> {
+  const caret = nameBtn.querySelector(".file-caret");
+  if (!el.hidden) { // collapse
+    el.hidden = true;
+    item.classList.remove("open");
+    if (caret) caret.textContent = "▸";
+    return;
   }
+  el.hidden = false;
+  item.classList.add("open");
+  if (caret) caret.textContent = "▾";
+  if (el.dataset.loaded === "1") return; // already have the thumbnail
+  el.innerHTML = `<span class="fp-loading">Loading preview… <span class="fp-hint">a cloud file downloads on first read</span></span>`;
+  try {
+    const bytes = await folderFileBytes(name);
+    const covers = isWadiBundle(bytes) ? await readBundleCoverUrls(bytes) : [];
+    if (el.hidden) return; // collapsed again while loading
+    el.dataset.loaded = "1";
+    el.innerHTML = covers.length
+      ? `<div class="fp-imgs">${covers.map((u) => `<img src="${u}" alt="preview">`).join("")}</div>`
+      : `<div class="fp-noimg">No preview image saved in this file.</div>`;
+  } catch (e) {
+    el.innerHTML = `<span class="fp-err">Preview failed: ${escapeHtml(e instanceof Error ? e.message : String(e))}</span>`;
+  }
+}
+
+// The Open button — download (cached from a preview if there was one) + open the
+// file as a document. The list stays visible; only the clicked button shows a brief
+// "Opening…" until the model loads and the modal closes.
+async function openFolderFile(name: string, btn?: HTMLButtonElement): Promise<void> {
+  if (!(await guardUnsaved("opening a model"))) return;
+  const label = btn?.textContent;
+  if (btn) { btn.textContent = "Opening…"; btn.disabled = true; }
+  try {
+    const bytes = await folderFileBytes(name);
+    const loaded = await parseConfigBytes(bytes, name);
+    await applyLoadedFolderModel(name, loaded);
+  } catch (e) {
+    if (btn) { btn.textContent = label ?? "Open →"; btn.disabled = false; }
+    alert(`Couldn't open ${name}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+// Load a parsed folder model into the editor as a DOCUMENT: real filename + a
+// writable target (a local path, or the browser folder's file handle) so Save
+// writes back to the SAME file. Closes the modal.
+async function applyLoadedFolderModel(
+  name: string,
+  loaded: Awaited<ReturnType<typeof parseConfigBytes>>,
+): Promise<void> {
+  const src = templateSource();
+  let filePath: string | null;
+  if (src.kind === "browser-dir") {
+    await adoptModelsDirFile(name);
+    filePath = name;
+  } else {
+    filePath = localCatalogFilePath(name);
+  }
+  useConfigStore.getState().loadConfig(loaded.config, name, filePath, loaded.wdl);
+  markHomeChosen();
+  useConfigStore.temporal.getState().clear();
+  closeNewHouseModal();
 }
 
 // A human label for a templates source, used in the bar and error messages.
@@ -3549,6 +3600,7 @@ function renderOpenSourceBar(): void {
   document.getElementById("tpl-source-refresh")?.addEventListener("click", () => {
     resetCatalogSource();
     thumbCache.clear();
+    folderBytesCache.clear();
     void openMyModelsModal();
   });
   document.getElementById("tpl-source-set")?.addEventListener("click", () =>
@@ -3558,6 +3610,7 @@ function renderOpenSourceBar(): void {
     setTemplateSource({ kind: "default" }); // "default" here means: no folder set
     resetCatalogSource();
     thumbCache.clear();
+    folderBytesCache.clear();
     void openMyModelsModal();
   });
 }
@@ -3571,6 +3624,7 @@ async function pickLocalModelsFolder(): Promise<void> {
   setTemplateSource({ kind: "local", dir: picked });
   resetCatalogSource();
   thumbCache.clear();
+    folderBytesCache.clear();
   void openMyModelsModal();
 }
 
@@ -3589,6 +3643,7 @@ async function pickBrowserModelsFolder(): Promise<void> {
   setTemplateSource({ kind: "browser-dir" });
   resetCatalogSource();
   thumbCache.clear();
+    folderBytesCache.clear();
   void openMyModelsModal();
 }
 
