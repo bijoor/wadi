@@ -1729,60 +1729,16 @@ function showBanner(message: string): void {
   window.setTimeout(remove, 14000);
 }
 
-// Geometry warnings emitted by House3D's lenient expansion drive three surfaces:
-//   1. a header status chip (#btn-issues) — always visible: green "✓ OK" when
-//      clean, red "⚠ N" with the count when there are issues;
-//   2. an on-demand panel (#issues-panel) — opened from the chip, lists every
-//      current issue and re-renders live, so the user can confirm a fix landed;
-//   3. the transient banner — a one-time nudge when a NEW issue set appears.
-// The warning set is republished on every re-expand (each edit), so all three
-// reflect the CURRENT model, and clear the moment the geometry becomes valid.
+// Geometry warnings emitted by House3D's lenient expansion (skipped openings, bad
+// walls) surface in two places, both fed by the `wadi-geometry-warnings` event:
+//   1. a one-time transient banner — a nudge when a NEW issue set appears (here);
+//   2. the WDL editor's compile-status panel — lists the current issues (wired in
+//      wireWdlEditor, listening to the same event).
+// The old always-visible header chip + floating panel are retired. The warning set
+// is republished on every re-expand, so both surfaces reflect the CURRENT model.
 function wireGeometryWarnings(): void {
-  const chip = document.getElementById("btn-issues");
-  const panel = document.getElementById("issues-panel");
-  const body = document.getElementById("issues-panel-body");
-  const countEl = panel?.querySelector(".ip-count") as HTMLElement | null;
-  let current: string[] = [];
   let lastBannerKey = "";
-
-  const renderPanel = () => {
-    if (!body) return;
-    if (countEl) {
-      countEl.textContent = current.length
-        ? `${current.length} geometry issue${current.length > 1 ? "s" : ""}`
-        : "Geometry issues";
-    }
-    body.replaceChildren();
-    if (current.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "ip-empty";
-      empty.textContent = "✓ No geometry issues — every opening and wall is valid.";
-      body.appendChild(empty);
-      return;
-    }
-    for (const msg of current) {
-      const row = document.createElement("div");
-      row.className = "ip-item";
-      const dot = document.createElement("span");
-      dot.className = "ip-dot";
-      dot.textContent = "⚠";
-      const text = document.createElement("span");
-      text.textContent = msg;
-      row.append(dot, text);
-      body.appendChild(row);
-    }
-  };
-
-  const setWarnings = (warnings: string[]) => {
-    current = warnings;
-    if (chip) {
-      chip.dataset.issues = warnings.length ? "on" : "off";
-      chip.textContent = warnings.length ? `⚠ ${warnings.length}` : "✓ OK";
-      chip.title = warnings.length
-        ? `${warnings.length} geometry issue${warnings.length > 1 ? "s" : ""} — click to view`
-        : "No geometry issues — click to review";
-    }
-    if (panel?.dataset.open === "on") renderPanel();
+  const onWarnings = (warnings: string[]) => {
     // One-time banner when a NEW non-empty set appears (not on every re-render).
     const key = warnings.join("\n");
     if (warnings.length && key !== lastBannerKey) {
@@ -1791,29 +1747,18 @@ function wireGeometryWarnings(): void {
           ? warnings[0]
           : `${warnings.length} geometry issues — ${warnings[0]}`;
       showBanner(
-        `⚠ ${head} The affected wall is shown solid (openings skipped) until you fix it in the object editor. Click ⚠ in the header to review all issues.`,
+        `⚠ ${head} The affected wall is shown solid (openings skipped) until you fix it. Open the WDL editor's status (⚠) to review all issues.`,
       );
     }
     lastBannerKey = key;
   };
-
-  chip?.addEventListener("click", () => {
-    if (!panel) return;
-    const isOpen = panel.dataset.open === "on";
-    panel.dataset.open = isOpen ? "off" : "on";
-    if (!isOpen) renderPanel();
-  });
-  document.getElementById("issues-panel-close")?.addEventListener("click", () => {
-    if (panel) panel.dataset.open = "off";
-  });
-
   window.addEventListener("wadi-geometry-warnings", (e) =>
-    setWarnings((e as CustomEvent<string[]>).detail ?? []),
+    onWarnings((e as CustomEvent<string[]>).detail ?? []),
   );
   // Catch-up: House3D's first render dispatches its warning event during
   // mountViewer3D, before this listener attaches — seed from what it stored.
   const stored = (window as unknown as { __geometryWarnings?: string[] }).__geometryWarnings;
-  setWarnings(stored ?? []);
+  onWarnings(stored ?? []);
 }
 
 function flashSaved(btn: HTMLElement | null, text = "✓ Saved"): void {
@@ -4022,20 +3967,45 @@ function wireWdlEditor(): void {
     warn:  { glyph: "⚠", label: "Warnings",  title: "Warnings" },
     err:   { glyph: "✖", label: "Errors",    title: "Errors" },
   };
-  let statusCls = "";
-  const setStatus = (cls: string, msg: string): void => {
-    statusCls = cls;
-    const m = STATUS_META[cls] ?? STATUS_META[""];
-    statusBtn.dataset.state = cls || "ok";
+  // The pill folds TWO signals: the WDL compile result (from Apply / dirty
+  // tracking) and the model's geometry-expansion warnings (from House3D — the old
+  // header chip's job, now shown here). A compile error dominates; otherwise
+  // geometry issues raise the pill to ⚠ and list in the panel.
+  let compileCls = "";
+  let compileMsg = "";
+  let geomWarnings: string[] = [];
+  const effectiveState = (): string => {
+    if (compileCls === "busy") return "busy";
+    if (compileCls === "err") return "err";
+    if (compileCls === "dirty") return "dirty";
+    if (geomWarnings.length) return "warn"; // compile ok/warn/idle + geometry issues
+    return compileCls; // "", "ok", or "warn"
+  };
+  const paintStatus = (): void => {
+    const eff = effectiveState();
+    const m = STATUS_META[eff] ?? STATUS_META[""];
+    statusBtn.dataset.state = eff || "ok";
     statusBtn.innerHTML = `<span class="sg">${m.glyph}</span><span class="sl">${m.label}</span>`;
-    statusBtn.title = msg ? msg.split("\n")[0] : m.title;
+    statusBtn.title = compileMsg ? compileMsg.split("\n")[0] : m.title;
     statusTitle.textContent = m.title;
-    statusBody.textContent = msg || "The WDL compiles cleanly — no issues.";
-    statusBody.className = "wdl-status-body " + (cls || "ok");
-    // Auto-open the panel on a fresh error so the parse error is seen at once; a
-    // warning just highlights the pill (the message is a click away).
+    let body = compileMsg || (geomWarnings.length ? "" : "The WDL compiles cleanly — no issues.");
+    if (geomWarnings.length) {
+      body =
+        (body ? body + "\n\n" : "") +
+        `⚠ Geometry (${geomWarnings.length}) — openings/walls dropped during expansion:\n` +
+        geomWarnings.map((w) => `  • ${w}`).join("\n");
+    }
+    statusBody.textContent = body;
+    statusBody.className = "wdl-status-body " + (eff || "ok");
+  };
+  const setStatus = (cls: string, msg: string): void => {
+    compileCls = cls; compileMsg = msg;
+    paintStatus();
+    // Auto-open the panel on a fresh compile ERROR so a parse error is seen at once;
+    // a warning just highlights the pill (the message is a click away).
     if (cls === "err") { refPanel.hidden = true; statusPanel.hidden = false; statusPanel.scrollTop = 0; }
   };
+  const setGeomWarnings = (list: string[]): void => { geomWarnings = list; paintStatus(); };
   // Toggle the status slide-over; mutually exclusive with the reference panel.
   (statusBtn).onclick = () => {
     if (!statusPanel.hidden) { statusPanel.hidden = true; return; }
@@ -4046,6 +4016,14 @@ function wireWdlEditor(): void {
   (document.getElementById("wdl-status-close") as HTMLButtonElement).onclick = () => {
     statusPanel.hidden = true;
   };
+  // Fold House3D's geometry-expansion warnings into this status surface (the old
+  // header chip is retired). Same `wadi-geometry-warnings` event + stored seed.
+  window.addEventListener("wadi-geometry-warnings", (e) =>
+    setGeomWarnings((e as CustomEvent<string[]>).detail ?? []),
+  );
+  setGeomWarnings(
+    (window as unknown as { __geometryWarnings?: string[] }).__geometryWarnings ?? [],
+  );
 
   // The code editor is Monaco (syntax highlighting + Langium completion/hover/
   // go-to-def/rename), reused from the DSL playground and LAZY-loaded on first
@@ -4067,7 +4045,7 @@ function wireWdlEditor(): void {
     applyBtn.disabled = !dirty;
     document.body.dataset.wdlDirty = dirty ? "on" : "off";
     if (dirty) setStatus("dirty", "Unapplied changes — Apply (⌘↵) to update the 3D.");
-    else if (statusCls === "dirty") setStatus("", "");
+    else if (compileCls === "dirty") setStatus("", "");
   };
 
   // Adopt the model's WDL when it changes from ELSEWHERE (a template load, undo, a

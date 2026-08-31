@@ -284,43 +284,6 @@
         .hdr-btn.hdr-btn-primary:hover {
             background: #a04620;
         }
-        /* Geometry-issues status chip */
-        #btn-issues[data-issues="off"] {
-            background: #eaf7ea; color: #2f7d32; border-color: #bfe3c0;
-        }
-        #btn-issues[data-issues="on"] {
-            background: #fdecea; color: #b4231a; border-color: #f3b7b1;
-            font-weight: 600;
-        }
-        #btn-issues[data-issues="on"]:hover:not(:disabled) { background: #fbdad5; }
-        /* Geometry-issues panel (floating, opened from the chip) */
-        #issues-panel {
-            position: fixed; top: 60px; right: 12px; z-index: 1001;
-            width: min(92vw, 420px); max-height: 60vh; display: none;
-            flex-direction: column; background: #fff; color: #222;
-            border: 1px solid #e0d4cc; border-radius: 12px;
-            box-shadow: 0 10px 34px rgba(0,0,0,0.22); overflow: hidden;
-            font-size: 13px;
-        }
-        #issues-panel[data-open="on"] { display: flex; }
-        #issues-panel .ip-head {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 12px; border-bottom: 1px solid #eee;
-            font-weight: 600;
-        }
-        #issues-panel .ip-head .ip-count { flex: 1; }
-        #issues-panel .ip-close {
-            background: none; border: none; cursor: pointer;
-            font-size: 15px; line-height: 1; color: #888; padding: 0 2px;
-        }
-        #issues-panel .ip-body { overflow-y: auto; padding: 6px; }
-        #issues-panel .ip-item {
-            display: flex; gap: 8px; padding: 8px 8px;
-            border-radius: 8px; line-height: 1.4;
-        }
-        #issues-panel .ip-item + .ip-item { border-top: 1px solid #f2f2f2; }
-        #issues-panel .ip-item .ip-dot { color: #b4231a; flex: 0 0 auto; }
-        #issues-panel .ip-empty { padding: 18px 12px; text-align: center; color: #2f7d32; }
         /* ---- Editing layout ---------------------------------------------
            Default (edit mode OFF): the viewer content area fills the row
            and both edit panels are hidden. In edit mode wide screens
@@ -2130,7 +2093,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-Cu4Lz5Mu.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-BUX1k0Bs.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-DV3-yYod.css">
 </head>
@@ -2196,11 +2159,9 @@
                     <!-- Edit-mode buttons — only meaningful when the sidebar
                          is visible, but they're always rendered so the
                          header layout doesn't shift when toggling. -->
-                    <!-- Geometry-issues status chip: green when clean, red with
-                         a count when the current model has skipped-opening / bad
-                         geometry warnings. Click to open the issues panel. -->
-                    <button id="btn-issues" class="hdr-btn hdr-btn-text" data-issues="off"
-                            title="Show geometry issues" aria-label="Geometry issues">✓ OK</button>
+                    <!-- Geometry-expansion issues surface in the WDL editor's
+                         compile-status panel (and a transient banner) — no separate
+                         header chip. -->
                     <button id="btn-undo" class="hdr-btn" title="Undo (⌘Z)" aria-label="Undo">↶</button>
                     <button id="btn-redo" class="hdr-btn" title="Redo (⇧⌘Z)" aria-label="Redo">↷</button>
                     <button id="btn-new" class="hdr-btn hdr-btn-text" title="Start a new model from the gallery (⌘N)">✨ New</button>
@@ -2213,17 +2174,6 @@
             </div>
         </div>
     </header>
-
-    <!-- Geometry-issues panel: opened on demand from the header chip. Lists the
-         current skipped-opening / bad-geometry warnings; updates live as the
-         model is edited, so the user can confirm an issue is resolved. -->
-    <div id="issues-panel" data-open="off" role="dialog" aria-label="Geometry issues">
-        <div class="ip-head">
-            <span class="ip-count">Geometry issues</span>
-            <button class="ip-close" id="issues-panel-close" aria-label="Close">✕</button>
-        </div>
-        <div class="ip-body" id="issues-panel-body"></div>
-    </div>
 
     <!-- Collapse/expand the left panel (Gharkul configurator or Nakasha sidebar).
          A chevron tab on the LEFT EDGE (distinct from the toolbar ☰). Shown by
