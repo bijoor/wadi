@@ -58,3 +58,43 @@ describe("DSL completion — genericCompletionsAt", () => {
     expect(g).toBeNull();
   });
 });
+
+// The bespoke rules (room, wall, template, the house body, …) complete via
+// Langium's grammar-driven CompletionProvider — NOT the descriptor path above.
+// Since every object's fields are now an order-INDEPENDENT repeated alternation,
+// completion must keep offering the remaining fields no matter what was typed
+// before. This guards against a future rule reverting to a fixed-order sequence
+// (which would silently stop offering "earlier" fields once a "later" one is set).
+describe("DSL completion — grammar-driven, order-independent fields", () => {
+  const completionsAt = async (text: string): Promise<string[]> => {
+    const { createWadiLspServices, buildLspWorkspace, LSP_ENTRY_URI } = await import(
+      "../src/lsp/wadi-lsp.js"
+    );
+    const { shared, Wadi } = createWadiLspServices();
+    const lines = text.split("\n");
+    const line = lines.length - 1;
+    const character = lines[line].length;
+    const ws = await buildLspWorkspace(shared, text, () => undefined);
+    const res = await Wadi.lsp!.CompletionProvider!.getCompletion(ws.entry, {
+      textDocument: { uri: LSP_ENTRY_URI },
+      position: { line, character },
+    });
+    return (res?.items ?? []).map((i) => i.label);
+  };
+
+  it("a room still offers tail fields after a `layer` was already set", async () => {
+    const labels = await completionsAt(`house H {\n  floor 1 "G" {\n    room R at (0,0) size (10,10) layer "x" `);
+    for (const f of ["height", "material", "z_offset", "enabled"]) expect(labels).toContain(f);
+  });
+
+  it("a template still offers `tags` after `thumbnails` (the reported bug)", async () => {
+    const labels = await completionsAt(`house H {\n  template {\n    thumbnails "a.jpg" `);
+    expect(labels).toContain("tags");
+    expect(labels).toContain("title");
+  });
+
+  it("the house body offers header singletons after a floor was declared", async () => {
+    const labels = await completionsAt(`house H {\n  floor 1 "G" { }\n  `);
+    for (const f of ["convention", "units", "site", "defaults", "template"]) expect(labels).toContain(f);
+  });
+});
