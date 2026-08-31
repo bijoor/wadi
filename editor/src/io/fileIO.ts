@@ -4,6 +4,13 @@ import { open as tauriOpen, save as tauriSave } from "@tauri-apps/plugin-dialog"
 import { readFile, writeTextFile, writeFile } from "@tauri-apps/plugin-fs";
 import { parseWadiBytes, buildWadiBundle, currentBundleThumbnails } from "./wadiBundle";
 import { deriveTemplateEntry } from "../templatePackage/catalogMeta";
+import {
+  supportsFsAccess,
+  hasCurrentHandle,
+  openWadiViaPicker,
+  saveWadiViaPicker,
+  saveWadiToCurrentHandle,
+} from "./fsAccess";
 
 // Load result — filePath is populated only when running inside Tauri,
 // so `saveConfig` can distinguish "Save" (write in place) from
@@ -32,6 +39,20 @@ export async function pickAndLoadConfig(): Promise<LoadResult> {
     const bytes = await readFile(selected);
     return parseWadiBytes(bytes, basename(selected), selected);
   }
+  // Chromium browsers: the File System Access picker opens a file from anywhere
+  // the OS exposes — including cloud SYNC folders (Drive/OneDrive/iCloud). The
+  // handle is kept so a later Save writes back in place, so `filePath` is set to
+  // the file's name (its presence is what makes the header Save an in-place write).
+  if (supportsFsAccess()) {
+    try {
+      const { bytes, name } = await openWadiViaPicker();
+      return parseWadiBytes(bytes, name, name);
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") throw new Error("Cancelled");
+      throw e;
+    }
+  }
+  // Safari / Firefox: the classic file input (download-only save path).
   const file = await pickJsonFile();
   const bytes = new Uint8Array(await file.arrayBuffer());
   return parseWadiBytes(bytes, file.name, null);
@@ -147,7 +168,10 @@ async function wadiBytesFor(
 // Save the house as a `.wadi` bundle.
 // - In Tauri with `filePath`: writes in place (Save). Returns the same path.
 // - In Tauri without `filePath`: shows native save dialog (Save As). Returns the chosen path.
-// - In the browser: triggers a Blob download using `defaultName`. Returns null.
+// - In a Chromium browser: writes via the File System Access API — in place to the
+//   open file (Save, when `filePath` is set and its handle is held), else a Save-As
+//   picker that can target a cloud SYNC folder. Returns the file's name.
+// - In Safari / Firefox: triggers a Blob download using `defaultName`. Returns null.
 export async function saveConfig(
   config: HouseConfig,
   filePath: string | null,
@@ -170,6 +194,23 @@ export async function saveConfig(
     await writeFile(target, bytes);
     return target;
   }
+  // Chromium browsers: write via the File System Access API — a real in-place Save
+  // to the open file when we hold its handle (and this is a Save, `filePath` set),
+  // otherwise a Save-As picker where the user can choose any location, INCLUDING a
+  // cloud sync folder. Any FS Access failure falls back to a plain download so a
+  // save is never silently lost.
+  if (supportsFsAccess()) {
+    try {
+      return filePath && hasCurrentHandle()
+        ? await saveWadiToCurrentHandle(bytes)
+        : await saveWadiViaPicker(bytes, name);
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") throw new Error("Cancelled");
+      downloadBytes(bytes, name);
+      return null;
+    }
+  }
+  // Safari / Firefox: no in-place write available — download the bundle.
   downloadBytes(bytes, name);
   return null;
 }
