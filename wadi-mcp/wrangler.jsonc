@@ -17,8 +17,14 @@
     }
   ],
   "durable_objects": {
-    "bindings": [{ "class_name": "WadiMcpContainer", "name": "WADI_MCP_CONTAINER" }]
+    "bindings": [
+      { "class_name": "WadiMcpContainer", "name": "WADI_MCP_CONTAINER" },
+      { "class_name": "SessionRelay", "name": "SESSION_RELAY" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WadiMcpContainer"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["WadiMcpContainer"] },
+    { "tag": "v2", "new_sqlite_classes": ["SessionRelay"] }
+  ],
   "observability": { "enabled": true }
 }

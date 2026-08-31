@@ -15,6 +15,9 @@ import { createWadiMcpServer } from "./mcpTools";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const MCP_PATH = "/mcp";
+// Base URL of the live co-editing relay (the Worker in front of this container).
+// The session tools push/read the WDL here. Overridable for local dev.
+const SESSION_BASE = process.env.SESSION_BASE ?? "https://mcp.wadi.house";
 
 function setCors(res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -60,7 +63,7 @@ const httpServer = createServer(async (req, res) => {
     // Stateless: one server + transport per request. enableJsonResponse returns a
     // plain application/json reply (no SSE stream), which suits request/response
     // tools and simple remote clients.
-    const server = createWadiMcpServer({ appBridge: false, fsPaths: false });
+    const server = createWadiMcpServer({ appBridge: false, fsPaths: false, sessionBaseUrl: SESSION_BASE });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

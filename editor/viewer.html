@@ -1730,6 +1730,37 @@
             white-space: nowrap;
         }
         .layer-status[hidden] { display: none; }
+        /* Live co-editing session panel (Phase 2). */
+        .live-session-panel {
+            position: fixed;
+            top: 64px; right: 16px;
+            z-index: 60;
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 10px 8px 12px;
+            border-radius: 12px;
+            background: #fffdfb;
+            border: 1px solid #e6ddd4;
+            box-shadow: 0 6px 22px rgba(40, 30, 20, 0.16);
+            font-size: 0.82rem;
+            max-width: 340px;
+        }
+        .live-session-panel[hidden] { display: none; }
+        .live-session-panel.live-flash { animation: liveFlash 0.6s ease; }
+        @keyframes liveFlash { 0% { box-shadow: 0 0 0 3px rgba(184,80,40,0.5), 0 6px 22px rgba(40,30,20,0.16); } 100% { box-shadow: 0 6px 22px rgba(40,30,20,0.16); } }
+        .live-dot { width: 9px; height: 9px; border-radius: 50%; background: #c9c2b8; flex: 0 0 auto; }
+        .live-dot.on { background: #2fae5f; box-shadow: 0 0 0 3px rgba(47,174,95,0.18); }
+        .live-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .live-title { font-weight: 700; color: #2C2A26; white-space: nowrap; }
+        .live-title code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82em; background: #f2ece4; padding: 0 5px; border-radius: 5px; color: #B85028; }
+        .live-status { color: #7a736a; font-size: 0.76rem; }
+        .live-btn {
+            font-size: 0.76rem; font-weight: 600;
+            border: 1px solid #d9d5cc; background: #fff; color: #5a564d;
+            border-radius: 7px; padding: 4px 8px; cursor: pointer; white-space: nowrap;
+        }
+        .live-btn:hover { border-color: #B85028; color: #B85028; }
+        .live-btn.live-stop { color: #b0403a; }
+        .live-btn.live-stop:hover { border-color: #b0403a; color: #b0403a; }
         /* Left: the two dropdown menus. Right: capture actions (architect). */
         .v3d-menus {
             flex: 1 1 auto;
@@ -2238,6 +2269,18 @@
                       </span>
                       <span class="apps-text"><b>Use with your AI agent</b><small id="apps-item-agent-sub">Copy a prompt for Claude / ChatGPT in your browser</small></span>
                     </button>
+                    <button id="apps-item-coedit" class="apps-item" type="button" role="menuitem" title="Start a live session an agent can edit while you watch it render">
+                      <span class="apps-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 3 v4"/>
+                          <circle cx="12" cy="12" r="3.2" fill="#B85028" stroke="none"/>
+                          <path d="M12 12 m-7 0 a7 7 0 1 0 14 0" opacity="0.5"/>
+                          <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+                          <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+                        </svg>
+                      </span>
+                      <span class="apps-text"><b>Co-edit live with an agent</b><small>Watch an agent build the design in real time</small></span>
+                    </button>
                   </div>
                 </div>
             </div>
@@ -2417,6 +2460,7 @@
                  layer visibility and the layer panel is hidden in ?panels=off
                  mode), so the homeowner knows the model isn't showing everything. -->
             <div id="layer-status" class="layer-status" hidden></div>
+            <div id="live-session-panel" class="live-session-panel" hidden></div>
         </div>
         <!-- End 3D Model View -->
 

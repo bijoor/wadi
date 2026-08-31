@@ -36,13 +36,18 @@ export interface CreateOpts {
   /** Save rendered PNGs to disk and include their absolute paths in the text. Default
    *  true. A remote host sets this false — the caller can't read the container's disk. */
   fsPaths?: boolean;
+  /** Base URL of the live co-editing relay (Phase 2). When set, the session tools
+   *  (`wadi_session_set`/`wadi_session_get`) are registered — they push/read the WDL
+   *  to a session the user watches live in the Wadi app. The hosted HTTP server sets
+   *  this (e.g. https://mcp.wadi.house); the local stdio bin leaves it unset. */
+  sessionBaseUrl?: string;
 }
 
 // Build the Wadi MCP server with every tool registered. Shared by the stdio entry
 // (server.ts) and the HTTP entry (http.ts). The HTTP host disables the app-bridge
 // tools and the filesystem paths.
 export function createWadiMcpServer(opts: CreateOpts = {}): McpServer {
-  const { appBridge = true, fsPaths = true } = opts;
+  const { appBridge = true, fsPaths = true, sessionBaseUrl } = opts;
   const server = new McpServer({ name: "wadi-mcp", version: "0.1.0" });
 
 // ---- wadi_check --------------------------------------------------------------
@@ -567,6 +572,72 @@ server.registerTool(
     return { content: [{ type: "text", text: lines.join("\n") }], structuredContent: info };
   },
 );
+
+  // ---- live co-editing session tools (Phase 2; hosted server only) -------------
+  if (sessionBaseUrl) {
+    const base = sessionBaseUrl.replace(/\/$/, "");
+    const sessionUrl = (code: string) => `${base}/session/${encodeURIComponent(code)}`;
+
+    server.registerTool(
+      "wadi_session_set",
+      {
+        title: "Push WDL to the live app session",
+        description:
+          "Compile-check a `.wdl` and, if it builds, push it to a LIVE session the user is watching in the Wadi app — they see it render (2D + 3D) as you edit. Use this INSTEAD of just returning WDL text whenever the user has given you a session code (they start one in the app via “Co-edit with an agent”). Returns the C1-C12 structural check. Typical loop: wadi_session_get to read the current model → edit → wadi_session_set → read warnings → repeat.",
+        inputSchema: {
+          session: z.string().describe("The session code the user started in the Wadi app."),
+          wdl: z.string().describe("The full .wdl source to push."),
+        },
+      },
+      async ({ session, wdl }) => {
+        const r = checkWdl(wdl);
+        if (!r.ok) {
+          const lines = [`❌ Not pushed — ${r.errors.length} error(s). Fix and retry:`];
+          for (const e of r.errors) lines.push(`  ✖ ${e.rule ? `[${e.rule}] ` : ""}${e.message}`);
+          return { content: [{ type: "text", text: lines.join("\n") }], structuredContent: r, isError: true };
+        }
+        let clients = 0;
+        try {
+          const resp = await fetch(sessionUrl(session), {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ wdl }),
+          });
+          clients = ((await resp.json().catch(() => ({}))) as { clients?: number }).clients ?? 0;
+        } catch (e) {
+          return { content: [{ type: "text", text: "❌ Push failed: " + (e as Error).message }], isError: true };
+        }
+        const lines = [
+          `✅ Pushed to session "${session}" — ${clients} app viewer${clients === 1 ? "" : "s"} connected${clients === 0 ? " (open the app and connect the session to watch it render)" : " and rendering it now"}.`,
+        ];
+        for (const w of r.warnings) lines.push(`  ⚠ ${w.rule ? `[${w.rule}] ` : ""}${w.message}`);
+        return { content: [{ type: "text", text: lines.join("\n") }], structuredContent: r };
+      },
+    );
+
+    server.registerTool(
+      "wadi_session_get",
+      {
+        title: "Read the live app session's WDL",
+        description:
+          "Return the current `.wdl` in a live session — use it to pick up where the user's model is (or edits they made in the app) before you start changing it. `session` is the code from the app.",
+        inputSchema: { session: z.string().describe("The session code from the Wadi app.") },
+      },
+      async ({ session }) => {
+        try {
+          const resp = await fetch(sessionUrl(session));
+          const wdl = ((await resp.json().catch(() => ({}))) as { wdl?: string }).wdl ?? "";
+          return {
+            content: [
+              { type: "text", text: wdl ? wdl : "(the session is empty — no model yet; author one and wadi_session_set it)" },
+            ],
+          };
+        } catch (e) {
+          return { content: [{ type: "text", text: "❌ Read failed: " + (e as Error).message }], isError: true };
+        }
+      },
+    );
+  }
 
   return server;
 }

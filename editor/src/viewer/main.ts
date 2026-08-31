@@ -485,6 +485,8 @@ async function bootViewer(): Promise<void> {
   // Register the wadi controls as WebMCP tools so any WebMCP browser agent
   // (Gemini in Chrome, Claude, …) can drive the model. No-op without WebMCP.
   wireWebMcpTools();
+  // Push user WDL edits to a live co-editing session when one is active (Phase 2).
+  wireLiveSessionSync();
   // Expose the 2D capture bridges (architect "take a shot" + auto floor plan).
   wireCaptureBridges();
   // Surface geometry warnings (invalid openings dropped during expansion)
@@ -1869,6 +1871,11 @@ function wireAppsMenu(): void {
         void copyAgentPrompt();
         return; // keep the menu open long enough to show the "Copied" cue
       }
+      if (item.id === "apps-item-coedit") {
+        setOpen(false);
+        startLiveSession();
+        return;
+      }
       const name = item.dataset.app ?? "";
       const url = item.dataset.url ?? "/";
       setOpen(false);
@@ -1931,6 +1938,122 @@ async function copyAgentPrompt(): Promise<void> {
     sub.textContent = ok ? "Copied — paste into your AI agent" : "Copy failed — select window.wadi.help() manually";
     window.setTimeout(() => { if (sub.textContent?.startsWith("Copied") || sub.textContent?.startsWith("Copy failed")) sub.textContent = original; }, 2600);
   }
+}
+
+// ============================================================================
+// Live co-editing (Phase 2). The app connects to a session on the hosted relay
+// (mcp.wadi.house), pushes the current model in, and RE-RENDERS whenever the agent
+// pushes an edit via the wadi_session_set MCP tool — so you watch the design build
+// as the agent works. The app keeps owning Save. See plans/remote-mcp-server.md.
+// ============================================================================
+const MCP_ORIGIN = "https://mcp.wadi.house";
+
+function randomSessionCode(): string {
+  // 8 chars from an unambiguous base32 alphabet — the unguessable session capability.
+  const abc = "abcdefghjkmnpqrstuvwxyz23456789";
+  const a = new Uint8Array(8);
+  crypto.getRandomValues(a);
+  return Array.from(a, (n) => abc[n % abc.length]).join("");
+}
+
+interface LiveSession {
+  code: string;
+  ws: WebSocket;
+  lastWdl: string; // the last WDL sent OR applied — guards the echo loop
+  updates: number;
+  connected: boolean;
+}
+let liveSession: LiveSession | null = null;
+
+const liveSessionPrompt = (code: string): string =>
+  `You are connected to a LIVE Wadi co-editing session (wadi.house). Use the Wadi MCP ` +
+  `server at ${MCP_ORIGIN}/mcp with session code "${code}": call ` +
+  `wadi_session_get({session:"${code}"}) to read the current model, edit the .wdl, and ` +
+  `wadi_session_set({session:"${code}", wdl}) to push each change — I am watching it render ` +
+  `live in the Wadi app. Call wadi_wdl_reference first if unsure of the syntax.`;
+
+function startLiveSession(): void {
+  if (liveSession) return;
+  const code = randomSessionCode();
+  const ws = new WebSocket(`${MCP_ORIGIN.replace(/^http/, "ws")}/session/${code}/ws`);
+  liveSession = { code, ws, lastWdl: "", updates: 0, connected: false };
+
+  ws.addEventListener("open", () => {
+    if (!liveSession) return;
+    liveSession.connected = true;
+    // Seed the session with the current model so the agent can read it.
+    const wdl = useConfigStore.getState().wdl;
+    if (wdl) { liveSession.lastWdl = wdl; try { ws.send(JSON.stringify({ type: "wdl", wdl })); } catch { /* */ } }
+    renderLivePanel();
+  });
+  ws.addEventListener("message", (evt) => {
+    if (!liveSession) return;
+    try {
+      const msg = JSON.parse(typeof evt.data === "string" ? evt.data : "") as { type?: string; wdl?: string };
+      if (msg?.type === "wdl" && typeof msg.wdl === "string" && msg.wdl !== liveSession.lastWdl) {
+        liveSession.lastWdl = msg.wdl; // set BEFORE applying so our store subscriber doesn't echo it back
+        liveSession.updates++;
+        void window.wadi?.setWdl(msg.wdl);
+        renderLivePanel(true);
+      }
+    } catch { /* ignore malformed frames */ }
+  });
+  ws.addEventListener("close", () => { if (liveSession) { liveSession.connected = false; renderLivePanel(); } });
+  ws.addEventListener("error", () => { if (liveSession) { liveSession.connected = false; renderLivePanel(); } });
+  renderLivePanel();
+}
+
+function stopLiveSession(): void {
+  if (!liveSession) return;
+  try { liveSession.ws.close(); } catch { /* */ }
+  liveSession = null;
+  const panel = document.getElementById("live-session-panel");
+  if (panel) panel.hidden = true;
+}
+
+// Push a user-made WDL change to the session (guarded so an applied incoming edit
+// isn't echoed back). Called from the store subscription.
+function pushLiveSession(wdl: string): void {
+  if (!liveSession || !liveSession.connected) return;
+  if (!wdl || wdl === liveSession.lastWdl) return;
+  liveSession.lastWdl = wdl;
+  try { liveSession.ws.send(JSON.stringify({ type: "wdl", wdl })); } catch { /* */ }
+}
+
+function renderLivePanel(flash = false): void {
+  const panel = document.getElementById("live-session-panel");
+  if (!panel || !liveSession) return;
+  panel.hidden = false;
+  const status = !liveSession.connected
+    ? "connecting…"
+    : liveSession.updates > 0
+      ? `agent edited · ${liveSession.updates} update${liveSession.updates === 1 ? "" : "s"}`
+      : "waiting for the agent…";
+  panel.innerHTML = `
+    <div class="live-dot${liveSession.connected ? " on" : ""}"></div>
+    <div class="live-body">
+      <div class="live-title">Live session <code>${liveSession.code}</code></div>
+      <div class="live-status" id="live-status">${status}</div>
+    </div>
+    <button type="button" id="live-copy" class="live-btn" title="Copy a prompt for your AI agent">Copy prompt</button>
+    <button type="button" id="live-stop" class="live-btn live-stop" title="End the live session">Stop</button>`;
+  panel.querySelector("#live-copy")?.addEventListener("click", async () => {
+    const s = panel.querySelector("#live-status") as HTMLElement | null;
+    try { await navigator.clipboard.writeText(liveSessionPrompt(liveSession!.code)); if (s) { const t = s.textContent; s.textContent = "Prompt copied — paste into your agent"; window.setTimeout(() => { if (s.textContent?.startsWith("Prompt copied")) s.textContent = t ?? ""; }, 2400); } } catch { /* */ }
+  });
+  panel.querySelector("#live-stop")?.addEventListener("click", () => stopLiveSession());
+  if (flash) { panel.classList.remove("live-flash"); void panel.offsetWidth; panel.classList.add("live-flash"); }
+}
+
+// Push any user-made WDL change to the live session (the echo guard in
+// pushLiveSession skips edits that came FROM the session). Registered once.
+function wireLiveSessionSync(): void {
+  let lastWdl = useConfigStore.getState().wdl;
+  useConfigStore.subscribe((state) => {
+    if (state.wdl === lastWdl) return;
+    lastWdl = state.wdl;
+    pushLiveSession(state.wdl);
+  });
 }
 
 function wireHeaderButtons(): void {
