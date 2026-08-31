@@ -69,6 +69,24 @@ const httpServer = createServer(async (req, res) => {
       void transport.close();
       void server.close();
     });
+    // The SDK transport strictly requires the client to accept BOTH application/json
+    // and text/event-stream, returning 406 otherwise. Some remote MCP clients POST
+    // with `Accept: application/json` only. We always reply with JSON
+    // (enableJsonResponse), so normalize Accept to satisfy the check instead of
+    // rejecting those clients. The Node wrapper rebuilds the request from rawHeaders
+    // (via @hono/node-server), so patch BOTH headers and rawHeaders.
+    const ACCEPT = "application/json, text/event-stream";
+    req.headers.accept = ACCEPT;
+    if (Array.isArray(req.rawHeaders)) {
+      let found = false;
+      for (let i = 0; i + 1 < req.rawHeaders.length; i += 2) {
+        if (req.rawHeaders[i].toLowerCase() === "accept") {
+          req.rawHeaders[i + 1] = ACCEPT;
+          found = true;
+        }
+      }
+      if (!found) req.rawHeaders.push("Accept", ACCEPT);
+    }
     try {
       await server.connect(transport);
       const body = req.method === "POST" ? await readJson(req) : undefined;
