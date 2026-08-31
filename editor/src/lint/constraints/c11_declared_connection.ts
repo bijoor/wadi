@@ -15,6 +15,7 @@
 // absorbs that overlap, so the same test reads both conventions.
 
 import { num, cap, floorLabel, objLabel, activeObjects, makeReport, type Bag } from "./vocab";
+import { openingStartOffset } from "../../svg2d/openingAnchor";
 import type { Constraint } from "./types";
 
 type Side = "north" | "south" | "east" | "west";
@@ -42,16 +43,29 @@ function sharedWall(a: Rect, b: Rect, tol: number): { side: Side; lo: number; hi
 }
 
 // Does `room` carry a door on `side` whose span overlaps the shared wall [lo, hi]?
-// The along-wall origin is the room's y (east/west) or x (north/south) corner.
+// The along-wall origin is the room's y (east/west) or x (north/south) corner. The
+// door's `offset` is anchored (start | center | end) against the WALL length — the
+// room's length for east/west, its width for north/south — the same conversion
+// expand.ts applies (openingAnchor.ts). A door authored `from end`/`from center`
+// must be resolved here too, or its span is read at the wrong place (a `from end`
+// door was mis-read as start-based and flagged as "no door in the overlap").
 function doorOnShared(room: Bag, side: Side, lo: number, hi: number): boolean {
   const walls = room.walls;
   if (!walls || Array.isArray(walls) || typeof walls !== "object") return false;
   const ops = (walls as Record<string, { openings?: Bag[] }>)[side]?.openings;
   if (!Array.isArray(ops)) return false;
-  const base = side === "east" || side === "west" ? num(room.y) : num(room.x);
+  const vertical = side === "east" || side === "west";
+  const base = vertical ? num(room.y) : num(room.x);
+  const wallLength = vertical ? num(room.length) : num(room.width);
   for (const op of ops) {
     if (op?.kind !== "door") continue;
-    const dLo = base + num(op.offset), dHi = dLo + num(op.width);
+    const start = openingStartOffset(
+      op.anchor as "start" | "center" | "end" | undefined,
+      num(op.offset),
+      num(op.width),
+      wallLength,
+    );
+    const dLo = base + start, dHi = dLo + num(op.width);
     if (Math.min(dHi, hi) - Math.max(dLo, lo) > 0) return true; // door lies on the shared span
   }
   return false;
@@ -182,6 +196,20 @@ export const C11: Constraint = {
         ]),
       },
       {
+        name: "door anchored `from end` lands in the overlap (anchor honoured)",
+        config: house([
+          {
+            type: "room", name: "Living", x: 0, y: 0, width: 200, length: 500,
+            connections: ["Kitchen"],
+            // Living's east wall runs y 0..500; the overlap with Kitchen is y 300..500.
+            // `end` anchor: start-offset = 500 - 80 - 30 = 390, so the door is y 390..470
+            // — inside the overlap. (Read as start-based it would be y 30..110, a miss.)
+            walls: { east: { openings: [{ kind: "door", name: "D1", offset: 30, width: 80, anchor: "end" }] } },
+          },
+          { type: "room", name: "Kitchen", x: 200, y: 300, width: 200, length: 400 },
+        ]),
+      },
+      {
         name: "rooms with no declared connections are not checked",
         config: house([
           { type: "room", name: "A", x: 0, y: 0, width: 100, length: 100 },
@@ -227,6 +255,20 @@ export const C11: Constraint = {
           { type: "room", name: "Living", x: 0, y: 0, width: 200, length: 200, connections: ["Kitchen"] },
           // Kitchen omits its west wall, but Living's solid east wall still blocks.
           { type: "room", name: "Kitchen", x: 200, y: 0, width: 200, length: 200, walls: { north: {}, south: {}, east: {} } },
+        ]),
+        expect: { count: 1, level: "error", messageIncludes: "no door" },
+      },
+      {
+        name: "door anchored `from end` still lands OUTSIDE the overlap (anchor honoured)",
+        config: house([
+          {
+            type: "room", name: "Living", x: 0, y: 0, width: 200, length: 500,
+            connections: ["Kitchen"],
+            // `end` anchor: start-offset = 500 - 80 - 30 = 390 → door y 390..470, but
+            // the overlap with Kitchen is only y 0..100 → genuinely no door in it.
+            walls: { east: { openings: [{ kind: "door", name: "D1", offset: 30, width: 80, anchor: "end" }] } },
+          },
+          { type: "room", name: "Kitchen", x: 200, y: 0, width: 200, length: 100 },
         ]),
         expect: { count: 1, level: "error", messageIncludes: "no door" },
       },
