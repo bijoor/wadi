@@ -3437,12 +3437,11 @@ async function refreshGallery(): Promise<void> {
   renderFolderFileList(names);
 }
 
-// An instant list of the folder's `.wadi` files (names only — no downloads). Each
-// row: the NAME toggles an INLINE preview (loads its thumbnail on demand, without
-// touching the rest of the list), and an Open button opens the file directly. The
-// list stays visible + interactive the whole time — previews load in the
-// background, never blocking, so the user can click around while a slow cloud file
-// downloads.
+// A MASTER-DETAIL browser for the user's models folder: a LIST of file names (no
+// downloads to list), and a single PREVIEW pane showing the SELECTED file's
+// thumbnail — reusing the templates carousel. The thumbnail loads on demand, but
+// "Open this model" is available IMMEDIATELY, so a file can be opened without
+// waiting for its (cloud-downloaded) thumbnail.
 function renderFolderFileList(names: string[]): void {
   const grid = document.getElementById("new-house-modal-grid");
   if (!grid) return;
@@ -3453,37 +3452,65 @@ function renderFolderFileList(names: string[]): void {
       `<div class="new-house-modal-empty">This folder has no <b>.wadi</b> files yet.<br>Save a design into it, or choose a different folder.</div>`;
     return;
   }
+  const browser = document.createElement("div");
+  browser.className = "folder-browser";
   const list = document.createElement("div");
-  list.className = "file-list";
+  list.className = "folder-list";
   for (const name of files) {
     const pretty = name.replace(/\.(wadi|json)$/i, "");
-    const item = document.createElement("div");
-    item.className = "file-item";
-    const row = document.createElement("div");
-    row.className = "file-row";
-    const nameBtn = document.createElement("button");
-    nameBtn.type = "button";
-    nameBtn.className = "file-name-btn";
-    nameBtn.title = "Preview";
-    nameBtn.innerHTML = `<span class="file-icon">🏠</span><span class="file-name">${escapeHtml(pretty)}</span><span class="file-caret">▸</span>`;
-    const openBtn = document.createElement("button");
-    openBtn.type = "button";
-    openBtn.className = "file-open-btn";
-    openBtn.textContent = "Open →";
-    openBtn.title = "Open this file now";
-    openBtn.addEventListener("click", () => void openFolderFile(name, openBtn));
-    const preview = document.createElement("div");
-    preview.className = "file-preview-inline";
-    preview.hidden = true;
-    nameBtn.addEventListener("click", () => void togglePreview(name, item, preview, nameBtn));
-    row.append(nameBtn, openBtn);
-    item.append(row, preview);
-    list.appendChild(item);
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "folder-row";
+    row.innerHTML = `<span class="file-icon">🏠</span><span class="file-name">${escapeHtml(pretty)}</span>`;
+    row.addEventListener("click", () => selectFolderFile(name, row));
+    list.appendChild(row);
   }
-  grid.appendChild(list);
+  const preview = document.createElement("div");
+  preview.className = "folder-preview";
+  preview.id = "folder-preview";
+  preview.innerHTML = `<div class="folder-preview-empty">Select a design to preview it,<br>or open it directly.</div>`;
+  browser.append(list, preview);
+  grid.appendChild(browser);
 }
 
-// Cached download of a folder file (so preview → open, or a re-preview, is free).
+// Select a file: highlight it and show its preview (thumbnail loads async; the Open
+// button is ready right away, so you needn't wait for the thumbnail).
+function selectFolderFile(name: string, row: HTMLElement): void {
+  row.parentElement?.querySelectorAll(".folder-row.sel").forEach((r) => r.classList.remove("sel"));
+  row.classList.add("sel");
+  const preview = document.getElementById("folder-preview");
+  if (!preview) return;
+  const pretty = name.replace(/\.(wadi|json)$/i, "");
+  preview.innerHTML =
+    `<div class="template-card-thumb folder-preview-thumb" id="folder-preview-thumb"><span class="thumb-placeholder">🏠</span><span class="folder-preview-badge">Loading preview…</span></div>
+     <div class="folder-preview-name">${escapeHtml(pretty)}</div>
+     <button type="button" class="file-preview-open" id="folder-preview-open">Open this model</button>`;
+  const openBtn = document.getElementById("folder-preview-open") as HTMLButtonElement;
+  openBtn.addEventListener("click", () => void openFolderFile(name, openBtn));
+  void loadFolderThumb(name, document.getElementById("folder-preview-thumb") as HTMLElement);
+}
+
+// Load the selected file's cover thumbnail(s) into the preview pane (the templates
+// carousel). If a newer file is selected first, thumbEl is detached — bail so a
+// slow load can't overwrite it.
+async function loadFolderThumb(name: string, thumbEl: HTMLElement | null): Promise<void> {
+  if (!thumbEl) return;
+  try {
+    const bytes = await folderFileBytes(name);
+    const covers = isWadiBundle(bytes) ? await readBundleCoverUrls(bytes) : [];
+    if (!thumbEl.isConnected) return; // a different file was selected meanwhile
+    if (covers.length) {
+      buildTemplateCarousel(thumbEl, covers, name);
+    } else {
+      thumbEl.innerHTML = `<div class="folder-preview-noimg">🏠<br><span>No preview image saved in this file.</span></div>`;
+    }
+  } catch (e) {
+    if (thumbEl.isConnected)
+      thumbEl.innerHTML = `<div class="folder-preview-noimg">Preview unavailable<br><span>${escapeHtml(e instanceof Error ? e.message : String(e))}</span></div>`;
+  }
+}
+
+// Cached download of a folder file (so preview → open, or re-selecting it, is free).
 async function folderFileBytes(name: string): Promise<Uint8Array> {
   const hit = folderBytesCache.get(name);
   if (hit) return hit;
@@ -3492,38 +3519,8 @@ async function folderFileBytes(name: string): Promise<Uint8Array> {
   return bytes;
 }
 
-// Toggle a row's inline preview: on first expand, download the file (cached) and
-// show its cover thumbnail(s). Fully async — the rest of the list stays live, and
-// several previews can load at once.
-async function togglePreview(name: string, item: HTMLElement, el: HTMLElement, nameBtn: HTMLElement): Promise<void> {
-  const caret = nameBtn.querySelector(".file-caret");
-  if (!el.hidden) { // collapse
-    el.hidden = true;
-    item.classList.remove("open");
-    if (caret) caret.textContent = "▸";
-    return;
-  }
-  el.hidden = false;
-  item.classList.add("open");
-  if (caret) caret.textContent = "▾";
-  if (el.dataset.loaded === "1") return; // already have the thumbnail
-  el.innerHTML = `<span class="fp-loading">Loading preview… <span class="fp-hint">a cloud file downloads on first read</span></span>`;
-  try {
-    const bytes = await folderFileBytes(name);
-    const covers = isWadiBundle(bytes) ? await readBundleCoverUrls(bytes) : [];
-    if (el.hidden) return; // collapsed again while loading
-    el.dataset.loaded = "1";
-    el.innerHTML = covers.length
-      ? `<div class="fp-imgs">${covers.map((u) => `<img src="${u}" alt="preview">`).join("")}</div>`
-      : `<div class="fp-noimg">No preview image saved in this file.</div>`;
-  } catch (e) {
-    el.innerHTML = `<span class="fp-err">Preview failed: ${escapeHtml(e instanceof Error ? e.message : String(e))}</span>`;
-  }
-}
-
-// The Open button — download (cached from a preview if there was one) + open the
-// file as a document. The list stays visible; only the clicked button shows a brief
-// "Opening…" until the model loads and the modal closes.
+// The Open button — download (cached from the preview if it loaded) + open the file
+// as a document. Shows a brief "Opening…" until the model loads and the modal closes.
 async function openFolderFile(name: string, btn?: HTMLButtonElement): Promise<void> {
   if (!(await guardUnsaved("opening a model"))) return;
   const label = btn?.textContent;

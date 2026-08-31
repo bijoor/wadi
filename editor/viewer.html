@@ -1356,43 +1356,42 @@
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 1rem;
         }
-        /* Name list for the user's own models folder (no eager thumbnails/meta).
-           Each row: a NAME button that toggles an INLINE preview (loads async, list
-           stays live) + an Open button. Spans the whole grid. */
-        .file-list { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; }
-        .file-item {
-            border: 1px solid #e7e2da; border-radius: 8px; background: #fafaf7; overflow: hidden;
-            transition: border-color 0.12s ease;
+        /* Master-detail browser for the user's own models folder: a name LIST on the
+           left, a single PREVIEW (thumbnail carousel + Open) on the right. */
+        .folder-browser { grid-column: 1 / -1; display: flex; gap: 18px; align-items: flex-start; }
+        .folder-list { flex: 0 0 230px; max-height: 56vh; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 3px; padding-right: 2px; }
+        .folder-row {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            padding: 9px 12px; border: 1px solid transparent; border-radius: 8px;
+            background: none; cursor: pointer; text-align: left; font: inherit; color: #23201c;
+            transition: background 0.12s ease, border-color 0.12s ease;
         }
-        .file-item.open { border-color: #d8cfc1; }
-        .file-row { display: flex; align-items: stretch; }
-        .file-row:hover { background: #f2ede4; }
-        .file-name-btn {
-            flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px;
-            padding: 9px 12px; background: none; border: none; cursor: pointer;
-            text-align: left; font: inherit; color: #23201c;
-        }
-        .file-name-btn .file-icon { flex: 0 0 auto; font-size: 1.05rem; }
-        .file-name-btn .file-name { flex: 1 1 auto; min-width: 0; overflow: hidden;
+        .folder-row:hover { background: #f2ede4; }
+        .folder-row.sel { background: #fbeee6; border-color: #e6c3ad; }
+        .folder-row .file-icon { flex: 0 0 auto; font-size: 1.05rem; }
+        .folder-row .file-name { flex: 1 1 auto; min-width: 0; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-        .file-name-btn .file-caret { flex: 0 0 auto; color: #a89c8c; font-size: .8rem; }
-        .file-open-btn {
-            flex: 0 0 auto; padding: 0 14px; background: none; border: none;
-            border-left: 1px solid #e7e2da; cursor: pointer; font: 600 .85rem inherit;
-            color: #B85028; transition: background 0.12s ease;
+        .folder-preview {
+            flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column;
+            align-items: center; gap: 14px; padding-top: 4px;
         }
-        .file-open-btn:hover:not(:disabled) { background: #B85028; color: #fff; }
-        .file-open-btn:disabled { color: #a89c8c; cursor: default; }
-        /* Inline preview area (expands under a row). List stays visible around it. */
-        .file-preview-inline { padding: 4px 12px 12px; border-top: 1px dashed #e7e2da; background: #fff; }
-        .file-preview-inline .fp-loading { color: #8a8378; font-size: .9rem; }
-        .file-preview-inline .fp-hint { opacity: .65; font-size: .82em; }
-        .file-preview-inline .fp-err { color: #b00; font-size: .88rem; }
-        .file-preview-inline .fp-noimg { color: #8a8378; font-size: .88rem; padding: 6px 0; }
-        .file-preview-inline .fp-imgs { display: flex; flex-wrap: wrap; gap: 10px; }
-        .file-preview-inline .fp-imgs img {
-            max-width: min(320px, 100%); max-height: 220px; width: auto;
-            border: 1px solid #e0dfda; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.08);
+        .folder-preview-empty { color: #8a8378; text-align: center; padding: 60px 20px; line-height: 1.5; }
+        .folder-preview-thumb { width: 100%; max-width: 460px; border: 1px solid #e0dfda;
+            border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.10); position: relative; }
+        /* No .template-card parent here, so reveal the carousel controls on hover. */
+        .folder-preview-thumb:hover .tpl-arrow, .folder-preview-thumb:hover .tpl-magnify { opacity: 1; }
+        .folder-preview-badge {
+            position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
+            color: #fff; font-size: .8rem; text-shadow: 0 1px 3px rgba(0,0,0,.6);
+        }
+        .folder-preview-noimg { color: #8a8378; text-align: center; padding: 30px 16px; font-size: 1.6rem; line-height: 1.35; }
+        .folder-preview-noimg span { font-size: .82rem; }
+        .folder-preview-name { font-weight: 700; font-size: 1.05rem; text-align: center; }
+        @media (max-width: 720px) {
+            .folder-browser { flex-direction: column; }
+            .folder-list { flex-basis: auto; width: 100%; max-height: 34vh; }
+            .folder-preview { width: 100%; }
         }
         .template-card {
             border: 1px solid #e0dfda;
