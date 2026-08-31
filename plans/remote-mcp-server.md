@@ -19,8 +19,14 @@ Clients this unlocks (all use the same remote-MCP-over-HTTP shape):
 
 This is the third and most robust agent surface. It is NOT the in-page
 `window.wadi` / WebMCP path (that drives the live tab, but the consumer side is
-gated), and NOT the local stdio `wadi-mcp` (coding agents like Claude Code). It is
-the same tool logic as `wadi-mcp`, hosted behind HTTP.
+gated), and NOT the local stdio `wadi-mcp` (coding agents like Claude Code and
+Antigravity). It is the same tool logic as `wadi-mcp`, hosted behind HTTP.
+
+**The offline server stays.** We keep publishing and supporting the local stdio
+`wadi-mcp` for agents that run one locally (Claude Code, Antigravity, Claude
+Desktop). The online server is additive: it broadens the set of agents that can
+author Wadi files (Gemini, Claude.ai web connectors, ChatGPT) without anyone
+hosting anything, which is the point. Same tool logic, two transports.
 
 ## What already exists (so this is mostly a transport swap)
 
@@ -110,19 +116,77 @@ app" needs an explicit bridge. Options, cheapest first:
    Fix or route around it before relying on this.
 2. **Return the `.wdl` text** — the agent shows it; the user saves it and opens it in
    the app (drag-drop / Open). Always works, no link needed.
-3. **Future live bridge (Phase 2)** — a session code the viewer subscribes to (socket
-   / durable object) so the remote server pushes updates to a specific open tab. This
-   is the "agent co-designs your live model from Gemini" dream. Much bigger:
-   session correlation, a persistent channel, auth. Out of scope for v1.
+3. **Live co-editing** — the session-relay bridge, fully specified as Phase 2 below.
+
+## Phase 2 — live co-editing bridge (session relay)
+
+**Why it is needed, and why it is a bridge.** A cloud-document product (Canva,
+Figma, Google Docs) keeps the document on the vendor's server, so every client —
+the app, a collaborator, an agent — is a view onto one server-side document and
+live collaboration is free. Wadi deliberately chose the opposite: the USER owns the
+file, so there is no shared server-side document for a remote agent to attach to.
+To let a remote agent co-edit the model the user is watching in the app, we bridge
+them with a short-lived session relay: a temporary online copy of the WDL that the
+app and the agent both attach to while editing, then hand back to the user's own
+storage.
+
+**Principles (these are what keep local-first intact):**
+- **A relay, not a store.** The session holds only the current WDL text plus a little
+  session metadata. It is transient scaffolding, not a Wadi account or permanent
+  cloud storage. The user's file stays the system of record. This is the line that
+  separates the bridge from turning Wadi into a cloud app.
+- **The app owns persistence, not the agent.** The agent edits the live relay; only
+  the app, acting for the user, writes to the user's destination (a local `.wadi`, or
+  their cloud sync folder). The agent never touches the user's storage.
+- **Ephemeral and gated.** Session-id gated (the unguessable id is the capability),
+  auto-expiring on idle, deleted after save or timeout, no account. The WDL does sit
+  on our relay during the session, so strict transience is what keeps the trade
+  honest for users who chose local ownership for privacy.
+- **Opt-in and additive.** The relay only exists when a user explicitly wants a
+  remote agent to co-edit live. Every pure-local path (author in-app, local stdio
+  server) stays and needs none of this.
+
+**Flow:**
+1. In the app the user picks "Co-edit with an agent" → the app creates a session
+   (a Cloudflare Durable Object) and gets a session id + short link.
+2. The user hands the id/link to the agent (paste it, or the agent opens the link).
+   The agent connects through the MCP server's session-scoped tools.
+3. Both edit the same session WDL. The app subscribes (WebSocket, or SSE) and
+   live-renders every change; simple whole-document last-write-wins for v1.
+4. When done, the app saves to the user's destination and the session copy expires.
+
+**Technical shape:**
+- One **Cloudflare Durable Object per session id** holds the WDL and a pub/sub of the
+  connected clients (the app + the agent). Workers' hibernatable WebSockets (or SSE)
+  carry live updates to the app.
+- The MCP server gains **session-scoped tools** alongside the stateless ones:
+  `wadi_session_open()` (mint a session, or the app mints it and the agent is given
+  the id), `wadi_session_get(session)`, `wadi_session_set(session, wdl)` — read/write
+  the DO. The stateless `wadi_check` / `wadi_preview` still take `wdl` inline.
+- The **app gains a "connect to session" mode**: given a session id, open a socket to
+  the DO, apply incoming WDL to the live model, and push the user's own edits back.
+- **Auth:** the session id is the capability; optionally bind a session to the app
+  instance that created it so only that app can save.
+
+**Conflict semantics (v1):** whole-document last-write-wins, with a small "agent is
+editing" indicator in the app; the human can take over and their save wins. CRDT /
+range merge deferred.
+
+**Persistence + privacy:** on save the app writes the `.wadi` to the user's location
+and the DO is deleted; idle sessions auto-expire (e.g. 30-60 min). No content is
+retained after the session ends.
 
 ## Phasing
 
 - **v1 (Worker, stateless, 2D):** Streamable HTTP transport + the reuse tools +
   resvg-wasm 2D previews + `wadi_open_in_app` returning a link (once the decode path
   is verified) and/or the raw `.wdl`. Deploy to `mcp.wadi.house`. Document the Gemini
-  "Add a custom app" steps in the README.
+  "Add a custom app" steps in the README. The local stdio `wadi-mcp` keeps shipping
+  unchanged.
 - **v1.1:** 3D previews (Node host or render worker) if wanted.
-- **v2:** live-tab bridge (Phase 2 above).
+- **v2 (live co-editing):** the session-relay bridge above — Durable Object session
+  store, session-scoped MCP tools, and the app's "connect to session" subscribe mode.
+  Delivers "a remote agent co-designs your live model," the biggest lift here.
 
 ## Open decisions
 
@@ -133,6 +197,10 @@ app" needs an explicit bridge. Options, cheapest first:
 3. Domain: `mcp.wadi.house` (needs a DNS record + a Worker route).
 4. Keep the reference/primer text single-sourced across `wadi_reference`,
    `window.wadi.help()`, and `docs/llms.txt` so they never drift.
+5. Phase 2 transport for the app subscribe: WebSocket vs SSE (recommend WS via the
+   Durable Object; SSE is a simpler fallback if WS proves fiddly).
+6. Phase 2 session creation: app-minted id (recommended — the app owns save) vs
+   agent-minted via `wadi_session_open`.
 
 ## Related
 
