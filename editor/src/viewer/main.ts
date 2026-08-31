@@ -934,9 +934,12 @@ declare global {
     // skill) — OR the user and Claude together — can operate the app WITHOUT
     // touching the UI, panels visible or hidden. See wireWadiApi().
     wadi?: WadiApi;
-    // WebMCP tool descriptors — also registered via document.modelContext when
+    // WebMCP tool descriptors — also registered via navigator.modelContext when
     // the browser supports WebMCP. Exposed for inspection/testing/demo.
     wadiMcpTools?: WebMcpTool[];
+    // Force a (re)registration of the WebMCP tools now — handy to call from a
+    // browser agent's console if the API attached late. Returns true if registered.
+    wadiRegisterMcp?: () => boolean;
   }
 }
 
@@ -1039,7 +1042,10 @@ export interface WebMcpTool {
   execute: (input: Record<string, unknown>) => Promise<unknown> | unknown;
 }
 interface ModelContextLike {
-  registerTool: (tool: WebMcpTool, opts?: { signal?: AbortSignal }) => Promise<void>;
+  registerTool: (tool: WebMcpTool, opts?: { signal?: AbortSignal }) => Promise<void> | void;
+  // Some builds also expose a declarative bulk form; used as a fallback.
+  provideContext?: (ctx: { tools: WebMcpTool[] }) => void;
+  getTools?: () => unknown[];
 }
 
 // Rasterize an SVG string to a JPEG data URL on a white ground. Ensures the
@@ -3206,26 +3212,78 @@ function buildWadiMcpTools(): WebMcpTool[] {
   return allTools.filter((t) => !NON_WDL_EDIT_TOOLS.has(t.name));
 }
 
-function wireWebMcpTools(): void {
-  const tools = buildWadiMcpTools();
-  // Expose for inspection / testing / the demo, even where WebMCP is absent.
-  window.wadiMcpTools = tools;
+// The modelContext object we last registered on. WebMCP can attach LATE and can
+// be REPLACED: an in-browser agent (e.g. Claude for Chrome) injects
+// navigator.modelContext via an extension, often only when the user activates it
+// on the tab — well after our init. A one-shot check at load therefore misses it
+// (the symptom: the agent sees navigator.modelContext but getTools() is empty).
+// So we register whenever a modelContext appears, and re-register if the object
+// identity changes (a fresh injection replaces an earlier one).
+let registeredMc: ModelContextLike | null = null;
+
+function currentModelContext(): ModelContextLike | undefined {
   const mc =
-    (document as unknown as { modelContext?: ModelContextLike }).modelContext ??
-    (navigator as unknown as { modelContext?: ModelContextLike }).modelContext;
-  if (!mc || typeof mc.registerTool !== "function") return; // no WebMCP → still on window.wadiMcpTools
+    (navigator as unknown as { modelContext?: ModelContextLike }).modelContext ??
+    (document as unknown as { modelContext?: ModelContextLike }).modelContext;
+  return mc && (typeof mc.registerTool === "function" || typeof mc.provideContext === "function")
+    ? mc
+    : undefined;
+}
+
+// Register the wadi tools on the live modelContext. Idempotent per object: a
+// no-op if we've already registered on this exact object. Returns true if the
+// tools are registered (now or already).
+function registerWadiMcpTools(): boolean {
+  const mc = currentModelContext();
+  if (!mc) return false;
+  if (mc === registeredMc) return true;
+  const tools = window.wadiMcpTools ?? buildWadiMcpTools();
   let n = 0;
-  for (const tool of tools) {
+  if (typeof mc.registerTool === "function") {
+    for (const tool of tools) {
+      try {
+        void Promise.resolve(mc.registerTool(tool)).catch((e) =>
+          console.warn(`[webmcp] registerTool ${tool.name} failed:`, e),
+        );
+        n++;
+      } catch (e) {
+        console.warn(`[webmcp] registerTool ${tool.name} threw:`, e);
+      }
+    }
+  } else if (typeof mc.provideContext === "function") {
     try {
-      void Promise.resolve(mc.registerTool(tool)).catch((e) =>
-        console.warn(`[webmcp] registerTool ${tool.name} failed:`, e),
-      );
-      n++;
+      mc.provideContext({ tools });
+      n = tools.length;
     } catch (e) {
-      console.warn(`[webmcp] registerTool ${tool.name} threw:`, e);
+      console.warn("[webmcp] provideContext failed:", e);
     }
   }
-  console.info(`[webmcp] registered ${n} wadi tools on document.modelContext`);
+  if (n > 0) {
+    registeredMc = mc;
+    console.info(`[webmcp] registered ${n} wadi tools on navigator.modelContext`);
+    return true;
+  }
+  return false;
+}
+
+function wireWebMcpTools(): void {
+  // Expose for inspection / testing / the demo, even where WebMCP is absent, and a
+  // manual trigger an agent can call from the console if the API attached late.
+  window.wadiMcpTools = buildWadiMcpTools();
+  window.wadiRegisterMcp = registerWadiMcpTools;
+
+  registerWadiMcpTools(); // register now if the API is already present
+
+  // Catch a LATE or REPLACED modelContext: poll for a few minutes as a backstop,
+  // and (cheaply, forever) re-check whenever the tab regains focus/visibility —
+  // which is when an agent extension typically injects or refreshes the API.
+  let tries = 0;
+  const iv = setInterval(() => {
+    if (registerWadiMcpTools() || ++tries > 200) clearInterval(iv); // ~5 min backstop
+  }, 1500);
+  const recheck = () => void registerWadiMcpTools();
+  document.addEventListener("visibilitychange", recheck);
+  window.addEventListener("focus", recheck);
 }
 
 // -----------------------------------------------------------------
