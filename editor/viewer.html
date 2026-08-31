@@ -1501,6 +1501,32 @@
             border-radius: 6px;
         }
         .tpl-filters-reset:hover { background: rgba(184, 80, 40, 0.08); }
+        /* Tag chips — dynamic, on their own row below the structured filters. */
+        .tpl-tag-filters {
+            flex-basis: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            padding-top: 0.75rem;
+            margin-top: 0.15rem;
+            border-top: 1px solid #e6e3dc;
+        }
+        .tpl-tag-chip {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #5a564d;
+            background: #fff;
+            border: 1px solid #d9d5cc;
+            border-radius: 999px;
+            padding: 0.24rem 0.7rem;
+            cursor: pointer;
+        }
+        .tpl-tag-chip:hover { border-color: #B85028; color: #B85028; }
+        .tpl-tag-chip.on {
+            background: #B85028;
+            border-color: #B85028;
+            color: #fff;
+        }
 
         /* Catalog source footer (architect) */
         .tpl-source-bar {

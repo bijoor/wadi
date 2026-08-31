@@ -3241,6 +3241,7 @@ interface TemplateMeta {
   minWidthFt?: number;
   minLengthFt?: number;
   parametric?: boolean;
+  tags?: string[];
 }
 interface TemplateEntry {
   id: string;
@@ -3319,6 +3320,7 @@ interface TemplateFilters {
   roof: string; // "" = any
   plotW: number | null; // my plot width (ft); template must fit
   plotL: number | null;
+  tags: string[]; // selected free-form tags; a template must carry ALL of them
 }
 const emptyFilters = (): TemplateFilters => ({
   bedrooms: 0,
@@ -3328,6 +3330,7 @@ const emptyFilters = (): TemplateFilters => ({
   roof: "",
   plotW: null,
   plotL: null,
+  tags: [],
 });
 let tplFilters: TemplateFilters = emptyFilters();
 
@@ -3665,6 +3668,17 @@ function distinctMeta(key: "style" | "roof"): string[] {
   return [...set].sort();
 }
 
+// The union of all free-form tags across the loaded templates — the tag filter is
+// built dynamically from these, so tags need no fixed vocabulary.
+function distinctTags(): string[] {
+  const set = new Set<string>();
+  for (const t of galleryTemplates) for (const tag of t.meta?.tags ?? []) {
+    const s = String(tag).trim();
+    if (s) set.add(s);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
 // Build the filter controls from the loaded templates' meta. Re-invoked on
 // reset so the DOM inputs reflect the (now-default) filter state.
 function buildTemplateFilterBar(): void {
@@ -3689,6 +3703,20 @@ function buildTemplateFilterBar(): void {
   for (let i = 1; i <= floorMax; i++)
     floorOpts += opt(String(i), i === 1 ? "1 floor" : `${i} floors`, tplFilters.floors === i);
 
+  // Tag chips — dynamic, from whatever tags the loaded templates carry. No fixed
+  // vocabulary; the row is omitted entirely when no template declares a tag.
+  const tags = distinctTags();
+  const tagChips = tags.length
+    ? `<div class="tpl-tag-filters">` +
+      tags
+        .map((tag) => {
+          const on = tplFilters.tags.includes(tag);
+          return `<button type="button" class="tpl-tag-chip${on ? " on" : ""}" data-tag="${escapeHtml(tag)}" aria-pressed="${on}">${escapeHtml(tag)}</button>`;
+        })
+        .join("") +
+      `</div>`
+    : "";
+
   bar.innerHTML =
     minSel("tpl-f-bed", "Bedrooms", tplFilters.bedrooms, 4) +
     minSel("tpl-f-bath", "Bathrooms", tplFilters.bathrooms, 3) +
@@ -3701,7 +3729,8 @@ function buildTemplateFilterBar(): void {
         <input id="tpl-f-plotl" type="number" min="1" placeholder="L" value="${tplFilters.plotL ?? ""}" />
       </div></div>` +
     `<span class="tpl-filters-count" id="tpl-filters-count"></span>` +
-    `<button type="button" class="tpl-filters-reset" id="tpl-filters-reset">Reset</button>`;
+    `<button type="button" class="tpl-filters-reset" id="tpl-filters-reset">Reset</button>` +
+    tagChips;
 
   const num = (id: string) => document.getElementById(id) as HTMLSelectElement | null;
   const inp = (id: string) => document.getElementById(id) as HTMLInputElement | null;
@@ -3739,6 +3768,19 @@ function buildTemplateFilterBar(): void {
     buildTemplateFilterBar();
     renderTemplateCards();
   });
+  bar.querySelectorAll<HTMLButtonElement>(".tpl-tag-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const tag = chip.dataset.tag ?? "";
+      if (!tag) return;
+      const i = tplFilters.tags.indexOf(tag);
+      if (i >= 0) tplFilters.tags.splice(i, 1);
+      else tplFilters.tags.push(tag);
+      const on = tplFilters.tags.includes(tag);
+      chip.classList.toggle("on", on);
+      chip.setAttribute("aria-pressed", String(on));
+      renderTemplateCards();
+    });
+  });
 }
 
 // Does a template satisfy the active filters?
@@ -3754,6 +3796,12 @@ function templatePasses(t: TemplateEntry): boolean {
   // plot. A missing min is treated as "fits anything" (0).
   if (f.plotW !== null && (m?.minWidthFt ?? 0) > f.plotW) return false;
   if (f.plotL !== null && (m?.minLengthFt ?? 0) > f.plotL) return false;
+  // Tags: the template must carry every selected tag (AND — each added tag
+  // narrows, like the other filters).
+  if (f.tags.length) {
+    const have = new Set((m?.tags ?? []).map((s) => String(s).trim()));
+    for (const tag of f.tags) if (!have.has(tag)) return false;
+  }
   return true;
 }
 
