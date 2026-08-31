@@ -30,19 +30,28 @@ The same capabilities are also registered as WebMCP tools on `navigator.modelCon
     convention center                 // room x/y/size are wall CENTRELINES, so abutting rooms share a wall (alternative: outer)
     site { plot (400, 300) }          // plot W, L in project units (10 units = 1 ft by default)
     defaults { floor_height 100 wall_height 92 slab_thickness 8 wall_thickness 8 }
-    floor 1 "Ground Floor" {
-      slab_thickness 0                // a floor of only rooms/walls needs slab 0 (or add a slab)
+
+    floor 1 "Ground Floor" height 92 slab_thickness 0 {   // floor fields go in the HEADER, before the '{'
       room Living at (0, 0) size (160, 140) material "living" {
         wall north south west
         wall east { door D1 at 55 size (30, 84) }   // a door needs a name; `at` = offset along the wall
       }
       room Kitchen at (160, 0) size (120, 140) { wall north south east }  // west omitted -> open passage to Living
     }
+
+    // A ROOF sits on its OWN floor stacked ABOVE the walls' floor, so it rests on top of them.
+    floor 2 "Roof" {
+      roof name "Hip" pitched endpoint closed slope height 60 overhang 12 material "roof" {
+        segment "s0" from (140, 0) to (140, 140) width 280   // ridge centreline down the 280x140 footprint; width = span
+      }
+    }
   }
   ```
 
 - Names are BARE identifiers (`room Living`, `door D1`), not quoted. `"strings"` are only for titles/materials.
 - Object types inside a floor: `room`, `wall`, `pillar`, `beam`, `slab`, `roof`, `staircase`, `kitchen_platform`, `item` (furniture GLB), `component` (reusable).
+- Floor-level fields (`height`, `wall_height`, `slab_thickness`, `enabled`) go in the floor HEADER, before the `{`, for example `floor 1 "Ground" height 92 slab_thickness 0 { … }`. Only object declarations go inside the `{ }` body; putting `slab_thickness 0` in the body is a parse error. Use `slab_thickness 0` so walls sit on the base rather than floating on a slab, and set `height = wall_height + slab_thickness` so the floor above sits flush.
+- A ROOF goes on its OWN floor stacked ABOVE the rooms' floor (add a top `floor N "Roof"` and put the `roof` there). A roof on the same floor as the walls renders at floor level, not on top. A `roof` holds one or more `segment` lines (ridge centreline `from`→`to`, `width` = the span). Endpoint style: `pitched endpoint closed` = hip, `pitched endpoint open` = gable, `shed`, `flat`.
 - Openings live inside `wall SIDE { … }`: `door NAME at OFFSET size (w,h) [open]`, `window NAME at OFFSET size (w,h) [sill N]`.
 - Two rooms are connected when they abut and the shared wall has a door on one room (omitted on the other), or is omitted on both (open passage).
 - Coordinates: origin top-left, X right, Y DOWN. Positions/sizes are project units (10 = 1 ft by default).
