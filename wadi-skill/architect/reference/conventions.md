@@ -376,6 +376,18 @@ Rescale the staircase to THIS model's units. The warning gives the sensible `ste
 
 ---
 
+## C24 — A staircase needs a slab under it, not just a plinth · **warning**
+
+**Statement.** When a staircase's floor has a slab (slab_thickness > 0), a slab should extend under the whole staircase footprint.
+
+**Rationale.** A staircase's base rests at the floor's walking surface — its `z_offset` defaults to the floor `slab_thickness`, so it sits on TOP of the slab. If the slab does not reach under the stair (a common miss on an external stair, where the plinth was extended but the slab was not), there is a `slab_thickness` gap between the bottom of the stairs and the plinth where the slab should be. Extending only the plinth (C21) is not enough. (Skipped when the floor has no slab — `slab_thickness 0` — since the stair then rests directly on the plinth.)
+
+**Fix.**
+
+Add or grow a `slab` on the staircase's floor so it covers the whole staircase footprint, matching the plinth below it.
+
+---
+
 ## SP1 — A spiral staircase's central pole must be smaller than its radius · **error**
 
 **Statement.** A `spiral_staircase`'s `pole_radius` must be less than its outer `radius`.

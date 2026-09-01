@@ -22,6 +22,9 @@ export function boxFootprint(
 export interface StairEntry {
   sc: Bag;
   floorNum: number;
+  /** The staircase's floor slab thickness (its base rests this far above the
+   *  floor datum, so a slab must fill that depth under it). */
+  floorSlabThickness: number;
   summary: StaircaseSummary;
 }
 
@@ -48,7 +51,7 @@ export function eachStaircaseSummary(ctx: CheckContext): StairEntry[] {
         floorBelowHeight,
         floorOwnHeight,
       });
-      out.push({ sc: o, floorNum, summary });
+      out.push({ sc: o, floorNum, floorSlabThickness: slabThickness, summary });
     }
   }
   return out;
