@@ -1910,7 +1910,9 @@ const AGENT_PROMPT =
   "JavaScript API for AI agents. In the page, run `await window.wadi.help()` and follow " +
   "the instructions it returns: read the current house as Wadi's .wdl design language " +
   "with `window.wadi.getWdl()`, edit the text, and apply it with `window.wadi.setWdl(newWdl)` " +
-  "(which returns compile errors or a structural check). Use `window.wadi.captureView()` to see the result.";
+  "(which returns compile errors or a structural check). Use `window.wadi.captureView()` to see the result. " +
+  "Work with me one step at a time: when there's a choice to make, show me a couple of options and ask before applying, " +
+  "and make one change at a time rather than redoing the whole house at once.";
 
 async function copyAgentPrompt(): Promise<void> {
   const sub = document.getElementById("apps-item-agent-sub");
@@ -3105,6 +3107,16 @@ const WADI_AGENT_HELP = [
   "  //   template's variables (the whole house re-flows) over rewriting geometry…",
   "  const res = await window.wadi.setWdl(newWdl);             // apply; renders live",
   "Only build from scratch if NO template fits.",
+  "",
+  "WORK WITH THE USER — ONE STEP AT A TIME. Do NOT do everything in one shot and leave",
+  "the user to fix your guesses.",
+  "  • When a request involves a CHOICE — which template, how many rooms and their sizes,",
+  "    the layout, roof style, where the stairs go, add vs. move a room — present 2-3",
+  "    concrete options and ASK the user to pick BEFORE applying anything.",
+  "  • Make ONE meaningful change per step, show the result (captureView / describeHouse),",
+  "    and confirm with the user before the next change.",
+  "  • Prefer small, reversible edits over regenerating the whole house.",
+  "  • State any assumption you had to make and invite the user to correct it.",
   "",
   "AFTER EVERY CHANGE: read `res` (or call window.wadi.check()) and FIX the warnings",
   "before telling the user it's ready. setWdl returns { loaded, errors, warnings, summary }",
