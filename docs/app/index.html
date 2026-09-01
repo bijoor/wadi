@@ -56,6 +56,10 @@
           description: "Load one ready-made home by id (from wadi_list_homes) as your STARTING POINT — pick the one closest to what the user wants, then read it with wadi_get_wdl and edit it. This is the recommended way to begin; it is far more reliable than authoring from scratch.",
           inputSchema: { type: "object", properties: { id: { type: "string", description: "template id, e.g. family_home" } }, required: ["id"] },
           execute: async function (i) { return text(await api().chooseTemplate(String(i && i.id))); } },
+        { name: "wadi_read_home", title: "Read a ready-made home's WDL",
+          description: "Return a ready-made home's .wdl source WITHOUT loading it — study an example (how it does a roof, staircase, grid, etc.) without disturbing the user's current model. Use this to look things up; use wadi_choose_home only when you actually want to start from that home. Ids come from wadi_list_homes.",
+          inputSchema: { type: "object", properties: { id: { type: "string", description: "template id, e.g. family_home" } }, required: ["id"] },
+          annotations: { readOnlyHint: true }, execute: async function (i) { return text(await api().getTemplateWdl(String(i && i.id))); } },
         { name: "wadi_describe_house", title: "Describe the house",
           description: "The whole house as structured data (floors, rooms with sizes/positions in feet, connections, roof, plot, variables, staircases, and a structural summary). Read this to understand the current design. The `staircases` array reports each stair's flight count, climb direction, the top-landing rectangle (where you step onto the floor) with its facing, and the min box length for 1 and 2 flights — use it to size and orient stairs.",
           inputSchema: NO_INPUT, annotations: { readOnlyHint: true }, execute: async function () { return text(api().describeHouse()); } },
@@ -2292,7 +2296,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-C7oI9Hi_.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-CCAJaVn2.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>
