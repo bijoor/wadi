@@ -364,6 +364,18 @@ Put the staircase inside a room that covers its footprint (the walls carry the l
 
 ---
 
+## C23 — A staircase's steps should be a realistic size · **warning**
+
+**Statement.** A staircase's `step_rise` and `step_tread`, converted to real-world size, should fall in the human range — about a 6-7 in rise and a 10-12 in going.
+
+**Rationale.** Stair steps are physically fixed regardless of the house, so they are the reliable tell for a scale mistake. Agents often copy a staircase from another example that is in different units (metres vs feet), producing steps that are absurdly large or tiny. This converts the steps to inches using the model's `units` and flags anything outside a generous human range.
+
+**Fix.**
+
+Rescale the staircase to THIS model's units. The warning gives the sensible `step_rise`/`step_tread` for this model (1 ft = `per_unit` units by default 10, so about `step_rise 6`, `step_tread 10`).
+
+---
+
 ## SP1 — A spiral staircase's central pole must be smaller than its radius · **error**
 
 **Statement.** A `spiral_staircase`'s `pole_radius` must be less than its outer `radius`.
