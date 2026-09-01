@@ -583,7 +583,7 @@ server.registerTool(
       {
         title: "Push WDL to the live app session",
         description:
-          "Compile-check a `.wdl` and, if it builds, push it to a LIVE session the user is watching in the Wadi app — they see it render (2D + 3D) as you edit. Use this INSTEAD of just returning WDL text whenever the user has given you a session code (they start one in the app via “Co-edit with an agent”). Returns the C1-C12 structural check. Typical loop: wadi_session_get to read the current model → edit → wadi_session_set → read warnings → repeat.",
+          "Compile-check a `.wdl` and, if it builds, push it to a LIVE session the user is watching in the Wadi app — they see it render (2D + 3D) as you edit. Use this INSTEAD of just returning WDL text whenever the user has given you a session code (they start one in the app via “Co-edit with an agent”). Returns the structural conventions check. Typical loop: wadi_session_get to read the current model → edit → wadi_session_set → read warnings → repeat.",
         inputSchema: {
           session: z.string().describe("The session code the user started in the Wadi app."),
           wdl: z.string().describe("The full .wdl source to push."),

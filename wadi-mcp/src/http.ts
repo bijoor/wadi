@@ -59,7 +59,7 @@ const httpServer = createServer(async (req, res) => {
     return;
   }
 
-  if (url === MCP_PATH) {
+  if (url === MCP_PATH || url === MCP_PATH + "/") {
     // Stateless: one server + transport per request. enableJsonResponse returns a
     // plain application/json reply (no SSE stream), which suits request/response
     // tools and simple remote clients.
