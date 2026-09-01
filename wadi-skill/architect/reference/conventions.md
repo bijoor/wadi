@@ -292,6 +292,18 @@ Add `pillar` objects at the outside of the extension (under the overhanging edge
 
 ---
 
+## C17 — A hip roof segment's span should not exceed its ridge run · **warning**
+
+**Statement.** On a pitched roof with closed (hip) ends, a segment's span (`width`) should not exceed its ridge run (the `start`→`end` length).
+
+**Rationale.** A closed hip end pulls the ridge inward by half the span to make room for the hip face. When the span exceeds the run, the two hip ends would meet past the centre, so the roof is clipped to a pyramid (the hip faces meet at a single apex) rather than the intended ridged hip. That is almost always a mis-oriented segment — the ridge drawn along the SHORTER dimension. It still renders as a valid pyramid, so this only warns.
+
+**Fix.**
+
+Orient the ridge along the LONGER dimension: swap the segment's `start`/`end` so it runs the long way, and set `width` to the shorter span. If a pyramid is genuinely intended, ignore this.
+
+---
+
 ## SP1 — A spiral staircase's central pole must be smaller than its radius · **error**
 
 **Statement.** A `spiral_staircase`'s `pole_radius` must be less than its outer `radius`.

@@ -23,10 +23,11 @@ import { C13 } from "./c13_plinth_lowest_floor";
 import { C14 } from "./c14_roof_highest_floor";
 import { C15 } from "./c15_plinth_covers_rooms";
 import { C16 } from "./c16_cantilever_support";
+import { C17 } from "./c17_roof_span_run";
 
 /** House-level constraints, in convention-id order. */
 export const CONSTRAINTS: Constraint[] = [
-  C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16,
+  C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16, C17,
 ];
 
 /** Every active constraint: the house-level registry + any per-primitive
