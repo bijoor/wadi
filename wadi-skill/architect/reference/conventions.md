@@ -340,6 +340,30 @@ Place the staircase so its top landing meets a room (leave that room's wall open
 
 ---
 
+## C21 — The plinth should extend under a staircase · **warning**
+
+**Statement.** A staircase on the lowest occupied floor should sit entirely on the plinth — the plinth footprint should cover it.
+
+**Rationale.** The plinth is the base the ground floor stands on. An external staircase added past the building edge has its flights and landings resting on nothing unless the plinth is extended under it. Agents routinely add a stair to the outside and forget to grow the plinth. (Checks only the lowest occupied floor, the one that sits on the plinth; upper-floor stairs bear on that floor's slab.)
+
+**Fix.**
+
+Grow the plinth (its size, or the plot variables it derives from) so it covers the whole staircase footprint, or move the staircase inside the building over the plinth.
+
+---
+
+## C22 — A staircase needs an enclosing room or pillars to carry its landings · **warning**
+
+**Statement.** A staircase should be enclosed by a room of (at least) its own footprint, or have pillars under it — something to carry the flights and turn landings.
+
+**Rationale.** Switchback landings are elevated slabs; the flights land on them. In a real build the surrounding walls (a stairwell) or columns carry that load. A free-standing staircase with no enclosing room and no pillars has landings hanging in the air. (A warning: an open stair against a structural wall may be fine, but the common agent mistake is a stair floating in open space.)
+
+**Fix.**
+
+Put the staircase inside a room that covers its footprint (the walls carry the landings), or add `pillar` objects under the landings.
+
+---
+
 ## SP1 — A spiral staircase's central pole must be smaller than its radius · **error**
 
 **Statement.** A `spiral_staircase`'s `pole_radius` must be less than its outer `radius`.

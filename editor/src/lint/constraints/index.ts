@@ -27,11 +27,13 @@ import { C17 } from "./c17_roof_span_run";
 import { C18 } from "./c18_roof_redundant";
 import { C19 } from "./c19_staircase_flights";
 import { C20 } from "./c20_staircase_egress";
+import { C21 } from "./c21_staircase_plinth";
+import { C22 } from "./c22_staircase_support";
 
 /** House-level constraints, in convention-id order. */
 export const CONSTRAINTS: Constraint[] = [
   C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, C16, C17,
-  C18, C19, C20,
+  C18, C19, C20, C21, C22,
 ];
 
 /** Every active constraint: the house-level registry + any per-primitive

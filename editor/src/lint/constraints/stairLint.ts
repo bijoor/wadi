@@ -5,6 +5,19 @@
 import type { CheckContext } from "./types";
 import { num, type Bag } from "./vocab";
 import { summarizeStaircase, type StaircaseSummary } from "../../svg2d/stairSummary";
+import { rectRing, ringsToFootprint, type Footprint } from "../../model/geom";
+
+/** A staircase box's plan footprint, optionally shrunk inward by `inset` on each
+ *  side (to allow wall-thickness slack when testing containment in a room). */
+export function boxFootprint(
+  box: { x: number; y: number; width: number; length: number },
+  inset = 0,
+): Footprint | null {
+  const w = box.width - 2 * inset;
+  const l = box.length - 2 * inset;
+  if (!(w > 0) || !(l > 0)) return null;
+  return ringsToFootprint([rectRing(box.x + inset, box.y + inset, w, l)]);
+}
 
 export interface StairEntry {
   sc: Bag;
