@@ -1026,6 +1026,9 @@ export interface WadiApi {
    *  C1-C12 structural check. The full DSL — every object type, variables,
    *  formulas, components — is the agent's authoring surface. */
   setWdl: (wdl: string) => Promise<unknown>;
+  /** Show/hide both side panels (configurator + WDL editor) so the 3D model has the
+   *  full surface. Auto-called (hidden) on agent edits; call with `true` to reveal. */
+  setPanels: (visible: boolean) => { ok: true; visible: boolean };
   /** The current live model decompiled to editable .wdl text. */
   getWdl: () => Promise<string>;
   /** Compile-check .wdl WITHOUT loading it (dry run) — returns errors or ok. */
@@ -2274,6 +2277,24 @@ function wireLeftToggle(): void {
   });
 }
 
+// Show/hide BOTH side panels (the configurator dock + the WDL code editor) so the
+// 3D model has the whole surface. Used to keep the model visible while an agent
+// edits — the WDL code and knobs would otherwise overlap the model, especially in
+// a small embedded browser (e.g. ChatGPT's). Hiding it is what preserves the
+// "watch the model change" effect; the human toggles (☰ / ❮❯) still work to reopen.
+function setViewerPanels(visible: boolean): void {
+  if (visible) {
+    document.body.dataset.left = "open";
+  } else {
+    document.body.dataset.wdl = "off";
+    document.body.dataset.left = "closed";
+  }
+  const lbtn = document.getElementById("left-toggle");
+  if (lbtn) lbtn.textContent = document.body.dataset.left === "open" ? "❮" : "❯";
+  // Re-fit the 3D canvas to the freed width.
+  window.dispatchEvent(new Event("resize"));
+}
+
 // Populate galleryTemplates (the catalog manifest) if it hasn't been fetched
 // yet — the gallery normally loads it lazily on open, but the wadi API can be
 // called before the modal is ever shown.
@@ -2549,6 +2570,7 @@ function wireWadiApi(): void {
         );
       }
       await selectTemplate(t);
+      setViewerPanels(false); // agent chose a home — keep the model full-screen
       return { ok: true as const, id };
     },
 
@@ -2985,6 +3007,8 @@ function wireWadiApi(): void {
     redo() { useConfigStore.temporal.getState().redo(); return { ok: true as const }; },
     captureView(size?: number) { return window.wadiCapture3D?.(Number(size) || 1000) ?? null; },
 
+    setPanels(visible: boolean) { setViewerPanels(!!visible); return { ok: true as const, visible: !!visible }; },
+
     async setWdl(wdl: string) {
       const src = String(wdl ?? "");
       const res = await wdlToConfig(src);
@@ -2992,6 +3016,7 @@ function wireWadiApi(): void {
       // Keep the agent's exact WDL as the model's source (WDL is the source of truth).
       store().loadConfig(res.config, "wadi.setWdl", null, src);
       markHomeChosen(); // dismiss the New dialog if it's still up
+      setViewerPanels(false); // agent edit — keep the model visible, hide code/knobs
       return { loaded: true as const, ...checkBrief(store().config) };
     },
     async getWdl() {
@@ -3117,6 +3142,11 @@ const WADI_AGENT_HELP = [
   "    and confirm with the user before the next change.",
   "  • Prefer small, reversible edits over regenerating the whole house.",
   "  • State any assumption you had to make and invite the user to correct it.",
+  "",
+  "KEEP THE MODEL VISIBLE: the WDL editor and configurator panels auto-hide when you apply",
+  "a change (setWdl / chooseTemplate), so the user watches the 3D model change, not code or",
+  "knobs — important in a small embedded browser. Leave them hidden. (window.wadi.setPanels(true)",
+  "reveals them, false hides; the user can also reopen them with the on-screen ☰ / ❮❯ tabs.)",
   "",
   "AFTER EVERY CHANGE: read `res` (or call window.wadi.check()) and FIX the warnings",
   "before telling the user it's ready. setWdl returns { loaded, errors, warnings, summary }",
