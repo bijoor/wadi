@@ -69,6 +69,7 @@ import {
   adoptModelsDirFile,
 } from "../io/fsAccess";
 import { wdlToConfig, configToWdlText } from "../io/wdl";
+import { summarizeStaircase } from "../svg2d/stairSummary";
 import { isTauri, invoke } from "@tauri-apps/api/core";
 import {
   fetchCatalogBytes,
@@ -2695,12 +2696,58 @@ function wireWadiApi(): void {
       const roof = floorsOf(cfg)
         .flatMap((f) => (f.objects ?? []).filter((o) => o?.type === "roof"))
         .map((r) => ({ roof_type: r.roof_type, endpoint: r.default_endpoint }));
+      // Staircases: the RESOLVED summary (flights, climb direction, and the top
+      // landing where you step onto the floor) so an agent can size the box and
+      // leave a way off the stair without guessing. Coordinates are PROJECT UNITS
+      // (the same units the .wdl uses), not feet.
+      const stairCtx = (fi: number) => {
+        const list = floorsOf(cfg);
+        const fl = (list[fi] ?? {}) as Record<string, unknown>;
+        const defs = (cfg.defaults ?? {}) as Record<string, unknown>;
+        const dFloor = typeof defs.floor_height === "number" && defs.floor_height > 0 ? defs.floor_height : 100;
+        const dSlab = typeof defs.slab_thickness === "number" ? defs.slab_thickness : 8;
+        const own = typeof fl.height === "number" && fl.height > 0 ? fl.height : dFloor;
+        const belowRaw = fi > 0 ? ((list[fi - 1] ?? {}) as Record<string, unknown>).height : undefined;
+        const below = typeof belowRaw === "number" && belowRaw > 0 ? belowRaw : dFloor;
+        const slab = typeof fl.slab_thickness === "number" ? fl.slab_thickness : dSlab;
+        return { slabThickness: slab, floorBelowHeight: below, floorOwnHeight: own };
+      };
+      const staircases = floorsOf(cfg).flatMap((f, fi) =>
+        (f.objects ?? [])
+          .filter((o) => o?.type === "staircase" && o.enabled !== false)
+          .map((o) => {
+            const s = summarizeStaircase(
+              o as unknown as { type: string; [k: string]: unknown },
+              stairCtx(fi),
+            );
+            return {
+              name: s.name,
+              floor: f.floor_number,
+              flights: s.numFlights,
+              direction: s.direction,
+              climb: s.climb,
+              units: "project_units" as const,
+              arrival: s.arrival
+                ? {
+                    x: Math.round(s.arrival.x),
+                    y: Math.round(s.arrival.y),
+                    width: Math.round(s.arrival.width),
+                    length: Math.round(s.arrival.length),
+                    facing: s.arrival.facing,
+                  }
+                : null,
+              min_length_for_1_flight: s.minBoxLengthFor1,
+              min_length_for_2_flights: s.minBoxLengthFor2,
+              ...(s.error ? { note: s.error } : {}),
+            };
+          }),
+      );
       return {
         units: "feet" as const, per_unit: perUnitOf(cfg),
         plot_width_ft: uToFt(cfg, site.plot_width), plot_length_ft: uToFt(cfg, site.plot_length),
         coord_convention: (cfg.coord_convention as string) ?? "outer",
         variables: (cfg.variables ?? {}) as Record<string, unknown>,
-        floors, roof,
+        floors, roof, staircases,
         // Structural check (C1-C11) of the whole house, so a single describe call
         // tells the agent if anything is wrong. Each connection above also carries
         // its own `passable` flag.
@@ -3071,11 +3118,21 @@ const WADI_AGENT_HELP = [
   "     (only small partition walls may lack support); give each a slab",
   "  4. pillars under any cantilever (a room past the floor below), rising only to the",
   "     underside of the top floor's slab",
-  "  5. a roof covering the WHOLE top floor (not just the middle)",
-  "  6. a staircase spanning the floors",
+  "  5. a roof covering the WHOLE top floor (not just the middle). ONE roof per area:",
+  "     extend an existing roof's segments to cover more, never add a second roof over an",
+  "     already-covered area (C18). Orient each hip segment's ridge along the LONGER side —",
+  "     if the span (width) exceeds the ridge run it collapses to a pyramid (C17).",
+  "  6. a staircase with enough run to climb in 1-2 flights — a cramped box forces extra",
+  "     switchback flights (C19). Set `direction` so the TOP landing faces the room you want",
+  "     to reach, and leave that room's wall open (or add a door) at the landing so there's a",
+  "     way off the stair onto the floor (C20).",
   "",
   "SEE THE RESULT / INSPECT:",
   "  window.wadi.captureView()      // -> a JPEG data URL of the current 3D view",
+  "  window.wadi.describeHouse()    // rooms + roof + STAIRCASES: each stair's flight count,",
+  "                                 //   climb direction, the top-landing rectangle (where you",
+  "                                 //   step onto the floor) + its facing, and the min box",
+  "                                 //   length for 1 and 2 flights. Use it to size + orient stairs.",
   "  window.wadi.listRooms(); window.wadi.enterRoom(key); window.wadi.exitRoom();  // interior views",
   "",
   "Then follow the .wdl syntax below.",
@@ -3278,7 +3335,7 @@ function buildWadiMcpTools(): WebMcpTool[] {
     {
       name: "wadi_describe_house",
       description:
-        "Read the current house as structured data: each floor and its rooms (name, size and position in feet), each room's connections (with a `passable` flag = the two rooms actually share a wall with a door or open passage), the roof, plot size, design variables, and an `issues` structural summary (errors/warnings). Call this FIRST to see what you're working with, and again to confirm a change landed correctly.",
+        "Read the current house as structured data: each floor and its rooms (name, size and position in feet), each room's connections (with a `passable` flag = the two rooms actually share a wall with a door or open passage), the roof, plot size, design variables, a `staircases` array (each stair's flight count, climb direction, the top-landing rectangle where you step onto the floor + its facing, and the min box length for 1 and 2 flights), and an `issues` structural summary (errors/warnings). Call this FIRST to see what you're working with, and again to confirm a change landed correctly.",
       annotations: { readOnlyHint: true },
       inputSchema: noInput,
       execute() { return text(api().describeHouse()); },

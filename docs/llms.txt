@@ -21,7 +21,11 @@ The viewer at https://wadi.house/app exposes a `window.wadi` API. Call `await wi
 
 Only build from scratch if no template fits. If you must, follow this order and re-check as you go: plinth on the lowest floor → ground-floor rooms + a slab per floor → upper floors laid over the floor below with walls ALIGNED to those beneath (only small partitions may lack support) + a slab → pillars under any cantilever (rising only to the underside of the top floor's slab) → a roof covering the WHOLE top floor → a staircase spanning the floors.
 
-Typical loop: `chooseTemplate` → `getWdl` → edit → `setWdl` → fix warnings → repeat.
+**Roofs.** One roof per area: extend an existing roof's segments (`width`/`end`) to cover more, never add a second roof over an already-covered area (warning C18). Orient each hip segment's ridge along the LONGER side of the footprint — if a segment's span (`width`) exceeds its ridge run (`start`→`end` length) it collapses to a pyramid (warning C17).
+
+**Staircases.** Give a stair enough run to climb in one or two flights; a cramped box forces extra switchback flights (warning C19). After `setWdl`, read `await window.wadi.describeHouse()` — its `staircases` array reports each stair's flight count, climb `direction`, the top-landing rectangle (in project units — where you step onto the floor) with its `facing`, and `min_length_for_1_flight` / `min_length_for_2_flights`. To fix cramped or misdirected stairs: enlarge the box to `min_length_for_2_flights` along its run axis, set `direction` so the top landing faces the room you want to reach, and leave that room's wall open (or add a door) at the landing so there is a way off the stair onto the floor (warning C20).
+
+Typical loop: `chooseTemplate` → `getWdl` → edit → `setWdl` → fix warnings (and `describeHouse()` for staircases) → repeat.
 
 The same capabilities are also registered as WebMCP tools on `navigator.modelContext` (`wadi_get_wdl`, `wadi_set_wdl`, `wadi_check_wdl`, `wadi_wdl_reference`, and more) for agents that consume WebMCP. Where WebMCP tool-calling is not surfaced, use `window.wadi` directly as above.
 

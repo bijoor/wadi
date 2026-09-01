@@ -57,7 +57,7 @@
           inputSchema: { type: "object", properties: { id: { type: "string", description: "template id, e.g. family_home" } }, required: ["id"] },
           execute: async function (i) { return text(await api().chooseTemplate(String(i && i.id))); } },
         { name: "wadi_describe_house", title: "Describe the house",
-          description: "The whole house as structured data (floors, rooms with sizes/positions in feet, connections, roof, plot, variables, and a structural summary). Read this to understand the current design.",
+          description: "The whole house as structured data (floors, rooms with sizes/positions in feet, connections, roof, plot, variables, staircases, and a structural summary). Read this to understand the current design. The `staircases` array reports each stair's flight count, climb direction, the top-landing rectangle (where you step onto the floor) with its facing, and the min box length for 1 and 2 flights — use it to size and orient stairs.",
           inputSchema: NO_INPUT, annotations: { readOnlyHint: true }, execute: async function () { return text(api().describeHouse()); } },
         { name: "wadi_check", title: "Run the structural check",
           description: "Run the C1-C12 structural linter over the live house and return errors + warnings.",
