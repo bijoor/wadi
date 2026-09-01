@@ -20,10 +20,10 @@
 // Scope limits which PAGES it controls — not which requests it sees — so it
 // still intercepts the page's root-absolute and cross-origin fetches.
 
-const VERSION = "72894e7d";
+const VERSION = "c62c9a59";
 const SHELL_CACHE = `wadi-shell-${VERSION}`;
 const RUNTIME_CACHE = `wadi-runtime-${VERSION}`;
-const PRECACHE = ["./","./index.html","./assets/viewer-XMUEohfE.js","./assets/viewer-CNC7AqOf.js","./assets/viewer-CYlZod6Y.css","./assets/viewer-EHGPpKfn.js","./assets/viewer-wJ7g_gEJ.js","./assets/viewer-BT3kmKLQ.js","./assets/viewer-C15jy1Jz.js","./assets/viewer-2eb7WR-H.js","./assets/viewer-BWVTP0ea.js","./assets/viewer-ZsUNQkRv.js","./assets/viewer-BmLxnykU.js","./assets/viewer-FLkQdOvf.css","./assets/viewer-BIGXhleC.js","./assets/viewer-CfKPZ8A3.js","./assets/viewer-C9XI6Dx0.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.wadi","./templates/catalog.json","./templates/family_home.wadi","./templates/five_bedroom_villa.wadi","./templates/large_country_house.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","./templates/tiny_home_single_bedroom.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
+const PRECACHE = ["./","./index.html","./assets/viewer-FXNZ2dbp.js","./assets/viewer-CNC7AqOf.js","./assets/viewer-CYlZod6Y.css","./assets/viewer-C9uiC5zj.js","./assets/viewer-a8G_e8po.js","./assets/viewer-Be88gXtS.js","./assets/viewer-C15jy1Jz.js","./assets/viewer-DWtYgPX_.js","./assets/viewer-DdDFlnRH.js","./assets/viewer-ZsUNQkRv.js","./assets/viewer-BmLxnykU.js","./assets/viewer-FLkQdOvf.css","./assets/viewer-C6_-hORJ.js","./assets/viewer-CfKPZ8A3.js","./assets/viewer-Bz3xricE.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.wadi","./templates/catalog.json","./templates/family_home.wadi","./templates/five_bedroom_villa.wadi","./templates/large_country_house.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","./templates/tiny_home_single_bedroom.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
 
 // Web Share Target inbox: a shared .wadi file is stashed here (UNVERSIONED, so it
 // survives a worker update) for the app to pick up on its next boot.
