@@ -16,6 +16,7 @@ The viewer at https://wadi.house/app exposes a `window.wadi` API. Call `await wi
 
 - `await window.wadi.listTemplates()` — ready-made homes: `[{id, title, meta}]`. Pick the closest.
 - `await window.wadi.chooseTemplate(id)` — load it as your starting point.
+- `await window.wadi.getTemplateWdl(id)` — READ another home's `.wdl` WITHOUT loading it, to study how it does a roof/staircase/grid/etc. This leaves the user's current model untouched — use it to look things up instead of loading an example just to peek (only `chooseTemplate` when you actually want to start from that home).
 - `await window.wadi.getWdl()` — read its `.wdl` (the single source of truth).
 - Edit the text: resize, rename, add/remove rooms; prefer adjusting a parametric template's variables (the whole house re-flows) over rewriting geometry.
 - `await window.wadi.setWdl(wdl)` — compile and load live. On a compile/schema error returns `{ok:false, errors:[…]}` and leaves the model unchanged; on success returns the structural check (`{loaded:true, errors, warnings, summary}`) — **read it and fix warnings before telling the user it is ready.**

@@ -954,6 +954,9 @@ export interface WadiApi {
   >;
   /** Load a stock template by id — same path as clicking a gallery card. */
   chooseTemplate: (id: string) => Promise<{ ok: true; id: string }>;
+  /** Read a template's .wdl WITHOUT loading it — study an example without
+   *  disturbing the user's current live model. */
+  getTemplateWdl: (id: string) => Promise<string>;
   /** Load a whole HouseConfig (object or JSON string). Validates first. */
   load: (config: unknown) => { ok: true };
   /** The current in-store config (for reading / round-tripping / saving). */
@@ -2574,6 +2577,22 @@ function wireWadiApi(): void {
       return { ok: true as const, id };
     },
 
+    // Read a ready-made home's .wdl WITHOUT loading it — so an agent can study an
+    // example without disturbing the user's current live model.
+    async getTemplateWdl(id: string) {
+      await ensureCatalog();
+      const t = galleryTemplates.find((x) => x.id === id);
+      if (!t) {
+        throw new Error(
+          `wadi.getTemplateWdl: unknown id '${id}'. Call wadi.listTemplates() for valid ids.`,
+        );
+      }
+      const bytes = await fetchCatalogBytes(t.file, { kind: "default" });
+      const loaded = await parseConfigBytes(bytes, t.file);
+      // Bundles carry model.wdl; legacy JSON has none — decompile as a fallback.
+      return loaded.wdl || configToWdlText(loaded.config as unknown as ValidatedHouseConfig);
+    },
+
     load(config: unknown) {
       const raw = typeof config === "string" ? JSON.parse(config) : config;
       const parsed = validate(raw);
@@ -3133,6 +3152,11 @@ const WADI_AGENT_HELP = [
   "  const res = await window.wadi.setWdl(newWdl);             // apply; renders live",
   "Only build from scratch if NO template fits.",
   "",
+  "STUDY OTHER EXAMPLES WITHOUT DISTURBING THE LIVE MODEL: to see how another home does a",
+  "roof, staircase, grid, etc., READ it — do NOT load it. `await window.wadi.getTemplateWdl(id)`",
+  "returns that home's .wdl as text and leaves the user's current model untouched. Only use",
+  "chooseTemplate when you actually want to START from that home.",
+  "",
   "WORK WITH THE USER — ONE STEP AT A TIME. Do NOT do everything in one shot and leave",
   "the user to fix your guesses.",
   "  • When a request involves a CHOICE — which template, how many rooms and their sizes,",
@@ -3257,6 +3281,18 @@ function buildWadiMcpTools(): WebMcpTool[] {
         required: ["id"],
       },
       async execute(input) { return text(await api().chooseTemplate(String(input.id))); },
+    },
+    {
+      name: "wadi_read_home",
+      description:
+        "Return a ready-made home's .wdl source WITHOUT loading it — study an example (how it does a roof, a staircase, a grid, etc.) without disturbing the user's current model. Use this to look things up; use wadi_choose_home only when you actually want to start from that home. Ids come from wadi_list_homes.",
+      annotations: { readOnlyHint: true },
+      inputSchema: {
+        type: "object",
+        properties: { id: { type: "string", description: "template id, e.g. family_home" } },
+        required: ["id"],
+      },
+      async execute(input) { return text(await api().getTemplateWdl(String(input.id))); },
     },
     {
       name: "wadi_set_plot",
