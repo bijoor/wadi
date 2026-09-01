@@ -304,6 +304,42 @@ Orient the ridge along the LONGER dimension: swap the segment's `start`/`end` so
 
 ---
 
+## C18 — Don't roof the same area twice · **warning**
+
+**Statement.** A roof segment should not sit entirely within an area another roof segment already covers.
+
+**Rationale.** Each roof segment spans a plan area (its ridge line ± `width`). When a new segment (often a whole new `roof` object an agent added) falls completely inside the area an existing roof already covers, the two roofs overlap — redundant geometry that renders as z-fighting and doubles the material take-off. Almost always the fix is to extend the existing roof, not add another. (Only a segment FULLY inside prior coverage is flagged, so abutting segments and ridge joints in a legitimate multi-segment roof never false-warn.)
+
+**Fix.**
+
+Remove the redundant roof/segment, or if you meant to cover more area, extend an existing segment's `width`/`end` instead of adding an overlapping one.
+
+---
+
+## C19 — Prefer one or two flights per floor when space allows · **warning**
+
+**Statement.** A staircase should climb a floor in one or two flights unless the floor space is genuinely tight.
+
+**Rationale.** A box-model staircase derives its flight count from the run it is given: too short a box forces extra switchback flights. Agents routinely under-size the box and get cramped 3-4 flight stairs where the floor had room for a straight run or a single U-turn. Fewer flights are easier to build and to walk. (A warning, since a tight plot may legitimately need a compact switchback.)
+
+**Fix.**
+
+Lengthen the staircase along its run axis (the box `length` for a N/S stair, `width` for E/W) to the reported minimum, or reduce `landing_depth`. The warning gives the exact length for one and two flights.
+
+---
+
+## C20 — A staircase's top landing must reach a room · **warning**
+
+**Statement.** The top landing of a staircase should abut (or sit inside) a room on the floor it arrives at, so there is a way off the stair onto the floor.
+
+**Rationale.** A switchback's arrival landing lands wherever the run ends, which is hard to predict and easy to get wrong (often the direction is simply flipped). When the top landing ends against a blank wall or in open space, the stair reaches the next level but there is no way onto the floor. This checks the resolved arrival rectangle against the rooms of the arrival floor. (A warning, since a landing that opens onto an outdoor terrace may not overlap a room.)
+
+**Fix.**
+
+Place the staircase so its top landing meets a room (leave that room's wall open there or add a door), or flip the `direction`/`turn` so the landing ends on the room side. The warning reports the arrival rectangle and which way it faces.
+
+---
+
 ## SP1 — A spiral staircase's central pole must be smaller than its radius · **error**
 
 **Statement.** A `spiral_staircase`'s `pole_radius` must be less than its outer `radius`.
