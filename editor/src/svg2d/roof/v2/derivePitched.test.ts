@@ -55,6 +55,44 @@ describe("derivePitchedRoof — ridge vent extension cover", () => {
   });
 });
 
+describe("derivePitchedRoof — hip setback overrun clip", () => {
+  it("a span wider than its ridge run collapses to a centred apex (no negative faces)", () => {
+    // from (200,0)→(200,320): ridge run 320, width 400 → default setbacks
+    // 200+200=400 exceed the run. Without clipping the ridge inverts and the
+    // hip end faces overrun the centre (a false ridge extension).
+    const cfg: RoofConfig = {
+      type: "roof",
+      roof_type: "pitched",
+      segments: [{ id: "s0", start: [200, 0], end: [200, 320], width: 400 }],
+      slope: { by: "height", ridge_h: 60 },
+      min_overhang: 12,
+      default_endpoint: "closed",
+    };
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    // Ridge collapses to a single apex at the centre of the run (y = 160).
+    expect(ridge.start[0]).toBeCloseTo(200, 6);
+    expect(ridge.start[1]).toBeCloseTo(160, 6);
+    expect(ridge.end[1]).toBeCloseTo(160, 6);
+    // Both hip end faces meet AT the centre line — their apex is at y = 160,
+    // never past it, so the faces are non-negative and do not overlap.
+    const hipFaces = spec.planes.filter((p) => p.role === "hip_face");
+    expect(hipFaces.length).toBe(2);
+    for (const f of hipFaces) {
+      const apex = f.vertices.find((v) => Math.abs(v[2] - 160) < 1e-6)!;
+      expect(apex).toBeDefined();
+      expect(apex[1]).toBeCloseTo(160, 6);
+    }
+  });
+
+  it("a normal hip (run ≥ span) keeps a real ridge line", () => {
+    // yAxisCfg: run 500, width 300 → setbacks 150+150 < 500, ridge stays.
+    const spec = derivePitchedRoof(yAxisCfg(), { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    expect(Math.abs(ridge.end[1] - ridge.start[1])).toBeGreaterThan(100);
+  });
+});
+
 describe("derivePitchedRoof — basic", () => {
   it("empty segments → empty spec", () => {
     const spec = derivePitchedRoof(

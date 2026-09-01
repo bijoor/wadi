@@ -121,6 +121,27 @@ function shift(pt: Point2D, unit: Point2D, distance: number): Point2D {
   return [pt[0] + unit[0] * distance, pt[1] + unit[1] * distance];
 }
 
+// Clip a pair of hip setbacks so the two hip apexes MEET AT — never cross —
+// the ridge run. A closed endpoint pulls the ridge inward by its setback; if
+// the two setbacks sum to more than `alongLen` (the span exceeds the ridge
+// length, e.g. a hip wider than it is long) the ridge endpoints would cross,
+// so the hip end faces extend past the centre and overlap — a false "ridge
+// extension" with inverted, negative faces. Scaling both setbacks so their
+// sum equals `alongLen` collapses the ridge to a single apex point (a hipped
+// pyramid) instead: the faces meet exactly at the centre and stay non-negative.
+function clampHipSetbacks(
+  setbackStart: number,
+  setbackEnd: number,
+  alongLen: number,
+): [number, number] {
+  const total = setbackStart + setbackEnd;
+  if (total > alongLen && total > 0) {
+    const scale = alongLen / total;
+    return [setbackStart * scale, setbackEnd * scale];
+  }
+  return [setbackStart, setbackEnd];
+}
+
 export function derivePitchedRoof(
   cfg: RoofConfig,
   opts: DerivePitchedOptions,
@@ -164,8 +185,11 @@ export function derivePitchedRoof(
     const endResG = !endIsLeafG
       ? "joint"
       : (seg.end_endpoint ?? defaultEndpoint);
-    const hipSbS = startResG === "closed" ? (seg.hip_setback_start ?? halfC) : 0;
-    const hipSbE = endResG === "closed" ? (seg.hip_setback_end ?? halfC) : 0;
+    let hipSbS = startResG === "closed" ? (seg.hip_setback_start ?? halfC) : 0;
+    let hipSbE = endResG === "closed" ? (seg.hip_setback_end ?? halfC) : 0;
+    // Clip overrunning setbacks the same way the main pass does, so the
+    // shared eave datum (dCrit) is computed from the real (clipped) hip run.
+    [hipSbS, hipSbE] = clampHipSetbacks(hipSbS, hipSbE, segmentLength(seg));
     const d: number[] = [halfC];
     if (startResG === "closed") d.push(hipSbS);
     if (endResG === "closed") d.push(hipSbE);
@@ -208,10 +232,20 @@ export function derivePitchedRoof(
 
     // Hip setbacks (only used for closed leaf endpoints). Joints do
     // NOT trim — the ridge runs to the segment endpoint.
-    const hipSetbackStart =
+    let hipSetbackStart =
       startRes === "closed" ? (seg.hip_setback_start ?? crossHalf) : 0;
-    const hipSetbackEnd =
+    let hipSetbackEnd =
       endRes === "closed" ? (seg.hip_setback_end ?? crossHalf) : 0;
+    // Clip so the two hip apexes meet at (never cross) the centre. Without
+    // this, a segment whose span exceeds its ridge run produces inverted,
+    // overlapping end faces that read as a false ridge extension; clipping
+    // collapses the ridge to a single apex (a hipped pyramid) with no
+    // negative faces.
+    [hipSetbackStart, hipSetbackEnd] = clampHipSetbacks(
+      hipSetbackStart,
+      hipSetbackEnd,
+      alongLen,
+    );
 
     // Gable overhangs (only for open leaf endpoints). Default to
     // min_overhang so a plain gable end has an eave overhang
