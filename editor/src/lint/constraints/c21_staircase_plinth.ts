@@ -27,10 +27,12 @@ export const C21: Constraint = {
     const rooms = ctx.model.byType("room");
     if (rooms.length === 0) return findings;
     const lowest = Math.min(...rooms.map((r) => r.floor));
+    const tol = Math.max(ctx.defaults.wall_thickness, 8);
 
     for (const { floorNum, summary } of eachStaircaseSummary(ctx)) {
       if (!summary.box || floorNum !== lowest) continue;
-      const fp = boxFootprint(summary.box);
+      // Inset so a plinth exactly matching the stair footprint still counts.
+      const fp = boxFootprint(summary.box, tol) ?? boxFootprint(summary.box);
       if (!fp) continue;
       if (!footprintContains(plinthArea, fp)) {
         const b = summary.box;

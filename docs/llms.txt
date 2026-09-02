@@ -24,7 +24,7 @@ The viewer at https://wadi.house/app exposes a `window.wadi` API. Call `await wi
 - `window.wadi.captureView()` — a JPEG data URL of the current 3D view.
 - `window.wadi.listRooms()` / `enterRoom(key)` / `exitRoom()` — first-person interior views.
 
-Only build from scratch if no template fits. If you must, follow this order and re-check as you go: plinth on the lowest floor → ground-floor rooms + a slab per floor → upper floors laid over the floor below with walls ALIGNED to those beneath (only small partitions may lack support) + a slab → pillars under any cantilever (rising only to the underside of the top floor's slab) → a roof covering the WHOLE top floor → a staircase spanning the floors.
+Only build from scratch if no template fits. If you must, follow this order and re-check as you go: plinth on the lowest floor → ground-floor rooms + a slab per floor → upper floors laid over the floor below with walls ALIGNED to those beneath (only small partitions may lack support) + a slab → pillars under any cantilever (each rising to the slab/beam above it, about the floor's wall height — a pillar that stops short leaves a gap and is flagged, C25) → a roof covering the WHOLE top floor → a staircase spanning the floors.
 
 **Roofs.** One roof per area: extend an existing roof's segments (`width`/`end`) to cover more, never add a second roof over an already-covered area (warning C18). Orient each hip segment's ridge along the LONGER side of the footprint — if a segment's span (`width`) exceeds its ridge run (`start`→`end` length) it collapses to a pyramid (warning C17).
 

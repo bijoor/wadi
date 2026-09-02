@@ -1,7 +1,7 @@
 // C24 — A staircase needs a slab under it (as well as a plinth).
 
-import { makeReport } from "./vocab";
-import { footprintUnion, footprintContains } from "../../model/geom";
+import { makeReport, num, type Bag } from "./vocab";
+import { footprintUnion, footprintContains, type Footprint } from "../../model/geom";
 import { eachStaircaseSummary, boxFootprint } from "./stairLint";
 import type { Constraint } from "./types";
 
@@ -21,15 +21,30 @@ export const C24: Constraint = {
 
   check(ctx) {
     const { findings, report } = makeReport("C24", "warn");
-    const model = ctx.model;
+    const tol = Math.max(ctx.defaults.wall_thickness, 8);
+    // Authored deck slabs (the DSL `slab` compiles to type "floor_slab") read from
+    // the RESOLVED config — pre-expansion, so a staircase's OWN landings (also
+    // "floor_slab", created during expansion) can never count as its support.
+    const floors = ((ctx.resolved as unknown as Bag).floors as Bag[] | undefined) ?? [];
+    const decksByFloor = new Map<number, Footprint[]>();
+    for (const fl of floors) {
+      const fps: Footprint[] = [];
+      for (const o of (fl.objects as Bag[] | undefined) ?? []) {
+        if (o.type !== "floor_slab" || o.enabled === false) continue;
+        const fp = boxFootprint({ x: num(o.x), y: num(o.y), width: num(o.width), length: num(o.length) });
+        if (fp) fps.push(fp);
+      }
+      decksByFloor.set(num(fl.floor_number), fps);
+    }
     for (const { floorNum, floorSlabThickness, summary } of eachStaircaseSummary(ctx)) {
       if (!summary.box) continue;
       if (!(floorSlabThickness > 0)) continue; // rests on the floor base — no gap
-      const fp = boxFootprint(summary.box);
+      // Inset the box a touch so a slab that exactly matches the stair footprint
+      // (coincident edges) still counts as covering it.
+      const fp = boxFootprint(summary.box, tol) ?? boxFootprint(summary.box);
       if (!fp) continue;
-      const slabs = model.byType("slab").filter((s) => s.floor === floorNum);
-      const covered =
-        slabs.length > 0 && footprintContains(footprintUnion(slabs.map((s) => s.footprint)), fp);
+      const decks = decksByFloor.get(floorNum) ?? [];
+      const covered = decks.length > 0 && footprintContains(footprintUnion(decks), fp);
       if (!covered) {
         const b = summary.box;
         report(
@@ -72,7 +87,8 @@ function house(slabThickness: number, objects: unknown[]): Record<string, unknow
   };
 }
 function slab(x: number, y: number, width: number, length: number) {
-  return { type: "slab", name: "Slab", x, y, width, length };
+  // The DSL `slab` compiles to type "floor_slab".
+  return { type: "floor_slab", name: "Slab", x, y, width, length };
 }
 function stair(start_x: number, start_y: number, width: number, length: number) {
   return {
