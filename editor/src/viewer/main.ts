@@ -4739,8 +4739,8 @@ function wireWdlEditor(): void {
        an X. Hidden in the embedded surface. */
     #wdl-ctl { position: fixed; top: calc(50% + 44px); right: 0; transform: translateY(-50%);
       z-index: 55; display: flex; flex-direction: column; align-items: flex-end; }
-    #wdl-ctl .tab-lbl { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);
-      font-size: 8.5px; font-weight: 800; letter-spacing: 1.5px; color: #93c5fd; background: #0d1526;
+    #wdl-ctl .tab-lbl { writing-mode: vertical-rl; text-orientation: upright;
+      font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; color: #93c5fd; background: #0d1526;
       border: 1px solid #1e293b; border-right: none; border-radius: 10px 0 0 0; width: 24px; padding: 7px 0 5px;
       text-align: center; box-shadow: -2px 0 10px rgba(0,0,0,.25); }
     #wdl-ctl .tab-lbl + button#wdl-grow { border-radius: 0; }
