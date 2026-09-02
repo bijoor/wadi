@@ -2489,10 +2489,17 @@ interface CheckBrief { ok: boolean; errors: number; warnings: number; summary: s
 function checkBrief(cfg: unknown): CheckBrief {
   const c = runCheck(cfg);
   const out: CheckBrief = { ok: c.ok, errors: c.error_count, warnings: c.warning_count, summary: c.summary };
-  if (c.errors.length) out.error_messages = c.errors.slice(0, 4).map((e) => e.message);
-  // Warnings matter too (e.g. two rooms overlapping) — surface them so the agent
-  // can decide whether to fix, not just see a count.
-  if (c.warnings.length) out.warning_messages = c.warnings.slice(0, 4).map((e) => e.message);
+  if (c.errors.length) out.error_messages = c.errors.slice(0, 12).map((e) => e.message);
+  // Warnings matter too (e.g. an unsupported staircase) — surface them so the agent
+  // and the user can decide whether to fix. Show a generous slice, and push the
+  // cosmetic furniture-overlap (C7) noise to the END so it never truncates away a
+  // structural warning like an unsupported staircase or an under-height pillar.
+  if (c.warnings.length) {
+    const ordered = [...c.warnings].sort(
+      (a, b) => (a.rule === "C7" ? 1 : 0) - (b.rule === "C7" ? 1 : 0),
+    );
+    out.warning_messages = ordered.slice(0, 20).map((e) => e.message);
+  }
   return out;
 }
 
