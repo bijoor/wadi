@@ -2344,19 +2344,22 @@ function wireIssuesChip(): void {
     if (cfg === lastCfg) return; // only re-lint when the model actually changed
     lastCfg = cfg;
     if (!cfg) { el.dataset.state = ""; return; }
-    const chk = checkBrief(cfg);
+    const chk = checkBrief(cfg); // full — the user can scroll the popover
     if (!chk.ok) {
       el.dataset.state = "err";
       g.textContent = "✖";
-      t.textContent = `${chk.errors} structural error${chk.errors === 1 ? "" : "s"}`;
-      const more = chk.errors - (chk.error_messages?.length ?? 0);
-      list.textContent = (chk.error_messages ?? []).join("\n\n") + (more > 0 ? `\n\n…and ${more} more` : "");
+      const parts: string[] = [`${chk.errors} error${chk.errors === 1 ? "" : "s"}`];
+      if (chk.warnings) parts.push(`${chk.warnings} warning${chk.warnings === 1 ? "" : "s"}`);
+      t.textContent = parts.join(", ");
+      // Errors first, then warnings below them.
+      let body = (chk.error_messages ?? []).join("\n\n");
+      if (chk.warnings) body += (body ? "\n\n" : "") + "— Warnings —\n\n" + (chk.warning_messages ?? []).join("\n\n");
+      list.textContent = body;
     } else if (chk.warnings) {
       el.dataset.state = "warn";
       g.textContent = "⚠";
       t.textContent = `${chk.warnings} structural warning${chk.warnings === 1 ? "" : "s"}`;
-      const more = chk.warnings - (chk.warning_messages?.length ?? 0);
-      list.textContent = (chk.warning_messages ?? []).join("\n\n") + (more > 0 ? `\n\n…and ${more} more` : "");
+      list.textContent = (chk.warning_messages ?? []).join("\n\n");
     } else {
       el.dataset.state = "";
       el.classList.remove("open");
@@ -2486,21 +2489,58 @@ function runCheck(cfg: unknown): CheckSummary {
 // Compact form for mutating tools' return values: the agent gets an immediate
 // heads-up (and the top messages) without a second call; details via wadi_check.
 interface CheckBrief { ok: boolean; errors: number; warnings: number; summary: string; error_messages?: string[]; warning_messages?: string[] }
-function checkBrief(cfg: unknown): CheckBrief {
+// Max messages per rule in the AGENT-facing check result (WebMCP), so one noisy
+// category (e.g. many furniture overlaps) can't crowd the others out of the agent's
+// context. The in-app pill / chip the user sees are never capped.
+const AGENT_CHECK_CAP = 3;
+
+// Order issues so cosmetic furniture-overlap (C7) noise sits LAST, keeping the
+// registry order otherwise (Array.sort is stable). So a structural warning like an
+// unsupported staircase never hides behind a flood of furniture overlaps.
+function orderIssues(issues: CheckIssue[]): CheckIssue[] {
+  return [...issues].sort((a, b) => (a.rule === "C7" ? 1 : 0) - (b.rule === "C7" ? 1 : 0));
+}
+
+// Flatten issues to messages. With `perCategory` set, cap each rule to that many
+// messages and add an "…and N more [rule]" line — used for the AGENT-facing result
+// (WebMCP) so one noisy category can't crowd the others out. Without it, every
+// message is returned (the in-app pill / chip, which the user can scroll).
+function issueMessages(issues: CheckIssue[], perCategory?: number): string[] {
+  const ordered = orderIssues(issues);
+  if (!perCategory) return ordered.map((e) => e.message);
+  const seen = new Map<string, number>();
+  const out: string[] = [];
+  const overflow = new Map<string, number>();
+  for (const it of ordered) {
+    const n = seen.get(it.rule) ?? 0;
+    if (n < perCategory) out.push(it.message);
+    else overflow.set(it.rule, (overflow.get(it.rule) ?? 0) + 1);
+    seen.set(it.rule, n + 1);
+  }
+  for (const [rule, extra] of overflow) out.push(`…and ${extra} more like [${rule}]`);
+  return out;
+}
+
+// `perCategory` caps each rule's messages for the AGENT-facing result; omit it for
+// the in-app surfaces, which show everything.
+function checkBrief(cfg: unknown, perCategory?: number): CheckBrief {
   const c = runCheck(cfg);
   const out: CheckBrief = { ok: c.ok, errors: c.error_count, warnings: c.warning_count, summary: c.summary };
-  if (c.errors.length) out.error_messages = c.errors.slice(0, 12).map((e) => e.message);
-  // Warnings matter too (e.g. an unsupported staircase) — surface them so the agent
-  // and the user can decide whether to fix. Show a generous slice, and push the
-  // cosmetic furniture-overlap (C7) noise to the END so it never truncates away a
-  // structural warning like an unsupported staircase or an under-height pillar.
-  if (c.warnings.length) {
-    const ordered = [...c.warnings].sort(
-      (a, b) => (a.rule === "C7" ? 1 : 0) - (b.rule === "C7" ? 1 : 0),
-    );
-    out.warning_messages = ordered.slice(0, 20).map((e) => e.message);
-  }
+  if (c.errors.length) out.error_messages = issueMessages(c.errors, perCategory);
+  if (c.warnings.length) out.warning_messages = issueMessages(c.warnings, perCategory);
   return out;
+}
+
+// The WDL-editor status pill's colour + body for a check result: ERRORS first, then
+// warnings below them, so nothing important is hidden by ordering.
+function statusFromCheck(chk: CheckBrief): { cls: string; body: string } {
+  if (!chk.ok) {
+    let body = `✖ ${chk.summary}\n` + (chk.error_messages ?? []).join("\n");
+    if (chk.warnings) body += "\n\nWarnings:\n" + (chk.warning_messages ?? []).join("\n");
+    return { cls: "err", body };
+  }
+  if (chk.warnings) return { cls: "warn", body: `⚠ ${chk.summary}\n` + (chk.warning_messages ?? []).join("\n") };
+  return { cls: "", body: "" };
 }
 
 // A's facing side + the overlap span [lo, hi] along that wall, or null if the
@@ -2869,7 +2909,7 @@ function wireWadiApi(): void {
         // Structural check (C1-C11) of the whole house, so a single describe call
         // tells the agent if anything is wrong. Each connection above also carries
         // its own `passable` flag.
-        issues: checkBrief(cfg),
+        issues: checkBrief(cfg, AGENT_CHECK_CAP),
       };
     },
 
@@ -2946,7 +2986,7 @@ function wireWadiApi(): void {
       store().updateObject({ floor: found.floor, object: found.object }, patch as Partial<HouseObject>);
       // Report structural state after the edit so the agent notices immediately if
       // the move broke a connection (C11), rather than claiming "no errors".
-      return { ok: true as const, name: (patch.name as string) ?? String(found.room.name), check: checkBrief(store().config) };
+      return { ok: true as const, name: (patch.name as string) ?? String(found.room.name), check: checkBrief(store().config, AGENT_CHECK_CAP) };
     },
 
     check() {
@@ -3111,7 +3151,7 @@ function wireWadiApi(): void {
       store().loadConfig(res.config, "wadi.setWdl", null, src);
       markHomeChosen(); // dismiss the New dialog if it's still up
       setViewerPanels(false); // agent edit — keep the model visible, hide code/knobs
-      return { loaded: true as const, ...checkBrief(store().config) };
+      return { loaded: true as const, ...checkBrief(store().config, AGENT_CHECK_CAP) };
     },
     async getWdl() {
       // The model always carries its WDL (synced in the store). Fall back to a
@@ -4910,10 +4950,8 @@ function wireWdlEditor(): void {
     // Surface the structural check of the newly-adopted model (an agent's setWdl,
     // a template load, undo) in the pill — otherwise warnings only ever appeared
     // on a manual Apply, so an agent's edit looked clean here.
-    const chk = checkBrief(useConfigStore.getState().config);
-    if (!chk.ok) setStatus("err", `✖ ${chk.summary}\n` + (chk.error_messages ?? []).join("\n"));
-    else if (chk.warnings) setStatus("warn", `⚠ ${chk.summary}\n` + (chk.warning_messages ?? []).join("\n"));
-    else setStatus("", "");
+    const s = statusFromCheck(checkBrief(useConfigStore.getState().config));
+    setStatus(s.cls, s.body);
     reflectDirty();
   };
   useConfigStore.subscribe(syncFromStore);
@@ -4955,10 +4993,9 @@ function wireWdlEditor(): void {
     // repaint anyway (now + next frame) so the new model paints immediately.
     window.wadiInvalidate?.();
     requestAnimationFrame(() => window.wadiInvalidate?.());
-    const chk = checkBrief(useConfigStore.getState().config);
-    if (!chk.ok) setStatus("err", `✖ ${chk.summary}\n` + (chk.error_messages ?? []).join("\n"));
-    else if (chk.warnings) setStatus("warn", `⚠ ${chk.summary}\n` + (chk.warning_messages ?? []).join("\n"));
-    else setStatus("ok", "✓ Applied — no structural issues.");
+    const s = statusFromCheck(checkBrief(useConfigStore.getState().config));
+    if (s.cls === "") setStatus("ok", "✓ Applied — no structural issues.");
+    else setStatus(s.cls, s.body);
   };
 
   applyBtn.onclick = () => { void apply(); };
