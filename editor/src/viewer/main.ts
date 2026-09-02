@@ -4788,6 +4788,7 @@ function wireWdlEditor(): void {
     `<div id="wdl-editor"></div>` +
     `<div class="wdl-foot">` +
     `<button class="wdl-apply" id="wdl-apply" disabled>Apply changes<span class="k">⌘↵</span></button>` +
+    `<button class="wdl-btn" id="wdl-load" title="Load a .wdl file into the editor">📂 Load .wdl</button>` +
     `<button class="wdl-btn" id="wdl-save" title="Save the WDL source as a .wdl file">💾 Save .wdl</button></div>` +
     `<div id="wdl-reference" class="wdl-slideover" hidden><div class="ref-head"><strong>.wdl language reference</strong>` +
     `<button class="ref-close" id="wdl-ref-close" title="Close" aria-label="Close reference">×</button></div>` +
@@ -5028,6 +5029,52 @@ function wireWdlEditor(): void {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg !== "Cancelled") setStatus("err", `Save failed: ${msg}`);
     }
+  };
+
+  // Load a .wdl file from disk INTO the editor, then compile + load it as the live
+  // model. A plain file input works in the browser and the Tauri webview alike.
+  const loadWdlBtn = document.getElementById("wdl-load") as HTMLButtonElement;
+  loadWdlBtn.onclick = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".wdl,text/plain";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      let text: string;
+      try {
+        text = await file.text();
+      } catch {
+        setStatus("err", "Couldn't read that file.");
+        return;
+      }
+      // Loading replaces the current house — offer to save unsaved work first.
+      if (!(await guardUnsaved("loading a .wdl file"))) return;
+      setVal(text);
+      pending = text;
+      setStatus("busy", "Compiling…");
+      const res = await wdlToConfig(text);
+      if (!res.ok || !res.config) {
+        // Leave the (bad) WDL in the editor so the user can see + fix the error.
+        applied = "";
+        reflectDirty();
+        setStatus("err", "✖ " + res.errors.join("\n"));
+        return;
+      }
+      const base = file.name.replace(/\.wdl$/i, "") || "house";
+      useConfigStore.getState().loadConfig(res.config, `${base}.wdl`, null, text);
+      markHomeChosen();
+      closeNewHouseModal();
+      // Fresh file = new baseline; Ctrl+Z shouldn't revert to the previous model.
+      useConfigStore.temporal.getState().clear();
+      applied = text;
+      reflectDirty();
+      window.wadiInvalidate?.();
+      const s = statusFromCheck(checkBrief(useConfigStore.getState().config));
+      if (s.cls === "") setStatus("ok", `✓ Loaded ${file.name}`);
+      else setStatus(s.cls, s.body);
+    };
+    input.click();
   };
 
   // Language-reference slide-over: a browsable .wdl cheat-sheet over the editor.
