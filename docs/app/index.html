@@ -629,16 +629,19 @@
                open configurator and both sit at the configurator's right edge. */
             position: fixed; top: calc(50% - 44px); left: 0; transform: translateY(-50%);
             z-index: 55;
-            width: 24px; height: 54px;
+            width: 24px; min-height: 54px;
             border: 1px solid #e0dfda; border-left: none;
             border-radius: 0 10px 10px 0;
             background: #fff; color: #B85028;
-            font-size: 1rem; line-height: 1; cursor: pointer;
+            font-size: 1rem; line-height: 1; cursor: pointer; padding: 6px 0;
             box-shadow: 2px 0 10px rgba(0,0,0,0.10);
         }
         #left-toggle:hover { background: #faf3ee; }
+        #left-toggle .tab-lbl { writing-mode: vertical-rl; text-orientation: mixed;
+            font-size: 8.5px; font-weight: 800; letter-spacing: 1.5px; color: #B85028; opacity: .8; }
+        #left-toggle .lt-arw { font-size: 1rem; line-height: 1; }
         body[data-config="on"] #left-toggle,
-        body[data-edit-mode="on"] #left-toggle { display: flex; align-items: center; justify-content: center; }
+        body[data-edit-mode="on"] #left-toggle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
         /* Open: the panel occupies 288px, so the tab sits at its right edge. */
         body[data-left="open"] #left-toggle { left: 288px; }
         /* Mobile: the config dock overlays the model instead of squeezing it;
@@ -2296,7 +2299,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-D7jQGv6k.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-DNlaB1pu.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>
@@ -2406,7 +2409,7 @@
     <!-- Collapse/expand the left panel (Gharkul configurator or Nakasha sidebar).
          A chevron tab on the LEFT EDGE (distinct from the toolbar ☰). Shown by
          main.ts only when a left panel exists; icon flips with the state. -->
-    <button id="left-toggle" type="button" title="Show / hide the panel" aria-label="Toggle panel">❯</button>
+    <button id="left-toggle" type="button" title="Show / hide the configurator" aria-label="Toggle configurator panel"><span class="tab-lbl" aria-hidden="true">CONFIG</span><span class="lt-arw">❯</span></button>
     <div id="viewer-container">
         <!-- Owner welcome / empty state — covers the viewer until a home is
              chosen, so a fresh owner never lands on a model they didn't pick.
