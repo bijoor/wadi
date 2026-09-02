@@ -493,6 +493,9 @@ async function bootViewer(): Promise<void> {
   // Surface geometry warnings (invalid openings dropped during expansion)
   // as a banner instead of silently blanking the 3D model.
   wireGeometryWarnings();
+  // A small always-visible chip that shows the model's structural check even when
+  // the WDL editor / configurator panels are hidden (e.g. during agent editing).
+  wireIssuesChip();
 
   // Live-preview loop (Tauri only): poll the loaded config file and
   // reload the model when an external editor (Claude Code / MCP) writes
@@ -2298,6 +2301,71 @@ function setViewerPanels(visible: boolean): void {
   window.dispatchEvent(new Event("resize"));
 }
 
+// A small, always-visible chip reporting the current model's structural check
+// (errors/warnings). It stays visible even when the WDL editor + configurator
+// panels are hidden — which is the default and what agent edits force — so a
+// person watching the model still sees the C-warnings an agent's setWdl produced.
+// The full messages live inside the (hidden) WDL editor pill; this is the visible
+// entry point to them. Hidden entirely when the model is clean.
+function wireIssuesChip(): void {
+  const style = document.createElement("style");
+  style.textContent =
+    "#wadi-issues{position:fixed;top:118px;left:50%;transform:translateX(-50%);z-index:40;display:none;" +
+    "font:600 12.5px/1.3 system-ui,-apple-system,sans-serif;}" +
+    "#wadi-issues[data-state='warn'],#wadi-issues[data-state='err']{display:block;}" +
+    "#wadi-issues .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:999px;" +
+    "cursor:pointer;border:1px solid;box-shadow:0 2px 10px rgba(20,15,10,.18);backdrop-filter:blur(8px);white-space:nowrap;}" +
+    "#wadi-issues[data-state='warn'] .chip{color:#92610a;background:rgba(251,191,36,.22);border-color:rgba(251,191,36,.6);}" +
+    "#wadi-issues[data-state='err'] .chip{color:#b91c1c;background:rgba(248,113,113,.22);border-color:rgba(248,113,113,.6);}" +
+    "#wadi-issues .list{display:none;margin:7px auto 0;max-width:min(560px,92vw);max-height:44vh;overflow:auto;" +
+    "background:#fff;color:#1e293b;border:1px solid #e2e8f0;border-radius:12px;padding:11px 13px;" +
+    "box-shadow:0 10px 34px rgba(20,15,10,.22);white-space:pre-wrap;text-align:left;font-weight:500;}" +
+    "#wadi-issues.open .list{display:block;}" +
+    "@media (prefers-color-scheme:dark){#wadi-issues .list{background:#0f172a;color:#e2e8f0;border-color:#1e293b;}}";
+  document.head.appendChild(style);
+
+  const el = document.createElement("div");
+  el.id = "wadi-issues";
+  el.innerHTML =
+    "<div class='chip' role='button' tabindex='0'><span class='g'></span><span class='t'></span>" +
+    "<span style='opacity:.6'>▾</span></div><div class='list'></div>";
+  document.body.appendChild(el);
+  const chip = el.querySelector(".chip") as HTMLElement;
+  const g = el.querySelector(".g") as HTMLElement;
+  const t = el.querySelector(".t") as HTMLElement;
+  const list = el.querySelector(".list") as HTMLElement;
+  const toggle = (): void => { el.classList.toggle("open"); };
+  chip.addEventListener("click", toggle);
+  chip.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+
+  let lastCfg: unknown = null;
+  const render = (): void => {
+    const cfg = useConfigStore.getState().config;
+    if (cfg === lastCfg) return; // only re-lint when the model actually changed
+    lastCfg = cfg;
+    if (!cfg) { el.dataset.state = ""; return; }
+    const chk = checkBrief(cfg);
+    if (!chk.ok) {
+      el.dataset.state = "err";
+      g.textContent = "✖";
+      t.textContent = `${chk.errors} structural error${chk.errors === 1 ? "" : "s"}`;
+      const more = chk.errors - (chk.error_messages?.length ?? 0);
+      list.textContent = (chk.error_messages ?? []).join("\n\n") + (more > 0 ? `\n\n…and ${more} more` : "");
+    } else if (chk.warnings) {
+      el.dataset.state = "warn";
+      g.textContent = "⚠";
+      t.textContent = `${chk.warnings} structural warning${chk.warnings === 1 ? "" : "s"}`;
+      const more = chk.warnings - (chk.warning_messages?.length ?? 0);
+      list.textContent = (chk.warning_messages ?? []).join("\n\n") + (more > 0 ? `\n\n…and ${more} more` : "");
+    } else {
+      el.dataset.state = "";
+      el.classList.remove("open");
+    }
+  };
+  useConfigStore.subscribe(render);
+  render();
+}
+
 // Populate galleryTemplates (the catalog manifest) if it hasn't been fetched
 // yet — the gallery normally loads it lazily on open, but the wadi API can be
 // called before the modal is ever shown.
@@ -3182,9 +3250,9 @@ const WADI_AGENT_HELP = [
   "  2. ground-floor rooms; give each floor a slab",
   "  3. upper floors laid OVER the floor below — walls ALIGNED to the walls beneath them",
   "     (only small partition walls may lack support); give each a slab",
-  "  4. pillars under any cantilever (a room past the floor below); a pillar must RISE TO",
-  "     the slab/beam above it (about the floor's wall height) — one that stops short leaves",
-  "     a gap and carries nothing (C25)",
+  "  4. pillars under any cantilever (a room past the floor below); a pillar that carries a",
+  "     SLAB above it must reach it (about the floor height) — a short one leaves a gap (C25).",
+  "     A pillar supporting only the roof needs no such check.",
   "  5. a roof covering the WHOLE top floor (not just the middle). ONE roof per area:",
   "     extend an existing roof's segments to cover more, never add a second roof over an",
   "     already-covered area (C18). Orient each hip segment's ridge along the LONGER side —",
@@ -4831,7 +4899,15 @@ function wireWdlEditor(): void {
   const syncFromStore = (): void => {
     const wdl = useConfigStore.getState().wdl ?? "";
     if (wdl === applied || isDirty()) return;
-    setVal(wdl); applied = wdl; setStatus("", ""); reflectDirty();
+    setVal(wdl); applied = wdl;
+    // Surface the structural check of the newly-adopted model (an agent's setWdl,
+    // a template load, undo) in the pill — otherwise warnings only ever appeared
+    // on a manual Apply, so an agent's edit looked clean here.
+    const chk = checkBrief(useConfigStore.getState().config);
+    if (!chk.ok) setStatus("err", `✖ ${chk.summary}\n` + (chk.error_messages ?? []).join("\n"));
+    else if (chk.warnings) setStatus("warn", `⚠ ${chk.summary}\n` + (chk.warning_messages ?? []).join("\n"));
+    else setStatus("", "");
+    reflectDirty();
   };
   useConfigStore.subscribe(syncFromStore);
   reflectDirty();

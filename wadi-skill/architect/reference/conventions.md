@@ -388,15 +388,15 @@ Add or grow a `slab` on the staircase's floor so it covers the whole staircase f
 
 ---
 
-## C25 — A pillar should reach the slab or beam above it · **warning**
+## C25 — A pillar under a slab should reach that slab · **warning**
 
-**Statement.** A pillar should rise to the top of its floor — the underside of the slab or beam it carries. A pillar that stops well below the top of the floor's walls leaves a gap and supports nothing.
+**Statement.** When a slab on the floor above sits over a pillar, the pillar should rise to the underside of that slab. A pillar that stops short leaves a gap and carries nothing.
 
-**Rationale.** A column exists to carry the floor or roof above it. When it stops short of that level there is a visible gap between the pillar top and the structure, and the load has nothing to bear on. Agents often shrink a copied pillar's height (or a configurator lowers it) so it no longer reaches the slab. (A warning — a deliberately low decorative post is allowed.)
+**Rationale.** A column exists to carry the slab above it; if it stops below that level there is a gap between its top and the slab, and the load has nothing to bear on. Agents often shrink a copied pillar's height (or a configurator lowers it) so it no longer reaches the slab. This only checks a pillar that actually has a slab above it — a pillar supporting a roof (which slopes and has no flat datum), or with nothing above, is never flagged. (A warning — a deliberately low decorative post under a slab is allowed.)
 
 **Fix.**
 
-Set the pillar height so its top meets the structure above: about the floor's wall height. The warning reports how far it falls short.
+Raise the pillar height so its top meets the slab above (about the floor's height minus its slab thickness), or, if it is meant to be low, remove the slab above it / leave it be.
 
 ---
 
