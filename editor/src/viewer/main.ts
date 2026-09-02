@@ -2256,7 +2256,10 @@ function applyViewerChrome(): void {
 function wireLeftToggle(): void {
   const btn = document.getElementById("left-toggle");
   const setIcon = () => {
-    if (btn) btn.textContent = document.body.dataset.left === "open" ? "❮" : "❯";
+    if (!btn) return;
+    const glyph = document.body.dataset.left === "open" ? "❮" : "❯";
+    const arw = btn.querySelector(".lt-arw");
+    if (arw) arw.textContent = glyph; else btn.textContent = glyph;
   };
   let stored: string | null = null;
   try { stored = localStorage.getItem(LEFT_PANEL_KEY); } catch { /* ignore */ }
@@ -2296,7 +2299,11 @@ function setViewerPanels(visible: boolean): void {
     document.body.dataset.left = "closed";
   }
   const lbtn = document.getElementById("left-toggle");
-  if (lbtn) lbtn.textContent = document.body.dataset.left === "open" ? "❮" : "❯";
+  if (lbtn) {
+    const g = document.body.dataset.left === "open" ? "❮" : "❯";
+    const a = lbtn.querySelector(".lt-arw");
+    if (a) a.textContent = g; else lbtn.textContent = g;
+  }
   // Re-fit the 3D canvas to the freed width.
   window.dispatchEvent(new Event("resize"));
 }
@@ -4731,7 +4738,12 @@ function wireWdlEditor(): void {
        overlaps the configurator's own toggle (offset ABOVE centre) when they share
        an X. Hidden in the embedded surface. */
     #wdl-ctl { position: fixed; top: calc(50% + 44px); right: 0; transform: translateY(-50%);
-      z-index: 55; display: flex; flex-direction: column; }
+      z-index: 55; display: flex; flex-direction: column; align-items: flex-end; }
+    #wdl-ctl .tab-lbl { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);
+      font-size: 8.5px; font-weight: 800; letter-spacing: 1.5px; color: #93c5fd; background: #0d1526;
+      border: 1px solid #1e293b; border-right: none; border-radius: 10px 0 0 0; width: 24px; padding: 7px 0 5px;
+      text-align: center; box-shadow: -2px 0 10px rgba(0,0,0,.25); }
+    #wdl-ctl .tab-lbl + button#wdl-grow { border-radius: 0; }
     #wdl-ctl button { width: 24px; height: 30px; display: flex; align-items: center; justify-content: center;
       border: 1px solid #1e293b; border-right: none; background: #0d1526; color: #93c5fd;
       font-size: 0.95rem; line-height: 1; cursor: pointer; box-shadow: -2px 0 10px rgba(0,0,0,0.25); padding: 0; }
@@ -4805,6 +4817,7 @@ function wireWdlEditor(): void {
   const wdlCtl = document.createElement("div");
   wdlCtl.id = "wdl-ctl";
   wdlCtl.innerHTML =
+    `<span class="tab-lbl" aria-hidden="true">WDL</span>` +
     `<button id="wdl-grow" type="button" title="Widen the WDL editor" aria-label="Widen the WDL editor">❮</button>` +
     `<button id="wdl-shrink" type="button" title="Narrow / close the WDL editor" aria-label="Narrow the WDL editor">❯</button>`;
   container.appendChild(wdlCtl);
