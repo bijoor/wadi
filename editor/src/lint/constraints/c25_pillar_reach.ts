@@ -28,7 +28,10 @@ export const C25: Constraint = {
     const { findings, report } = makeReport("C25", "warn");
     const model = ctx.model;
     const slabs = model.byType("floor_slab"); // floor decks AND staircase landings
-    const maxGap = Math.max(2 * ctx.defaults.slab_thickness, 16); // tolerate a beam-thickness shortfall
+    // Tolerance below the slab underside. Kept under a slab thickness so a pillar
+    // that stops a whole slab short (a wall-height pillar under a floor slab) is
+    // flagged, while rounding noise is not.
+    const maxGap = Math.max(ctx.defaults.slab_thickness / 2, 2);
     const eps = 1;
 
     for (const p of model.byType("pillar")) {
@@ -66,7 +69,7 @@ export const C25: Constraint = {
     pass: [
       {
         name: "a full-height pillar reaches the slab above",
-        config: house(108, true),
+        config: house(116, true),
       },
       {
         name: "a short pillar with NO slab above (supports a roof) is not flagged",

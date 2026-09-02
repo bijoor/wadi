@@ -144,7 +144,11 @@ function wallRings(obj: Obj): Ring[] | null {
 // z_offset is referenced to the floor base; its default differs by type (the
 // unified z_offset convention): deck-like objects sit at the base, everything
 // else sits on the slab.
-const BASE_Z_TYPES = new Set(["floor_slab", "slab", "beam", "roof", "gable_roof", "ground"]);
+// `pillar` is here so its z-band matches the 3D renderer, which rises pillars from
+// the FLOOR BASE (House3D: z_offset ?? 0), through the slab, to the beam/slab above.
+// (Without this the model placed a pillar a slab-thickness higher than it renders,
+// so C25 thought a short pillar reached the slab when it visibly falls short.)
+const BASE_Z_TYPES = new Set(["floor_slab", "slab", "beam", "roof", "gable_roof", "ground", "pillar"]);
 
 function zBandOf(type: string, obj: Obj, band: { slabZ: number; slabThickness: number; wallHeight: number }): ZBand {
   const zOffDefault = BASE_Z_TYPES.has(type) ? 0 : band.slabThickness;
