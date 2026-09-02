@@ -179,6 +179,107 @@
       .cards, .cards.cols2 { grid-template-columns: 1fr; }
       .hero { padding: 44px 0 24px; }
     }
+    /* ---- "How Wadi works" stepper widget ---- */
+    .hiw-head { text-align:center; max-width:52ch; margin:0 auto 22px; }
+    .hiw-head h2 { font-size:clamp(1.6rem,3.5vw,2.2rem); letter-spacing:-0.02em; margin:0 0 8px; }
+    .hiw-head p { color:var(--muted); margin:0; }
+    .hiw { position:relative; background:var(--surface); border:1px solid var(--border);
+      border-radius:22px; box-shadow:var(--shadow); overflow:hidden; }
+    .hiw:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+    .hiw-top { display:flex; align-items:center; padding:11px 18px; border-bottom:1px solid var(--border);
+      background:color-mix(in srgb, var(--bg) 55%, var(--surface)); }
+    .hiw-count { font-weight:700; color:var(--muted); font-size:.82rem; letter-spacing:.02em; }
+    .hiw-stage { position:relative; min-height:460px; }
+    .hiw-slide { position:absolute; inset:0; padding:30px 32px; opacity:0; transform:translateY(10px);
+      pointer-events:none; transition:opacity .45s ease, transform .45s ease; overflow:auto; }
+    .hiw-slide.on { opacity:1; transform:none; pointer-events:auto; }
+    .hiw-grid { display:grid; grid-template-columns:1fr 1.05fr; gap:34px; align-items:center; min-height:400px; }
+    .hiw-num { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px;
+      border-radius:12px; background:var(--accent); color:var(--accent-ink); font-weight:800; font-size:1.25rem; margin-bottom:14px; }
+    .hiw-slide h3 { font-size:clamp(1.4rem,2.8vw,1.9rem); letter-spacing:-0.02em; margin:0 0 12px; line-height:1.1; }
+    .hiw-slide p { color:var(--muted); font-size:1.05rem; margin:0 0 12px; }
+    .hiw-slide .k { color:var(--text); font-weight:700; }
+    .hiw-tags { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+    .hiw-tag { font-size:.8rem; font-weight:700; color:var(--green); background:color-mix(in srgb, var(--green) 14%, var(--surface));
+      border-radius:999px; padding:5px 11px; }
+    /* intro */
+    .hiw-intro { text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; }
+    .hiw-intro h3 { font-size:clamp(1.6rem,3.4vw,2.3rem); max-width:20ch; }
+    .hiw-intro p { max-width:46ch; }
+    .hiw-pills { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:20px; }
+    .hiw-pill { font-weight:700; font-size:.92rem; color:var(--text); background:var(--surface);
+      border:1px solid var(--border); border-radius:999px; padding:9px 16px; cursor:pointer; transition:.15s; }
+    .hiw-pill:hover { border-color:var(--accent); color:var(--accent); transform:translateY(-1px); }
+    /* panels */
+    .hiw-panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;
+      box-shadow:0 1px 2px rgba(30,20,10,.05); }
+    .hiw-bar { display:flex; align-items:center; gap:6px; padding:9px 13px; border-bottom:1px solid var(--border); background:color-mix(in srgb,var(--bg) 55%,var(--surface)); }
+    .hiw-dot { width:10px; height:10px; border-radius:50%; }
+    .hiw-dot.r{background:#e0704f}.hiw-dot.y{background:#e6c07b}.hiw-dot.g{background:#8fbf8f}
+    .hiw-btitle { margin-left:6px; font-size:.8rem; font-weight:700; color:var(--muted); }
+    .hiw-badge { margin-left:auto; font-size:.7rem; font-weight:800; padding:3px 9px; border-radius:999px;
+      background:color-mix(in srgb,var(--green) 14%,var(--surface)); color:var(--green); }
+    .hiw pre { margin:0; background:#1f1b16; color:#f3ede4; padding:16px;
+      font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; overflow:auto; max-height:300px; }
+    .hiw .kw{color:#e0774a}.hiw .str{color:#9ecb8f}.hiw .com{color:#a89c8c}.hiw .num{color:#e6c07b}.hiw .mut{color:#a89c8c}
+    .hiw-chat { padding:14px; display:flex; flex-direction:column; gap:9px; }
+    .hiw-bub { max-width:88%; padding:10px 14px; border-radius:14px; font-size:.94rem; line-height:1.42; }
+    .hiw-bub.u { align-self:flex-end; background:var(--accent); color:var(--accent-ink); border-bottom-right-radius:4px; }
+    .hiw-bub.a { align-self:flex-start; background:color-mix(in srgb,var(--bg) 70%, var(--surface)); color:var(--text); border-bottom-left-radius:4px; }
+    .hiw-bub.a code { background:rgba(120,90,60,.14); padding:1px 5px; border-radius:5px; font-size:.85em; }
+    .hiw-who { font-size:.68rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; opacity:.55; margin:0 4px 2px; }
+    .hiw-bundle { padding:22px; display:flex; flex-direction:column; align-items:center; gap:12px; }
+    .hiw-file { text-align:center; }
+    .hiw-file .ic{font-size:2.4rem}.hiw-file .nm{font-weight:800}.hiw-file .sub{font-size:.8rem;color:var(--muted)}
+    .hiw-arrowd { color:var(--accent); font-size:1.3rem; font-weight:800; }
+    .hiw-zip { display:flex; flex-direction:column; gap:8px; width:100%; max-width:320px;
+      background:color-mix(in srgb,var(--bg) 55%,var(--surface)); border:1px dashed var(--accent); border-radius:14px; padding:14px; }
+    .hiw-zrow { display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border);
+      border-radius:10px; padding:9px 12px; font-size:.9rem; font-weight:700; }
+    .hiw-zrow .zs{ margin-left:auto; color:var(--muted); font-weight:500; font-size:.78rem; }
+    .hiw-viewer { display:grid; grid-template-columns:140px 1fr; }
+    .hiw-layers { border-right:1px solid var(--border); padding:11px; background:color-mix(in srgb,var(--bg) 55%,var(--surface)); display:flex; flex-direction:column; gap:6px; }
+    .hiw-lyr { display:flex; align-items:center; gap:8px; font-size:.82rem; font-weight:700; padding:5px 7px; border-radius:8px; }
+    .hiw-lyr .sw{ width:11px; height:11px; border-radius:3px; }
+    .hiw-lyr.act{ background:var(--surface); }
+    .hiw-lyr .eye{ margin-left:auto; font-size:.8rem; }
+    .hiw-lyr.dim{ opacity:.5; }
+    .hiw-stagebox { display:grid; place-items:center; background:linear-gradient(180deg,#e9f1f5,#f4efe6); padding:12px; }
+    .hiw-ocards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .hiw-ocard { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; }
+    .hiw-ocard .ic{font-size:1.6rem}.hiw-ocard h4{margin:6px 0 3px;font-size:1rem}.hiw-ocard p{font-size:.85rem;margin:0}
+    .hiw-off { display:inline-flex; align-items:center; gap:8px; background:var(--green); color:#fff; font-weight:800;
+      border-radius:999px; padding:9px 18px; }
+    .hiw-kicker { display:inline-block; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-ink);
+      background:linear-gradient(140deg,var(--accent),#e0774a); font-weight:800; padding:5px 12px; border-radius:999px; margin-bottom:10px; }
+    .hiw-why { list-style:none; margin:4px 0 0; padding:0; display:flex; flex-direction:column; gap:9px; }
+    .hiw-why li { position:relative; padding-left:28px; color:var(--muted); font-size:1rem; line-height:1.4; }
+    .hiw-why li:before { content:"✓"; position:absolute; left:0; top:1px; width:19px; height:19px; border-radius:50%;
+      background:var(--green); color:#fff; font-size:.7rem; font-weight:800; display:grid; place-items:center; }
+    .hiw-why li b{ color:var(--text); }
+    .hiw-slide.finale { background:linear-gradient(180deg, color-mix(in srgb,var(--accent-soft) 40%,var(--surface)), var(--surface)); }
+    .hiw-phone { width:250px; margin:0 auto; background:#0f172a; border-radius:26px; padding:10px; }
+    .hiw-phone .scr { background:linear-gradient(180deg,#e9f1f5,#f4efe6); border-radius:18px; overflow:hidden; }
+    .hiw-phone .ptb { display:flex; align-items:center; padding:7px 11px; background:#fbf8f3; border-bottom:1px solid var(--border); font-size:.72rem; font-weight:700; color:var(--muted); }
+    .hiw-phone .hiw-chat{ padding:10px; gap:7px; }
+    .hiw-phone .hiw-bub{ font-size:.82rem; padding:7px 11px; }
+    /* controls */
+    .hiw-controls { display:flex; align-items:center; justify-content:center; gap:14px; padding:14px;
+      border-top:1px solid var(--border); background:color-mix(in srgb,var(--bg) 55%,var(--surface)); }
+    .hiw-nav { width:42px; height:42px; border-radius:50%; border:1px solid var(--border); background:var(--surface);
+      color:var(--text); font-size:1.15rem; cursor:pointer; display:grid; place-items:center; }
+    .hiw-nav:hover:not(:disabled){ border-color:var(--accent); color:var(--accent); }
+    .hiw-nav:disabled{ opacity:.35; cursor:default; }
+    .hiw-dots { display:flex; gap:7px; }
+    .hiw-dots button { width:9px; height:9px; border-radius:50%; border:none; padding:0; cursor:pointer; background:var(--border); }
+    .hiw-dots button.on { background:var(--accent); transform:scale(1.3); }
+    @media (max-width:760px){
+      .hiw-grid{ grid-template-columns:1fr; gap:20px; }
+      .hiw-viewer{ grid-template-columns:1fr; }
+      .hiw-ocards{ grid-template-columns:1fr; }
+      .hiw-slide{ padding:22px; }
+      .hiw-stage{ min-height:540px; }
+    }
   </style>
 </head>
 <body>
@@ -216,6 +317,236 @@
             referrerpolicy="strict-origin-when-cross-origin"
             allowfullscreen
             loading="lazy"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section class="features wrap">
+      <div class="hiw-head">
+        <h2>How Wadi works</h2>
+        <p>From a line of code to a house you can walk through. Here is the whole thing, one step at a time.</p>
+      </div>
+      <div class="hiw" id="hiw" tabindex="0" aria-label="How Wadi works, step by step">
+        <div class="hiw-top"><span class="hiw-count" id="hiwCount">Intro</span></div>
+        <div class="hiw-stage" id="hiwStage">
+
+          <!-- 0 INTRO -->
+          <div class="hiw-slide on">
+            <div class="hiw-intro">
+              <h3>See how a Wadi house comes together</h3>
+              <p>Tap a step below, use the arrows, or the dots. It is a quick tour of how a house goes from a small text file to something you can explore and change in 3D.</p>
+              <div class="hiw-pills">
+                <button class="hiw-pill" data-go="1">Write it in WDL</button>
+                <button class="hiw-pill" data-go="4">Save one .wadi file</button>
+                <button class="hiw-pill" data-go="5">Explore in 3D</button>
+                <button class="hiw-pill" data-go="7">Change it just by asking</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 1 WDL -->
+          <div class="hiw-slide">
+            <div class="hiw-grid">
+              <div>
+                <div class="hiw-num">1</div>
+                <h3>One small file describes the whole house</h3>
+                <p>Every Wadi house is written in a little language called <span class="k">WDL</span>. One readable text file spells out the entire 3D model: the floors, rooms, walls, doors, windows, columns, the staircase and the roof.</p>
+                <p>The house is the code, so the model is built straight from the file.</p>
+                <div class="hiw-tags"><span class="hiw-tag">Plain text</span><span class="hiw-tag">Parametric</span><span class="hiw-tag">Easy to share</span></div>
+              </div>
+              <div class="hiw-panel">
+                <div class="hiw-bar"><span class="hiw-dot r"></span><span class="hiw-dot y"></span><span class="hiw-dot g"></span><span class="hiw-btitle">house.wdl</span></div>
+<pre><span class="kw">house</span> House {
+  <span class="kw">convention</span> center
+  <span class="kw">site</span> { <span class="kw">plot</span> (<span class="num">400</span>, <span class="num">300</span>) }
+  <span class="kw">defaults</span> { floor_height <span class="num">100</span> wall_height <span class="num">92</span> }
+
+  <span class="kw">floor</span> <span class="num">1</span> <span class="str">"Ground Floor"</span> {
+    <span class="kw">room</span> Living <span class="kw">at</span> (<span class="num">0</span>, <span class="num">0</span>) <span class="kw">size</span> (<span class="num">160</span>, <span class="num">140</span>) {
+      <span class="kw">wall</span> north south west
+      <span class="kw">wall</span> east { <span class="kw">door</span> D1 <span class="kw">at</span> <span class="num">55</span> <span class="kw">size</span> (<span class="num">30</span>, <span class="num">84</span>) }
+    }
+    <span class="kw">room</span> Kitchen <span class="kw">at</span> (<span class="num">160</span>, <span class="num">0</span>) <span class="kw">size</span> (<span class="num">120</span>, <span class="num">140</span>)
+  }
+  <span class="kw">floor</span> <span class="num">2</span> <span class="str">"Roof"</span> { <span class="kw">roof</span> pitched slope height <span class="num">60</span> <span class="com">…</span> }
+}</pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2 ARCHITECT -->
+          <div class="hiw-slide">
+            <div class="hiw-grid">
+              <div>
+                <div class="hiw-num">2</div>
+                <h3>An architect can just type it</h3>
+                <p>The syntax is simple enough to pick up in an afternoon. An architect writes WDL in the editor built into Wadi and watches the 3D model, the plans and the elevations update as they type.</p>
+                <p>A structural checker runs on every change and points out anything that would not stand, like an unsupported staircase or a column that stops short of the slab.</p>
+                <div class="hiw-tags"><span class="hiw-tag">Live preview</span><span class="hiw-tag">Auto-complete</span><span class="hiw-tag">Structural checks</span></div>
+              </div>
+              <div class="hiw-panel">
+                <div class="hiw-bar"><span class="hiw-dot r"></span><span class="hiw-dot y"></span><span class="hiw-dot g"></span><span class="hiw-btitle">WDL editor</span><span class="hiw-badge">✓ compiled</span></div>
+<pre>  <span class="kw">room</span> Bedroom <span class="kw">at</span> (<span class="num">0</span>, <span class="num">140</span>) <span class="kw">size</span> (<span class="num">160</span>, <span class="num">150</span>) {
+    <span class="kw">wall</span> north east west
+    <span class="kw">wall</span> south { <span class="kw">window</span> W1 <span class="kw">at</span> <span class="num">50</span> <span class="kw">size</span> (<span class="num">45</span>,<span class="num">45</span>) }
+  }<span class="mut">▏</span>
+
+<span class="com">  live status</span>
+<span class="com">  ✓ compiles and validates</span>
+<span class="com">  ⚠ 1 note: verandah open on the south</span></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3 AGENT -->
+          <div class="hiw-slide">
+            <div class="hiw-grid">
+              <div>
+                <div class="hiw-num">3</div>
+                <h3>Or an AI agent writes it for you</h3>
+                <p>Because it is just text, an <span class="k">AI coding agent</span> can write and edit WDL too. You describe the home in plain words and the agent produces a valid design, then keeps changing it as you ask.</p>
+                <p>The same checks guide the agent, so what comes back is something you can actually build.</p>
+                <div class="hiw-tags"><span class="hiw-tag">Describe in words</span><span class="hiw-tag">Edit by chat</span><span class="hiw-tag">Checked as it goes</span></div>
+              </div>
+              <div class="hiw-panel">
+                <div class="hiw-bar"><span class="hiw-dot r"></span><span class="hiw-dot y"></span><span class="hiw-dot g"></span><span class="hiw-btitle">Coding agent</span></div>
+                <div class="hiw-chat">
+                  <div class="hiw-bub u">Design a 2-bedroom Konkan house with a verandah and a hip roof.</div>
+                  <div class="hiw-bub a">Made the design: 2 bedrooms, a hall, kitchen, bath, a front verandah on columns, and a hip roof over the whole footprint. The structural check is clean. ✓</div>
+                  <div class="hiw-bub u">Add a pooja room off the hall.</div>
+                  <div class="hiw-bub a">Added a pooja room next to the hall and re-flowed the plan. Rendering it now.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 .wadi FILE -->
+          <div class="hiw-slide">
+            <div class="hiw-grid">
+              <div>
+                <div class="hiw-num">4</div>
+                <h3>It all saves into one small <code>.wadi</code> file</h3>
+                <p>The design, with its thumbnails and settings, packs into a single small <span class="k">.wadi</span> file. That one file is the whole house.</p>
+                <p>You can share it with your contractor and the home owner like any other document. No account, no upload, nothing in the cloud.</p>
+                <div class="hiw-tags"><span class="hiw-tag">Single file</span><span class="hiw-tag">Compact</span><span class="hiw-tag">Yours to share</span></div>
+              </div>
+              <div class="hiw-panel">
+                <div class="hiw-bundle">
+                  <div class="hiw-file"><div class="ic">📄</div><div class="nm">tiny-house.wadi</div><div class="sub">one file to share</div></div>
+                  <div class="hiw-arrowd">▾ unpacks to ▾</div>
+                  <div class="hiw-zip">
+                    <div class="hiw-zrow">🧾 wadi.json <span class="zs">settings</span></div>
+                    <div class="hiw-zrow">📐 model.wdl <span class="zs">the design</span></div>
+                    <div class="hiw-zrow">🖼️ thumbnails/ <span class="zs">preview shots</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5 EXPLORE -->
+          <div class="hiw-slide">
+            <div class="hiw-grid">
+              <div>
+                <div class="hiw-num">5</div>
+                <h3>Anyone can open it and explore in 3D</h3>
+                <p>Open the <span class="k">.wadi</span> file and Wadi rebuilds the full interactive 3D model. Walk around it, step inside the rooms, read the dimensioned plans.</p>
+                <p>Turn the layers on and off, plinth, columns, beams, walls, roof frame, tiles, to see how every part is built and how it fits together.</p>
+                <div class="hiw-tags"><span class="hiw-tag">Interactive 3D</span><span class="hiw-tag">Floor plans</span><span class="hiw-tag">Explode the roof</span></div>
+              </div>
+              <div class="hiw-panel">
+                <div class="hiw-bar"><span class="hiw-dot r"></span><span class="hiw-dot y"></span><span class="hiw-dot g"></span><span class="hiw-btitle">3D Model</span><span class="hiw-badge">layers</span></div>
+                <div class="hiw-viewer">
+                  <div class="hiw-layers">
+                    <div class="hiw-lyr act"><span class="sw" style="background:#b98b5e"></span> Plinth <span class="eye">👁</span></div>
+                    <div class="hiw-lyr act"><span class="sw" style="background:#cfc3b0"></span> Walls <span class="eye">👁</span></div>
+                    <div class="hiw-lyr act"><span class="sw" style="background:#9aa7ad"></span> Columns <span class="eye">👁</span></div>
+                    <div class="hiw-lyr act"><span class="sw" style="background:#c05a2f"></span> Roof <span class="eye">👁</span></div>
+                    <div class="hiw-lyr dim"><span class="sw" style="background:#8a7f70"></span> Furniture <span class="eye">🚫</span></div>
+                  </div>
+                  <div class="hiw-stagebox">
+                    <svg viewBox="0 0 260 200" width="100%" style="max-width:280px" aria-label="3D house">
+                      <ellipse cx="130" cy="170" rx="112" ry="20" fill="#000" opacity=".07"/>
+                      <polygon points="40,150 130,168 220,150 130,134" fill="#b98b5e"/>
+                      <polygon points="40,150 130,168 130,158 40,140" fill="#a87c50"/>
+                      <polygon points="220,150 130,168 130,158 220,140" fill="#9c723f"/>
+                      <polygon points="55,140 130,155 130,95 55,82" fill="#e7dccb"/>
+                      <polygon points="205,140 130,155 130,95 205,82" fill="#d3c6b0"/>
+                      <rect x="72" y="103" width="15" height="15" fill="#8fb6c9" transform="skewY(9)"/>
+                      <rect x="150" y="112" width="15" height="15" fill="#82a9bd" transform="skewY(-9)"/>
+                      <polygon points="46,86 130,102 130,58 88,44" fill="#c96a3f"/>
+                      <polygon points="214,86 130,102 130,58 172,44" fill="#a9532c"/>
+                      <polygon points="88,44 130,58 172,44 130,34" fill="#d5794c"/>
+                      <rect x="60" y="120" width="6" height="26" fill="#9aa7ad" transform="skewY(9)"/>
+                      <rect x="120" y="132" width="6" height="26" fill="#8b98a0" transform="skewY(9)"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6 OFFLINE -->
+          <div class="hiw-slide">
+            <div class="hiw-grid">
+              <div>
+                <div class="hiw-num">6</div>
+                <h3>It works with no internet</h3>
+                <p>Everything runs on your device. You do not need a connection to open a <code>.wadi</code> file and see the 3D model, which really matters on a build site with no signal.</p>
+                <p>Install Wadi as a desktop app, or add it to your phone's home screen, and the house opens right in your hand.</p>
+                <div style="margin-top:14px"><span class="hiw-off">📶 No internet needed</span></div>
+              </div>
+              <div class="hiw-ocards">
+                <div class="hiw-ocard"><div class="ic">🖥️</div><h4>Desktop app</h4><p>Native build for Mac and Linux, opens <code>.wadi</code> files directly.</p></div>
+                <div class="hiw-ocard"><div class="ic">📱</div><h4>Mobile</h4><p>Add it to the home screen and the 3D viewer runs offline.</p></div>
+                <div class="hiw-ocard"><div class="ic">🌐</div><h4>Browser</h4><p>Open it in any browser, nothing to install to try it.</p></div>
+                <div class="hiw-ocard"><div class="ic">🔒</div><h4>Private</h4><p>The design stays in the file. No account, no upload.</p></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7 WEBMCP -->
+          <div class="hiw-slide finale">
+            <div class="hiw-grid">
+              <div>
+                <span class="hiw-kicker">★ the part we are most excited about</span>
+                <div class="hiw-num">7</div>
+                <h3>Now you can change it just by asking</h3>
+                <p>For a long time one piece was missing: a simple way for the owner or contractor, who do not know WDL, to make changes themselves. That is what <span class="k">WebMCP</span> adds.</p>
+                <ul class="hiw-why">
+                  <li><b>No code, no install.</b> An AI agent runs right in the browser and does the editing for you.</li>
+                  <li><b>It changes the real thing.</b> The agent edits the live 3D model you are looking at, and you watch it update.</li>
+                  <li><b>It stays buildable.</b> The structural checks run on every change, so what you ask for never breaks the house.</li>
+                </ul>
+              </div>
+              <div class="hiw-phone">
+                <div class="scr">
+                  <div class="ptb">📶 offline · Wadi <span style="margin-left:auto;color:var(--accent)">✨ WebMCP</span></div>
+                  <div class="hiw-stagebox" style="padding:10px">
+                    <svg viewBox="0 0 260 150" width="100%" style="max-width:220px">
+                      <ellipse cx="130" cy="130" rx="104" ry="14" fill="#000" opacity=".07"/>
+                      <polygon points="48,110 130,126 130,68 48,54" fill="#e7dccb"/>
+                      <polygon points="212,110 130,126 130,68 212,54" fill="#d3c6b0"/>
+                      <rect x="66" y="80" width="14" height="14" fill="#8fb6c9" transform="skewY(9)"/>
+                      <polygon points="40,58 130,76 130,34 86,22" fill="#c96a3f"/>
+                      <polygon points="220,58 130,76 130,34 174,22" fill="#a9532c"/>
+                      <polygon points="86,22 130,34 174,22 130,12" fill="#d5794c"/>
+                    </svg>
+                  </div>
+                  <div class="hiw-chat">
+                    <div><div class="hiw-who">Home owner</div><div class="hiw-bub u">Make the main bedroom a bit bigger.</div></div>
+                    <div><div class="hiw-who">AI agent, in the browser</div><div class="hiw-bub a">Widened the bedroom and re-flowed the plan. Still fully supported. ✓</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="hiw-controls">
+          <button class="hiw-nav" id="hiwPrev" aria-label="Previous step">‹</button>
+          <div class="hiw-dots" id="hiwDots"></div>
+          <button class="hiw-nav" id="hiwNext" aria-label="Next step">›</button>
         </div>
       </div>
     </section>
@@ -309,5 +640,49 @@
       <div><a href="/app/?mode=owner">Choose your home</a> · <a href="/app/?mode=studio">For architects</a> · <a href="https://github.com/bijoor/wadi">GitHub</a></div>
     </div>
   </footer>
+  <script>
+    (function () {
+      var hiw = document.getElementById('hiw');
+      if (!hiw) return;
+      var slides = Array.prototype.slice.call(hiw.querySelectorAll('.hiw-slide'));
+      var titles = ['Intro', 'Step 1 · WDL', 'Step 2 · Editor', 'Step 3 · Agent',
+        'Step 4 · .wadi file', 'Step 5 · Explore', 'Step 6 · Offline', 'Step 7 · WebMCP'];
+      var i = 0;
+      var dotsEl = document.getElementById('hiwDots');
+      var count = document.getElementById('hiwCount');
+      var prev = document.getElementById('hiwPrev');
+      var next = document.getElementById('hiwNext');
+      slides.forEach(function (_, n) {
+        var b = document.createElement('button');
+        b.setAttribute('aria-label', n === 0 ? 'Intro' : 'Step ' + n);
+        b.addEventListener('click', function () { go(n); });
+        dotsEl.appendChild(b);
+      });
+      var dots = Array.prototype.slice.call(dotsEl.children);
+      function go(n) {
+        i = Math.max(0, Math.min(slides.length - 1, n));
+        slides.forEach(function (s, k) { s.classList.toggle('on', k === i); });
+        dots.forEach(function (d, k) { d.classList.toggle('on', k === i); });
+        count.textContent = i === 0 ? 'Intro' : (titles[i] + '  ·  ' + i + ' of 7');
+        prev.disabled = i === 0;
+        next.disabled = i === slides.length - 1;
+      }
+      prev.addEventListener('click', function () { go(i - 1); });
+      next.addEventListener('click', function () { go(i + 1); });
+      hiw.querySelectorAll('.hiw-pill').forEach(function (p) {
+        p.addEventListener('click', function () { go(parseInt(p.getAttribute('data-go'), 10)); });
+      });
+      // Left/Right arrows advance, but only while the widget is on screen so they
+      // never hijack scrolling elsewhere on the page.
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        var r = hiw.getBoundingClientRect();
+        if (r.bottom < 80 || r.top > window.innerHeight - 80) return;
+        e.preventDefault();
+        go(e.key === 'ArrowRight' ? i + 1 : i - 1);
+      });
+      go(0);
+    })();
+  </script>
 </body>
 </html>
