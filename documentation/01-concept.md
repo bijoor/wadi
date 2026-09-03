@@ -168,16 +168,18 @@ can import a `.wadi` back into editable `.wdl`. The two directions round-trip.
 
 The compile step and the extension model are the same mechanism seen from two sides. A
 type is declared once by its fields. From that declaration, Wadi generates the schema,
-the forms, the documentation, and the language syntax. That is what lets a `.wdl` file
-render as a full house, and it is what makes adding a new type about two files.
+the documentation, and the language syntax (plus an internal form spec). That is what
+lets a `.wdl` file render as a full house, and it is what makes adding a new type about
+two files.
 
-## Studio mode
+## The app
 
-Studio mode is the architect-facing app at <https://wadi.house/app?mode=studio>. It is
-built around the design language: a WDL code editor on one side, the owner configurator
-(the declared knobs) on the other, layer toggles, and live 3D and 2D views that update
-as you edit the WDL. There is no form-based editor and no editable object tree; a
-read-only graph view shows the model's structure. See [personas](02-personas.md).
+The Wadi app runs in the browser (<https://wadi.house/app>) and as a desktop app. It is
+one surface, built around the design language: a WDL code editor, the owner configurator
+(the declared knobs an author exposes), layer toggles, and live 3D and 2D views that
+update as the design changes. There are no separate editing modes and no form-based
+editor; a read-only graph view shows the model's structure. Who works where is covered
+in [personas](02-personas.md).
 
 ## Where to go from here
 
@@ -199,7 +201,7 @@ Most readers want the first. Continue to [personas](02-personas.md).
 |---|---|
 | `wadi-dsl/` | the DSL: grammar, compiler, decompiler, and the in-browser DSL editor |
 | `wadi-dsl/examples/*.wdl` | validated sample houses (start with `minimal.wdl`) |
-| `editor/` | the app: the 3D and 2D renderer, the studio UI (WDL editor, configurator, 3D/2D views), and the `.wadi` schema |
+| `editor/` | the app: the 3D and 2D renderer, the app UI (WDL editor, configurator, 3D/2D views), and the `.wadi` schema |
 | `wadi-skill/architect/` | the agent-neutral AI skill (instructions, references, scripts) |
 | `wadi-mcp/` | the MCP server: the skill's tooling, runnable without the repo |
 | `documentation/` | this folder |

@@ -33,9 +33,9 @@ The architect can also work by hand, in two places. Both drive the same model.
    resized, then expose a configurator. The result is a reusable template for the
    owner gallery.
 
-2. On the desktop, editing a file. The Wadi desktop app watches a `.wadi` file on
-   disk, so you can edit it in any tool and see the 3D model update within about a
-   second.
+2. On the desktop, editing a file. The Wadi desktop app watches the opened `.wadi` or
+   `.wdl` file on disk, so you (or a coding agent using the offline MCP server) can
+   edit it in any tool and see the 3D model update within about a second.
 
 The step-by-step guide to writing `.wdl` is the [authoring guide](03-authoring.md).
 Reuse across a project (components and libraries) is

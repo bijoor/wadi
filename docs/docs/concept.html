@@ -87,7 +87,7 @@ a:hover{text-decoration:underline}
 <div class="grp"><div class="grp-t">References</div><a href="grammar-and-data-model.html">Grammar & data model</a>
 <a href="applying-the-method-to-saas.html">Applying the method to SaaS</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#what-wadi-is">What Wadi is</a><a href="#why-wadi-uses-a-design-language">Why Wadi uses a design language</a><a href="#writing-and-checking-designs">Writing and checking designs</a><a href="#what-each-persona-does">What each persona does</a><a href="#why-wadi-is-built-to-extend">Why Wadi is built to extend</a><a href="#how-it-works-wdl-and-wadi">How it works: .wdl and .wadi</a><a href="#studio-mode">Studio mode</a><a href="#where-to-go-from-here">Where to go from here</a><a href="#where-things-live">Where things live</a></nav>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#what-wadi-is">What Wadi is</a><a href="#why-wadi-uses-a-design-language">Why Wadi uses a design language</a><a href="#writing-and-checking-designs">Writing and checking designs</a><a href="#what-each-persona-does">What each persona does</a><a href="#why-wadi-is-built-to-extend">Why Wadi is built to extend</a><a href="#how-it-works-wdl-and-wadi">How it works: .wdl and .wadi</a><a href="#the-app">The app</a><a href="#where-to-go-from-here">Where to go from here</a><a href="#where-things-live">Where things live</a></nav>
     <article class="md"><h1 id="what-wadi-is-and-why-it-is-designed-for-ai">What Wadi is, and why it is designed for AI</h1>
 <blockquote>
 <p>Part of the <a href="index.html">Wadi documentation</a>. This is the first chapter. It covers
@@ -262,14 +262,16 @@ that model, live. You can download the <code>.wadi</code> to publish it as a tem
 can import a <code>.wadi</code> back into editable <code>.wdl</code>. The two directions round-trip.</p>
 <p>The compile step and the extension model are the same mechanism seen from two sides. A
 type is declared once by its fields. From that declaration, Wadi generates the schema,
-the forms, the documentation, and the language syntax. That is what lets a <code>.wdl</code> file
-render as a full house, and it is what makes adding a new type about two files.</p>
-<h2 id="studio-mode">Studio mode</h2>
-<p>Studio mode is the architect-facing app at <a href="https://wadi.house/app?mode=studio">https://wadi.house/app?mode=studio</a>. It is
-built around the design language: a WDL code editor on one side, the owner configurator
-(the declared knobs) on the other, layer toggles, and live 3D and 2D views that update
-as you edit the WDL. There is no form-based editor and no editable object tree; a
-read-only graph view shows the model&#39;s structure. See <a href="personas.html">personas</a>.</p>
+the documentation, and the language syntax (plus an internal form spec). That is what
+lets a <code>.wdl</code> file render as a full house, and it is what makes adding a new type about
+two files.</p>
+<h2 id="the-app">The app</h2>
+<p>The Wadi app runs in the browser (<a href="https://wadi.house/app">https://wadi.house/app</a>) and as a desktop app. It is
+one surface, built around the design language: a WDL code editor, the owner configurator
+(the declared knobs an author exposes), layer toggles, and live 3D and 2D views that
+update as the design changes. There are no separate editing modes and no form-based
+editor; a read-only graph view shows the model&#39;s structure. Who works where is covered
+in <a href="personas.html">personas</a>.</p>
 <h2 id="where-to-go-from-here">Where to go from here</h2>
 <p>Everything in this folder supports one of two activities:</p>
 <ol>
@@ -301,7 +303,7 @@ domain in <a href="method.html">the method</a>.</p>
 </tr>
 <tr>
 <td><code>editor/</code></td>
-<td>the app: the 3D and 2D renderer, the studio UI (WDL editor, configurator, 3D/2D views), and the <code>.wadi</code> schema</td>
+<td>the app: the 3D and 2D renderer, the app UI (WDL editor, configurator, 3D/2D views), and the <code>.wadi</code> schema</td>
 </tr>
 <tr>
 <td><code>wadi-skill/architect/</code></td>
