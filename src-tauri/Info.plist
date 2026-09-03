@@ -2,12 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- Declare Wadi as the authoritative owner of the .wadi type so macOS
-       binds double-click to Wadi instead of treating it as generic JSON
-       and prompting to choose an app. Tauri's fileAssociations only emits
-       CFBundleDocumentTypes (rank Default, conforming to public.json);
-       this Info.plist is merged on top to add the exported UTI and an
-       Owner-rank document type. -->
+  <!-- Declare Wadi as the authoritative owner of the .wadi and .wdl types so macOS
+       binds double-click to Wadi instead of treating them as generic text/JSON and
+       prompting to choose an app. Tauri's fileAssociations only emits
+       CFBundleDocumentTypes (rank Default); this Info.plist is merged on top to add
+       the exported UTIs and Owner-rank document types. NOTE: this CFBundleDocumentTypes
+       array REPLACES Tauri's generated one, so every associated type must be listed
+       here too (not only in tauri.conf.json's fileAssociations). -->
   <key>UTExportedTypeDeclarations</key>
   <array>
     <dict>
@@ -29,6 +30,25 @@
         </array>
       </dict>
     </dict>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>house.wadi.dsl</string>
+      <key>UTTypeDescription</key>
+      <string>Wadi DSL</string>
+      <key>UTTypeIconFile</key>
+      <string>icon.icns</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.plain-text</string>
+      </array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>wdl</string>
+        </array>
+      </dict>
+    </dict>
   </array>
   <key>CFBundleDocumentTypes</key>
   <array>
@@ -44,6 +64,20 @@
       <key>LSItemContentTypes</key>
       <array>
         <string>house.wadi.config</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Wadi DSL</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>icon.icns</string>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>house.wadi.dsl</string>
       </array>
     </dict>
   </array>
