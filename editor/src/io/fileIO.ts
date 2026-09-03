@@ -31,7 +31,10 @@ export async function pickAndLoadConfig(): Promise<LoadResult> {
       title: "Open house",
       multiple: false,
       directory: false,
-      filters: [{ name: "Wadi house", extensions: ["wadi", "json"] }],
+      // `.wdl` is accepted too: opening a plain source file sets `filePath`, so the
+      // live watcher attaches and a coding agent editing that `.wdl` on disk updates
+      // the app. `parseWadiBytes` compiles it.
+      filters: [{ name: "Wadi house", extensions: ["wadi", "json", "wdl"] }],
     });
     if (!selected || typeof selected !== "string") {
       throw new Error("Cancelled");
@@ -65,6 +68,53 @@ export async function pickAndLoadConfig(): Promise<LoadResult> {
 export async function loadConfigFromPath(path: string): Promise<LoadResult> {
   const bytes = await readFile(path);
   return parseWadiBytes(bytes, basename(path), path);
+}
+
+// Pick a plain `.wdl` SOURCE file and read its text. In the desktop app this uses the
+// native dialog so we learn the file's ABSOLUTE PATH (returned as `filePath`): setting
+// that as the store's filePath attaches the live watcher, so a coding agent editing the
+// `.wdl` on disk (via the offline MCP server) updates the app in place. In a browser
+// there is no path and no local file watch, so `filePath` is null. Returns null on cancel.
+export async function pickAndReadWdl(): Promise<{
+  text: string;
+  filename: string;
+  filePath: string | null;
+} | null> {
+  if (isTauri()) {
+    const selected = await tauriOpen({
+      title: "Open .wdl",
+      multiple: false,
+      directory: false,
+      filters: [{ name: "Wadi DSL", extensions: ["wdl"] }],
+    });
+    if (!selected || typeof selected !== "string") return null;
+    const bytes = await readFile(selected);
+    return {
+      text: new TextDecoder().decode(bytes),
+      filename: basename(selected),
+      filePath: selected,
+    };
+  }
+  const file = await pickWdlFile();
+  return { text: await file.text(), filename: file.name, filePath: null };
+}
+
+function pickWdlFile(): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".wdl,text/plain";
+    input.addEventListener("change", () => {
+      const f = input.files?.[0];
+      if (!f) {
+        reject(new Error("Cancelled"));
+        return;
+      }
+      resolve(f);
+    });
+    input.addEventListener("cancel", () => reject(new Error("Cancelled")));
+    input.click();
+  });
 }
 
 // Parse a `.wadi` from raw BYTES (bundle or legacy JSON) — no file picker.
@@ -179,7 +229,15 @@ export async function saveConfig(
   wdl?: string,
 ): Promise<string | null> {
   const name = toWadiName(defaultName);
-  const bytes = await wadiBytesFor(config, wdl, name);
+  // When the open file is a plain `.wdl` (the source-of-truth workflow shared with a
+  // coding agent), write the WDL TEXT back to it, not a `.wadi` bundle — otherwise an
+  // in-app Save would overwrite the agent's `.wdl` with zip bytes. A .wadi target (or
+  // no WDL to write) still gets the bundle.
+  const src = (wdl ?? "").trim();
+  const bytesFor = async (target: string | null): Promise<Uint8Array> =>
+    target && /\.wdl$/i.test(target) && src
+      ? new TextEncoder().encode(wdl!)
+      : await wadiBytesFor(config, wdl, name);
   if (isTauri()) {
     let target = filePath;
     if (!target) {
@@ -191,9 +249,10 @@ export async function saveConfig(
       if (!chosen) throw new Error("Cancelled");
       target = chosen;
     }
-    await writeFile(target, bytes);
+    await writeFile(target, await bytesFor(target));
     return target;
   }
+  const bytes = await wadiBytesFor(config, wdl, name);
   // Chromium browsers: write via the File System Access API — a real in-place Save
   // to the open file when we hold its handle (and this is a Save, `filePath` set),
   // otherwise a Save-As picker where the user can choose any location, INCLUDING a
@@ -202,7 +261,7 @@ export async function saveConfig(
   if (supportsFsAccess()) {
     try {
       return filePath && hasCurrentHandle()
-        ? await saveWadiToCurrentHandle(bytes)
+        ? await saveWadiToCurrentHandle(await bytesFor(filePath))
         : await saveWadiViaPicker(bytes, name);
     } catch (e) {
       if ((e as Error)?.name === "AbortError") throw new Error("Cancelled");

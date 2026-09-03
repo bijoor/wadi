@@ -38,6 +38,15 @@
         "description": "Wadi house design",
         "role": "Editor",
         "mimeType": "application/json"
+      },
+      {
+        "ext": [
+          "wdl"
+        ],
+        "name": "Wadi DSL",
+        "description": "Wadi house design source (WDL)",
+        "role": "Editor",
+        "mimeType": "text/plain"
       }
     ],
     "icon": [

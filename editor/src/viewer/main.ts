@@ -55,6 +55,7 @@ import {
   pickAndLoadConfig,
   loadConfigFromPath,
   parseConfigBytes,
+  pickAndReadWdl,
   saveConfig,
   saveText,
   saveBinary,
@@ -5066,47 +5067,49 @@ function wireWdlEditor(): void {
   // Load a .wdl file from disk INTO the editor, then compile + load it as the live
   // model. A plain file input works in the browser and the Tauri webview alike.
   const loadWdlBtn = document.getElementById("wdl-load") as HTMLButtonElement;
-  loadWdlBtn.onclick = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".wdl,text/plain";
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      let text: string;
-      try {
-        text = await file.text();
-      } catch {
-        setStatus("err", "Couldn't read that file.");
-        return;
-      }
-      // Loading replaces the current house — offer to save unsaved work first.
-      if (!(await guardUnsaved("loading a .wdl file"))) return;
-      setVal(text);
-      pending = text;
-      setStatus("busy", "Compiling…");
-      const res = await wdlToConfig(text);
-      if (!res.ok || !res.config) {
-        // Leave the (bad) WDL in the editor so the user can see + fix the error.
-        applied = "";
-        reflectDirty();
-        setStatus("err", "✖ " + res.errors.join("\n"));
-        return;
-      }
-      const base = file.name.replace(/\.wdl$/i, "") || "house";
-      useConfigStore.getState().loadConfig(res.config, `${base}.wdl`, null, text);
-      markHomeChosen();
-      closeNewHouseModal();
-      // Fresh file = new baseline; Ctrl+Z shouldn't revert to the previous model.
-      useConfigStore.temporal.getState().clear();
-      applied = text;
+  loadWdlBtn.onclick = async () => {
+    // In the desktop app this picks via the native dialog and returns the file's
+    // absolute path, so we can watch it: a coding agent editing that `.wdl` on disk
+    // (via the offline MCP server) then live-updates the app. In a browser there is
+    // no path, so no local watch (agent edits reach the web app over the MCP relay).
+    let picked: { text: string; filename: string; filePath: string | null } | null;
+    try {
+      picked = await pickAndReadWdl();
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (m !== "Cancelled") setStatus("err", "Couldn't read that file.");
+      return;
+    }
+    if (!picked) return;
+    const { text, filename, filePath } = picked;
+    // Loading replaces the current house — offer to save unsaved work first.
+    if (!(await guardUnsaved("loading a .wdl file"))) return;
+    setVal(text);
+    pending = text;
+    setStatus("busy", "Compiling…");
+    const res = await wdlToConfig(text);
+    if (!res.ok || !res.config) {
+      // Leave the (bad) WDL in the editor so the user can see + fix the error.
+      applied = "";
       reflectDirty();
-      window.wadiInvalidate?.();
-      const s = statusFromCheck(checkBrief(useConfigStore.getState().config));
-      if (s.cls === "") setStatus("ok", `✓ Loaded ${file.name}`);
-      else setStatus(s.cls, s.body);
-    };
-    input.click();
+      setStatus("err", "✖ " + res.errors.join("\n"));
+      return;
+    }
+    const base = filename.replace(/\.wdl$/i, "") || "house";
+    useConfigStore.getState().loadConfig(res.config, `${base}.wdl`, filePath, text);
+    markHomeChosen();
+    closeNewHouseModal();
+    // Fresh file = new baseline; Ctrl+Z shouldn't revert to the previous model.
+    useConfigStore.temporal.getState().clear();
+    applied = text;
+    reflectDirty();
+    window.wadiInvalidate?.();
+    const s = statusFromCheck(checkBrief(useConfigStore.getState().config));
+    if (s.cls === "") {
+      setStatus("ok", filePath ? `✓ Loaded ${base}.wdl (watching for changes)` : `✓ Loaded ${base}.wdl`);
+    } else {
+      setStatus(s.cls, s.body);
+    }
   };
 
   // Language-reference slide-over: a browsable .wdl cheat-sheet over the editor.

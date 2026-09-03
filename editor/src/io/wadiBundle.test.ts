@@ -55,6 +55,28 @@ describe("wadi bundle", () => {
     expect(loaded.config.floors.length).toBe(legacy.config.floors.length);
   });
 
+  it("parses a plain .wdl SOURCE file (by extension) into a compiled model + wdl", async () => {
+    const legacy = await parseWadiBytes(jsonBytes, "coastal.wadi");
+    const wdl = emitWdl(legacy.config as unknown as Record<string, unknown>);
+    const wdlBytes = new TextEncoder().encode(wdl);
+
+    expect(isWadiBundle(wdlBytes)).toBe(false); // not a zip
+    const loaded = await parseWadiBytes(wdlBytes, "house.wdl", "/tmp/house.wdl");
+    expect(loaded.wdl).toBe(wdl); // the source text, verbatim
+    expect(loaded.filePath).toBe("/tmp/house.wdl"); // so the live watcher can attach
+    expect(loaded.config.floors.length).toBe(legacy.config.floors.length);
+  });
+
+  it("detects a .wdl by content when the filename has no known extension", async () => {
+    const legacy = await parseWadiBytes(jsonBytes, "coastal.wadi");
+    const wdl = emitWdl(legacy.config as unknown as Record<string, unknown>);
+    // Leading whitespace + a comment: first non-space char is not '{', so it is WDL.
+    const wdlBytes = new TextEncoder().encode("\n  // a house\n" + wdl);
+    const loaded = await parseWadiBytes(wdlBytes, "dropped");
+    expect(loaded.wdl).toContain("floor");
+    expect(loaded.config.floors.length).toBe(legacy.config.floors.length);
+  });
+
   it("preserves thumbnail files across a load → save round-trip", async () => {
     const legacy = await parseWadiBytes(jsonBytes, "coastal.wadi");
     const wdl = emitWdl(legacy.config as unknown as Record<string, unknown>);

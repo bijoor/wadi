@@ -134,14 +134,55 @@ export function pruneBundleThumbnails(keepPaths: string[]): void {
   }
 }
 
-// Parse raw `.wadi` bytes (bundle OR legacy JSON) into a loadable config.
+// Parse raw bytes into a loadable config. Three on-disk forms are accepted, told
+// apart by magic bytes / extension: a `.wadi` ZIP bundle (PK header), a plain `.wdl`
+// SOURCE file (the single source of truth, so a coding agent + the offline MCP server
+// can edit a `.wdl` on disk and the desktop app watches + recompiles it live), and a
+// legacy JSON `.wadi` config.
 export async function parseWadiBytes(
   bytes: Uint8Array,
   filename: string,
   filePath: string | null = null,
 ): Promise<LoadedWadi> {
   if (isWadiBundle(bytes)) return parseBundle(bytes, filename, filePath);
+  if (looksLikeWdl(bytes, filename)) return parseWdlSource(bytes, filename, filePath);
   return parseLegacyJson(bytes, filename, filePath);
+}
+
+// A plain `.wdl` text file is neither a zip nor JSON. Prefer the extension when the
+// name carries one; otherwise sniff: a legacy JSON config always starts with `{`
+// (after an optional BOM + whitespace), while `.wdl` starts with `house` / `import` /
+// a `//` comment. So "first non-space byte is not `{`" means WDL.
+function looksLikeWdl(bytes: Uint8Array, filename: string): boolean {
+  if (/\.wdl$/i.test(filename)) return true;
+  if (/\.(wadi|json)$/i.test(filename)) return false;
+  let i = 0;
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) i = 3; // UTF-8 BOM
+  while (
+    i < bytes.length &&
+    (bytes[i] === 0x20 || bytes[i] === 0x09 || bytes[i] === 0x0a || bytes[i] === 0x0d)
+  ) {
+    i++;
+  }
+  return bytes[i] !== 0x7b; // not '{'
+}
+
+async function parseWdlSource(
+  bytes: Uint8Array,
+  filename: string,
+  filePath: string | null,
+): Promise<LoadedWadi> {
+  const wdl = new TextDecoder().decode(bytes);
+  const res = await wdlToConfig(wdl);
+  if (!res.ok || !res.config) {
+    const details = res.errors.slice(0, 5).map((e) => `  ${e}`).join("\n");
+    throw new Error(`This .wdl failed to compile:\n${details}`);
+  }
+  // A plain `.wdl` carries no bundled thumbnails; drop any from a prior load so a
+  // Save of this source doesn't smuggle in unrelated preview files.
+  bundleThumbnails = {};
+  thumbUrlCache.clear();
+  return { config: res.config, wdl, filename, filePath };
 }
 
 async function parseBundle(
