@@ -14,7 +14,7 @@ linter (`editor/src/lint/structural.ts`), which runs automatically:
 
 - in **`check.sh`** (and `validate.mjs`) — **errors fail** the check, **warnings**
   are printed but advisory;
-- in the **DSL editor** — the status pill shows the count and lists every finding
+- in the **WDL editor** — the status pill shows the count and lists every finding
   in its hover tooltip, while still rendering the model so you can *see* the
   unsound part.
 
@@ -423,7 +423,7 @@ wadi-skill/architect/scripts/check.sh house.wdl
 - **`⚠ [C…]`** — a structural **warning**; advisory. Fix, or keep it if the open
   side is intentional.
 
-In the DSL editor the same findings appear in the status pill (hover for the full
+In the WDL editor the same findings appear in the status pill (hover for the full
 list); the model still renders so you can see the problem.
 
 ---

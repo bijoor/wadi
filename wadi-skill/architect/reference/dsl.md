@@ -525,6 +525,6 @@ raw "type" { "field": 1, "formulas": { "field": "= expr" } }
 - **Structural conventions are enforced** — `check.sh` fails on floating floors
   (plinth-floor `height` ≠ plinth block height; a no-slab floor with nonzero
   `slab_thickness`) and warns on exterior room sides left open. See
-  `conventions.md`; the DSL editor shows the same findings in its status pill.
+  `conventions.md`; the WDL editor shows the same findings in its status pill.
 - Compile after **every** edit; a parse error means the `.wadi` wasn't updated, so
   the live model just won't change — never silently wrong.

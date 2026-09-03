@@ -117,7 +117,7 @@ the system. The <code>.wdl</code> and <code>.wadi</code> model is the format the
 <tr>
 <td>Architect</td>
 <td>describes the building and co-edits</td>
-<td>a chat or the DSL editor</td>
+<td>a chat or the WDL editor</td>
 <td>yes; co-authors <code>.wdl</code></td>
 </tr>
 <tr>
@@ -140,12 +140,12 @@ rendered result, and refine it in conversation. The architect also edits the fil
 directly once familiar with the syntax. The next section covers the AI setup.</p>
 <p>The architect can also work by hand, in two places. Both drive the same model.</p>
 <ol>
-<li><p>In the DSL editor, writing <code>.wdl</code> directly (browser: <a href="https://wadi.house/dsl">https://wadi.house/dsl</a>;
-desktop: press ⌘⇧D). It is an editor for the language, with completion, hover,
-go-to-definition, rename, and a live preview pane. This is where you define the
-house on a structural grid with formulas so it stays valid when the plot is
-resized, then expose a configurator. The result is a reusable template for the
-owner gallery.</p>
+<li><p>In the app&#39;s WDL editor (open the WDL tab at <a href="https://wadi.house/app">https://wadi.house/app</a>, in the
+browser or the desktop app). It is an editor for the language, with completion,
+hover, go-to-definition, and rename, and the 3D model and drawings update live
+beside it. This is where you define the house on a structural grid with formulas so
+it stays valid when the plot is resized, then expose a configurator. The result is a
+reusable template for the owner gallery.</p>
 </li>
 <li><p>On the desktop, editing a file. The Wadi desktop app watches the opened <code>.wadi</code> or
 <code>.wdl</code> file on disk, so you (or a coding agent using the offline MCP server) can
@@ -173,7 +173,7 @@ follow-ups.</li>
 <li>Drawings to house. You give the assistant a sketch or photo of a plan; it recreates
 it as a <code>.wdl</code> and asks about anything ambiguous.</li>
 </ul>
-<p>The loop: keep the <code>.wdl</code> open in the DSL editor (browser or desktop). The assistant
+<p>The loop: keep the <code>.wdl</code> open in the app&#39;s WDL editor (browser or desktop). The assistant
 edits and saves; the model rebuilds in the pane beside you; you respond in chat; the
 assistant patches. Small, checkable steps.</p>
 <p>The assistant does not only write the design, it verifies it. Verification has two

@@ -43,9 +43,9 @@ the architect (or coding agent) who describes the building.
 ## 1. What you're writing
 
 A `.wdl` file is a complete, human-readable description of a building. You type
-it in the WDL editor (the web app at `wadi.house/dsl`, or the desktop app's
-`Window → DSL editor`, ⌘⇧D) and the model rebuilds live in the pane beside you: a
-3-D view, floor plans, elevations, roof details, and a quantities estimate.
+it in the WDL editor (the WDL tab in the app at `wadi.house/app`, in the browser
+or the desktop app) and the model rebuilds live in the pane beside you: a 3-D
+view, floor plans, elevations, roof details, and a quantities estimate.
 
 One file is the single source of truth. From it Wadi produces every drawing and
 the 3-D model, so you never keep them in sync by hand. Because the file is plain
@@ -650,8 +650,8 @@ raw "some_future_type" { key: 1, nested: { a: 2 } }
 
 ## 15. Using the editor
 
-The WDL editor is a full IDE for the language, the same at `wadi.house/dsl` and in
-the desktop app (⌘⇧D).
+The WDL editor is a full IDE for the language, the same in the app at `wadi.house/app`
+(the WDL tab) and in the desktop app.
 
 **Live loop.** Type; the model recompiles and the pane beside you rebuilds: 3-D,
 Floor Plans, Elevations, Roof Details, Layout, Quantities tabs. A status pill shows

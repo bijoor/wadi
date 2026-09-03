@@ -201,7 +201,7 @@ Most readers want the first. Continue to [personas](02-personas.md).
 
 | Path | What it is |
 |---|---|
-| `wadi-dsl/` | the DSL: grammar, compiler, decompiler, and the in-browser DSL editor |
+| `wadi-dsl/` | the DSL: grammar, compiler, decompiler, and the language services (LSP) the app's WDL editor uses |
 | `wadi-dsl/examples/*.wdl` | validated sample houses (start with `minimal.wdl`) |
 | `editor/` | the app: the 3D and 2D renderer, the app UI (WDL editor, configurator, 3D/2D views), and the model schema |
 | `wadi-skill/architect/` | the agent-neutral AI skill (instructions, references, scripts) |

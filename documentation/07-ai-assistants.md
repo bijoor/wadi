@@ -20,9 +20,9 @@ This page is the step-by-step setup. For the "who and why" see
      disk, so when the assistant edits the file the 3-D model updates automatically, and
      it lets the assistant show you the live 3-D view. **You must download and install it
      first** — this is the step people miss.
-   - The **browser editor** at <https://wadi.house/dsl> (no install). Good for editing and
-     a live preview, but it cannot watch a file the assistant edits on disk, and the
-     assistant's live-3-D tools do not reach it.
+   - The **browser editor**, the WDL tab in the app at <https://wadi.house/app> (no
+     install). Good for editing and a live preview, but it cannot watch a file the
+     assistant edits on disk, and the assistant's live-3-D tools do not reach it.
 
 > **Download the desktop app** from the **"Prefer a desktop app?"** section on
 > <https://wadi.house>, or directly from the releases page:

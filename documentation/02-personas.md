@@ -13,7 +13,7 @@ the system. The `.wdl` and `.wadi` model is the format they all share.
 | Persona | Role | Works in | Touches the DSL? |
 |---|---|---|---|
 | AI coding assistant | writes the design from a brief | any coding agent | yes; authors the `.wdl` |
-| Architect | describes the building and co-edits | a chat or the DSL editor | yes; co-authors `.wdl` |
+| Architect | describes the building and co-edits | a chat or the WDL editor | yes; co-authors `.wdl` |
 | Home-owner | personalizes a finished design | the app (browser or phone) | no; adjusts controls |
 | Developer | extends Wadi or reuses the engine | the codebase | builds the language |
 
@@ -26,12 +26,12 @@ directly once familiar with the syntax. The next section covers the AI setup.
 
 The architect can also work by hand, in two places. Both drive the same model.
 
-1. In the DSL editor, writing `.wdl` directly (browser: <https://wadi.house/dsl>;
-   desktop: press ⌘⇧D). It is an editor for the language, with completion, hover,
-   go-to-definition, rename, and a live preview pane. This is where you define the
-   house on a structural grid with formulas so it stays valid when the plot is
-   resized, then expose a configurator. The result is a reusable template for the
-   owner gallery.
+1. In the app's WDL editor (open the WDL tab at <https://wadi.house/app>, in the
+   browser or the desktop app). It is an editor for the language, with completion,
+   hover, go-to-definition, and rename, and the 3D model and drawings update live
+   beside it. This is where you define the house on a structural grid with formulas so
+   it stays valid when the plot is resized, then expose a configurator. The result is a
+   reusable template for the owner gallery.
 
 2. On the desktop, editing a file. The Wadi desktop app watches the opened `.wadi` or
    `.wdl` file on disk, so you (or a coding agent using the offline MCP server) can
@@ -63,7 +63,7 @@ The work starts one of two ways:
 - Drawings to house. You give the assistant a sketch or photo of a plan; it recreates
   it as a `.wdl` and asks about anything ambiguous.
 
-The loop: keep the `.wdl` open in the DSL editor (browser or desktop). The assistant
+The loop: keep the `.wdl` open in the app's WDL editor (browser or desktop). The assistant
 edits and saves; the model rebuilds in the pane beside you; you respond in chat; the
 assistant patches. Small, checkable steps.
 
