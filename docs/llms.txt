@@ -32,7 +32,9 @@ Only build from scratch if no template fits. If you must, follow this order and 
 
 Typical loop: `chooseTemplate` → `getWdl` → edit → `setWdl` → fix warnings (and `describeHouse()` for staircases) → repeat.
 
-The same capabilities are also registered as WebMCP tools on `navigator.modelContext` (`wadi_get_wdl`, `wadi_set_wdl`, `wadi_check_wdl`, `wadi_wdl_reference`, and more) for agents that consume WebMCP. Where WebMCP tool-calling is not surfaced, use `window.wadi` directly as above.
+**Reusable components (modules).** To reuse a `component` across models, put it in a module and import it rather than pasting the same block into every house. A module is a `.wdl` holding one or more `component Name { … }` definitions (in LOCAL coords, no `house` block). Register it with `await window.wadi.addModule("ref", moduleWdl)`, then in the main WDL `import "ref" as ns` and place it with `use ns.Name at (x,y)`. Custom modules are saved INSIDE the `.wadi` (under `modules/`), so the design stays self-contained and the component can be reused in other models. `window.wadi.listModules()` lists what is registered; `removeModule("ref")` drops one (also remove its `import`). Inbuilt packs (`std-furniture`, `konkan/base`) are always available and need no `addModule`. On the desktop, a `.wdl` opened from disk auto-loads sibling component files (`<name>.wdl` or `modules/<name>.wdl`).
+
+The same capabilities are also registered as WebMCP tools on `navigator.modelContext` (`wadi_get_wdl`, `wadi_set_wdl`, `wadi_check_wdl`, `wadi_wdl_reference`, `wadi_add_module`, `wadi_list_modules`, `wadi_remove_module`, and more) for agents that consume WebMCP. Where WebMCP tool-calling is not surfaced, use `window.wadi` directly as above.
 
 ## For an agent that can only click the UI (no JavaScript)
 

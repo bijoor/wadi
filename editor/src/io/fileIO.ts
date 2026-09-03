@@ -44,7 +44,7 @@ export async function pickAndLoadConfig(): Promise<LoadResult> {
       throw new Error("Cancelled");
     }
     const bytes = await readFile(selected);
-    return parseWadiBytes(bytes, basename(selected), selected);
+    return parseOpenedFile(bytes, basename(selected), selected);
   }
   // Chromium browsers: the File System Access picker opens a file from anywhere
   // the OS exposes — including cloud SYNC folders (Drive/OneDrive/iCloud). The
@@ -71,7 +71,7 @@ export async function pickAndLoadConfig(): Promise<LoadResult> {
 // watcher attaches to the opened file.
 export async function loadConfigFromPath(path: string): Promise<LoadResult> {
   const bytes = await readFile(path);
-  return parseWadiBytes(bytes, basename(path), path);
+  return parseOpenedFile(bytes, basename(path), path);
 }
 
 // Pick a plain `.wdl` SOURCE file and read its text. In the desktop app this uses the
@@ -83,6 +83,8 @@ export async function pickAndReadWdl(): Promise<{
   text: string;
   filename: string;
   filePath: string | null;
+  // Sibling component modules auto-loaded from disk (desktop only); {} in a browser.
+  modules: Record<string, string>;
 } | null> {
   if (isTauri()) {
     const selected = await tauriOpen({
@@ -93,14 +95,16 @@ export async function pickAndReadWdl(): Promise<{
     });
     if (!selected || typeof selected !== "string") return null;
     const bytes = await readFile(selected);
+    const text = new TextDecoder().decode(bytes);
     return {
-      text: new TextDecoder().decode(bytes),
+      text,
       filename: basename(selected),
       filePath: selected,
+      modules: await autoloadWdlModules(text, selected),
     };
   }
   const file = await pickWdlFile();
-  return { text: await file.text(), filename: file.name, filePath: null };
+  return { text: await file.text(), filename: file.name, filePath: null, modules: {} };
 }
 
 function pickWdlFile(): Promise<File> {
@@ -320,6 +324,66 @@ function downloadBytes(bytes: Uint8Array, filename: string) {
 function basename(path: string): string {
   const i = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
   return i >= 0 ? path.slice(i + 1) : path;
+}
+
+function dirname(path: string): string {
+  const i = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  return i >= 0 ? path.slice(0, i) : ".";
+}
+
+function joinPath(dir: string, rel: string): string {
+  const sep = dir.includes("\\") && !dir.includes("/") ? "\\" : "/";
+  return dir.replace(/[\\/]+$/, "") + sep + rel;
+}
+
+function wdlImportRefs(wdl: string): string[] {
+  const out: string[] = [];
+  const re = /^\s*import\s+"([^"]+)"/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(wdl)) !== null) out.push(m[1]);
+  return Array.from(new Set(out));
+}
+
+// Desktop only: read a `.wdl`'s imported component modules from FILES next to it, so a
+// coding agent (offline MCP) can author `import "comp"` + a sibling `comp.wdl` and the
+// app resolves + bundles them automatically on open. Tries `<dir>/<ref>.wdl` and
+// `<dir>/modules/<ref>.wdl`. Refs that have no sibling file (e.g. the inbuilt std
+// packs) are skipped and resolve via the std resolver instead. Browser: no filesystem,
+// returns {} (the user adds modules through the Modules panel).
+export async function autoloadWdlModules(
+  wdlText: string,
+  filePath: string | null,
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  if (!isTauri() || !filePath) return out;
+  const dir = dirname(filePath);
+  for (const ref of wdlImportRefs(wdlText)) {
+    const rel = /\.wdl$/i.test(ref) ? ref : `${ref}.wdl`;
+    for (const candidate of [joinPath(dir, rel), joinPath(dir, `modules/${rel}`)]) {
+      try {
+        out[ref] = new TextDecoder().decode(await readFile(candidate));
+        break;
+      } catch {
+        /* no sibling here — try the next candidate, else leave it to std */
+      }
+    }
+  }
+  return out;
+}
+
+// Open a file the app was handed (picker / file-association / path). For a plain `.wdl`
+// on the desktop, auto-load its sibling component modules first so imports resolve; a
+// `.wadi` bundle carries its own, and the browser has no filesystem.
+async function parseOpenedFile(
+  bytes: Uint8Array,
+  filename: string,
+  filePath: string | null,
+): Promise<LoadResult> {
+  if (/\.wdl$/i.test(filename) && filePath && isTauri()) {
+    const modules = await autoloadWdlModules(new TextDecoder().decode(bytes), filePath);
+    if (Object.keys(modules).length) return parseWadiBytes(bytes, filename, filePath, modules);
+  }
+  return parseWadiBytes(bytes, filename, filePath);
 }
 
 // Normalize any prior filename or display label to a clean `.wadi`

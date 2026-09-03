@@ -1040,6 +1040,17 @@ export interface WadiApi {
   getWdl: () => Promise<string>;
   /** Compile-check .wdl WITHOUT loading it (dry run) — returns errors or ok. */
   checkWdl: (wdl: string) => Promise<unknown>;
+  // --- Component modules: the custom `.wdl` files the model imports. They travel
+  // INSIDE the saved .wadi, so registering one here makes an `import "ref"` in the
+  // main WDL resolve and keeps the model self-contained. Inbuilt packs (furniture,
+  // konkan) are always available and are NOT listed/stored here. ---
+  /** The custom modules currently registered (import ref + source size). */
+  listModules: () => Array<{ ref: string; chars: number }>;
+  /** Register (or replace) a component module by its import ref, then recompile the
+   *  live model so an `import "ref"` resolves. Returns the structural check. */
+  addModule: (ref: string, wdl: string) => Promise<unknown>;
+  /** Remove a custom module and recompile. */
+  removeModule: (ref: string) => Promise<unknown>;
   /** A self-contained primer for an AI agent driving this page: the window.wadi
    *  authoring loop plus the .wdl syntax. Call this first, then follow it. */
   help: () => string;
@@ -2694,6 +2705,16 @@ function wireWadiApi(): void {
     if ("points" in patch && patch.points) store().updatePoints(patch.points);
     else if ("variables" in patch && patch.variables) store().updateVariables(patch.variables);
   };
+  // Recompile the current model against its (just-changed) module set so an
+  // `import "ref"` resolves and the 3D re-renders. Preserves the module list.
+  const recompileWithModules = async (): Promise<unknown> => {
+    const s = store();
+    const res = await wdlToConfig(s.wdl, s.modules);
+    if (!res.ok || !res.config) return { ok: false as const, errors: res.errors };
+    s.loadConfig(res.config, s.filename ?? undefined, s.filePath, s.wdl, s.modules);
+    window.wadiInvalidate?.();
+    return { loaded: true as const, ...checkBrief(store().config, AGENT_CHECK_CAP) };
+  };
 
   window.wadi = {
     async listTemplates() {
@@ -3195,6 +3216,20 @@ function wireWadiApi(): void {
         ? { ok: true as const, message: "Compiles and validates. Load it with wadi_set_wdl to render it and get the structural (C1-C12) check." }
         : { ok: false as const, errors: res.errors };
     },
+    listModules() {
+      const m = store().modules;
+      return Object.keys(m).sort().map((ref) => ({ ref, chars: m[ref].length }));
+    },
+    async addModule(ref: string, wdl: string) {
+      const key = String(ref ?? "").trim();
+      if (!key) return { ok: false as const, errors: ["a module ref (the import name) is required"] };
+      store().addModule(key, String(wdl ?? ""));
+      return recompileWithModules();
+    },
+    async removeModule(ref: string) {
+      store().removeModule(String(ref ?? "").trim());
+      return recompileWithModules();
+    },
     help() { return WADI_AGENT_HELP; },
   };
 }
@@ -3343,6 +3378,15 @@ const WADI_AGENT_HELP = [
   "     units — don't copy stair sizes from another example without rescaling; in the default",
   "     10-units-per-foot scale use ~ `step_rise 6`, `step_tread 10` (C23).",
   "",
+  "REUSABLE COMPONENTS (MODULES): to reuse a `component` across models, put it in a module",
+  "and import it, instead of pasting the same block into every house. A module is a `.wdl`",
+  "holding `component Name { … }` definitions (LOCAL coords, no `house`). Register it with",
+  "`window.wadi.addModule(\"ref\", moduleWdl)`, then in the main WDL `import \"ref\" as ns` and",
+  "place it with `use ns.Name at (x,y)`. Custom modules are saved INSIDE the `.wadi`, so the",
+  "design stays self-contained. `window.wadi.listModules()` shows what's registered;",
+  "`removeModule(\"ref\")` drops one (also delete its `import`). Inbuilt packs (std-furniture,",
+  "konkan/base) are always available and need no addModule.",
+  "",
   "SEE THE RESULT / INSPECT:",
   "  window.wadi.captureView()      // -> a JPEG data URL of the current 3D view",
   "  window.wadi.describeHouse()    // rooms + roof + STAIRCASES: each stair's flight count,",
@@ -3408,6 +3452,43 @@ function buildWadiMcpTools(): WebMcpTool[] {
         required: ["wdl"],
       },
       async execute(input) { return text(await api().checkWdl(String(input?.wdl ?? ""))); },
+    },
+    // ---- Component modules: register reusable component .wdl files the main WDL
+    // imports. They save INSIDE the .wadi, so the design stays self-contained. This
+    // is the in-browser twin of writing a component file on disk: add the module,
+    // then `import "ref" as ns` in the main WDL (wadi_set_wdl) and `use ns.Component`. ----
+    {
+      name: "wadi_list_modules",
+      description:
+        "List the custom component modules registered for the current model (import ref + source size). These are the reusable component .wdl files saved inside the .wadi. Inbuilt packs (furniture, konkan) are always available and are not listed.",
+      annotations: { readOnlyHint: true },
+      inputSchema: noInput,
+      execute() { return text(api().listModules()); },
+    },
+    {
+      name: "wadi_add_module",
+      description:
+        "Register (or replace) a reusable component module by its import ref, then recompile the live model. Use this to add a component .wdl the main WDL imports: the module holds one or more `component Name { … }` definitions in LOCAL coords; then in the main WDL `import \"ref\" as ns` and place it with `use ns.Name at (x,y)`. The module is saved inside the .wadi so the design is self-contained. Returns the structural check.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          ref: { type: "string", description: "the import ref, e.g. \"dining-set\" (matches `import \"dining-set\"`)" },
+          wdl: { type: "string", description: "the module's .wdl source (component definitions, no `house` block)" },
+        },
+        required: ["ref", "wdl"],
+      },
+      async execute(input) { return text(await api().addModule(String(input?.ref ?? ""), String(input?.wdl ?? ""))); },
+    },
+    {
+      name: "wadi_remove_module",
+      description:
+        "Remove a custom component module by its import ref and recompile. (Does not touch the main WDL's import line — remove that too if the component is no longer used.)",
+      inputSchema: {
+        type: "object",
+        properties: { ref: { type: "string", description: "the import ref to remove" } },
+        required: ["ref"],
+      },
+      async execute(input) { return text(await api().removeModule(String(input?.ref ?? ""))); },
     },
     {
       name: "wadi_list_homes",
@@ -5116,7 +5197,7 @@ function wireWdlEditor(): void {
     // absolute path, so we can watch it: a coding agent editing that `.wdl` on disk
     // (via the offline MCP server) then live-updates the app. In a browser there is
     // no path, so no local watch (agent edits reach the web app over the MCP relay).
-    let picked: { text: string; filename: string; filePath: string | null } | null;
+    let picked: { text: string; filename: string; filePath: string | null; modules: Record<string, string> } | null;
     try {
       picked = await pickAndReadWdl();
     } catch (e) {
@@ -5125,13 +5206,15 @@ function wireWdlEditor(): void {
       return;
     }
     if (!picked) return;
-    const { text, filename, filePath } = picked;
+    const { text, filename, filePath, modules } = picked;
     // Loading replaces the current house — offer to save unsaved work first.
     if (!(await guardUnsaved("loading a .wdl file"))) return;
     setVal(text);
     pending = text;
     setStatus("busy", "Compiling…");
-    const res = await wdlToConfig(text);
+    // `modules` are the component .wdl files found next to this one (desktop); they let
+    // `import "…"` resolve and get bundled into a later Save.
+    const res = await wdlToConfig(text, modules);
     if (!res.ok || !res.config) {
       // Leave the (bad) WDL in the editor so the user can see + fix the error.
       applied = "";
@@ -5140,7 +5223,7 @@ function wireWdlEditor(): void {
       return;
     }
     const base = filename.replace(/\.wdl$/i, "") || "house";
-    useConfigStore.getState().loadConfig(res.config, `${base}.wdl`, filePath, text);
+    useConfigStore.getState().loadConfig(res.config, `${base}.wdl`, filePath, text, modules);
     markHomeChosen();
     closeNewHouseModal();
     // Fresh file = new baseline; Ctrl+Z shouldn't revert to the previous model.

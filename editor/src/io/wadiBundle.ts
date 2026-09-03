@@ -210,9 +210,11 @@ async function parseWdlSource(
   // Save of this source doesn't smuggle in unrelated preview files.
   bundleThumbnails = {};
   thumbUrlCache.clear();
-  // `modules` is left undefined: a plain `.wdl` declares no module set of its own, so
-  // the loader PRESERVES whatever the model already has (the watcher relies on this).
-  return { config: res.config, wdl, filename, filePath };
+  // Echo back the modules we compiled against so the caller can decide what the store
+  // keeps: a fresh open with sibling modules auto-loaded (Tauri) passes them here and
+  // they become the model's set; the watcher passes the current set to preserve it; a
+  // plain open passes nothing (undefined) so the loader clears to none.
+  return { config: res.config, wdl, modules, filename, filePath };
 }
 
 async function parseBundle(
