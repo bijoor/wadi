@@ -87,7 +87,7 @@ a:hover{text-decoration:underline}
 <div class="grp"><div class="grp-t">References</div><a href="grammar-and-data-model.html">Grammar & data model</a>
 <a href="applying-the-method-to-saas.html">Applying the method to SaaS</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-vertical-model-why-c1-and-c3-exist">The vertical model (why C1 and C3 exist)</a><a href="#c1--the-plinth-floors-height-must-match-the-plinth-block-height--error">C1 — The plinth floor&#39;s height must match the plinth block height · error</a><a href="#c2--a-room-must-wall-every-exterior-side--warning">C2 — A room must wall every exterior side · warning</a><a href="#c3--a-floor-with-no-slab-must-set-slab_thickness-to-0--error">C3 — A floor with no slab must set slab_thickness to 0 · error</a><a href="#c4--a-stacked-floors-height-should-equal-wall_height--slab_thickness--warning">C4 — A stacked floor&#39;s height should equal wall_height + slab_thickness · warning</a><a href="#c5--a-staircase-must-land-on-a-floor-not-below-ground--warning">C5 — A staircase must land on a floor, not below ground · warning</a><a href="#c6--openings-on-the-same-wall-must-not-overlap--error">C6 — Openings on the same wall must not overlap · error</a><a href="#c7--furniture-items-should-not-overlap--warning">C7 — Furniture items should not overlap · warning</a><a href="#c8--two-abutting-rooms-need-a-partition-between-them--warning">C8 — Two abutting rooms need a partition between them · warning</a><a href="#c9--a-floors-slab_thickness-should-match-its-slab-objects-thickness--warning">C9 — A floor&#39;s slab_thickness should match its slab object&#39;s thickness · warning</a><a href="#c10--the-roof-should-cover-the-rooms-of-the-top-occupied-floor--warning">C10 — The roof should cover the rooms of the top occupied floor · warning</a><a href="#c11--a-declared-connection-must-overlap-on-a-wall-and-be-passable-door-or-open--error">C11 — A declared connection must overlap on a wall and be passable (door or open) · error</a><a href="#c12--rooms-should-not-overlap-they-share-walls-not-floor-area--warning">C12 — Rooms should not overlap (they share walls, not floor area) · warning</a><a href="#sp1--a-spiral-staircases-central-pole-must-be-smaller-than-its-radius--error">SP1 — A spiral staircase&#39;s central pole must be smaller than its radius · error</a><a href="#running-the-checks">Running the checks</a><a href="#planned-conventions-not-yet-enforced">Planned conventions (not yet enforced)</a></nav>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#the-vertical-model-why-c1-and-c3-exist">The vertical model (why C1 and C3 exist)</a><a href="#c1--the-plinth-floors-height-must-match-the-plinth-block-height--error">C1 — The plinth floor&#39;s height must match the plinth block height · error</a><a href="#c2--a-room-must-wall-every-exterior-side--warning">C2 — A room must wall every exterior side · warning</a><a href="#c3--a-floor-with-no-slab-must-set-slab_thickness-to-0--error">C3 — A floor with no slab must set slab_thickness to 0 · error</a><a href="#c4--a-stacked-floors-height-should-equal-wall_height--slab_thickness--warning">C4 — A stacked floor&#39;s height should equal wall_height + slab_thickness · warning</a><a href="#c5--a-staircase-must-land-on-a-floor-not-below-ground--warning">C5 — A staircase must land on a floor, not below ground · warning</a><a href="#c6--openings-on-the-same-wall-must-not-overlap--error">C6 — Openings on the same wall must not overlap · error</a><a href="#c7--furniture-items-should-not-overlap--warning">C7 — Furniture items should not overlap · warning</a><a href="#c8--two-abutting-rooms-need-a-partition-between-them--warning">C8 — Two abutting rooms need a partition between them · warning</a><a href="#c9--a-floors-slab_thickness-should-match-its-slab-objects-thickness--warning">C9 — A floor&#39;s slab_thickness should match its slab object&#39;s thickness · warning</a><a href="#c10--the-roof-should-cover-the-rooms-of-the-top-occupied-floor--warning">C10 — The roof should cover the rooms of the top occupied floor · warning</a><a href="#c11--a-declared-connection-must-overlap-on-a-wall-and-be-passable-door-or-open--error">C11 — A declared connection must overlap on a wall and be passable (door or open) · error</a><a href="#c12--rooms-should-not-overlap-they-share-walls-not-floor-area--warning">C12 — Rooms should not overlap (they share walls, not floor area) · warning</a><a href="#c13--the-lowest-floor-should-carry-a-plinth--warning">C13 — The lowest floor should carry a plinth · warning</a><a href="#c14--the-highest-floor-should-carry-a-roof--warning">C14 — The highest floor should carry a roof · warning</a><a href="#c15--the-plinth-should-cover-the-rooms-that-rest-on-it--warning">C15 — The plinth should cover the rooms that rest on it · warning</a><a href="#c16--a-room-overhanging-the-floor-below-should-have-pillars-under-it--warning">C16 — A room overhanging the floor below should have pillars under it · warning</a><a href="#c17--a-hip-roof-segments-span-should-not-exceed-its-ridge-run--warning">C17 — A hip roof segment&#39;s span should not exceed its ridge run · warning</a><a href="#c18--dont-roof-the-same-area-twice--warning">C18 — Don&#39;t roof the same area twice · warning</a><a href="#c19--prefer-one-or-two-flights-per-floor-when-space-allows--warning">C19 — Prefer one or two flights per floor when space allows · warning</a><a href="#c20--a-staircases-top-landing-must-reach-a-room--warning">C20 — A staircase&#39;s top landing must reach a room · warning</a><a href="#c21--the-plinth-should-extend-under-a-staircase--warning">C21 — The plinth should extend under a staircase · warning</a><a href="#c22--a-staircase-needs-an-enclosing-room-or-pillars-to-carry-its-landings--warning">C22 — A staircase needs an enclosing room or pillars to carry its landings · warning</a><a href="#c23--a-staircases-steps-should-be-a-realistic-size--warning">C23 — A staircase&#39;s steps should be a realistic size · warning</a><a href="#c24--a-staircase-needs-a-slab-under-it-not-just-a-plinth--warning">C24 — A staircase needs a slab under it, not just a plinth · warning</a><a href="#c25--a-pillar-under-a-slab-or-landing-should-reach-it--warning">C25 — A pillar under a slab or landing should reach it · warning</a><a href="#sp1--a-spiral-staircases-central-pole-must-be-smaller-than-its-radius--error">SP1 — A spiral staircase&#39;s central pole must be smaller than its radius · error</a><a href="#running-the-checks">Running the checks</a><a href="#design-guidelines-advisory--not-linted">Design guidelines (advisory — NOT linted)</a></nav>
     <article class="md"><h1 id="wadi-structural-conventions-coding-guidelines">Wadi structural conventions (coding guidelines)</h1>
 <!-- GENERATED FILE — do not edit conventions.md by hand. It is built from
      conventions.preamble.md + the constraint modules in editor/src/lint/constraints.
@@ -236,6 +236,84 @@ room Kitchen at (…) size (…) { wall north south east }
 <p><strong>Fix.</strong></p>
 <p>If the overlap is unintended, move or resize one room so they only touch on a shared wall (prefer relative placement — abut a neighbour on a side — over absolute coordinates that can land on top of another room). Ignore the warning if it is a deliberate corner embed.</p>
 <hr>
+<h2 id="c13--the-lowest-floor-should-carry-a-plinth--warning">C13 — The lowest floor should carry a plinth · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A house should rest on a plinth: the lowest floor should contain a <code>plinth</code> object.</p>
+<p><strong>Rationale.</strong> The plinth is the raised base the building sits on — it lifts the ground floor above grade and gives the walls a footing. A lowest floor with rooms but no plinth reads as a slab-on-grade shortcut; most Konkan houses want an explicit plinth. (A style guide, so it only warns — a deliberately plinth-less design is allowed.)</p>
+<p><strong>Fix.</strong></p>
+<p>Add a <code>plinth</code> to the lowest floor (usually the Plinth floor 0, alongside the <code>ground</code>), sized to cover the built footprint.</p>
+<hr>
+<h2 id="c14--the-highest-floor-should-carry-a-roof--warning">C14 — The highest floor should carry a roof · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A house should be capped by a roof: the highest floor should contain a <code>roof</code> object.</p>
+<p><strong>Rationale.</strong> The roof sits on its own floor stacked above the walls (see the roof convention). A design whose top floor has no roof leaves the house open — usually a roof that was forgotten, or a floor added above the roof. (A style guide, so it only warns — a deliberate flat terrace with no roof is allowed.)</p>
+<p><strong>Fix.</strong></p>
+<p>Add a <code>roof</code> to the highest floor (a floor stacked above the top occupied floor), with segments spanning the footprint.</p>
+<hr>
+<h2 id="c15--the-plinth-should-cover-the-rooms-that-rest-on-it--warning">C15 — The plinth should cover the rooms that rest on it · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> The plinth footprint should contain every room on the lowest occupied floor — no ground-floor room sticking out past the plinth.</p>
+<p><strong>Rationale.</strong> The plinth is the base the ground floor stands on. A room whose footprint extends beyond the plinth has part of its floor unsupported by the base. (Upper floors that cantilever past the plinth are a different case — those want pillars; see the cantilever guidance. This checks only the floor that sits directly on the plinth.)</p>
+<p><strong>Fix.</strong></p>
+<p>Grow the plinth (its size, or the plot variables it derives from) to cover the room, or pull the room back within the plinth.</p>
+<hr>
+<h2 id="c16--a-room-overhanging-the-floor-below-should-have-pillars-under-it--warning">C16 — A room overhanging the floor below should have pillars under it · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> If a room on floor N extends beyond the rooms of the floor below (a cantilever), there should be pillars supporting the overhang.</p>
+<p><strong>Rationale.</strong> An upper-floor room that sticks out past the walls below has nothing under its overhang. In a real build that extension needs columns at its outside edge. This warns when an overhanging room has no pillar anywhere near it. (A style guide — a genuinely cantilevered slab design is allowed; the warning just flags the missing support.)</p>
+<p><strong>Fix.</strong></p>
+<p>Add <code>pillar</code> objects at the outside of the extension (under the overhanging edge), or pull the room back over the floor below.</p>
+<hr>
+<h2 id="c17--a-hip-roof-segments-span-should-not-exceed-its-ridge-run--warning">C17 — A hip roof segment&#39;s span should not exceed its ridge run · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> On a pitched roof with closed (hip) ends, a segment&#39;s span (<code>width</code>) should not exceed its ridge run (the <code>start</code>→<code>end</code> length).</p>
+<p><strong>Rationale.</strong> A closed hip end pulls the ridge inward by half the span to make room for the hip face. When the span exceeds the run, the two hip ends would meet past the centre, so the roof is clipped to a pyramid (the hip faces meet at a single apex) rather than the intended ridged hip. That is almost always a mis-oriented segment — the ridge drawn along the SHORTER dimension. It still renders as a valid pyramid, so this only warns.</p>
+<p><strong>Fix.</strong></p>
+<p>Orient the ridge along the LONGER dimension: swap the segment&#39;s <code>start</code>/<code>end</code> so it runs the long way, and set <code>width</code> to the shorter span. If a pyramid is genuinely intended, ignore this.</p>
+<hr>
+<h2 id="c18--dont-roof-the-same-area-twice--warning">C18 — Don&#39;t roof the same area twice · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A roof segment should not sit entirely within an area another roof segment already covers.</p>
+<p><strong>Rationale.</strong> Each roof segment spans a plan area (its ridge line ± <code>width</code>). When a new segment (often a whole new <code>roof</code> object an agent added) falls completely inside the area an existing roof already covers, the two roofs overlap — redundant geometry that renders as z-fighting and doubles the material take-off. Almost always the fix is to extend the existing roof, not add another. (Only a segment FULLY inside prior coverage is flagged, so abutting segments and ridge joints in a legitimate multi-segment roof never false-warn.)</p>
+<p><strong>Fix.</strong></p>
+<p>Remove the redundant roof/segment, or if you meant to cover more area, extend an existing segment&#39;s <code>width</code>/<code>end</code> instead of adding an overlapping one.</p>
+<hr>
+<h2 id="c19--prefer-one-or-two-flights-per-floor-when-space-allows--warning">C19 — Prefer one or two flights per floor when space allows · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A staircase should climb a floor in one or two flights unless the floor space is genuinely tight.</p>
+<p><strong>Rationale.</strong> A box-model staircase derives its flight count from the run it is given: too short a box forces extra switchback flights. Agents routinely under-size the box and get cramped 3-4 flight stairs where the floor had room for a straight run or a single U-turn. Fewer flights are easier to build and to walk. (A warning, since a tight plot may legitimately need a compact switchback.)</p>
+<p><strong>Fix.</strong></p>
+<p>Lengthen the staircase along its run axis (the box <code>length</code> for a N/S stair, <code>width</code> for E/W) to the reported minimum, or reduce <code>landing_depth</code>. The warning gives the exact length for one and two flights.</p>
+<hr>
+<h2 id="c20--a-staircases-top-landing-must-reach-a-room--warning">C20 — A staircase&#39;s top landing must reach a room · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> The top landing of a staircase should abut (or sit inside) a room on the floor it arrives at, so there is a way off the stair onto the floor.</p>
+<p><strong>Rationale.</strong> A switchback&#39;s arrival landing lands wherever the run ends, which is hard to predict and easy to get wrong (often the direction is simply flipped). When the top landing ends against a blank wall or in open space, the stair reaches the next level but there is no way onto the floor. This checks the resolved arrival rectangle against the rooms of the arrival floor. (A warning, since a landing that opens onto an outdoor terrace may not overlap a room.)</p>
+<p><strong>Fix.</strong></p>
+<p>Place the staircase so its top landing meets a room (leave that room&#39;s wall open there or add a door), or flip the <code>direction</code>/<code>turn</code> so the landing ends on the room side. The warning reports the arrival rectangle and which way it faces.</p>
+<hr>
+<h2 id="c21--the-plinth-should-extend-under-a-staircase--warning">C21 — The plinth should extend under a staircase · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A staircase on the lowest occupied floor should sit entirely on the plinth — the plinth footprint should cover it.</p>
+<p><strong>Rationale.</strong> The plinth is the base the ground floor stands on. An external staircase added past the building edge has its flights and landings resting on nothing unless the plinth is extended under it. Agents routinely add a stair to the outside and forget to grow the plinth. (Checks only the lowest occupied floor, the one that sits on the plinth; upper-floor stairs bear on that floor&#39;s slab.)</p>
+<p><strong>Fix.</strong></p>
+<p>Grow the plinth (its size, or the plot variables it derives from) so it covers the whole staircase footprint, or move the staircase inside the building over the plinth.</p>
+<hr>
+<h2 id="c22--a-staircase-needs-an-enclosing-room-or-pillars-to-carry-its-landings--warning">C22 — A staircase needs an enclosing room or pillars to carry its landings · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A staircase should be enclosed by a room of (at least) its own footprint, or have pillars under it — something to carry the flights and turn landings.</p>
+<p><strong>Rationale.</strong> Switchback landings are elevated slabs; the flights land on them. In a real build the surrounding walls (a stairwell) or columns carry that load. A free-standing staircase with no enclosing room and no pillars has landings hanging in the air. (A warning: an open stair against a structural wall may be fine, but the common agent mistake is a stair floating in open space.)</p>
+<p><strong>Fix.</strong></p>
+<p>Put the staircase inside a room that covers its footprint (the walls carry the landings), or add <code>pillar</code> objects under the landings.</p>
+<hr>
+<h2 id="c23--a-staircases-steps-should-be-a-realistic-size--warning">C23 — A staircase&#39;s steps should be a realistic size · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> A staircase&#39;s <code>step_rise</code> and <code>step_tread</code>, converted to real-world size, should fall in the human range — about a 6-7 in rise and a 10-12 in going.</p>
+<p><strong>Rationale.</strong> Stair steps are physically fixed regardless of the house, so they are the reliable tell for a scale mistake. Agents often copy a staircase from another example that is in different units (metres vs feet), producing steps that are absurdly large or tiny. This converts the steps to inches using the model&#39;s <code>units</code> and flags anything outside a generous human range.</p>
+<p><strong>Fix.</strong></p>
+<p>Rescale the staircase to THIS model&#39;s units. The warning gives the sensible <code>step_rise</code>/<code>step_tread</code> for this model (1 ft = <code>per_unit</code> units by default 10, so about <code>step_rise 6</code>, <code>step_tread 10</code>).</p>
+<hr>
+<h2 id="c24--a-staircase-needs-a-slab-under-it-not-just-a-plinth--warning">C24 — A staircase needs a slab under it, not just a plinth · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> When a staircase&#39;s floor has a slab (slab_thickness &gt; 0), a slab should extend under the whole staircase footprint.</p>
+<p><strong>Rationale.</strong> A staircase&#39;s base rests at the floor&#39;s walking surface — its <code>z_offset</code> defaults to the floor <code>slab_thickness</code>, so it sits on TOP of the slab. If the slab does not reach under the stair (a common miss on an external stair, where the plinth was extended but the slab was not), there is a <code>slab_thickness</code> gap between the bottom of the stairs and the plinth where the slab should be. Extending only the plinth (C21) is not enough. (Skipped when the floor has no slab — <code>slab_thickness 0</code> — since the stair then rests directly on the plinth.)</p>
+<p><strong>Fix.</strong></p>
+<p>Add or grow a <code>slab</code> on the staircase&#39;s floor so it covers the whole staircase footprint, matching the plinth below it.</p>
+<hr>
+<h2 id="c25--a-pillar-under-a-slab-or-landing-should-reach-it--warning">C25 — A pillar under a slab or landing should reach it · <strong>warning</strong></h2>
+<p><strong>Statement.</strong> When a floor slab or a staircase landing sits directly over a pillar, the pillar should rise to the underside of it. A pillar that stops short leaves a gap and carries nothing.</p>
+<p><strong>Rationale.</strong> A column exists to carry the slab or landing above it; if it stops below that level there is a gap and the load has nothing to bear on. Agents often shrink a copied pillar&#39;s height (or a configurator lowers it) so it no longer reaches. This checks the LOWEST floor slab / staircase landing that actually sits over the pillar — so a pillar added to carry a stair&#39;s turn landings is checked against those landings, and a pillar supporting only a roof (which slopes, no flat datum) or with nothing above is never flagged. (A warning — a deliberately low post under a slab is allowed.)</p>
+<p><strong>Fix.</strong></p>
+<p>Raise the pillar height so its top meets the slab/landing above it. The warning reports the gap and a suggested height.</p>
+<hr>
 <h2 id="sp1--a-spiral-staircases-central-pole-must-be-smaller-than-its-radius--error">SP1 — A spiral staircase&#39;s central pole must be smaller than its radius · <strong>error</strong></h2>
 <p><strong>Statement.</strong> A <code>spiral_staircase</code>&#39;s <code>pole_radius</code> must be less than its outer <code>radius</code>.</p>
 <p><strong>Rationale.</strong> The treads run from the central pole out to the outer radius. If the pole is as wide as (or wider than) the stair, there is no tread left to stand on — the geometry collapses.</p>
@@ -254,17 +332,24 @@ side is intentional.</li>
 <p>In the DSL editor the same findings appear in the status pill (hover for the full
 list); the model still renders so you can see the problem.</p>
 <hr>
-<h2 id="planned-conventions-not-yet-enforced">Planned conventions (not yet enforced)</h2>
-<p>Documented so authors know they matter; not linted yet:</p>
+<h2 id="design-guidelines-advisory--not-linted">Design guidelines (advisory — NOT linted)</h2>
+<p>Good-practice guidance the linter does not check. Apply your judgement; these are
+style, not rules:</p>
 <ul>
-<li><strong>Interior partition gaps</strong> — where two rooms share a centreline and <em>neither</em>
-declares that wall, there is no partition between them. (C2 only covers
-<em>exterior</em> sides.)</li>
-<li><strong>Slab thickness ↔ slab object</strong> — when a floor <em>does</em> carry a <code>floor_slab</code>,
-its <code>slab_thickness</code> should match the slab&#39;s own thickness so walls sit on the
-real deck.</li>
-<li><strong>Roof footprint coverage</strong> — the roof segments should span the top occupied
-floor&#39;s footprint (no uncovered rooms).</li>
+<li><strong>Compact, rectangular layout.</strong> Keep the plan as rectangular as possible, with
+the minimum of nooks and crannies. A blocky footprint is cheaper to build, easier
+to roof, and wastes less wall.</li>
+<li><strong>Room sizes follow use.</strong> Size each room to its utilisation. The living room is
+usually the largest, then rooms like the kitchen, workshop, and bedrooms; a
+bathroom should be smaller than the bedroom it serves.</li>
+<li><strong>Verandahs &amp; balconies get half-height walls.</strong> Give a verandah or balcony a
+half-height (parapet) wall rather than a full-height one — a full-height verandah
+reads as an enclosed room. (Not linted: Wadi has no verandah/balcony marker, so
+there is nothing to key a warning on without matching room names.)</li>
+<li><strong>Staircase in a multi-storey house.</strong> Reserve a dedicated stair space on each
+floor. The staircase starts on the lowest floor and rises to the underside of the
+topmost occupied floor (not the roof floor). Size the stair space so climbing one
+storey takes at most two flights (use <code>max_run</code> on the <code>staircase</code> to switchback).</li>
 </ul>
 </article>
   </main>
