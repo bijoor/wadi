@@ -170,8 +170,8 @@ Every primitive shares a small envelope that the higher layers rely on:
 
 ### 4.1 It is a single declarative document
 
-The entire design is one JSON document (`.wadi` / `house_config.json`), not code and
-not a binary. This has several consequences:
+The entire design is one declarative document: a `.wdl` source file (text) that
+resolves to a plain-data model, not code and not a binary. This has several consequences:
 
 - it is inspectable, diffable, and version-controllable;
 - it can be shared in a URL (Wadi encodes a whole house into a share link);

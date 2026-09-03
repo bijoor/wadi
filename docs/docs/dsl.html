@@ -90,7 +90,7 @@ a:hover{text-decoration:underline}
     <nav class="toc"><div class="toc-t">On this page</div><a href="#the-loop">The loop</a><a href="#skeleton">Skeleton</a><a href="#parametric-core-domain-neutral">Parametric core (domain-neutral)</a><a href="#common-attribute-tail-every-object">Common attribute tail (every object)</a><a href="#objects--structure--envelope">Objects — structure &amp; envelope</a><a href="#objects--rooms-walls--openings">Objects — rooms, walls &amp; openings</a><a href="#objects--circulation--fittings">Objects — circulation &amp; fittings</a><a href="#imports--modules-reusable-wdl-libraries">Imports &amp; modules (reusable .wdl libraries)</a><a href="#objects--roof-one-object-flat--shed--gable--hip">Objects — roof (one object; flat / shed / gable / hip)</a><a href="#components--layers">Components &amp; layers</a><a href="#template-metadata-template">Template metadata (template)</a><a href="#the-raw-escape-rarely-needed">The raw escape (rarely needed)</a><a href="#dsl-specific-pitfalls">DSL-specific pitfalls</a></nav>
     <article class="md"><h1 id="the-wadi-dsl-wdl--authoring-reference">The Wadi DSL (<code>.wdl</code>) — authoring reference</h1>
 <p>You author houses in the <strong>Wadi DSL</strong> — a small, formal language (<code>.wdl</code>) that
-compiles to a resolved <code>.wadi</code> (<code>house_config.json</code>). The DSL is <strong>complete</strong>:
+compiles to a resolved model (<code>HouseConfig</code>). The DSL is <strong>complete</strong>:
 every object type in the model has first-class syntax, so you rarely need the
 <code>raw</code> escape. Authoring the DSL is more direct and less error-prone than writing
 JSON — the grammar enforces structure, and <code>check.sh</code> reports parse errors with

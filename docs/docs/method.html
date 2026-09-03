@@ -336,8 +336,8 @@ makes the model degrade gracefully.</p>
 <hr>
 <h2 id="4-layer-2-the-assembly-model">4. Layer 2: The assembly model</h2>
 <h3 id="41-it-is-a-single-declarative-document">4.1 It is a single declarative document</h3>
-<p>The entire design is one JSON document (<code>.wadi</code> / <code>house_config.json</code>), not code and
-not a binary. This has several consequences:</p>
+<p>The entire design is one declarative document: a <code>.wdl</code> source file (text) that
+resolves to a plain-data model, not code and not a binary. This has several consequences:</p>
 <ul>
 <li>it is inspectable, diffable, and version-controllable;</li>
 <li>it can be shared in a URL (Wadi encodes a whole house into a share link);</li>

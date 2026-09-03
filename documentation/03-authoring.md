@@ -52,9 +52,9 @@ the 3-D model, so you never keep them in sync by hand. Because the file is plain
 text, you can version it, diff it, share it, and let a coding agent write or edit
 it.
 
-Under the hood the editor compiles your `.wdl` to a `.wadi` model (JSON) and
-feeds it to the Wadi renderer. You mostly won't see the `.wadi`, but you can
-download it, and you can import a `.wadi` back into editable `.wdl` (§16).
+Under the hood the editor compiles your `.wdl` to a model and feeds it to the
+Wadi renderer. You mostly won't see it, but you can save or publish the design as
+a `.wadi` bundle, and you can import a `.wadi` back into editable `.wdl` (§16).
 
 ---
 
@@ -678,8 +678,8 @@ squiggles and in a Problems panel with line numbers.
 
 ## 16. Sharing & exporting
 
-- **Download the model:** **⬇ .wadi** gives you the compiled JSON model (what the
-  renderer consumes; also what you would publish as a template).
+- **Save the design:** **⬇ .wadi** packages the design as a `.wadi` bundle (the
+  `.wdl` source plus its preview images). This is what you would share or publish as a template.
 - **Import a `.wadi` back to code:** **↩ Import .wadi** decompiles an existing
   `.wadi` model into editable `.wdl`, so you can round-trip an older `.wadi` template
   (for example one exported by an earlier build) back into the DSL.

@@ -141,13 +141,13 @@ That is a valid house: one 24 ft by 20 ft room, walled on all four sides, on one
 floor. It reads like a description a person would write, and an assistant can produce
 it from a sentence.
 
-There are two file formats:
+There are two file types:
 
-| | `.wdl`, the language | `.wadi`, the model |
+| | `.wdl`, the language | `.wadi`, the bundle |
 |---|---|---|
-| What it is | the source an assistant or a person writes | the compiled model, plain JSON |
-| Who writes it | the AI assistant, or an architect | the compiler (rarely touched by hand) |
-| Used for | authoring, diffing, formulas, reuse | feeding the renderer; publishing a template |
+| What it is | the source an assistant or a person writes | a shareable file that packages the `.wdl` source with its preview images and a small manifest (a zip under the hood) |
+| Who writes it | the AI assistant, or an architect | the app, when you save or publish |
+| Used for | authoring, diffing, formulas, reuse | sharing a finished design, or publishing it as a template |
 
 The relationship is compile-and-render:
 
@@ -155,16 +155,18 @@ The relationship is compile-and-render:
    authored             compiler              renderer
    ----------      -------------------      -----------------------------
    house.wdl   -->   parse -> resolve   -->   3D model
-   (the DSL)         formulas -> .wadi        floor plans (per floor)
-                     (the JSON model)         elevations (front/back/left/right)
+   (the DSL)         formulas -> a model      floor plans (per floor)
+                     (held in memory)         elevations (front/back/left/right)
                                               roof drawings
                                               quantities (wall areas)
                                               a read-only graph view
 ```
 
-The Wadi editor compiles the `.wdl` to a `.wadi` model and renders every output from
-that model, live. You can download the `.wadi` to publish it as a template, and you
-can import a `.wadi` back into editable `.wdl`. The two directions round-trip.
+The Wadi editor compiles the `.wdl` to a model and renders every output from that
+model, live. Saving or publishing packages the design as a `.wadi` bundle (the `.wdl`
+source plus its preview images), and opening a `.wadi` unpacks it back to editable
+`.wdl`, so the two directions round-trip. Older `.wadi` files were a single JSON
+document and still open.
 
 The compile step and the extension model are the same mechanism seen from two sides. A
 type is declared once by its fields. From that declaration, Wadi generates the schema,
@@ -201,7 +203,7 @@ Most readers want the first. Continue to [personas](02-personas.md).
 |---|---|
 | `wadi-dsl/` | the DSL: grammar, compiler, decompiler, and the in-browser DSL editor |
 | `wadi-dsl/examples/*.wdl` | validated sample houses (start with `minimal.wdl`) |
-| `editor/` | the app: the 3D and 2D renderer, the app UI (WDL editor, configurator, 3D/2D views), and the `.wadi` schema |
+| `editor/` | the app: the 3D and 2D renderer, the app UI (WDL editor, configurator, 3D/2D views), and the model schema |
 | `wadi-skill/architect/` | the agent-neutral AI skill (instructions, references, scripts) |
 | `wadi-mcp/` | the MCP server: the skill's tooling, runnable without the repo |
 | `documentation/` | this folder |

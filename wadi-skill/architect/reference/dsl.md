@@ -1,7 +1,7 @@
 # The Wadi DSL (`.wdl`) — authoring reference
 
 You author houses in the **Wadi DSL** — a small, formal language (`.wdl`) that
-compiles to a resolved `.wadi` (`house_config.json`). The DSL is **complete**:
+compiles to a resolved model (`HouseConfig`). The DSL is **complete**:
 every object type in the model has first-class syntax, so you rarely need the
 `raw` escape. Authoring the DSL is more direct and less error-prone than writing
 JSON — the grammar enforces structure, and `check.sh` reports parse errors with

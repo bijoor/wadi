@@ -49,8 +49,9 @@ syntax and semantics.
 
 - [`dsl.md`](../wadi-skill/architect/reference/dsl.md): the complete `.wdl` syntax
   reference (denser than the authoring guide).
-- [`data-model.md`](../wadi-skill/architect/reference/data-model.md): the `.wadi` JSON
-  schema, field by field. It is generated from the code, so it does not drift.
+- [`data-model.md`](../wadi-skill/architect/reference/data-model.md): the resolved
+  model's schema (the compiled HouseConfig), field by field. It is generated from the
+  code, so it does not drift.
 - [`coordinate-system.md`](../wadi-skill/architect/reference/coordinate-system.md):
   axes, units, and the centreline convention.
 - [`parametric-conventions.md`](../wadi-skill/architect/reference/parametric-conventions.md):

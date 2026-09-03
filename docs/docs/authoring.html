@@ -135,9 +135,9 @@ it in the WDL editor (the web app at <code>wadi.house/dsl</code>, or the desktop
 the 3-D model, so you never keep them in sync by hand. Because the file is plain
 text, you can version it, diff it, share it, and let a coding agent write or edit
 it.</p>
-<p>Under the hood the editor compiles your <code>.wdl</code> to a <code>.wadi</code> model (JSON) and
-feeds it to the Wadi renderer. You mostly won&#39;t see the <code>.wadi</code>, but you can
-download it, and you can import a <code>.wadi</code> back into editable <code>.wdl</code> (§16).</p>
+<p>Under the hood the editor compiles your <code>.wdl</code> to a model and feeds it to the
+Wadi renderer. You mostly won&#39;t see it, but you can save or publish the design as
+a <code>.wadi</code> bundle, and you can import a <code>.wadi</code> back into editable <code>.wdl</code> (§16).</p>
 <hr>
 <h2 id="2-your-first-house">2. Your first house</h2>
 <p>Paste this into the editor. It is the smallest thing that renders:</p>
@@ -641,8 +641,8 @@ this file or into the imported library (which opens read-only).</li>
 <hr>
 <h2 id="16-sharing--exporting">16. Sharing &amp; exporting</h2>
 <ul>
-<li><strong>Download the model:</strong> <strong>⬇ .wadi</strong> gives you the compiled JSON model (what the
-renderer consumes; also what you would publish as a template).</li>
+<li><strong>Save the design:</strong> <strong>⬇ .wadi</strong> packages the design as a <code>.wadi</code> bundle (the
+<code>.wdl</code> source plus its preview images). This is what you would share or publish as a template.</li>
 <li><strong>Import a <code>.wadi</code> back to code:</strong> <strong>↩ Import .wadi</strong> decompiles an existing
 <code>.wadi</code> model into editable <code>.wdl</code>, so you can round-trip an older <code>.wadi</code> template
 (for example one exported by an earlier build) back into the DSL.</li>

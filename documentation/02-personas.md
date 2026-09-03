@@ -51,7 +51,7 @@ author the design. You describe a house in plain language and the assistant writ
 revises the `.wdl` while Wadi renders it. This is the method Wadi is built around.
 
 The `.wdl` is one file that you and the assistant both edit. The assistant writes the
-language, not raw `.wadi` JSON, because the editor does that conversion, and the
+language, not the raw compiled model, because the editor does that conversion, and the
 language expresses formulas, grids, and the configurator directly while its grammar
 catches structural mistakes.
 
