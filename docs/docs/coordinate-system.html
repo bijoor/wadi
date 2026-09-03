@@ -146,12 +146,6 @@ top of the drawing (north) maps to small Y, the bottom (south) to large Y.</li>
 </tr>
 </tbody></table>
 <p>Always <strong>multiply feet by 10</strong>. <code>plot_length: 450</code> displays as <code>45&#39;</code>.</p>
-<blockquote>
-<p>Aside you don&#39;t need for authoring: a separate Blender path uses
-<code>units_to_meters_ratio = 0.1</code> (1 unit = 0.1 m) for the 3D export, so the same
-<code>450</code> is treated as 45 m in Blender. The two constants serve different pipelines;
-for authoring the config, <strong>only the 10-units-per-foot rule matters.</strong></p>
-</blockquote>
 <h3 id="changing-how-dimensions-are-labelled">Changing how dimensions are <em>labelled</em></h3>
 <p>The <code>10-units-per-foot</code> rule above is only the <strong>default label</strong>. The optional
 top-level <code>units</code> block changes the drawing labels <strong>without touching geometry</strong> —

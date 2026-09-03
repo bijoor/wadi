@@ -40,9 +40,10 @@ directly, review what the assistant wrote, and change it. The language is the sh
 artifact: the assistant and the expert edit the same file.
 
 This is what "AI-native" means here. The primary way to create and change a design is
-through an assistant working in the language. A form-based editor exists for people
-who prefer to edit by hand (see below), but the product is built around the language,
-and the language is built for an AI to write.
+through an assistant working in the language. An owner configurator (a set of declared
+knobs) lets a home-owner adjust the parameters an author exposed, but the product is
+built around the language, all authoring happens in it, and the language is built for
+an AI to write.
 
 The language also gives a design three properties a picture or a raw data file cannot:
 
@@ -101,9 +102,9 @@ maintained separately, they drift apart, and an assistant writing against out-of
 material produces invalid designs.
 
 Wadi avoids this. Each object type is declared once, by listing its fields. From that
-one declaration, Wadi generates the schema, the property forms, the documentation, and
-the syntax in the design language. The four stay consistent because they come from one
-source (a test checks this on every change). So the material an assistant reads is
+one declaration, Wadi generates the schema, the documentation, and the syntax in the
+design language (plus an internal form spec). These stay consistent because they come
+from one source (a test checks this on every change). So the material an assistant reads is
 always current, and adding a new object type is about two files rather than edits
 spread across five subsystems. As the set of object types grows, the range of designs
 an assistant can author grows with it.
@@ -158,7 +159,7 @@ The relationship is compile-and-render:
                      (the JSON model)         elevations (front/back/left/right)
                                               roof drawings
                                               quantities (wall areas)
-                                              a property-panel editor
+                                              a read-only graph view
 ```
 
 The Wadi editor compiles the `.wdl` to a `.wadi` model and renders every output from
@@ -170,13 +171,13 @@ type is declared once by its fields. From that declaration, Wadi generates the s
 the forms, the documentation, and the language syntax. That is what lets a `.wdl` file
 render as a full house, and it is what makes adding a new type about two files.
 
-## The form editor
+## Studio mode
 
-Wadi also has a form-based editor, called studio mode. It presents the design as an
-object tree with property panels: you add and edit rooms, walls, openings, structure,
-a roof, and furniture through forms, and the 3D and 2D views update as you make each
-change. It is the by-hand alternative to authoring in the language. See
-[personas](02-personas.md).
+Studio mode is the architect-facing app at <https://wadi.house/app?mode=studio>. It is
+built around the design language: a WDL code editor on one side, the owner configurator
+(the declared knobs) on the other, layer toggles, and live 3D and 2D views that update
+as you edit the WDL. There is no form-based editor and no editable object tree; a
+read-only graph view shows the model's structure. See [personas](02-personas.md).
 
 ## Where to go from here
 
@@ -198,7 +199,7 @@ Most readers want the first. Continue to [personas](02-personas.md).
 |---|---|
 | `wadi-dsl/` | the DSL: grammar, compiler, decompiler, and the in-browser DSL editor |
 | `wadi-dsl/examples/*.wdl` | validated sample houses (start with `minimal.wdl`) |
-| `editor/` | the app: the 3D and 2D renderer, the studio UI, and the `.wadi` schema |
+| `editor/` | the app: the 3D and 2D renderer, the studio UI (WDL editor, configurator, 3D/2D views), and the `.wadi` schema |
 | `wadi-skill/architect/` | the agent-neutral AI skill (instructions, references, scripts) |
 | `wadi-mcp/` | the MCP server: the skill's tooling, runnable without the repo |
 | `documentation/` | this folder |

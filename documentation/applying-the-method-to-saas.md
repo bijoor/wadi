@@ -169,7 +169,7 @@ error the checkers report.)
 
 ### Step 7 — Encode constraints and guardrails declaratively
 
-Wadi has a structural-conventions layer (C1 to C10 plus per-primitive rules) checked by
+Wadi has a structural-conventions layer (C1 through C25 plus per-primitive rules) checked by
 a linter over a spatial query model. For a B2B SaaS this is where **business rules,
 policy, and compliance** live: budget caps, approval thresholds, data-residency rules,
 segmentation limits, entitlement boundaries. Express them as a **declarative,
@@ -255,7 +255,7 @@ only if composition and human co-authoring justify it.
 | discriminated union on `type` | discriminated union of capability types |
 | `resolveParametric` | the compiler/planner (artifact → plan) |
 | `render` / `wadi_preview` | dry-run / simulation / diff |
-| lint constraints (C1 to C10) | business-rule and policy engine |
+| lint constraints (C1 through C25) | business-rule and policy engine |
 | spatial query model | query model over artifact + tenant state |
 | `wadi-mcp` server | the authenticated, self-contained MCP server |
 | architect skill (SKILL.md) | the agent skill teaching the loop |

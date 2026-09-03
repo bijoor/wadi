@@ -104,8 +104,8 @@ the approach; read that for the parametric machinery underneath.</p>
 <hr>
 <h2 id="0-the-one-paragraph-version">0. The one-paragraph version</h2>
 <p>Wadi lets you design a house from a single declarative file and get a live 3D
-model, dimensioned 2D plans, elevations, roof drawings, a property-panel editor,
-and a typed text DSL, all from the same source of truth. The mechanism behind this
+model, dimensioned 2D plans, elevations, roof drawings, and a typed text DSL, all
+from the same source of truth. The mechanism behind this
 is that all of those surfaces are generated from one declaration per concept. A
 concept (a wall, a beam, a spiral staircase) declares its fields once (as data) and
 its capabilities once (as code), and the framework projects those onto every
@@ -171,7 +171,8 @@ builder is kept only for a parity test.)</li>
 <li>Form. <code>fieldToFormControl</code> maps each field&#39;s kind to a widget
 (<code>measure</code>/<code>text</code>/<code>select</code>/<code>flag</code>) with defaults (min bound from the
 constraint, label from the humanized name, optionality from <code>required</code>). A
-primitive gets a working property-panel form from <code>fields</code> alone.</li>
+primitive gets a generated form spec from <code>fields</code> alone (used internally, not
+exposed as a user editing surface).</li>
 <li>Docs. <code>fieldsToDocRows</code> (and the doc comments the schema codegen emits) feed
 the human-readable data-model reference, so the docs an authoring agent reads
 cannot drift from the schema.</li>
@@ -180,12 +181,12 @@ arguments map to the field order, and unknown-field and arg-count validation
 and editor completion are derived from it.</li>
 </ul>
 <p>The capabilities are consulted by a registry: the 3D scene, the
-2D plan, the property panel, the add-menu, and the layer system each ask the
+2D plan, the add-menu, and the layer system each ask the
 registry &quot;who handles this type?&quot; first, and fall back to the legacy per-type
 switch for not-yet-migrated types. A new type is one registry entry, nothing
 scattered.</p>
 <p>The structural-conventions linter is another such surface. It is now a declarative
-per-constraint registry (<code>editor/src/lint/constraints/</code>, currently C1-C10 plus the
+per-constraint registry (<code>editor/src/lint/constraints/</code>, currently C1 through C25 plus the
 spiral&#39;s SP1), each rule a self-contained module (check + doc + fixtures) built on a
 spatial query layer (<code>editor/src/model/</code>, a <code>@flatten-js/core</code> adapter). <code>structural.ts</code>
 is a thin loop over <code>allConstraints()</code>, and <code>conventions.md</code> is generated from those
@@ -278,8 +279,8 @@ files.</p>
 ];
 </code></pre>
 <p>With the declaration registered in the manifest and the codegen run, the type is in
-the typed schema union, has a property-panel form, appears in the data-model docs, and
-is a DSL citizen, with no other edits. It reads in two forms.</p>
+the typed schema union, has a generated form spec (internal), appears in the data-model
+docs, and is a DSL citizen, with no other edits. It reads in two forms.</p>
 <p>The generic form uses named parameters in a block:</p>
 <pre><code>spiral_staircase &quot;Stair&quot; { radius 45 total_height 110 turns 1.75 }
 </code></pre>
@@ -313,7 +314,7 @@ no grammar edit is needed per primitive, and a primitive is still about two file
 its own rule by setting <code>NodeDefinition.constraints?: Constraint[]</code>, which the
 structural-conventions linter merges into <code>allConstraints()</code>. The spiral staircase
 does exactly this: <code>editor/src/registry/nodes/spiralStaircase.constraints.ts</code> supplies
-<code>SP1</code>, so the primitive carries its own validation alongside the shared C1-C10 rules.</p>
+<code>SP1</code>, so the primitive carries its own validation alongside the shared C1 through C25 rules.</p>
 <p>In the WDL playground, <code>spiral_staircase &quot;Stair&quot; at (120, 120) radius 45 total_height 110 turns 1.75</code> renders as wooden treads
 winding a central pole inside a room, and the editor&#39;s completion widget lists
 <code>radius / total_height / turns / steps / tread_thickness / pole_radius / z_offset</code>.
@@ -336,7 +337,7 @@ the generated const and add it to the <code>z.discriminatedUnion(&quot;type&quot
 the one hand-edit to a shared file.</li>
 <li><strong>Write the capabilities node.</strong> Create <code>editor/src/registry/nodes/&lt;type&gt;.tsx</code>
 exporting a <code>NodeDefinition</code>: <code>type</code>, <code>label</code>, <code>addable</code>, <code>layerRole</code>, <code>fields</code>
-(reuse the declaration from step 1, so the property-panel form is generated),
+(reuse the declaration from step 1, so the form spec is generated internally),
 <code>makeDefault</code> (the add-menu default), and the render capabilities the type needs
 (<code>render3D</code>, <code>planFootprint</code>, and optionally <code>expand</code>, <code>drawPlan</code>, <code>drawElevation</code>).</li>
 <li><strong>Register the node.</strong> Add <code>registerNode(&lt;type&gt;Node)</code> to the list in

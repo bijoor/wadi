@@ -75,7 +75,7 @@ You do not call these; the assistant does, once connected.
 
 | Tool | What it does |
 |---|---|
-| `wadi_check` | Compile + validate the `.wdl`: parse, resolve formulas/grids, schema + wall/roof geometry, and the structural conventions (C1-C10 + per-primitive rules). Run after every edit. |
+| `wadi_check` | Compile + validate the `.wdl`: parse, resolve formulas/grids, schema + wall/roof geometry, and the structural conventions (C1 through C25 + per-primitive rules). Run after every edit. |
 | `wadi_preview` | Render floor plans, elevations, and the roof to PNG images the assistant reads. |
 | `wadi_scope` | Resolve the design's variables, points, and grid lines to their actual values. |
 | `wadi_examples` | List or fetch a validated example `.wdl` to copy from. |

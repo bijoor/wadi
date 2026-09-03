@@ -47,11 +47,6 @@ All lengths/coordinates are **project units**. The display/dimension convention 
 
 Always **multiply feet by 10**. `plot_length: 450` displays as `45'`.
 
-> Aside you don't need for authoring: a separate Blender path uses
-> `units_to_meters_ratio = 0.1` (1 unit = 0.1 m) for the 3D export, so the same
-> `450` is treated as 45 m in Blender. The two constants serve different pipelines;
-> for authoring the config, **only the 10-units-per-foot rule matters.**
-
 ### Changing how dimensions are *labelled*
 
 The `10-units-per-foot` rule above is only the **default label**. The optional

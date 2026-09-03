@@ -72,7 +72,7 @@ four surfaces:
    houseConfig imports into the union. This is how `fields` becomes the JSON
    validator and the `z.infer` TypeScript type.
 2. **Docs** (`fieldsToDocRows`), producing the generated `data-model.md`.
-3. **Form control** (`fieldToFormControl`), producing the property-editor widget.
+3. **Form control** (`fieldToFormControl`), producing an internal form-control spec (generated, not surfaced as a user editing surface).
 4. **DSL descriptor** (via `wadi-dsl/src/generator/descriptors.ts`), driving the
    generic grammar path (Step 6).
 

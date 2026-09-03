@@ -13,7 +13,7 @@ the system. The `.wdl` and `.wadi` model is the format they all share.
 | Persona | Role | Works in | Touches the DSL? |
 |---|---|---|---|
 | AI coding assistant | writes the design from a brief | any coding agent | yes; authors the `.wdl` |
-| Architect | describes the building and co-edits | a chat, the DSL editor, or studio forms | yes; co-authors `.wdl`, or edits by hand |
+| Architect | describes the building and co-edits | a chat or the DSL editor | yes; co-authors `.wdl` |
 | Home-owner | personalizes a finished design | the app (browser or phone) | no; adjusts controls |
 | Developer | extends Wadi or reuses the engine | the codebase | builds the language |
 
@@ -24,8 +24,7 @@ AI assistant: describe the house, let the assistant write the `.wdl`, review the
 rendered result, and refine it in conversation. The architect also edits the file
 directly once familiar with the syntax. The next section covers the AI setup.
 
-The architect can also work by hand, in three places. All of them drive the same
-model.
+The architect can also work by hand, in two places. Both drive the same model.
 
 1. In the DSL editor, writing `.wdl` directly (browser: <https://wadi.house/dsl>;
    desktop: press ⌘⇧D). It is an editor for the language, with completion, hover,
@@ -34,15 +33,7 @@ model.
    resized, then expose a configurator. The result is a reusable template for the
    owner gallery.
 
-2. In studio mode, a form-based editor at <https://wadi.house/app?mode=studio>. It
-   presents the design as an object tree with property panels. You add and edit every
-   element through forms: rooms (with per-side walls, doors, and windows),
-   free-standing walls, a roof (hip, gable, shed, or flat), columns, beams, slabs,
-   staircases, kitchen platforms, and furniture. Tabs give per-floor plans, a filtered
-   composite sheet, elevations, roof views, and a wall-area estimate, all dimensioned
-   and all updating as you edit.
-
-3. On the desktop, editing a file. The Wadi desktop app watches a `.wadi` file on
+2. On the desktop, editing a file. The Wadi desktop app watches a `.wadi` file on
    disk, so you can edit it in any tool and see the 3D model update within about a
    second.
 

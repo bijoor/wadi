@@ -283,7 +283,7 @@ not a silent partial success. (Wadi learned this the hard way: a mistyped refere
 used to collapse silently to zero and produce a wrong-but-valid model; now it is a hard
 error the checkers report.)</p>
 <h3 id="step-7--encode-constraints-and-guardrails-declaratively">Step 7 — Encode constraints and guardrails declaratively</h3>
-<p>Wadi has a structural-conventions layer (C1 to C10 plus per-primitive rules) checked by
+<p>Wadi has a structural-conventions layer (C1 through C25 plus per-primitive rules) checked by
 a linter over a spatial query model. For a B2B SaaS this is where <strong>business rules,
 policy, and compliance</strong> live: budget caps, approval thresholds, data-residency rules,
 segmentation limits, entitlement boundaries. Express them as a <strong>declarative,
@@ -382,7 +382,7 @@ only if composition and human co-authoring justify it.</p>
 <td>dry-run / simulation / diff</td>
 </tr>
 <tr>
-<td>lint constraints (C1 to C10)</td>
+<td>lint constraints (C1 through C25)</td>
 <td>business-rule and policy engine</td>
 </tr>
 <tr>

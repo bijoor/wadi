@@ -681,8 +681,8 @@ squiggles and in a Problems panel with line numbers.
 - **Download the model:** **⬇ .wadi** gives you the compiled JSON model (what the
   renderer consumes; also what you would publish as a template).
 - **Import a `.wadi` back to code:** **↩ Import .wadi** decompiles an existing
-  `.wadi` model into editable `.wdl`, so you can round-trip a model authored in the
-  form UI (or an older template) back into the DSL.
+  `.wadi` model into editable `.wdl`, so you can round-trip an older `.wadi` template
+  (for example one exported by an earlier build) back into the DSL.
 - **Share a house:** the Wadi app can encode a whole house into a share link
   (no server needed) and open native `.wadi` files directly (open-in-app).
 - **Save `.wdl`:** keep the source file itself under version control; it is the
@@ -762,8 +762,8 @@ the folder.
 - **A house-less library** shows a "no floors" notice in the preview; that is
   expected; give it a demo `house` if you want to preview its components.
 - **Structural conventions (the built-in linter).** The editor's status pill and
-  `check.sh` flag a growing set of conventions (C1-C10, plus per-primitive rules) —
-  for example a plinth floor's `height` should equal its `plinth` object's height
+  `check.sh` flag a growing set of conventions (C1 through C25, plus per-primitive rules).
+  For example, a plinth floor's `height` should equal its `plinth` object's height
   (**C1**); exterior room sides should carry a `wall` (**C2**); a floor with no slab
   should set `slab_thickness 0` (**C3**). **Errors** (e.g. C1, C3) fail `check.sh`;
   **warnings** (e.g. C2, an intentional verandah) are advisory. The full, generated

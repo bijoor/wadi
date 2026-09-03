@@ -87,7 +87,7 @@ a:hover{text-decoration:underline}
 <div class="grp"><div class="grp-t">References</div><a href="grammar-and-data-model.html">Grammar & data model</a>
 <a href="applying-the-method-to-saas.html">Applying the method to SaaS</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#what-wadi-is">What Wadi is</a><a href="#why-wadi-uses-a-design-language">Why Wadi uses a design language</a><a href="#writing-and-checking-designs">Writing and checking designs</a><a href="#what-each-persona-does">What each persona does</a><a href="#why-wadi-is-built-to-extend">Why Wadi is built to extend</a><a href="#how-it-works-wdl-and-wadi">How it works: .wdl and .wadi</a><a href="#the-form-editor">The form editor</a><a href="#where-to-go-from-here">Where to go from here</a><a href="#where-things-live">Where things live</a></nav>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#what-wadi-is">What Wadi is</a><a href="#why-wadi-uses-a-design-language">Why Wadi uses a design language</a><a href="#writing-and-checking-designs">Writing and checking designs</a><a href="#what-each-persona-does">What each persona does</a><a href="#why-wadi-is-built-to-extend">Why Wadi is built to extend</a><a href="#how-it-works-wdl-and-wadi">How it works: .wdl and .wadi</a><a href="#studio-mode">Studio mode</a><a href="#where-to-go-from-here">Where to go from here</a><a href="#where-things-live">Where things live</a></nav>
     <article class="md"><h1 id="what-wadi-is-and-why-it-is-designed-for-ai">What Wadi is, and why it is designed for AI</h1>
 <blockquote>
 <p>Part of the <a href="index.html">Wadi documentation</a>. This is the first chapter. It covers
@@ -121,9 +121,10 @@ it, and you both refine it.</p>
 directly, review what the assistant wrote, and change it. The language is the shared
 artifact: the assistant and the expert edit the same file.</p>
 <p>This is what &quot;AI-native&quot; means here. The primary way to create and change a design is
-through an assistant working in the language. A form-based editor exists for people
-who prefer to edit by hand (see below), but the product is built around the language,
-and the language is built for an AI to write.</p>
+through an assistant working in the language. An owner configurator (a set of declared
+knobs) lets a home-owner adjust the parameters an author exposed, but the product is
+built around the language, all authoring happens in it, and the language is built for
+an AI to write.</p>
 <p>The language also gives a design three properties a picture or a raw data file cannot:</p>
 <ul>
 <li>Version control. A <code>.wdl</code> file goes in git, so you can see what changed between two
@@ -190,9 +191,9 @@ as much as the language. If the schema, the documentation, and the grammar are
 maintained separately, they drift apart, and an assistant writing against out-of-date
 material produces invalid designs.</p>
 <p>Wadi avoids this. Each object type is declared once, by listing its fields. From that
-one declaration, Wadi generates the schema, the property forms, the documentation, and
-the syntax in the design language. The four stay consistent because they come from one
-source (a test checks this on every change). So the material an assistant reads is
+one declaration, Wadi generates the schema, the documentation, and the syntax in the
+design language (plus an internal form spec). These stay consistent because they come
+from one source (a test checks this on every change). So the material an assistant reads is
 always current, and adding a new object type is about two files rather than edits
 spread across five subsystems. As the set of object types grows, the range of designs
 an assistant can author grows with it.</p>
@@ -254,7 +255,7 @@ it from a sentence.</p>
                      (the JSON model)         elevations (front/back/left/right)
                                               roof drawings
                                               quantities (wall areas)
-                                              a property-panel editor
+                                              a read-only graph view
 </code></pre>
 <p>The Wadi editor compiles the <code>.wdl</code> to a <code>.wadi</code> model and renders every output from
 that model, live. You can download the <code>.wadi</code> to publish it as a template, and you
@@ -263,12 +264,12 @@ can import a <code>.wadi</code> back into editable <code>.wdl</code>. The two di
 type is declared once by its fields. From that declaration, Wadi generates the schema,
 the forms, the documentation, and the language syntax. That is what lets a <code>.wdl</code> file
 render as a full house, and it is what makes adding a new type about two files.</p>
-<h2 id="the-form-editor">The form editor</h2>
-<p>Wadi also has a form-based editor, called studio mode. It presents the design as an
-object tree with property panels: you add and edit rooms, walls, openings, structure,
-a roof, and furniture through forms, and the 3D and 2D views update as you make each
-change. It is the by-hand alternative to authoring in the language. See
-<a href="personas.html">personas</a>.</p>
+<h2 id="studio-mode">Studio mode</h2>
+<p>Studio mode is the architect-facing app at <a href="https://wadi.house/app?mode=studio">https://wadi.house/app?mode=studio</a>. It is
+built around the design language: a WDL code editor on one side, the owner configurator
+(the declared knobs) on the other, layer toggles, and live 3D and 2D views that update
+as you edit the WDL. There is no form-based editor and no editable object tree; a
+read-only graph view shows the model&#39;s structure. See <a href="personas.html">personas</a>.</p>
 <h2 id="where-to-go-from-here">Where to go from here</h2>
 <p>Everything in this folder supports one of two activities:</p>
 <ol>
@@ -300,7 +301,7 @@ domain in <a href="method.html">the method</a>.</p>
 </tr>
 <tr>
 <td><code>editor/</code></td>
-<td>the app: the 3D and 2D renderer, the studio UI, and the <code>.wadi</code> schema</td>
+<td>the app: the 3D and 2D renderer, the studio UI (WDL editor, configurator, 3D/2D views), and the <code>.wadi</code> schema</td>
 </tr>
 <tr>
 <td><code>wadi-skill/architect/</code></td>

@@ -644,8 +644,8 @@ this file or into the imported library (which opens read-only).</li>
 <li><strong>Download the model:</strong> <strong>⬇ .wadi</strong> gives you the compiled JSON model (what the
 renderer consumes; also what you would publish as a template).</li>
 <li><strong>Import a <code>.wadi</code> back to code:</strong> <strong>↩ Import .wadi</strong> decompiles an existing
-<code>.wadi</code> model into editable <code>.wdl</code>, so you can round-trip a model authored in the
-form UI (or an older template) back into the DSL.</li>
+<code>.wadi</code> model into editable <code>.wdl</code>, so you can round-trip an older <code>.wadi</code> template
+(for example one exported by an earlier build) back into the DSL.</li>
 <li><strong>Share a house:</strong> the Wadi app can encode a whole house into a share link
 (no server needed) and open native <code>.wadi</code> files directly (open-in-app).</li>
 <li><strong>Save <code>.wdl</code>:</strong> keep the source file itself under version control; it is the
@@ -716,8 +716,8 @@ handle corners themselves.</li>
 <li><strong>A house-less library</strong> shows a &quot;no floors&quot; notice in the preview; that is
 expected; give it a demo <code>house</code> if you want to preview its components.</li>
 <li><strong>Structural conventions (the built-in linter).</strong> The editor&#39;s status pill and
-<code>check.sh</code> flag a growing set of conventions (C1-C10, plus per-primitive rules) —
-for example a plinth floor&#39;s <code>height</code> should equal its <code>plinth</code> object&#39;s height
+<code>check.sh</code> flag a growing set of conventions (C1 through C25, plus per-primitive rules).
+For example, a plinth floor&#39;s <code>height</code> should equal its <code>plinth</code> object&#39;s height
 (<strong>C1</strong>); exterior room sides should carry a <code>wall</code> (<strong>C2</strong>); a floor with no slab
 should set <code>slab_thickness 0</code> (<strong>C3</strong>). <strong>Errors</strong> (e.g. C1, C3) fail <code>check.sh</code>;
 <strong>warnings</strong> (e.g. C2, an intentional verandah) are advisory. The full, generated

@@ -111,16 +111,18 @@ auto-resolves that end as a **joint** (no hip/gable face there) — this is how 
 U, and closed-loop (courtyard) roofs are formed. Get the endpoints numerically
 equal or they won't join.
 
-## Shape → which example to copy
+## Shape → segment recipe
 
-| Want | Segments | Copy from |
-|---|---|---|
-| Simple hip (one ridge, hipped ends) | 1, `pitched`, `closed` | `two_story_konkan.json` / `verandah_cottage.json` |
-| Simple gable (one ridge, gable ends) | 1, `pitched`, `open` | same, set `default_endpoint: "open"` |
-| **L-shape** (two wings) | 2, `pitched`, coincident inner endpoints | `l_shape_villa.json` |
-| **Courtyard** (ridge loop) | 4, `pitched`, endpoints chained in a loop | `courtyard_home.json` |
-| **Flat** roof/terrace | 1+, `flat` | `modern_flat.json` |
-| Shed / mono-pitch (lean-to, verandah) | 1, `shed`, `shed_high_side` set | derive from a `pitched` seg; add `shed_high_side` + slope |
+| Want | Segments |
+|---|---|
+| Simple hip (one ridge, hipped ends) | 1, `pitched`, `closed` |
+| Simple gable (one ridge, gable ends) | 1, `pitched`, `open` (set `default_endpoint: "open"`) |
+| **L-shape** (two wings) | 2, `pitched`, coincident inner endpoints |
+| **Courtyard** (ridge loop) | 4, `pitched`, endpoints chained in a loop |
+| **Flat** roof/terrace | 1+, `flat` |
+| Shed / mono-pitch (lean-to, verandah) | 1, `shed`, `shed_high_side` set (derive from a `pitched` seg; add `shed_high_side` + slope) |
+
+For a full worked hip roof, see `wadi-skill/architect/examples/coastal_konkan.wadi`; the DSL examples in `wadi-dsl/examples/` (for example `konkan_cottage.wdl` and `two_story.wdl`) show more roofs in context.
 
 ## Rules & pitfalls
 

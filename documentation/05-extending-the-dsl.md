@@ -18,8 +18,8 @@
 ## 0. The one-paragraph version
 
 Wadi lets you design a house from a single declarative file and get a live 3D
-model, dimensioned 2D plans, elevations, roof drawings, a property-panel editor,
-and a typed text DSL, all from the same source of truth. The mechanism behind this
+model, dimensioned 2D plans, elevations, roof drawings, and a typed text DSL, all
+from the same source of truth. The mechanism behind this
 is that all of those surfaces are generated from one declaration per concept. A
 concept (a wall, a beam, a spiral staircase) declares its fields once (as data) and
 its capabilities once (as code), and the framework projects those onto every
@@ -94,7 +94,8 @@ From the one `fields` declaration, four surfaces are generated:
 - Form. `fieldToFormControl` maps each field's kind to a widget
   (`measure`/`text`/`select`/`flag`) with defaults (min bound from the
   constraint, label from the humanized name, optionality from `required`). A
-  primitive gets a working property-panel form from `fields` alone.
+  primitive gets a generated form spec from `fields` alone (used internally, not
+  exposed as a user editing surface).
 - Docs. `fieldsToDocRows` (and the doc comments the schema codegen emits) feed
   the human-readable data-model reference, so the docs an authoring agent reads
   cannot drift from the schema.
@@ -103,13 +104,13 @@ From the one `fields` declaration, four surfaces are generated:
   and editor completion are derived from it.
 
 The capabilities are consulted by a registry: the 3D scene, the
-2D plan, the property panel, the add-menu, and the layer system each ask the
+2D plan, the add-menu, and the layer system each ask the
 registry "who handles this type?" first, and fall back to the legacy per-type
 switch for not-yet-migrated types. A new type is one registry entry, nothing
 scattered.
 
 The structural-conventions linter is another such surface. It is now a declarative
-per-constraint registry (`editor/src/lint/constraints/`, currently C1-C10 plus the
+per-constraint registry (`editor/src/lint/constraints/`, currently C1 through C25 plus the
 spiral's SP1), each rule a self-contained module (check + doc + fixtures) built on a
 spatial query layer (`editor/src/model/`, a `@flatten-js/core` adapter). `structural.ts`
 is a thin loop over `allConstraints()`, and `conventions.md` is generated from those
@@ -221,8 +222,8 @@ export const spiralStaircaseFields: FieldSpec[] = [
 ```
 
 With the declaration registered in the manifest and the codegen run, the type is in
-the typed schema union, has a property-panel form, appears in the data-model docs, and
-is a DSL citizen, with no other edits. It reads in two forms.
+the typed schema union, has a generated form spec (internal), appears in the data-model
+docs, and is a DSL citizen, with no other edits. It reads in two forms.
 
 The generic form uses named parameters in a block:
 
@@ -268,7 +269,7 @@ File 3 (optional), a per-primitive structural constraint. A primitive can also s
 its own rule by setting `NodeDefinition.constraints?: Constraint[]`, which the
 structural-conventions linter merges into `allConstraints()`. The spiral staircase
 does exactly this: `editor/src/registry/nodes/spiralStaircase.constraints.ts` supplies
-`SP1`, so the primitive carries its own validation alongside the shared C1-C10 rules.
+`SP1`, so the primitive carries its own validation alongside the shared C1 through C25 rules.
 
 In the WDL playground, `spiral_staircase "Stair" at (120, 120)
 radius 45 total_height 110 turns 1.75` renders as wooden treads
@@ -295,7 +296,7 @@ in the repository, so adding one is a branch and a pull request. The full sequen
    the one hand-edit to a shared file.
 5. **Write the capabilities node.** Create `editor/src/registry/nodes/<type>.tsx`
    exporting a `NodeDefinition`: `type`, `label`, `addable`, `layerRole`, `fields`
-   (reuse the declaration from step 1, so the property-panel form is generated),
+   (reuse the declaration from step 1, so the form spec is generated internally),
    `makeDefault` (the add-menu default), and the render capabilities the type needs
    (`render3D`, `planFootprint`, and optionally `expand`, `drawPlan`, `drawElevation`).
 6. **Register the node.** Add `registerNode(<type>Node)` to the list in

@@ -87,7 +87,7 @@ a:hover{text-decoration:underline}
 <div class="grp"><div class="grp-t">References</div><a href="grammar-and-data-model.html">Grammar & data model</a>
 <a href="applying-the-method-to-saas.html">Applying the method to SaaS</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#where-the-roof-lives-and-its-height-you-do-not-set-a-z">Where the roof lives, and its height (you do NOT set a Z)</a><a href="#the-core-idea">The core idea</a><a href="#object-shape">Object shape</a><a href="#joints-multi-segment-shapes">Joints (multi-segment shapes)</a><a href="#shape--which-example-to-copy">Shape → which example to copy</a><a href="#rules--pitfalls">Rules &amp; pitfalls</a></nav>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#where-the-roof-lives-and-its-height-you-do-not-set-a-z">Where the roof lives, and its height (you do NOT set a Z)</a><a href="#the-core-idea">The core idea</a><a href="#object-shape">Object shape</a><a href="#joints-multi-segment-shapes">Joints (multi-segment shapes)</a><a href="#shape--segment-recipe">Shape → segment recipe</a><a href="#rules--pitfalls">Rules &amp; pitfalls</a></nav>
     <article class="md"><h1 id="roof-v2-guide-the-unified-roof-object">Roof v2 guide (the unified <code>roof</code> object)</h1>
 <p>The <code>roof</code> object replaces the legacy <code>hip_roof</code>/<code>gable_roof</code>/<code>flat_roof</code>/
 <code>shed_roof</code>. It is <strong>segment-based</strong>. The schema is permissive; the real
@@ -192,46 +192,40 @@ segment. <code>by: &quot;height&quot;</code> → <code>ridge_h</code> is the rid
 auto-resolves that end as a <strong>joint</strong> (no hip/gable face there) — this is how L,
 U, and closed-loop (courtyard) roofs are formed. Get the endpoints numerically
 equal or they won&#39;t join.</p>
-<h2 id="shape--which-example-to-copy">Shape → which example to copy</h2>
+<h2 id="shape--segment-recipe">Shape → segment recipe</h2>
 <table>
 <thead>
 <tr>
 <th>Want</th>
 <th>Segments</th>
-<th>Copy from</th>
 </tr>
 </thead>
 <tbody><tr>
 <td>Simple hip (one ridge, hipped ends)</td>
 <td>1, <code>pitched</code>, <code>closed</code></td>
-<td><code>two_story_konkan.json</code> / <code>verandah_cottage.json</code></td>
 </tr>
 <tr>
 <td>Simple gable (one ridge, gable ends)</td>
-<td>1, <code>pitched</code>, <code>open</code></td>
-<td>same, set <code>default_endpoint: &quot;open&quot;</code></td>
+<td>1, <code>pitched</code>, <code>open</code> (set <code>default_endpoint: &quot;open&quot;</code>)</td>
 </tr>
 <tr>
 <td><strong>L-shape</strong> (two wings)</td>
 <td>2, <code>pitched</code>, coincident inner endpoints</td>
-<td><code>l_shape_villa.json</code></td>
 </tr>
 <tr>
 <td><strong>Courtyard</strong> (ridge loop)</td>
 <td>4, <code>pitched</code>, endpoints chained in a loop</td>
-<td><code>courtyard_home.json</code></td>
 </tr>
 <tr>
 <td><strong>Flat</strong> roof/terrace</td>
 <td>1+, <code>flat</code></td>
-<td><code>modern_flat.json</code></td>
 </tr>
 <tr>
 <td>Shed / mono-pitch (lean-to, verandah)</td>
-<td>1, <code>shed</code>, <code>shed_high_side</code> set</td>
-<td>derive from a <code>pitched</code> seg; add <code>shed_high_side</code> + slope</td>
+<td>1, <code>shed</code>, <code>shed_high_side</code> set (derive from a <code>pitched</code> seg; add <code>shed_high_side</code> + slope)</td>
 </tr>
 </tbody></table>
+<p>For a full worked hip roof, see <code>wadi-skill/architect/examples/coastal_konkan.wadi</code>; the DSL examples in <code>wadi-dsl/examples/</code> (for example <code>konkan_cottage.wdl</code> and <code>two_story.wdl</code>) show more roofs in context.</p>
 <h2 id="rules--pitfalls">Rules &amp; pitfalls</h2>
 <ul>
 <li>The roof <strong>footprint must cover the plinth footprint</strong> — segment lines +

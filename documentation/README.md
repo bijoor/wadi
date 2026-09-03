@@ -55,7 +55,7 @@ syntax and semantics.
   axes, units, and the centreline convention.
 - [`parametric-conventions.md`](../wadi-skill/architect/reference/parametric-conventions.md):
   the grid-first recipe for a reusable, resizable template.
-- [`conventions.md`](../wadi-skill/architect/reference/conventions.md): the C1 to C7
+- [`conventions.md`](../wadi-skill/architect/reference/conventions.md): the C1 through C25
   structural conventions the `check.sh` linter enforces.
 - [`roof-v2-guide.md`](../wadi-skill/architect/reference/roof-v2-guide.md): roof
   semantics.

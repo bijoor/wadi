@@ -117,8 +117,8 @@ the system. The <code>.wdl</code> and <code>.wadi</code> model is the format the
 <tr>
 <td>Architect</td>
 <td>describes the building and co-edits</td>
-<td>a chat, the DSL editor, or studio forms</td>
-<td>yes; co-authors <code>.wdl</code>, or edits by hand</td>
+<td>a chat or the DSL editor</td>
+<td>yes; co-authors <code>.wdl</code></td>
 </tr>
 <tr>
 <td>Home-owner</td>
@@ -138,8 +138,7 @@ the system. The <code>.wdl</code> and <code>.wadi</code> model is the format the
 AI assistant: describe the house, let the assistant write the <code>.wdl</code>, review the
 rendered result, and refine it in conversation. The architect also edits the file
 directly once familiar with the syntax. The next section covers the AI setup.</p>
-<p>The architect can also work by hand, in three places. All of them drive the same
-model.</p>
+<p>The architect can also work by hand, in two places. Both drive the same model.</p>
 <ol>
 <li><p>In the DSL editor, writing <code>.wdl</code> directly (browser: <a href="https://wadi.house/dsl">https://wadi.house/dsl</a>;
 desktop: press ⌘⇧D). It is an editor for the language, with completion, hover,
@@ -147,14 +146,6 @@ go-to-definition, rename, and a live preview pane. This is where you define the
 house on a structural grid with formulas so it stays valid when the plot is
 resized, then expose a configurator. The result is a reusable template for the
 owner gallery.</p>
-</li>
-<li><p>In studio mode, a form-based editor at <a href="https://wadi.house/app?mode=studio">https://wadi.house/app?mode=studio</a>. It
-presents the design as an object tree with property panels. You add and edit every
-element through forms: rooms (with per-side walls, doors, and windows),
-free-standing walls, a roof (hip, gable, shed, or flat), columns, beams, slabs,
-staircases, kitchen platforms, and furniture. Tabs give per-floor plans, a filtered
-composite sheet, elevations, roof views, and a wall-area estimate, all dimensioned
-and all updating as you edit.</p>
 </li>
 <li><p>On the desktop, editing a file. The Wadi desktop app watches a <code>.wadi</code> file on
 disk, so you can edit it in any tool and see the 3D model update within about a

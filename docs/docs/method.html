@@ -341,7 +341,7 @@ not a binary. This has several consequences:</p>
 <ul>
 <li>it is inspectable, diffable, and version-controllable;</li>
 <li>it can be shared in a URL (Wadi encodes a whole house into a share link);</li>
-<li>it can be authored by a human, a form UI, or an AI agent interchangeably;</li>
+<li>it can be authored by a human or an AI agent interchangeably;</li>
 <li>it is serialisable across runtimes (the same document drove a Python/Blender
 pipeline and now a TypeScript/Three.js one).</li>
 </ul>
@@ -608,8 +608,7 @@ geometry path means they cannot perturb the model.</p>
   label: string;                        // menu / tree label
   addable?: boolean;                    // offer in &quot;+ Add&quot; menu
   makeDefault?(cfg, existing): Object;  // a sensible new instance
-  fields?: FieldSpec[];                 // → schema / form / docs / DSL
-  Form?: Component;                     // bespoke property-panel editor (else AutoForm from fields)
+  fields?: FieldSpec[];                 // → schema / docs / DSL (source of truth)
   layerRole?: string | (obj,floor) =&gt; string;   // default layer/role
   render3D?(obj, ctx): { layerId, node } | null;   // 3-D output
   planFootprint?(obj): { cx, cy, w, d, rot, label } | null;  // 2-D footprint
@@ -617,7 +616,7 @@ geometry path means they cannot perturb the model.</p>
   constraints?: Constraint[];           // per-primitive structural rules (merged into the linter)
 }
 </code></pre>
-<p>Dispatchers (3-D scene, 2-D plan, property panel, add-menu, layers) consult the
+<p>Dispatchers (3-D scene, 2-D plan, add-menu, layers) consult the
 registry first, falling back to legacy per-type switches. A new primitive is one
 self-contained file, not an edit spread across the renderers.</p>
 <hr>

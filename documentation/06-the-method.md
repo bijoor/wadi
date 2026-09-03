@@ -175,7 +175,7 @@ not a binary. This has several consequences:
 
 - it is inspectable, diffable, and version-controllable;
 - it can be shared in a URL (Wadi encodes a whole house into a share link);
-- it can be authored by a human, a form UI, or an AI agent interchangeably;
+- it can be authored by a human or an AI agent interchangeably;
 - it is serialisable across runtimes (the same document drove a Python/Blender
   pipeline and now a TypeScript/Three.js one).
 
@@ -503,8 +503,7 @@ interface NodeDefinition {
   label: string;                        // menu / tree label
   addable?: boolean;                    // offer in "+ Add" menu
   makeDefault?(cfg, existing): Object;  // a sensible new instance
-  fields?: FieldSpec[];                 // → schema / form / docs / DSL
-  Form?: Component;                     // bespoke property-panel editor (else AutoForm from fields)
+  fields?: FieldSpec[];                 // → schema / docs / DSL (source of truth)
   layerRole?: string | (obj,floor) => string;   // default layer/role
   render3D?(obj, ctx): { layerId, node } | null;   // 3-D output
   planFootprint?(obj): { cx, cy, w, d, rot, label } | null;  // 2-D footprint
@@ -513,7 +512,7 @@ interface NodeDefinition {
 }
 ```
 
-Dispatchers (3-D scene, 2-D plan, property panel, add-menu, layers) consult the
+Dispatchers (3-D scene, 2-D plan, add-menu, layers) consult the
 registry first, falling back to legacy per-type switches. A new primitive is one
 self-contained file, not an edit spread across the renderers.
 
