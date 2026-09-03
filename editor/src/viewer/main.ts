@@ -537,7 +537,7 @@ async function openWadiPath(path: string): Promise<void> {
   if (!(await guardUnsaved("opening another model"))) return;
   try {
     const res = await loadConfigFromPath(path);
-    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath, res.wdl);
+    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath, res.wdl, res.modules);
   } catch (e) {
     console.error("viewer: failed to open file", path, e);
     alert(
@@ -613,7 +613,7 @@ async function guardUnsaved(actionLabel: string): Promise<boolean> {
   if (choice === "discard") return true;
   if (!(await flushWdlBeforeSave())) return false;
   try {
-    const saved = await saveConfig(st.config, st.filePath, st.filename ?? undefined, st.wdl);
+    const saved = await saveConfig(st.config, st.filePath, st.filename ?? undefined, st.wdl, st.modules);
     if (saved) st.setFilePath(saved);
     st.markSaved();
     return true;
@@ -2135,7 +2135,7 @@ function wireHeaderButtons(): void {
     const cfg = state.config;
     if (!cfg) return;
     try {
-      const saved = await saveConfig(cfg, state.filePath, state.filename ?? undefined, state.wdl);
+      const saved = await saveConfig(cfg, state.filePath, state.filename ?? undefined, state.wdl, state.modules);
       if (saved) state.setFilePath(saved);
       state.markSaved();
       // saveConfig is silent on success; give explicit feedback so the
@@ -2156,7 +2156,7 @@ function wireHeaderButtons(): void {
     const cfg = state.config;
     if (!cfg) return;
     try {
-      const saved = await saveConfig(cfg, null, state.filename ?? undefined, state.wdl);
+      const saved = await saveConfig(cfg, null, state.filename ?? undefined, state.wdl, state.modules);
       if (saved) state.setFilePath(saved);
       state.markSaved();
       flashSaved(btnSaveAs);
@@ -3172,10 +3172,13 @@ function wireWadiApi(): void {
 
     async setWdl(wdl: string) {
       const src = String(wdl ?? "");
-      const res = await wdlToConfig(src);
+      // Resolve imports against the model's custom modules; preserve them across the
+      // edit (loadConfig omits `modules`), since the agent edited the MAIN file.
+      const res = await wdlToConfig(src, store().modules);
       if (!res.ok || !res.config) return { ok: false as const, errors: res.errors };
-      // Keep the agent's exact WDL as the model's source (WDL is the source of truth).
-      store().loadConfig(res.config, "wadi.setWdl", null, src);
+      // Keep the agent's exact WDL as the model's source (WDL is the source of truth);
+      // preserve the current module list across the edit.
+      store().loadConfig(res.config, "wadi.setWdl", null, src, store().modules);
       markHomeChosen(); // dismiss the New dialog if it's still up
       setViewerPanels(false); // agent edit — keep the model visible, hide code/knobs
       return { loaded: true as const, ...checkBrief(store().config, AGENT_CHECK_CAP) };
@@ -3187,7 +3190,7 @@ function wireWadiApi(): void {
       return s.wdl || configToWdlText(s.config as unknown as ValidatedHouseConfig);
     },
     async checkWdl(wdl: string) {
-      const res = await wdlToConfig(String(wdl ?? ""));
+      const res = await wdlToConfig(String(wdl ?? ""), store().modules);
       return res.ok
         ? { ok: true as const, message: "Compiles and validates. Load it with wadi_set_wdl to render it and get the structural (C1-C12) check." }
         : { ok: false as const, errors: res.errors };
@@ -4146,7 +4149,7 @@ async function applyLoadedFolderModel(
   } else {
     filePath = localCatalogFilePath(name);
   }
-  useConfigStore.getState().loadConfig(loaded.config, name, filePath, loaded.wdl);
+  useConfigStore.getState().loadConfig(loaded.config, name, filePath, loaded.wdl, loaded.modules);
   markHomeChosen();
   useConfigStore.temporal.getState().clear();
   closeNewHouseModal();
@@ -4667,7 +4670,7 @@ async function openExistingFromDisk(): Promise<boolean> {
   try {
     if (!(await guardUnsaved("opening another model"))) return false;
     const res = await pickAndLoadConfig();
-    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath, res.wdl);
+    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath, res.wdl, res.modules);
     markHomeChosen();
     return true;
   } catch (e) {
@@ -4688,7 +4691,7 @@ async function loadDroppedFile(file: File): Promise<void> {
     // parseConfigBytes handles both the bundle and a legacy JSON `.wadi`.
     const bytes = new Uint8Array(await file.arrayBuffer());
     const res = await parseConfigBytes(bytes, file.name || "dropped.wadi");
-    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath, res.wdl);
+    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath, res.wdl, res.modules);
     markHomeChosen();
   } catch (e) {
     alert(`Couldn\u2019t load "${file.name}": ${e instanceof Error ? e.message : String(e)}`);
@@ -4804,7 +4807,40 @@ function wireWdlEditor(): void {
     #wdl-reference code { background: #1e293b; padding: 1px 5px; border-radius: 4px; font-size: .82em; }
     #wdl-reference pre { background: #0d1526; border: 1px solid #1e293b; border-radius: 6px; padding: 10px 12px;
       overflow-x: auto; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #d7d0c6; white-space: pre; }
-    #wdl-reference pre b { color: #e0a97a; font-weight: 700; }`;
+    #wdl-reference pre b { color: #e0a97a; font-weight: 700; }
+    #wdl-mods-btn .mods-badge { display: inline-block; margin-left: 6px; min-width: 16px; padding: 0 5px;
+      border-radius: 9px; background: #b45309; color: #fff; font: 700 10px system-ui, sans-serif; line-height: 16px; text-align: center; }
+    #wdl-mods-btn .mods-badge[hidden] { display: none; }
+    #wdl-modules-body { font: 13px/1.5 system-ui, sans-serif; }
+    #wdl-modules-body p.mod-intro { color: #94a3b8; font-size: .84rem; margin: 8px 0 4px; }
+    #wdl-modules-body .mod-sec { margin: 16px 0 4px; color: #93c5fd; font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+    #wdl-modules-body .mod-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #1e293b; }
+    #wdl-modules-body .mod-ref { font: 600 12.5px ui-monospace, Menlo, Consolas, monospace; color: #e2e8f0; word-break: break-all; flex: 1; }
+    #wdl-modules-body .mod-tag { flex: none; font: 700 10px system-ui, sans-serif; padding: 2px 7px; border-radius: 999px; }
+    #wdl-modules-body .mod-tag.ok { background: #14532d; color: #86efac; }
+    #wdl-modules-body .mod-tag.std { background: #1e293b; color: #93c5fd; }
+    #wdl-modules-body .mod-tag.missing { background: #7f1d1d; color: #fecaca; }
+    #wdl-modules-body .mod-act { flex: none; background: none; border: 1px solid #334155; color: #cbd5e1;
+      border-radius: 6px; padding: 3px 9px; cursor: pointer; font: 600 11px system-ui, sans-serif; }
+    #wdl-modules-body .mod-act:hover { background: #1e293b; color: #e2e8f0; }
+    #wdl-modules-body .mod-empty { color: #94a3b8; font-size: .85rem; margin: 6px 0; }
+    #wdl-modules-body .mod-add { margin-top: 12px; margin-right: 8px; background: #2563eb; color: #fff; border: none;
+      border-radius: 7px; padding: 8px 14px; cursor: pointer; font: 600 12px system-ui, sans-serif; }
+    #wdl-modules-body .mod-add:hover { background: #1d4ed8; }
+    #wdl-modules-body .mod-add.ghost { background: none; border: 1px solid #334155; color: #cbd5e1; }
+    #wdl-modules-body .mod-add.ghost:hover { background: #1e293b; color: #e2e8f0; }
+    #wdl-modules-body .mod-editor { display: flex; flex-direction: column; gap: 7px; }
+    #wdl-modules-body .mod-editor label { color: #94a3b8; font-size: .78rem; font-weight: 600; margin-top: 4px; }
+    #wdl-modules-body .mod-editor input { background: #0d1526; border: 1px solid #334155; color: #e2e8f0;
+      border-radius: 6px; padding: 7px 9px; font: 600 12.5px ui-monospace, Menlo, Consolas, monospace; }
+    #wdl-modules-body .mod-editor input[readonly] { opacity: .6; }
+    #wdl-modules-body .mod-mon { height: 340px; border: 1px solid #334155; border-radius: 6px; overflow: hidden; }
+    #wdl-modules-body .mod-editor-actions { display: flex; gap: 8px; margin-top: 4px; }
+    #wdl-modules-body .mod-cancel { background: none; border: 1px solid #334155; color: #cbd5e1;
+      border-radius: 7px; padding: 8px 14px; cursor: pointer; font: 600 12px system-ui, sans-serif; }
+    #wdl-modules-body .mod-cancel:hover { background: #1e293b; color: #e2e8f0; }
+    #wdl-modules-body .mod-err { color: #fecaca; font-size: .8rem; white-space: pre-wrap; margin-top: 2px; }
+    #wdl-modules-body .mod-err[hidden] { display: none; }`;
   document.head.appendChild(style);
 
   const aside = document.createElement("aside");
@@ -4815,6 +4851,7 @@ function wireWdlEditor(): void {
     `<div class="wdl-head-actions">` +
     `<button class="wdl-status-btn" id="wdl-status-btn" data-state="ok" title="Compile status">` +
     `<span class="sg">✓</span><span class="sl">OK</span></button>` +
+    `<button class="wdl-ref-btn" id="wdl-mods-btn" title="Component modules this model imports">🧩 Modules<span class="mods-badge" id="wdl-mods-badge" hidden></span></button>` +
     `<button class="wdl-ref-btn" id="wdl-ref-btn" title="Language reference (.wdl cheat-sheet)">📖 Reference</button>` +
     `</div></div>` +
     `<div id="wdl-editor"></div>` +
@@ -4828,7 +4865,11 @@ function wireWdlEditor(): void {
     `<div id="wdl-status-panel" class="wdl-slideover" hidden><div class="ref-head">` +
     `<strong id="wdl-status-title">Compile status</strong>` +
     `<button class="ref-close" id="wdl-status-close" title="Close" aria-label="Close status">×</button></div>` +
-    `<pre class="wdl-status-body ok" id="wdl-status-body">The WDL compiles cleanly — no issues.</pre></div>`;
+    `<pre class="wdl-status-body ok" id="wdl-status-body">The WDL compiles cleanly — no issues.</pre></div>` +
+    `<div id="wdl-modules-panel" class="wdl-slideover" hidden><div class="ref-head">` +
+    `<strong>Component modules</strong>` +
+    `<button class="ref-close" id="wdl-modules-close" title="Close" aria-label="Close modules">×</button></div>` +
+    `<div id="wdl-modules-body"></div></div>`;
   container.appendChild(aside);
 
   // Stepped right-edge control: ❮ grows (off→on→max), ❯ shrinks (max→on→off).
@@ -5016,11 +5057,14 @@ function wireWdlEditor(): void {
   const apply = async (): Promise<void> => {
     const src = getVal();
     setStatus("busy", "Compiling…");
-    const res = await wdlToConfig(src);
+    // Compile against the model's custom modules so imports resolve. loadConfig omits
+    // `modules` (below) so the current module list is preserved across an Apply.
+    const res = await wdlToConfig(src, useConfigStore.getState().modules);
     if (!res.ok || !res.config) { setStatus("err", "✖ " + res.errors.join("\n")); return; }
     const st = useConfigStore.getState();
-    // WDL is the SOURCE: keep the author's exact text (don't re-decompile).
-    st.loadConfig(res.config, st.filename ?? undefined, st.filePath, src);
+    // WDL is the SOURCE: keep the author's exact text (don't re-decompile). Pass the
+    // current modules back so an Apply preserves the model's custom module list.
+    st.loadConfig(res.config, st.filename ?? undefined, st.filePath, src, st.modules);
     markHomeChosen();
     applied = src; reflectDirty();
     // The scene renders on demand, and Apply is a click/keydown, but force the
@@ -5138,6 +5182,183 @@ function wireWdlEditor(): void {
   };
   (document.getElementById("wdl-ref-btn") as HTMLButtonElement).onclick = () => { void toggleReference(); };
   (document.getElementById("wdl-ref-close") as HTMLButtonElement).onclick = () => { refPanel.hidden = true; };
+
+  // ---- Component modules panel ----------------------------------------------
+  // Lists the modules the current WDL `import`s, tags each (bundled custom / inbuilt
+  // std / missing), and lets a human add a component `.wdl` (which the resolver then
+  // uses and a save writes into the `.wadi`). The agent path (WebMCP/MCP add-module)
+  // is Phase 2; this is the manual surface.
+  const modsBtn = document.getElementById("wdl-mods-btn") as HTMLButtonElement;
+  const modsBadge = document.getElementById("wdl-mods-badge") as HTMLElement;
+  const modsPanel = document.getElementById("wdl-modules-panel") as HTMLElement;
+  const modsBody = document.getElementById("wdl-modules-body") as HTMLElement;
+
+  // The std-pack resolver (std-furniture, konkan/base) is ~24KB of `.wdl` text, so it
+  // loads lazily to keep it out of the eager viewer bundle. Until it lands, a std
+  // import shows as "missing" for a few ms, then the badge/panel refresh.
+  let stdResolve: ((ref: string) => string | undefined) | null = null;
+  void import("../io/stdModules").then((m) => { stdResolve = m.stdResolveModule; updateModsBadge(); });
+
+  // The module code editor's Monaco instance (when the editor view is open). Disposed
+  // whenever we leave that view so it never leaks.
+  let moduleEditor: import("./wdlMonaco").WdlEditorHandle | null = null;
+  const disposeModuleEditor = (): void => { moduleEditor?.dispose(); moduleEditor = null; };
+
+  const importRefs = (): string[] => {
+    const out: string[] = [];
+    const re = /^\s*import\s+"([^"]+)"/gm;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(getVal())) !== null) out.push(m[1]);
+    return Array.from(new Set(out));
+  };
+  const modStatus = (ref: string): "ok" | "std" | "missing" => {
+    if (ref in useConfigStore.getState().modules) return "ok";
+    return stdResolve?.(ref) !== undefined ? "std" : "missing";
+  };
+  const updateModsBadge = (): void => {
+    const missing = importRefs().filter((r) => modStatus(r) === "missing").length;
+    if (missing > 0) { modsBadge.textContent = String(missing); modsBadge.hidden = false; }
+    else modsBadge.hidden = true;
+  };
+
+  const pickModuleInto = async (ref?: string): Promise<void> => {
+    let picked: { text: string; filename: string; filePath: string | null } | null;
+    try {
+      picked = await pickAndReadWdl();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") setStatus("err", "Couldn't read that file.");
+      return;
+    }
+    if (!picked) return;
+    const key = ref ?? picked.filename.replace(/\.wdl$/i, "");
+    useConfigStore.getState().addModule(key, picked.text);
+    renderModules();
+    void apply(); // recompile so the new module resolves and the model updates
+  };
+
+  const escMod = (s: string): string =>
+    s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+
+  // The code editor for a module — the SAME Monaco WDL editor (highlighting + LSP) as
+  // the main pane, mounted into the panel. Create a new module or edit an existing
+  // custom one. Saving stores the module and re-applies, so any error in the component
+  // surfaces in the compile status.
+  const openModuleEditor = (ref?: string, initialSrc?: string): void => {
+    disposeModuleEditor();
+    const isEdit = ref !== undefined && ref in useConfigStore.getState().modules;
+    const src0 =
+      initialSrc ??
+      (ref ? useConfigStore.getState().modules[ref] ?? "" :
+        `component MyComponent {\n  // Reusable objects in LOCAL coords (origin 0,0):\n  //   item, room, wall, slab, beam, pillar, staircase, …\n}\n`);
+    modsBody.innerHTML =
+      `<div class="mod-sec">${isEdit ? "Edit module" : "New module"}</div>` +
+      `<div class="mod-editor">` +
+      `<label for="mod-ed-ref">Module name (the import ref)</label>` +
+      `<input id="mod-ed-ref" type="text" placeholder="e.g. dining-set" value="${escMod(ref ?? "")}" ${isEdit ? "readonly" : ""}/>` +
+      `<label>Component <code>.wdl</code> source</label>` +
+      `<div id="mod-ed-editor" class="mod-mon"></div>` +
+      `<div class="mod-err" id="mod-ed-err" hidden></div>` +
+      `<div class="mod-editor-actions">` +
+      `<button class="mod-add" id="mod-ed-save">Save module<span class="k" style="opacity:.7;font-weight:400;margin-left:5px">⌘↵</span></button>` +
+      `<button class="mod-cancel" id="mod-ed-cancel">Cancel</button>` +
+      `</div></div>`;
+    const errEl = document.getElementById("mod-ed-err") as HTMLElement;
+    const refInput = document.getElementById("mod-ed-ref") as HTMLInputElement;
+    const saveModule = (): void => {
+      const key = refInput.value.trim();
+      const code = moduleEditor ? moduleEditor.getValue() : src0;
+      if (!key) { errEl.hidden = false; errEl.textContent = "Give the module a name (the import ref)."; return; }
+      if (!code.trim()) { errEl.hidden = false; errEl.textContent = "The module source is empty."; return; }
+      useConfigStore.getState().addModule(key, code);
+      disposeModuleEditor();
+      renderModules();
+      void apply();
+    };
+    (document.getElementById("mod-ed-cancel") as HTMLButtonElement).onclick = () => { disposeModuleEditor(); renderModules(); };
+    (document.getElementById("mod-ed-save") as HTMLButtonElement).onclick = () => saveModule();
+    // Mount the shared Monaco WDL editor lazily (same code-split chunk as the main pane).
+    const host = document.getElementById("mod-ed-editor") as HTMLElement;
+    void import("./wdlMonaco").then(({ mountWdlMonaco }) => {
+      // The view may have changed while the chunk loaded; only mount if still present.
+      if (!host.isConnected) return;
+      moduleEditor = mountWdlMonaco(host, src0);
+      moduleEditor.onApplyShortcut(() => saveModule());
+      moduleEditor.focus();
+    });
+  };
+
+  const renderModules = (): void => {
+    disposeModuleEditor(); // leaving the editor view (if any)
+    const store = useConfigStore.getState();
+    const refs = importRefs();
+    const orphans = Object.keys(store.modules).filter((r) => !refs.includes(r));
+    let html =
+      `<p class="mod-intro">Component <code>.wdl</code> files this model imports. Custom modules are saved inside the <code>.wadi</code> so the design stays self-contained; inbuilt packs (furniture, konkan) are always available.</p>` +
+      `<div class="mod-sec">Imports in this model</div>`;
+    if (!refs.length) html += `<p class="mod-empty">No <code>import</code> statements yet.</p>`;
+    for (const ref of refs) {
+      const st = modStatus(ref);
+      const tag =
+        st === "ok" ? `<span class="mod-tag ok">bundled</span>`
+        : st === "std" ? `<span class="mod-tag std">inbuilt</span>`
+        : `<span class="mod-tag missing">missing</span>`;
+      let act = "";
+      if (st === "missing") {
+        act = `<button class="mod-act" data-new="${escMod(ref)}">Create</button>` +
+          `<button class="mod-act" data-add="${escMod(ref)}">Add .wdl</button>`;
+      } else if (st === "ok") {
+        act = `<button class="mod-act" data-edit="${escMod(ref)}">Edit</button>` +
+          `<button class="mod-act" data-add="${escMod(ref)}">Replace</button>` +
+          `<button class="mod-act" data-remove="${escMod(ref)}">Remove</button>`;
+      }
+      html += `<div class="mod-row"><span class="mod-ref">${escMod(ref)}</span>${tag}${act}</div>`;
+    }
+    if (orphans.length) {
+      html += `<div class="mod-sec">Added, not imported</div>`;
+      for (const ref of orphans) {
+        html += `<div class="mod-row"><span class="mod-ref">${escMod(ref)}</span><span class="mod-tag ok">bundled</span>` +
+          `<button class="mod-act" data-edit="${escMod(ref)}">Edit</button>` +
+          `<button class="mod-act" data-remove="${escMod(ref)}">Remove</button></div>`;
+      }
+    }
+    html += `<button class="mod-add" id="wdl-mod-new">＋ New module (edit code)</button>` +
+      `<button class="mod-add ghost" id="wdl-mod-add">Add a .wdl file</button>`;
+    modsBody.innerHTML = html;
+    modsBody.querySelectorAll<HTMLElement>("[data-add]").forEach((b) => {
+      b.onclick = () => void pickModuleInto(b.dataset.add);
+    });
+    modsBody.querySelectorAll<HTMLElement>("[data-edit]").forEach((b) => {
+      b.onclick = () => openModuleEditor(b.dataset.edit);
+    });
+    modsBody.querySelectorAll<HTMLElement>("[data-new]").forEach((b) => {
+      // A missing import → author it now, ref pre-filled from the import.
+      b.onclick = () => openModuleEditor(b.dataset.new);
+    });
+    modsBody.querySelectorAll<HTMLElement>("[data-remove]").forEach((b) => {
+      b.onclick = () => {
+        useConfigStore.getState().removeModule(b.dataset.remove!);
+        renderModules();
+        void apply();
+      };
+    });
+    (document.getElementById("wdl-mod-new") as HTMLButtonElement).onclick = () => openModuleEditor();
+    (document.getElementById("wdl-mod-add") as HTMLButtonElement).onclick = () => void pickModuleInto();
+  };
+
+  const toggleModules = (): void => {
+    if (!modsPanel.hidden) { disposeModuleEditor(); modsPanel.hidden = true; return; }
+    renderModules();
+    refPanel.hidden = true;
+    statusPanel.hidden = true;
+    modsPanel.hidden = false;
+    modsPanel.scrollTop = 0;
+  };
+  modsBtn.onclick = () => toggleModules();
+  (document.getElementById("wdl-modules-close") as HTMLButtonElement).onclick = () => { disposeModuleEditor(); modsPanel.hidden = true; };
+  // Keep the badge (missing-import count) live as the model/modules change.
+  useConfigStore.subscribe(() => updateModsBadge());
+  updateModsBadge();
 
   // The stepped control. ❮ grows one step (off→on→max), ❯ shrinks one step
   // (max→on→off). CSS shows/hides each button per state (❯ hidden when off, ❮

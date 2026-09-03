@@ -27,6 +27,12 @@ interface ConfigState {
   // the config was opened/saved via a native dialog. Used to distinguish
   // Save (write-in-place) from Save As (prompt for path).
   filePath: string | null;
+  // Custom component modules this model imports (import ref → `.wdl` source). The
+  // WDL compiler resolves these BEFORE the bundled std packs, and a save writes them
+  // into the `.wadi` bundle (modules/) so the model is self-contained. NOT part of
+  // undo history (a resource list, not geometry). Inbuilt std packs are never stored
+  // here — they live in the resolver.
+  modules: Record<string, string>;
   selection: Selection | null;
   // When true the PropertyPanel replaces its object form with the House
   // settings form (site + plinth). Mutually exclusive with `selection` —
@@ -48,8 +54,14 @@ interface ConfigState {
   // when the load ORIGINATES from WDL (the WDL editor, wadi_set_wdl) so the author's
   // text is kept as the source of truth. Omit it for a .wadi/template load — the
   // store then derives the WDL by decompiling.
-  loadConfig: (config: HouseConfig, filename?: string, filePath?: string | null, wdl?: string) => void;
+  loadConfig: (config: HouseConfig, filename?: string, filePath?: string | null, wdl?: string, modules?: Record<string, string>) => void;
   setFilePath: (filePath: string | null) => void;
+  // Replace the whole custom-module map (a bundle load hands the full set).
+  setModules: (modules: Record<string, string>) => void;
+  // Add or replace one custom component module by its import ref.
+  addModule: (ref: string, wdl: string) => void;
+  // Remove one custom component module by its import ref.
+  removeModule: (ref: string) => void;
   // Clear the dirty flag after a successful save (Save / Save As).
   markSaved: () => void;
   clearConfig: () => void;
@@ -134,6 +146,7 @@ interface ConfigState {
 const NON_TRACKED_KEYS = new Set<keyof ConfigState>([
   "filename",
   "filePath",
+  "modules",
   "selection",
   "activeFloorIdx",
   "validationErrors",
@@ -194,6 +207,7 @@ export const useConfigStore = create<ConfigState>()(
       wdl: "",
       filename: null,
       filePath: null,
+      modules: {},
       selection: null,
       siteEditorOpen: false,
       floorEditorIdx: null,
@@ -201,7 +215,7 @@ export const useConfigStore = create<ConfigState>()(
       validationErrors: [],
       dirty: false,
 
-      loadConfig: (config, filename, filePath, wdl) => {
+      loadConfig: (config, filename, filePath, wdl, modules) => {
         // Register any components this config exposes as typed primitives, BEFORE
         // it is validated, expanded, or rendered (plans/declarative-plugins.md P0).
         // A bad plugin (un-namespaced / colliding) must not crash the load: surface
@@ -217,6 +231,11 @@ export const useConfigStore = create<ConfigState>()(
           // When the load came from WDL, keep the author's exact source (see the
           // resolve wrap). Omitted -> the wrap decompiles the config.
           ...(typeof wdl === "string" ? { wdl } : {}),
+          // loadConfig is a FRESH load, so modules default to empty — a new model has
+          // no custom modules unless its bundle carried some (passed explicitly). The
+          // few in-place recompiles that must keep the current list (WDL-editor Apply,
+          // wadi_set_wdl, the watcher's .wdl reload) pass `state.modules` back in.
+          modules: modules ?? {},
           filename: filename ?? null,
           filePath: filePath ?? null,
           selection: null,
@@ -233,6 +252,17 @@ export const useConfigStore = create<ConfigState>()(
 
       setFilePath: (filePath) => set({ filePath }),
 
+      setModules: (modules) => set({ modules: { ...modules } }),
+      addModule: (ref, wdl) =>
+        set((state) => ({ modules: { ...state.modules, [ref]: wdl } })),
+      removeModule: (ref) =>
+        set((state) => {
+          if (!(ref in state.modules)) return {};
+          const next = { ...state.modules };
+          delete next[ref];
+          return { modules: next };
+        }),
+
       markSaved: () => set({ dirty: false }),
 
       clearConfig: () => {
@@ -240,6 +270,7 @@ export const useConfigStore = create<ConfigState>()(
           config: null,
           filename: null,
           filePath: null,
+          modules: {},
           selection: null,
           siteEditorOpen: false,
           floorEditorIdx: null,

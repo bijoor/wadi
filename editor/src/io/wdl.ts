@@ -33,7 +33,16 @@ export interface WdlCompileResult {
 // Compile .wdl text → a validated HouseConfig. Never throws — parse/link failures
 // and schema failures come back as `{ ok:false, errors }` so callers (WebMCP tools)
 // can hand the agent something to fix.
-export async function wdlToConfig(text: string): Promise<WdlCompileResult> {
+//
+// `modules` are the model's CUSTOM component modules (ref → .wdl source), which the
+// resolver checks BEFORE the bundled std packs. This is how a `.wdl` that
+// `import`s a user-authored component compiles: the component's source travels with
+// the model (in the `.wadi` bundle) and is handed in here. Callers pass the current
+// model's module list; omit for a std-only compile.
+export async function wdlToConfig(
+  text: string,
+  modules?: Record<string, string>,
+): Promise<WdlCompileResult> {
   let raw: Record<string, unknown>;
   try {
     // Bare specifier (typed via editor/src/types/wadi-wdl.d.ts, aliased to the
@@ -42,7 +51,10 @@ export async function wdlToConfig(text: string): Promise<WdlCompileResult> {
     // Vite/esbuild bundles the real compiler into a lazy chunk.
     const { compileDsl } = await import("wadi-wdl-compiler");
     const { stdResolveModule } = await import("./stdModules");
-    raw = compileDsl(text, { resolveModule: stdResolveModule });
+    // Custom modules win over std packs, so a model can override or add to them.
+    const resolveModule = (ref: string): string | undefined =>
+      modules?.[ref] ?? stdResolveModule(ref);
+    raw = compileDsl(text, { resolveModule });
   } catch (e) {
     return { ok: false, errors: [e instanceof Error ? e.message : String(e)] };
   }

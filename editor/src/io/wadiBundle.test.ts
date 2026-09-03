@@ -77,6 +77,54 @@ describe("wadi bundle", () => {
     expect(loaded.config.floors.length).toBe(legacy.config.floors.length);
   });
 
+  it("bundles a custom component module so an import round-trips self-contained", async () => {
+    const moduleSrc =
+      `component MyBench goal "a bench" {\n` +
+      `  param wide = 60\n` +
+      `  beam name "BenchTop" at (0, 0) size (wide, 18) height 6\n` +
+      `}\n`;
+    const mainWdl =
+      `house T {\n` +
+      `  convention center\n` +
+      `  units feet_inches per_unit 10\n` +
+      `  site { plot (200, 200) ref (0, 0) }\n` +
+      `  defaults { floor_height 100 wall_height 92 slab_thickness 8 wall_thickness 8 }\n` +
+      `  import "mybench" as mb\n` +
+      `  floor 1 "Ground" {\n` +
+      `    room Living at (0, 0) size (160, 140) { wall north south east west }\n` +
+      `    use mb.MyBench at (10, 150)\n` +
+      `  }\n` +
+      `}\n`;
+
+    // Without the module, the import can't resolve, so the compile fails.
+    const missing = await wdlToConfig(mainWdl);
+    expect(missing.ok).toBe(false);
+    // With the module handed to the resolver, it compiles.
+    const withMod = await wdlToConfig(mainWdl, { mybench: moduleSrc });
+    expect(withMod.ok).toBe(true);
+
+    // A bundle carries the module under modules/ + records it in the manifest map,
+    // and parses back self-contained (no external module resolver needed).
+    const bytes = await buildWadiBundle(mainWdl, {}, {}, { mybench: moduleSrc });
+    const manifest = await readBundleManifest(bytes);
+    expect(manifest?.modules).toEqual({ mybench: "modules/mybench.wdl" });
+
+    const loaded = await parseWadiBytes(bytes, "t.wadi", null);
+    expect(loaded.modules).toEqual({ mybench: moduleSrc });
+    expect(loaded.config.floors.length).toBeGreaterThan(0);
+  });
+
+  it("writes/reads a module map for any import-ref shape (a plain .wadi carries none)", async () => {
+    const legacy = await parseWadiBytes(jsonBytes, "coastal.wadi");
+    const wdl = emitWdl(legacy.config as unknown as Record<string, unknown>);
+    // An unused module still round-trips; a nested-looking ref stays readable as a path.
+    const bytes = await buildWadiBundle(wdl, {}, {}, { "lib/parts": "component X { param a = 1 }\n" });
+    const manifest = await readBundleManifest(bytes);
+    expect(manifest?.modules).toEqual({ "lib/parts": "modules/lib/parts.wdl" });
+    const loaded = await parseWadiBytes(bytes, "coastal.wadi");
+    expect(loaded.modules).toEqual({ "lib/parts": "component X { param a = 1 }\n" });
+  });
+
   it("preserves thumbnail files across a load → save round-trip", async () => {
     const legacy = await parseWadiBytes(jsonBytes, "coastal.wadi");
     const wdl = emitWdl(legacy.config as unknown as Record<string, unknown>);

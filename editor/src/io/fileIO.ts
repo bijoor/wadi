@@ -23,6 +23,10 @@ export interface LoadResult {
   // Undefined for a legacy JSON `.wadi` (the store decompiles instead) — kept
   // verbatim so hand-authored WDL and comments round-trip.
   wdl?: string;
+  // Custom component modules the source carried (import ref → `.wdl`). An object
+  // (from a bundle) REPLACES the model's modules; undefined (a plain `.wdl` or
+  // legacy JSON) leaves them untouched. See LoadedWadi.modules.
+  modules?: Record<string, string>;
 }
 
 export async function pickAndLoadConfig(): Promise<LoadResult> {
@@ -123,8 +127,9 @@ function pickWdlFile(): Promise<File> {
 export function parseConfigBytes(
   bytes: Uint8Array,
   filename = "dropped.wadi",
+  modules?: Record<string, string>,
 ): Promise<LoadResult> {
-  return parseWadiBytes(bytes, filename, null);
+  return parseWadiBytes(bytes, filename, null, modules);
 }
 
 // Parse a legacy JSON `.wadi` from TEXT into a LoadResult (no bundle handling).
@@ -198,6 +203,7 @@ async function wadiBytesFor(
   config: HouseConfig,
   wdl?: string,
   defaultName = "house.wadi",
+  modules: Record<string, string> = {},
 ): Promise<Uint8Array> {
   const src = (wdl ?? "").trim();
   if (!src) return new TextEncoder().encode(serializeConfig(config));
@@ -209,10 +215,15 @@ async function wadiBytesFor(
   const entry = deriveTemplateEntry(id, config, `${id}.wadi`, editorial);
   const cover = (config as { template?: { thumbnails?: string[] } }).template?.thumbnails?.[0];
 
-  return buildWadiBundle(src, currentBundleThumbnails(), {
-    meta: { title: entry.title, description: entry.description, ...entry.meta },
-    cover,
-  });
+  return buildWadiBundle(
+    src,
+    currentBundleThumbnails(),
+    {
+      meta: { title: entry.title, description: entry.description, ...entry.meta },
+      cover,
+    },
+    modules,
+  );
 }
 
 // Save the house as a `.wadi` bundle.
@@ -227,17 +238,18 @@ export async function saveConfig(
   filePath: string | null,
   defaultName = "house.wadi",
   wdl?: string,
+  modules: Record<string, string> = {},
 ): Promise<string | null> {
   const name = toWadiName(defaultName);
   // When the open file is a plain `.wdl` (the source-of-truth workflow shared with a
   // coding agent), write the WDL TEXT back to it, not a `.wadi` bundle — otherwise an
   // in-app Save would overwrite the agent's `.wdl` with zip bytes. A .wadi target (or
-  // no WDL to write) still gets the bundle.
+  // no WDL to write) still gets the bundle (with the custom modules inside).
   const src = (wdl ?? "").trim();
   const bytesFor = async (target: string | null): Promise<Uint8Array> =>
     target && /\.wdl$/i.test(target) && src
       ? new TextEncoder().encode(wdl!)
-      : await wadiBytesFor(config, wdl, name);
+      : await wadiBytesFor(config, wdl, name, modules);
   if (isTauri()) {
     let target = filePath;
     if (!target) {
@@ -252,7 +264,7 @@ export async function saveConfig(
     await writeFile(target, await bytesFor(target));
     return target;
   }
-  const bytes = await wadiBytesFor(config, wdl, name);
+  const bytes = await wadiBytesFor(config, wdl, name, modules);
   // Chromium browsers: write via the File System Access API — a real in-place Save
   // to the open file when we hold its handle (and this is a Save, `filePath` set),
   // otherwise a Save-As picker where the user can choose any location, INCLUDING a

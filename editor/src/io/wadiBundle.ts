@@ -31,6 +31,12 @@ export interface LoadedWadi {
   /** The `.wdl` source. Present for a bundle (its model.wdl); undefined for a
    *  legacy JSON `.wadi`, where the store decompiles the config to WDL. */
   wdl?: string;
+  /** Custom component modules the bundle carried (import ref → `.wdl` source).
+   *  A key of the semantics: `undefined` means "no module info in this source, so
+   *  the loader should PRESERVE the current model's modules" (a plain `.wdl` from
+   *  disk); an object (possibly empty) means "REPLACE with exactly these" (a bundle
+   *  always declares its full set). */
+  modules?: Record<string, string>;
   filename: string;
   filePath: string | null;
 }
@@ -38,7 +44,23 @@ export interface LoadedWadi {
 const MANIFEST = "wadi.json";
 const MODEL = "model.wdl";
 const THUMB_DIR = "thumbnails/";
+// Custom component modules ride here, one readable `.wdl` per import, so a `.wadi`
+// unzips into reusable component files (mirrors how thumbnails/ works). The manifest
+// carries the exact import-ref → path map so any ref shape round-trips.
+const MODULE_DIR = "modules/";
 const BUNDLE_VERSION = 2;
+
+// The zip path a custom module's source is stored at. Keeps the import ref readable
+// as a path under modules/ (so the unzipped file is browsable), guarding against
+// path escapes; the manifest's ref→path map is the authority on load.
+function modulePathForRef(ref: string): string {
+  const clean = ref
+    .replace(/^\.\//, "") // drop a leading ./
+    .replace(/^\/+/, "") // no absolute paths
+    .replace(/\.\.(?=\/|$)/g, "_") // no parent-dir escapes
+    .replace(/\.wdl$/i, ""); // extension is added back once
+  return `${MODULE_DIR}${clean}.wdl`;
+}
 
 // A zip local-file header always begins with "PK\x03\x04".
 const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
@@ -139,13 +161,18 @@ export function pruneBundleThumbnails(keepPaths: string[]): void {
 // SOURCE file (the single source of truth, so a coding agent + the offline MCP server
 // can edit a `.wdl` on disk and the desktop app watches + recompiles it live), and a
 // legacy JSON `.wadi` config.
+// `modules` (optional): custom component modules to compile a PLAIN `.wdl` against
+// (a bundle carries its own, so this is ignored for a bundle). The live watcher
+// passes the current model's modules so a watched `.wdl` that imports them still
+// recompiles; a fresh Load omits it (std-only).
 export async function parseWadiBytes(
   bytes: Uint8Array,
   filename: string,
   filePath: string | null = null,
+  modules?: Record<string, string>,
 ): Promise<LoadedWadi> {
   if (isWadiBundle(bytes)) return parseBundle(bytes, filename, filePath);
-  if (looksLikeWdl(bytes, filename)) return parseWdlSource(bytes, filename, filePath);
+  if (looksLikeWdl(bytes, filename)) return parseWdlSource(bytes, filename, filePath, modules);
   return parseLegacyJson(bytes, filename, filePath);
 }
 
@@ -171,9 +198,10 @@ async function parseWdlSource(
   bytes: Uint8Array,
   filename: string,
   filePath: string | null,
+  modules?: Record<string, string>,
 ): Promise<LoadedWadi> {
   const wdl = new TextDecoder().decode(bytes);
-  const res = await wdlToConfig(wdl);
+  const res = await wdlToConfig(wdl, modules);
   if (!res.ok || !res.config) {
     const details = res.errors.slice(0, 5).map((e) => `  ${e}`).join("\n");
     throw new Error(`This .wdl failed to compile:\n${details}`);
@@ -182,6 +210,8 @@ async function parseWdlSource(
   // Save of this source doesn't smuggle in unrelated preview files.
   bundleThumbnails = {};
   thumbUrlCache.clear();
+  // `modules` is left undefined: a plain `.wdl` declares no module set of its own, so
+  // the loader PRESERVES whatever the model already has (the watcher relies on this).
   return { config: res.config, wdl, filename, filePath };
 }
 
@@ -204,7 +234,33 @@ async function parseBundle(
   }
   const wdl = strFromU8(wdlBytes);
 
-  const res = await wdlToConfig(wdl);
+  // Read the custom component modules this bundle carries so the main WDL's imports
+  // resolve. The manifest's `modules` map (ref → path) is authoritative; if it is
+  // absent (an older/hand-made bundle) fall back to deriving the ref from the file's
+  // path under modules/.
+  const manifest = files[MANIFEST]
+    ? (() => {
+        try { return JSON.parse(strFromU8(files[MANIFEST])) as Record<string, unknown>; }
+        catch { return {}; }
+      })()
+    : {};
+  const modules: Record<string, string> = {};
+  const manifestModules = manifest.modules;
+  if (manifestModules && typeof manifestModules === "object") {
+    for (const [ref, path] of Object.entries(manifestModules as Record<string, string>)) {
+      const data = files[path];
+      if (data) modules[ref] = strFromU8(data);
+    }
+  } else {
+    for (const [name, data] of Object.entries(files)) {
+      if (name.startsWith(MODULE_DIR) && name.endsWith(".wdl")) {
+        const ref = name.slice(MODULE_DIR.length).replace(/\.wdl$/i, "");
+        modules[ref] = strFromU8(data);
+      }
+    }
+  }
+
+  const res = await wdlToConfig(wdl, modules);
   if (!res.ok || !res.config) {
     const details = res.errors.slice(0, 5).map((e) => `  ${e}`).join("\n");
     throw new Error(`The bundle's ${MODEL} failed to compile:\n${details}`);
@@ -224,7 +280,9 @@ async function parseBundle(
     if (m) shotSeq = Math.max(shotSeq, Number(m[1]));
   }
 
-  return { config: res.config, wdl, filename, filePath };
+  // A bundle declares its FULL module set (possibly empty), so the loader replaces
+  // the model's modules with exactly these.
+  return { config: res.config, wdl, modules, filename, filePath };
 }
 
 async function parseLegacyJson(
@@ -291,11 +349,16 @@ export interface BundleManifestExtra {
   cover?: string;
 }
 
-// Build a `.wadi` bundle (zip bytes) from the WDL source + thumbnail files.
+// Build a `.wadi` bundle (zip bytes) from the WDL source + thumbnail files + the
+// model's custom component modules. Each module rides as a readable `.wdl` under
+// modules/, and the manifest records the exact import-ref → path map so the loader
+// re-resolves imports without guessing. Inbuilt std packs are NOT bundled (the app
+// always has them); only custom modules travel with the model.
 export async function buildWadiBundle(
   wdl: string,
   thumbnails: Record<string, Uint8Array> = bundleThumbnails,
   extra: BundleManifestExtra = {},
+  modules: Record<string, string> = {},
 ): Promise<Uint8Array> {
   const { zipSync, strToU8 } = await import("fflate");
   const manifestObj: Record<string, unknown> = {
@@ -306,14 +369,36 @@ export async function buildWadiBundle(
   if (extra.meta !== undefined) manifestObj.meta = extra.meta;
   if (extra.cover) manifestObj.cover = extra.cover;
   const entries: Record<string, Uint8Array> = {
-    [MANIFEST]: strToU8(JSON.stringify(manifestObj, null, 2) + "\n"),
     [MODEL]: strToU8(wdl),
   };
   for (const [name, data] of Object.entries(thumbnails)) {
     // Guard: only bundle real thumbnail files.
     if (name.startsWith(THUMB_DIR) && !name.endsWith("/")) entries[name] = data;
   }
+  const moduleMap: Record<string, string> = {};
+  for (const [ref, src] of Object.entries(modules)) {
+    if (typeof src !== "string" || !src.trim()) continue;
+    let path = modulePathForRef(ref);
+    // Avoid two refs colliding on one path (e.g. "a/b" and "a__b"): suffix a counter.
+    if (entries[path] && strFromU8Safe(entries[path]) !== src) {
+      let n = 2;
+      const base = path.replace(/\.wdl$/i, "");
+      while (entries[`${base}-${n}.wdl`]) n++;
+      path = `${base}-${n}.wdl`;
+    }
+    entries[path] = strToU8(src);
+    moduleMap[ref] = path;
+  }
+  if (Object.keys(moduleMap).length) manifestObj.modules = moduleMap;
+  // Manifest is written LAST so its `modules` map reflects the real paths above.
+  entries[MANIFEST] = strToU8(JSON.stringify(manifestObj, null, 2) + "\n");
   return zipSync(entries, { level: 6 });
+}
+
+// Decode already-encoded entry bytes for the collision check above (cheap; entries
+// are small module sources).
+function strFromU8Safe(bytes: Uint8Array): string {
+  try { return new TextDecoder().decode(bytes); } catch { return ""; }
 }
 
 // --- Catalog helpers: index a bundle WITHOUT touching the loaded-model state ---

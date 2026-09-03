@@ -79,7 +79,9 @@ export function startConfigWatcher(): void {
     // detects which by magic bytes and returns the model + its WDL source.
     let loaded;
     try {
-      loaded = await parseConfigBytes(bytes, state.filename ?? "house.wadi");
+      // Pass the model's current modules so a watched plain `.wdl` that imports them
+      // recompiles (a bundle carries its own and ignores this).
+      loaded = await parseConfigBytes(bytes, state.filename ?? "house.wadi", state.modules);
     } catch (e) {
       console.warn(
         "[watch] config not loadable yet; waiting for next write:",
@@ -106,7 +108,15 @@ export function startConfigWatcher(): void {
     console.info("[watch] external config change → reloading model");
     useConfigStore
       .getState()
-      .loadConfig(loaded.config, state.filename ?? "house.wadi", path, loaded.wdl);
+      // A bundle declares its modules (replace); a plain `.wdl` carries none, so keep
+      // the model's current list (the user's added modules survive an external edit).
+      .loadConfig(
+        loaded.config,
+        state.filename ?? "house.wadi",
+        path,
+        loaded.wdl,
+        loaded.modules ?? state.modules,
+      );
   };
 
   const readAndApply = async (path: string): Promise<void> => {
