@@ -2,7 +2,7 @@
 
 > Wadi (https://wadi.house) is an AI-native parametric home designer. A house is authored in Wadi's `.wdl` design language and rendered live as a 3D model, 2D floor plans, elevations, and dimensioned drawings. The app is built so that an AI agent can author the house directly.
 
-There are two ways for an agent to drive Wadi.
+Pick the most capable path you have access to: WebMCP tools if your client surfaces them, the `window.wadi` JavaScript API if you can run JS on the page, the browser UI if you can only see and click the page, or, with no page access at all, writing `.wdl` for the user to paste. A coding agent with no browser can use the Wadi MCP server. The `.wdl` syntax and the buildability rules below apply on every path.
 
 ## For an in-browser agent (runs JavaScript on the page)
 
@@ -33,6 +33,22 @@ Only build from scratch if no template fits. If you must, follow this order and 
 Typical loop: `chooseTemplate` → `getWdl` → edit → `setWdl` → fix warnings (and `describeHouse()` for staircases) → repeat.
 
 The same capabilities are also registered as WebMCP tools on `navigator.modelContext` (`wadi_get_wdl`, `wadi_set_wdl`, `wadi_check_wdl`, `wadi_wdl_reference`, and more) for agents that consume WebMCP. Where WebMCP tool-calling is not surfaced, use `window.wadi` directly as above.
+
+## For an agent that can only click the UI (no JavaScript)
+
+Some browser agents can see and click the page but cannot run code (for example Gemini in Chrome). Drive Wadi the way a person would:
+
+1. Open the apps / "Choose your home" menu and load the ready-made home closest to what the user wants.
+2. Click the vertical **WDL** tab on the right edge to open the WDL panel; it shows that home's `.wdl`.
+3. Edit the `.wdl` text there (or paste new `.wdl`), then click **Apply changes** (Cmd/Ctrl+Enter).
+4. Read the status pill: it reports compile errors and the structural warnings. Fix them before telling the user it is ready.
+5. Use **Load .wdl** / **Save .wdl** to open a file or keep one.
+
+Follow the same rules as above: start from a template, work one step at a time, and fix warnings after every change.
+
+## For a chat agent with no access to the page
+
+If you cannot touch the app at all, write the `.wdl` for the user to paste. Use the `.wdl` syntax below; for complete examples, ask the user to open a home in the app and paste its `.wdl` back to you. Produce a complete `.wdl` document, then tell the user: open https://wadi.house/app, click the **WDL** tab on the right, paste the `.wdl` in, and click **Apply changes** (or use **Load .wdl** to open it from a file).
 
 ## `.wdl` syntax essentials
 

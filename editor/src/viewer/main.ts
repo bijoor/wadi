@@ -1910,18 +1910,37 @@ function wireAppsMenu(): void {
   }
 }
 
-// The prompt copied by the "Use with your AI agent" menu item. It points any
-// in-browser agent (Claude for Chrome, ChatGPT, …) at the page's window.wadi API
-// and tells it to fetch the full primer from window.wadi.help() — so the user's
-// (trusted) message is short and the detailed instructions come from the app.
+// The prompt copied by the "Use with your AI agent" menu item. One prompt that works
+// for any kind of agent: it tells the agent to first work out how much access it has to
+// wadi.house and then take the best of four paths (WebMCP tools, the window.wadi JS API,
+// clicking the UI like a person, or, with no page access, just writing .wdl for the user
+// to paste). The detailed per-path instructions still come from the app (help() / llms.txt),
+// so the copied text stays short.
 const AGENT_PROMPT =
-  "You are on wadi.house, a live 3D home designer. This page exposes a `window.wadi` " +
-  "JavaScript API for AI agents. In the page, run `await window.wadi.help()` and follow " +
-  "the instructions it returns: read the current house as Wadi's .wdl design language " +
-  "with `window.wadi.getWdl()`, edit the text, and apply it with `window.wadi.setWdl(newWdl)` " +
-  "(which returns compile errors or a structural check). Use `window.wadi.captureView()` to see the result. " +
-  "Work with me one step at a time: when there's a choice to make, show me a couple of options and ask before applying, " +
-  "and make one change at a time rather than redoing the whole house at once.";
+  "You are helping someone design a house on wadi.house, a live 3D home designer. " +
+  "Wadi houses are written in a small text design language called .wdl. Start from a ready-made " +
+  "home and customize it for the user; do not build a whole house from scratch (full houses are " +
+  "hard to get right: wall alignment across floors, roof sizing, cantilever support, plinth, staircase).\n" +
+  "\n" +
+  "FIRST work out how much access you have to the page, then take the best path you can:\n" +
+  "1) WebMCP TOOLS (best). If you have tools named wadi_* (wadi_list_homes, wadi_get_wdl, " +
+  "wadi_set_wdl, ...), use them. Start with wadi_wdl_reference.\n" +
+  "2) JAVASCRIPT on the page. If you can run JS in the page but have no wadi_* tools, use the " +
+  "window.wadi API: run `await window.wadi.help()` and follow it (listTemplates, chooseTemplate(id), " +
+  "getWdl, setWdl(newWdl) which returns compile errors + a structural check, captureView).\n" +
+  "3) BROWSER UI ONLY (you can see and click the page but not run code, e.g. Gemini in Chrome). " +
+  "Drive it like a person: open the apps / \"Choose your home\" menu and load the closest home; " +
+  "click the vertical \"WDL\" tab on the right edge to open the WDL panel; edit the .wdl text shown " +
+  "there (or paste new .wdl); click \"Apply changes\" (Cmd/Ctrl+Enter) and read the status pill for " +
+  "errors and warnings; use \"Load .wdl\" / \"Save .wdl\" to open or keep a file.\n" +
+  "4) NO PAGE ACCESS (chat only). You cannot touch the app, so WRITE the .wdl for the user to paste. " +
+  "Get the syntax and rules from https://wadi.house/llms.txt (if you cannot browse, ask the user to paste " +
+  "that page in), produce a complete .wdl, then tell the user: open wadi.house, click the \"WDL\" tab on the " +
+  "right, paste the .wdl in, and click \"Apply changes\" (or use \"Load .wdl\" for a file).\n" +
+  "\n" +
+  "However you drive it: work ONE STEP AT A TIME. When there is a choice (which home, room sizes, layout, " +
+  "roof style, where the stairs go), show 2-3 options and ASK before applying. After each change, read the " +
+  "structural warnings and fix them before telling the user it is ready.";
 
 async function copyAgentPrompt(): Promise<void> {
   const sub = document.getElementById("apps-item-agent-sub");
