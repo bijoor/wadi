@@ -96,7 +96,7 @@ function RoomEditor({ state, dispatch, room }) {
         <NumberField label="W" value={room.w} min={1} max={maxW} onCommit={(v) => update({ w: Math.min(Math.max(v, 1), maxW) })} />
         <NumberField label="H" value={room.h} min={1} max={maxH} onCommit={(v) => update({ h: Math.min(Math.max(v, 1), maxH) })} />
       </div>
-      <div className="area-note">Area: {area} {grid.unit}²</div>
+      <div className="area-note">{room.w * (grid.unitPerCell || 10)} × {room.h * (grid.unitPerCell || 10)} units</div>
       <div className="swatches">
         {PALETTE.map((c) => (
           <button
@@ -178,7 +178,7 @@ function MultiPanel({ state, dispatch }) {
         <NumberField label="X" value={minX} onCommit={(v) => moveTo(v, minY)} />
         <NumberField label="Y" value={minY} onCommit={(v) => moveTo(minX, v)} />
       </div>
-      <div className="area-note">Extent: {maxX - minX} × {maxY - minY} {grid.unit}</div>
+      <div className="area-note">Extent: {(maxX - minX) * (grid.unitPerCell || 10)} × {(maxY - minY) * (grid.unitPerCell || 10)} units</div>
       <button className="secondary" onClick={() => dispatch({ type: 'DUPLICATE_SELECTED' })}>
         Duplicate {rooms.length} rooms (⌘/Ctrl+D)
       </button>
@@ -234,9 +234,9 @@ function DimensionsEditor({ state, dispatch }) {
   return (
     <div className="panel">
       <h3>Dimensions (export)</h3>
-      <p className="area-note">Physical sizes ({unit}) for the 3-D Wadi model.</p>
+      <p className="area-note">All sizes are in project units. Wadi shows them as {unit} ({b.perUnit ?? 10} units = 1 {unit}).</p>
       <label className="field">
-        <span>Units</span>
+        <span>Display units</span>
         <select value={system} onChange={(e) => set({ unitSystem: e.target.value })}>
           <option value="feet_inches">Feet &amp; inches</option>
           <option value="feet">Feet (decimal)</option>
@@ -251,16 +251,16 @@ function DimensionsEditor({ state, dispatch }) {
         onCommit={(v) => set({ perUnit: v > 0 ? v : 10 })}
       />
       <div className="row">
-        <NumberField label={`Wall thick (${unit})`} value={b.wallThickness ?? 0.75} min={0.1} max={3} step={0.05} float
-          onCommit={(v) => set({ wallThickness: Math.max(0.1, v) })} />
-        <NumberField label={`Wall height (${unit})`} value={b.wallHeight ?? 10} min={4} max={20} step={0.5} float
-          onCommit={(v) => set({ wallHeight: Math.max(4, v) })} />
+        <NumberField label="Wall thick" value={b.wallThickness ?? 8} min={1} max={60} step={1} float
+          onCommit={(v) => set({ wallThickness: Math.max(1, v) })} />
+        <NumberField label="Wall height" value={b.wallHeight ?? 100} min={20} max={400} step={5} float
+          onCommit={(v) => set({ wallHeight: Math.max(20, v) })} />
       </div>
       <div className="row">
-        <NumberField label={`Slab thick (${unit})`} value={b.slabThickness ?? 0.5} min={0.1} max={3} step={0.05} float
-          onCommit={(v) => set({ slabThickness: Math.max(0.1, v) })} />
-        <NumberField label={`Plinth ht (${unit})`} value={b.plinthHeight ?? 1.5} min={0.2} max={6} step={0.25} float
-          onCommit={(v) => set({ plinthHeight: Math.max(0.2, v) })} />
+        <NumberField label="Slab thick" value={b.slabThickness ?? 6} min={1} max={60} step={1} float
+          onCommit={(v) => set({ slabThickness: Math.max(1, v) })} />
+        <NumberField label="Plinth height" value={b.plinthHeight ?? 30} min={2} max={300} step={5} float
+          onCommit={(v) => set({ plinthHeight: Math.max(2, v) })} />
       </div>
     </div>
   )
@@ -278,12 +278,8 @@ function GridEditor({ state, dispatch }) {
       </div>
       <div className="row">
         <NumberField label="Cell px" value={grid.cell} min={8} max={80} onCommit={(v) => update({ cell: Math.min(Math.max(v, 8), 80) })} />
-        <NumberField label="Unit/cell" value={grid.unitPerCell} min={1} max={100} onCommit={(v) => update({ unitPerCell: Math.max(1, v) })} />
+        <NumberField label="Units/cell" value={grid.unitPerCell} min={1} max={1000} step={1} float onCommit={(v) => update({ unitPerCell: Math.max(1, v) })} />
       </div>
-      <label className="field">
-        <span>Unit label</span>
-        <CommitInput value={grid.unit} onCommit={(v) => update({ unit: v })} />
-      </label>
     </div>
   )
 }

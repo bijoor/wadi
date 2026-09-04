@@ -35,10 +35,13 @@ function uniqueNames(rooms) {
 export function modelToWadi(model, opts = {}) {
   const { grid = {}, plot = {}, floors = [], rooms = [], edges = [] } = model || {}
   const b = model?.build || {}
-  // per_unit = project units per ONE physical unit (the project↔physical conversion).
+  // The planner works in PROJECT UNITS throughout: a cell is `unitPerCell` project
+  // units, and every dimension below is already in project units. `perUnit` is only
+  // display metadata (units.per_unit) — how Wadi renders those project units as feet
+  // / metres — so it does NOT scale geometry.
   const perUnit = Number(b.perUnit) > 0 ? Number(b.perUnit) : (opts.perUnit ?? PER_UNIT)
   const unitSystem = b.unitSystem || 'feet_inches'
-  const S = (Number(grid.unitPerCell) || 1) * perUnit // project units per grid cell
+  const S = Number(grid.unitPerCell) || 10 // project units per grid cell
   const nameById = uniqueNames(rooms)
 
   // Undirected connections, stored on the lower room by neighbour NAME.
@@ -57,13 +60,12 @@ export function modelToWadi(model, opts = {}) {
   const plotL = (Number(plot.h) || 20) * S
   const edgeKind = edgeKindLookup(edges)
 
-  // Build dimensions (set in the planner's Dimensions panel; stored in the physical
-  // unit, e.g. a wall ~0.75 ft). Converted to project units by per_unit here.
-  const uft = (v, def) => Math.round((Number.isFinite(Number(v)) ? Number(v) : def) * perUnit)
-  const wallThickness = uft(b.wallThickness, 0.75)
-  const slabThickness = uft(b.slabThickness, 0.5)
-  const wallHeight = uft(b.wallHeight, 10)
-  const plinthHeight = uft(b.plinthHeight, 1.5)
+  // Build dimensions from the Dimensions panel — already PROJECT UNITS, used as-is.
+  const pu = (v, def) => (Number.isFinite(Number(v)) ? Number(v) : def)
+  const wallThickness = pu(b.wallThickness, 8)
+  const slabThickness = pu(b.slabThickness, 6)
+  const wallHeight = pu(b.wallHeight, 100)
+  const plinthHeight = pu(b.plinthHeight, 30)
   const floorHeight = wallHeight + slabThickness // wall sits on the slab
 
   // The room floors: each room becomes a `room` (walls + doors from the graph) sitting

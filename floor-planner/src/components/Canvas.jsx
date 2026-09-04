@@ -500,7 +500,7 @@ export default function Canvas({ state, dispatch }) {
                 y={(r.y + r.h / 2) * cell + 12}
                 className="room-sub"
               >
-                {r.w}×{r.h} · {area} {grid.unit}²
+                {r.w * (grid.unitPerCell || 10)}×{r.h * (grid.unitPerCell || 10)}
               </text>
             </g>
           )
@@ -727,7 +727,7 @@ function SheetsLayers({ floors, allRooms, allEdges, grid, plot, activeFloor, sel
                     {r.name}
                   </text>
                   <text x={(r.x + r.w / 2) * cell} y={(r.y + r.h / 2) * cell + 12} textAnchor="middle" className="room-sub" pointerEvents="none">
-                    {r.w}×{r.h} · {area} {grid.unit}²
+                    {r.w * (grid.unitPerCell || 10)}×{r.h * (grid.unitPerCell || 10)}
                   </text>
                 </g>
               )

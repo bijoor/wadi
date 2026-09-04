@@ -10,21 +10,23 @@ export const PALETTE = [
   '#f45b5b', '#8085e9', '#43d1c4', '#e08fd6',
 ]
 
-// Build settings used on export to Wadi. Thicknesses/heights are in the PHYSICAL
-// display unit (ft by default) — values the graph alone can't imply. `perUnit` is
-// the project→physical conversion Wadi stores as `units.per_unit`: how many project
-// units equal ONE display unit (10 = 10 project units per foot, Wadi's default).
+// Build settings used on export to Wadi. Everything in the planner is in PROJECT
+// UNITS (the raw Wadi coordinate unit); `unitSystem` + `perUnit` only say how Wadi
+// DISPLAYS them physically (units.system + units.per_unit): perUnit project units =
+// 1 display unit (10 units per foot is Wadi's default). Defaults ≈ 0.8 ft walls,
+// 10 ft ceilings, 3 ft plinth at perUnit 10.
 export const BUILD_DEFAULTS = {
   unitSystem: 'feet_inches', // feet_inches | feet | meters | centimeters | millimeters
-  perUnit: 10, // project units per 1 display unit
-  wallThickness: 0.75, // ~9"
-  wallHeight: 10,
-  slabThickness: 0.5, // ~6"
-  plinthHeight: 1.5, // ~18"
+  perUnit: 10, // project units per 1 display unit (display metadata only)
+  wallThickness: 8,
+  wallHeight: 100,
+  slabThickness: 6,
+  plinthHeight: 30,
 }
 
 export function sampleModel() {
-  const grid = { cols: 40, rows: 30, cell: 26, unit: 'ft', unitPerCell: 1 }
+  // `cell` = pixels per cell (canvas only). `unitPerCell` = PROJECT UNITS per cell.
+  const grid = { cols: 40, rows: 30, cell: 26, unitPerCell: 10 }
   const plot = { x: 0, y: 0, w: 30, h: 20 } // plot origin is fixed at 0,0
 
   const fg = 'f_ground'
