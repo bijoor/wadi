@@ -295,6 +295,92 @@ nodes; `array` replicates a node `count` times along `step`, and its nested bloc
 applies further ops per copy. Use `model` for a rigged mechanism (a fan, a louvre
 bank, a spiral of balusters); use `item` for a plain piece of furniture.
 
+## Objects — site elements
+
+Three first-class primitives for the plot boundary and services. Each compiles to a
+registry-backed object (not `raw`) so it validates cleanly and renders in 3D when
+an `asset` is given.
+
+### `compound_wall` — perimeter boundary wall
+
+```wdl
+compound_wall [name "N"] at (x, y) size (w, l) height <h>
+  ( thickness <t> | material "m" | asset { … } | <common> )*
+```
+
+- `at (x, y)` — **top-left corner** of the wall block (Inkscape frame).
+- `size (w, l)` — width (east extent) × length (south extent); both > 0.
+- `height` — uniform wall height in project units (required).
+- `thickness` — wall thickness; defaults to the house `wall_thickness`.
+- `material` — material key (optional).
+- `asset` — optional GLB for 3D; omit for a plain plan-only footprint.
+- Common tail: `z_offset`, `enabled`, `layer`.
+
+**Typical use — enclose a plot with four walls:**
+
+```wdl
+// 420 × 440 plot, wall_thickness 8
+compound_wall NorthWall at (0, 0)   size (420, 8)   height 50
+compound_wall SouthWall at (0, 432) size (420, 8)   height 50
+compound_wall EastWall  at (412, 0) size (8, 440)   height 50
+compound_wall WestWall  at (0, 0)   size (8, 440)   height 50
+```
+
+### `well` — water well
+
+```wdl
+well [name "N"] at (x, y)
+  ( shape circular|rectangular|square
+  | diameter <d> | width <w> | length <l>
+  | parapet_height <h>
+  | asset { … } | <common> )*
+```
+
+- `at (x, y)` — **plan centre** of the well.
+- `shape` — `circular` (default), `rectangular`, or `square` (bare keyword, no quotes).
+- `diameter` — outer diameter for circular wells (project units).
+- `width`/`length` — footprint for rectangular or square wells.
+- `parapet_height` — raised lip height above grade.
+- `asset` — optional GLB; omit for plan-only.
+- Common tail: `z_offset`, `enabled`, `layer`.
+
+```wdl
+well DrinkingWell at (360, 370)
+    shape circular diameter 30 parapet_height 10
+    asset { id "well_glb" src "…/well.glb" dims (0.9, 1.2, 0.9) }
+```
+
+### `solar_panel` — solar panel array
+
+```wdl
+solar_panel [name "N"] at (x, y)
+  ( mount roof|ground
+  | capacity_kw <kw> | panel_count <n>
+  | azimuth <deg> | tilt <deg>
+  | rotation <deg> | scale <s>
+  | asset { … } | <common> )*
+```
+
+- `at (x, y)` — **plan centre** of the array.
+- `mount` — `roof` (default) or `ground` (bare keyword, no quotes).
+- `capacity_kw` — metadata only (kilowatts peak).
+- `panel_count` — metadata only (integer).
+- `azimuth` — compass bearing the panels face (0 = north, 180 = south-facing).
+- `tilt` — panel angle in degrees from horizontal.
+- `rotation` — yaw of the array in the plan (degrees).
+- `scale` — uniform GLB scale factor.
+- `asset` — optional GLB; omit for plan-only.
+- Common tail: `z_offset`, `enabled`, `layer`.
+
+```wdl
+solar_panel RoofArray at (210, 50)
+    mount roof capacity_kw 3.5 panel_count 10 azimuth 180 tilt 15
+    asset { id "panels_glb" src "…/solar_panel.glb" dims (3.3, 0.05, 1.65) }
+```
+
+> **Enum fields use bare keywords, not quoted strings.** Write `shape circular`,
+> `mount roof`, `mount ground` — not `shape "circular"` or `mount "roof"`.
+
 ## Imports & modules (reusable `.wdl` libraries)
 
 A `.wdl` file can be a **module** — top-level declarations (no `house` needed) —

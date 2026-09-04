@@ -140,6 +140,56 @@ export function WallBox({
   );
 }
 
+// Compound boundary wall — sandy/brick tone.
+export function CompoundWallBox({
+  cx, cz, width, depth, z, height,
+}: {
+  cx: number; cz: number; width: number; depth: number;
+  z: number; height: number;
+}) {
+  return (
+    <Box
+      position={{ x: cx, y: z + height / 2, z: cz }}
+      size={{ x: width, y: height, z: depth }}
+      color="#c19a6b"
+    />
+  );
+}
+
+// Well parapet ring — short stone-grey cylinder (or box for non-circular).
+export function WellBox({
+  cx, cz, diameter, parapetHeight, z,
+}: {
+  cx: number; cz: number; diameter: number; parapetHeight: number; z: number;
+}) {
+  return (
+    <mesh position={[cx, z + parapetHeight / 2, cz]} castShadow receiveShadow>
+      <cylinderGeometry args={[diameter / 2, diameter / 2, parapetHeight, 32]} />
+      <meshStandardMaterial color="#888888" roughness={0.9} />
+    </mesh>
+  );
+}
+
+// Solar panel array — flat dark-blue box tilted `tiltDeg` toward the sky,
+// rotated to face compass bearing `azimuthDeg`. `y` = floor/roof level.
+export function SolarPanelBox({
+  cx, cz, width, depth, y, tiltDeg, azimuthDeg,
+}: {
+  cx: number; cz: number; width: number; depth: number;
+  y: number; tiltDeg: number; azimuthDeg: number;
+}) {
+  const thickness = 2;
+  // compass azimuth → Three.js Y rotation (south=+Z, azimuth=180 → no rotation)
+  const rotY = ((180 - azimuthDeg) * Math.PI) / 180;
+  const rotX = (tiltDeg * Math.PI) / 180;
+  return (
+    <mesh position={[cx, y + thickness / 2, cz]} rotation={[rotX, rotY, 0]} castShadow>
+      <boxGeometry args={[width, thickness, depth]} />
+      <meshStandardMaterial color="#1c2e6e" metalness={0.5} roughness={0.2} />
+    </mesh>
+  );
+}
+
 // Opening overlay — a thin darker rect painted on the wall face
 // (approximation, no boolean subtraction yet). We centre a very thin
 // box just outside the wall so it reads as a decal.

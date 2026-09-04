@@ -258,8 +258,8 @@ Floor:
 // through to it). Bespoke rules above are ergonomic *sugar* over this generic core.
 FloorObject:
       Room | Wall | Pillar | Beam | FloorSlab | Plinth | Ground
-    | Staircase | SpiralStaircase | KitchenPlatform | Item | GlbModel | Component | Roof | Raw
-    | ObjectDecl;
+    | Staircase | SpiralStaircase | KitchenPlatform | Item | GlbModel | Component | Roof
+    | CompoundWall | Well | SolarPanel | Raw | ObjectDecl;
 
 // ---- Model — a GLB placed at scale and manipulated by a node RIG (P1). Like `item`
 //      but structural: each `node "name"` op moves/hides/recolours/arrays a named part
@@ -430,6 +430,44 @@ SpiralStaircase:
         'total_height' total_height=Expr
         ( 'turns' turns=Expr | 'steps' steps=Expr | 'tread_thickness' tread_thickness=Expr
         | 'pole_radius' pole_radius=Expr | CommonFields )*;
+
+// Promoted site/boundary primitives — same pattern as SpiralStaircase.
+
+CompoundWall:
+    'compound_wall' name=NameRef?
+        'at' '(' x=Expr ',' y=Expr ')'
+        'size' '(' w=Expr ',' l=Expr ')'
+        'height' height=Expr
+        ( 'thickness' thickness=Expr
+        | 'material' material=STRING
+        | 'rotation' rotation=Expr
+        | 'asset' asset=Asset
+        | CommonFields )*;
+
+Well:
+    'well' name=NameRef?
+        'at' '(' x=Expr ',' y=Expr ')'
+        ( 'shape' shape=('circular' | 'rectangular' | 'square')
+        | 'diameter' diameter=Expr
+        | 'width' w=Expr
+        | 'length' l=Expr
+        | 'parapet_height' parapet_height=Expr
+        | 'rotation' rotation=Expr
+        | 'asset' asset=Asset
+        | CommonFields )*;
+
+SolarPanel:
+    'solar_panel' name=NameRef?
+        'at' '(' x=Expr ',' y=Expr ')'
+        ( 'mount' mount=('roof' | 'ground')
+        | 'capacity_kw' capacity_kw=Expr
+        | 'panel_count' panel_count=Expr
+        | 'azimuth' azimuth=Expr
+        | 'tilt' tilt=Expr
+        | 'rotation' rotation=Expr
+        | 'scale' scale=Expr
+        | 'asset' asset=Asset
+        | CommonFields )*;
 
 KitchenPlatform:
     'kitchen' ('name' name=STRING)?

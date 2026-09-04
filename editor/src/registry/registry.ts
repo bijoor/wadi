@@ -7,6 +7,9 @@ import { registerBuiltinRole } from "../state/layerDefaults";
 import { itemNode } from "./nodes/item";
 import { modelNode } from "./nodes/model";
 import { spiralStaircaseNode } from "./nodes/spiralStaircase";
+import { compoundWallNode } from "./nodes/compoundWall";
+import { wellNode } from "./nodes/well";
+import { solarPanelNode } from "./nodes/solarPanel";
 
 const REGISTRY = new Map<string, NodeDefinition>();
 
@@ -60,3 +63,7 @@ registerNode(modelNode);
 // already in the codegen union (schema/fields/spiralStaircase → objects.generated),
 // so the node contributes capabilities + layer role + add-menu, not a schema.
 registerNode(spiralStaircaseNode);
+// Site/boundary primitives — schema contributed here via registerObjectSchema.
+registerNode(compoundWallNode);
+registerNode(wellNode);
+registerNode(solarPanelNode);

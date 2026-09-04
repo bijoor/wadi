@@ -390,6 +390,76 @@ v2 roof — unified segment-based type that replaces hip/gable/flat/shed. Schema
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 
 
+### `compound_wall`
+
+compound_wall: perimeter / boundary wall A solid rectangular block placed by its TOP-LEFT (NW) corner. Renders as a GLB asset when `asset` is provided; otherwise plan-only. Four compound_wall objects typically enclose a plot (North, South, East, West sides).
+
+| field | type | req | notes |
+|---|---|---|---|
+| `type` | literal `compound_wall` | **yes** |  |
+| `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
+| `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
+| `layer` | string |  | *(shared — see top)* |
+| `name` | string |  |  |
+| `x` | number | **yes** | Top-left (NW) corner X (project units) |
+| `y` | number | **yes** | Top-left (NW) corner Y (project units) |
+| `width` | number > 0 | **yes** | East extent — wall length along the X axis (project units) |
+| `length` | number > 0 | **yes** | South extent — wall length along the Y axis (project units) |
+| `height` | number > 0 | **yes** | Uniform wall height above grade (project units) |
+| `thickness` | number > 0 |  | Wall body depth; defaults to house wall_thickness (project units) |
+| `material` | string |  |  |
+| `asset` | [ItemAsset](#itemasset) |  | Optional GLB for 3D render; omit for a plan-only footprint |
+| `rotation` | number |  |  |
+| `z_offset` | number |  |  |
+
+
+### `well`
+
+well: water well with circular, square, or rectangular footprint Placed by its plan CENTRE (x, y). `shape` defaults to circular; `diameter` is the outer diameter for circular wells; `width`/`length` for rectangular.
+
+| field | type | req | notes |
+|---|---|---|---|
+| `type` | literal `well` | **yes** |  |
+| `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
+| `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
+| `layer` | string |  | *(shared — see top)* |
+| `name` | string |  |  |
+| `x` | number | **yes** | Plan centre X (project units) |
+| `y` | number | **yes** | Plan centre Y (project units) |
+| `shape` | enum: `circular` `rectangular` `square` |  | Well footprint shape; default circular |
+| `diameter` | number > 0 |  | Outer diameter for circular wells (project units) |
+| `width` | number > 0 |  | Footprint width for rectangular or square wells (project units) |
+| `length` | number > 0 |  | Footprint length for rectangular wells (project units) |
+| `parapet_height` | number > 0 |  | Height of the raised parapet ring above grade (project units) |
+| `asset` | [ItemAsset](#itemasset) |  | Optional GLB for 3D render; omit for plan-only |
+| `rotation` | number |  |  |
+| `z_offset` | number |  |  |
+
+
+### `solar_panel`
+
+solar_panel: solar array, roof-mount or ground-mount Placed by its plan CENTRE (x, y). `capacity_kw` and `panel_count` are metadata only (not used by geometry). `azimuth` (0=north, 180=south-facing) and `tilt` (degrees above horizontal) describe the panel orientation.
+
+| field | type | req | notes |
+|---|---|---|---|
+| `type` | literal `solar_panel` | **yes** |  |
+| `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
+| `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
+| `layer` | string |  | *(shared — see top)* |
+| `name` | string |  |  |
+| `x` | number | **yes** | Array centre X (project units) |
+| `y` | number | **yes** | Array centre Y (project units) |
+| `mount` | enum: `roof` `ground` |  | Mounting type: roof-mount (default) or ground-mount |
+| `capacity_kw` | number > 0 |  | Installed capacity in kilowatts peak (metadata only — not used by geometry) |
+| `panel_count` | integer |  | Number of panels (metadata only) |
+| `azimuth` | number |  | Panel orientation: compass bearing in degrees (0=north, 180=south-facing) |
+| `tilt` | number |  | Panel pitch angle in degrees above horizontal |
+| `asset` | [ItemAsset](#itemasset) |  | Optional GLB for 3D render; omit for plan-only |
+| `rotation` | number |  | Plan yaw of the array footprint (degrees) |
+| `scale` | number > 0 |  |  |
+| `z_offset` | number |  |  |
+
+
 ## Shared & nested schemas
 
 ### site

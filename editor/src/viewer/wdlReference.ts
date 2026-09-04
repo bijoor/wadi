@@ -201,6 +201,22 @@ takes precedence over an asymmetric <code>slope</code> pair.</p>
 <b>inches</b> (sugar for <code>framing.rafter_spacing_in</code> /
 <code>purlin_spacing_in</code>). Omit to keep the defaults (36" / 12").</p>
 
+<h3>Site primitives <span class="ref-dim">— plot boundary, water, power</span></h3>
+<pre>compound_wall [name] at (x, y) size (w, l) height &lt;h&gt;
+  [thickness &lt;t&gt;] [material "…"] [rotation &lt;deg&gt;]
+                                //  perimeter / boundary wall (top-left corner, width east, length south)
+
+well [name] at (x, y)
+  [shape circular|rectangular|square]
+  [diameter &lt;d&gt;] [width &lt;w&gt;] [length &lt;l&gt;] [parapet_height &lt;h&gt;]
+  [rotation &lt;deg&gt;]
+                                //  water well; circular uses diameter, others use width × length
+
+solar_panel [name] at (x, y)
+  [mount roof|ground] [capacity_kw &lt;kW&gt;] [panel_count &lt;n&gt;]
+  [azimuth &lt;deg&gt;] [tilt &lt;deg&gt;] [rotation &lt;deg&gt;] [scale &lt;s&gt;]
+                                //  solar PV array; azimuth 180° = south-facing</pre>
+
 <h3>Component library <span class="ref-dim">— reusable mini-house</span></h3>
 <pre>component Bench {              // define once (local coords, origin 0,0)
   param blen = 60 label "Bench length"

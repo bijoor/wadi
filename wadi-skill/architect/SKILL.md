@@ -165,6 +165,40 @@ it doesn't match, fix the `.wdl` and re-render — repeat until it looks right, 
 then tell the user it's ready.** It reuses the app's own generators, so it matches the
 app's 2D tabs byte-for-byte. See `prompts/verify-visually.md`.
 
+## Site elements — first-class primitives
+
+Three site primitives are available as **first-class DSL keywords** (no `raw`
+needed). Full syntax is in `reference/dsl.md § Objects — site elements`; field
+details in `reference/data-model.md`.
+
+| Primitive | What it does | Placement anchor |
+|---|---|---|
+| `compound_wall` | Boundary / perimeter wall | `at (x, y)` = top-left corner |
+| `well` | Water well (circular / square / rectangular) | `at (x, y)` = plan centre |
+| `solar_panel` | Solar array (roof-mount or ground-mount) | `at (x, y)` = array centre |
+
+**Trigger phrases and what to generate:**
+
+- **"add a compound wall" / "add boundary wall" / "enclose the plot"** →
+  Add four `compound_wall` objects on **floor 1** covering the plot perimeter
+  (North, South, East, West), using the plot dimensions from `site.plot` and
+  the house `wall_thickness`. Height ≈ 50 project units (5 ft).
+
+- **"add a well" / "add a water well"** →
+  Place one `well` in the **rear or side yard** (Y close to plot length, X ≥ 60
+  units from any room boundary), `shape circular`, `diameter 30`. Keep it ≥ 60
+  project units from any room wall.
+
+- **"add solar panels" / "add solar array" / "add PV"** →
+  Place a `solar_panel` with `mount roof` on **floor 2 or higher** (or `mount
+  ground` on floor 1 for a ground array). Use `azimuth 180` (south-facing) and
+  `tilt 15` for India / northern hemisphere. Set `capacity_kw` and `panel_count`
+  as specified (omit if not given). Place at the midpoint of the roof band or
+  garden area.
+
+**Enum keywords are bare, not quoted.** Write `shape circular`, `mount roof`,
+`mount ground` — NOT `shape "circular"`. See the DSL pitfalls note in `dsl.md`.
+
 ## Top pitfalls (memorize)
 
 - **Y is DOWN.** A room "to the north" has a *smaller* Y. Never treat Y as up.
