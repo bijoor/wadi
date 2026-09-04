@@ -881,10 +881,7 @@ function linkProject(
     const doc = factory.fromString<ast.Model>(t, uri);
     const r = doc.parseResult;
     if (r.lexerErrors.length || r.parserErrors.length) {
-      const msgs = [
-        ...r.lexerErrors.map((e) => `lex: ${e.message}`),
-        ...r.parserErrors.map((e) => `parse: ${e.message}`),
-      ];
+      const msgs = lexParseErrorStrings(r.lexerErrors, r.parserErrors);
       throw new Error(`${what} parse failed:\n  ${msgs.join("\n  ")}`);
     }
     docs.addDocument(doc);
@@ -1159,6 +1156,21 @@ function configInput(i: ast.ConfigInput): Record<string, unknown> {
 
 // ---- Parse entry point ---------------------------------------------------
 
+// Format lex/parse errors with their 1-based source position, so a compile error
+// tells the author WHERE in the .wdl the problem is (e.g. `parse: line 12:5: …`),
+// not just what. Lexer errors carry line/column; parser errors carry it on the token.
+function lexParseErrorStrings(
+  lexerErrors: readonly { line?: number; column?: number; message: string }[],
+  parserErrors: readonly { token?: { startLine?: number; startColumn?: number }; message: string }[],
+): string[] {
+  const at = (l?: number, c?: number): string =>
+    Number.isFinite(l) ? `line ${l}:${Number.isFinite(c) ? c : 1}: ` : "";
+  return [
+    ...lexerErrors.map((e) => `lex: ${at(e.line, e.column)}${e.message}`),
+    ...parserErrors.map((e) => `parse: ${at(e.token?.startLine, e.token?.startColumn)}${e.message}`),
+  ];
+}
+
 type WadiServices = ReturnType<typeof createWadiServices>["Wadi"];
 
 // Parse .wdl text into a Model, throwing on lex/parse errors. Shared by the main
@@ -1166,10 +1178,7 @@ type WadiServices = ReturnType<typeof createWadiServices>["Wadi"];
 function parseModel(services: WadiServices, text: string, what = "DSL"): ast.Model {
   const result = services.parser.LangiumParser.parse<ast.Model>(text);
   if (result.lexerErrors.length || result.parserErrors.length) {
-    const msgs = [
-      ...result.lexerErrors.map((e) => `lex: ${e.message}`),
-      ...result.parserErrors.map((e) => `parse: ${e.message}`),
-    ];
+    const msgs = lexParseErrorStrings(result.lexerErrors, result.parserErrors);
     throw new Error(`${what} parse failed:\n  ${msgs.join("\n  ")}`);
   }
   return result.value;
