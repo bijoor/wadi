@@ -44,6 +44,24 @@ describe("computeQuantities", () => {
     expect(slabs.rows.some((row) => row.label.includes("Ground"))).toBe(true);
   });
 
+  it("floor with slab_thickness 0 but explicit floor_slab objects produces non-zero row", () => {
+    const r = computeQuantities({
+      defaults: { wall_height: H, wall_thickness: 8, slab_thickness: 8 },
+      floors: [
+        {
+          floor_number: 0, name: "Plinth", slab_thickness: 0,
+          objects: [
+            { type: "floor_slab", name: "PlinthSlab", x: 0, y: 0, width: 100, length: 100, thickness: 6 },
+          ],
+        },
+      ],
+    } as unknown as HouseConfig);
+    const slabs = r.sections.find((s) => s.title.includes("Concrete"))!;
+    expect(slabs.rows.some((row) => row.label.includes("Plinth"))).toBe(true);
+    const row = slabs.rows.find((row) => row.label.includes("Plinth"))!;
+    expect(parseFloat(row.volume ?? "0")).toBeGreaterThan(0);
+  });
+
   it("house with four compound walls produces non-zero compound wall brickwork", () => {
     const r = computeQuantities(
       cfg([

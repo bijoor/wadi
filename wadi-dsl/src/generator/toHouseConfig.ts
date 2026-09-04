@@ -805,6 +805,8 @@ function compoundWall(o: ast.CompoundWall): Record<string, unknown> {
   if (o.name) out.name = unquote(o.name);
   const t = put("thickness", o.thickness);
   if (t !== undefined) out.thickness = t;
+  const rot = put("rotation", o.rotation);
+  if (rot !== undefined) out.rotation = rot;
   if (o.asset) out.asset = asset(o.asset);
   applyCommon(out, formulas, o);
   return done(out, formulas);
@@ -827,6 +829,8 @@ function well(o: ast.Well): Record<string, unknown> {
   if (l !== undefined) out.length = l;
   const ph = put("parapet_height", o.parapet_height);
   if (ph !== undefined) out.parapet_height = ph;
+  const wrot = put("rotation", o.rotation);
+  if (wrot !== undefined) out.rotation = wrot;
   if (o.asset) out.asset = asset(o.asset);
   applyCommon(out, formulas, o);
   return done(out, formulas);
@@ -1066,9 +1070,10 @@ export function modelToHouseConfig(
       if (g.spacing_x !== undefined) {
         // GENERATED guides: origin + spacing (+ extent), referenced by index.
         const gen: Record<string, unknown> = {
-          spacing: [exprToValue(g.spacing_x), exprToValue(g.spacing_y!)],
+          spacing: [exprToValue(g.spacing_x), exprToValue(g.spacing_y ?? g.spacing_x)],
         };
-        if (g.origin_x !== undefined) gen.origin = [exprToValue(g.origin_x), exprToValue(g.origin_y!)];
+        const oy = g.origin_y;
+        if (g.origin_x !== undefined && oy !== undefined) gen.origin = [exprToValue(g.origin_x), exprToValue(oy)];
         if (g.extent_x !== undefined) gen.extent = [Number(g.extent_x), Number(g.extent_y)];
         grids[g.name] = gen;
       } else {

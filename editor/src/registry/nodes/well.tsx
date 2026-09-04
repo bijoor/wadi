@@ -111,4 +111,19 @@ export const wellNode: NodeDefinition = {
       label: (obj.name as string | undefined) ?? "Well",
     };
   },
+
+  emitWdl(obj) {
+    const n = obj.name != null ? ` ${/^[A-Za-z_]\w*$/.test(String(obj.name)) ? obj.name : JSON.stringify(obj.name)}` : "";
+    let s = `well${n} at (${obj.x}, ${obj.y})`;
+    if (obj.shape != null) s += `\n  shape ${obj.shape}`;
+    if (obj.diameter != null) s += `\n  diameter ${obj.diameter}`;
+    if (obj.width != null) s += `\n  width ${obj.width}`;
+    if (obj.length != null) s += `\n  length ${obj.length}`;
+    if (obj.parapet_height != null) s += `\n  parapet_height ${obj.parapet_height}`;
+    if (obj.rotation != null) s += `\n  rotation ${obj.rotation}`;
+    if (obj.z_offset != null) s += `\n  z_offset ${obj.z_offset}`;
+    if (obj.enabled != null) s += `\n  enabled ${obj.enabled}`;
+    if (obj.layer != null) s += `\n  layer ${JSON.stringify(obj.layer)}`;
+    return s;
+  },
 };

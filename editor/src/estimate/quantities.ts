@@ -3,7 +3,7 @@
 // wallArea.ts). Pure + synchronous — no bpy, no DOM — mirrors the style of
 // wallArea.ts so it can run in the viewer panel builder, in Node tests, or a CLI.
 
-import { computeWallAreas, type AreaUnits } from "./wallArea";
+import { computeWallAreas, type AreaUnits, type WallAreaReport } from "./wallArea";
 import { computeMergedV2Spec } from "../svg2d/roof/v2/computeFromHouse";
 import type { HouseConfig } from "../svg2d/expand";
 
@@ -82,14 +82,33 @@ function buildSlabSection(
   for (let fi = 0; fi < floors.length; fi++) {
     const fl = floors[fi];
     const slabT = num(fl.slab_thickness, defSlab);
-    if (slabT <= 0) continue;
+    const objs = (fl.objects ?? []) as Bag[];
     let areaU = 0;
-    for (const o of ((fl.objects ?? []) as Bag[])) {
-      if (o.type !== "room" || o.enabled === false) continue;
-      areaU += num(o.width) * num(o.length);
+    let m3 = 0;
+
+    // Room footprints × floor slab thickness.
+    if (slabT > 0) {
+      for (const o of objs) {
+        if (o.type !== "room" || o.enabled === false) continue;
+        const rArea = num(o.width) * num(o.length);
+        areaU += rArea;
+        m3 += toCubicM(u, rArea * slabT);
+      }
     }
-    if (areaU <= 0) continue;
-    const m3 = toCubicM(u, areaU * slabT);
+
+    // Explicit floor_slab objects — each carries its own thickness (falls back to
+    // the floor's slab_thickness). A floor with slab_thickness 0 can still have
+    // floor_slab objects with an explicit thickness.
+    for (const o of objs) {
+      if (o.type !== "floor_slab" || o.enabled === false) continue;
+      const fsT = num(o.thickness, slabT);
+      if (fsT <= 0) continue;
+      const fsArea = num(o.width) * num(o.length);
+      areaU += fsArea;
+      m3 += toCubicM(u, fsArea * fsT);
+    }
+
+    if (m3 <= 0) continue;
     totalM3 += m3;
     rows.push({
       label: `Concrete slab — ${String(fl.name ?? `Floor ${fi}`)}`,
@@ -108,26 +127,25 @@ function buildSlabSection(
   };
 }
 
-function buildBrickworkRoomSection(config: HouseConfig, u: AreaUnits): QuantitySection {
+function buildBrickworkRoomSection(config: HouseConfig, wallReport: WallAreaReport, u: AreaUnits): QuantitySection {
   const defaults = (config as Bag).defaults as Bag | undefined;
   const wallT = num(defaults?.wall_thickness, 8);
-  const r = computeWallAreas(config);
-  const extM3 = toCubicM(u, r.external.net * wallT);
-  const intM3 = toCubicM(u, r.internal.net * wallT);
+  const extM3 = toCubicM(u, wallReport.external.net * wallT);
+  const intM3 = toCubicM(u, wallReport.internal.net * wallT);
 
   return {
     title: "Brickwork (room walls)",
     rows: [
       {
         label: "External walls",
-        area: fmtArea(u, r.external.net),
+        area: fmtArea(u, wallReport.external.net),
         volume: fmtVol(extM3),
         count: fmtBricks(extM3),
         notes: "Net of openings",
       },
       {
         label: "Internal walls",
-        area: fmtArea(u, r.internal.net),
+        area: fmtArea(u, wallReport.internal.net),
         volume: fmtVol(intM3),
         count: fmtBricks(intM3),
       },
@@ -266,13 +284,14 @@ function buildSteelSection(concreteM3: number): QuantitySection {
 // ---- main ------------------------------------------------------------------
 
 export function computeQuantities(config: HouseConfig): QuantityReport {
-  const u = computeWallAreas(config).units;
+  const wallReport = computeWallAreas(config);
+  const u = wallReport.units;
   const { section: slabs, totalM3: slabM3 } = buildSlabSection(config, u);
 
   return {
     sections: [
       slabs,
-      buildBrickworkRoomSection(config, u),
+      buildBrickworkRoomSection(config, wallReport, u),
       buildCompoundWallSection(config, u),
       buildRoofSection(config, u),
       buildWellSection(config, u),

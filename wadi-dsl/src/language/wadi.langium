@@ -440,6 +440,7 @@ CompoundWall:
         'height' height=Expr
         ( 'thickness' thickness=Expr
         | 'material' material=STRING
+        | 'rotation' rotation=Expr
         | 'asset' asset=Asset
         | CommonFields )*;
 
@@ -451,6 +452,7 @@ Well:
         | 'width' w=Expr
         | 'length' l=Expr
         | 'parapet_height' parapet_height=Expr
+        | 'rotation' rotation=Expr
         | 'asset' asset=Asset
         | CommonFields )*;
 

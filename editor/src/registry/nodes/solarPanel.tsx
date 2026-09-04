@@ -118,4 +118,19 @@ export const solarPanelNode: NodeDefinition = {
       label: (obj.name as string | undefined) ?? "Solar Panel",
     };
   },
+
+  emitWdl(obj) {
+    const n = obj.name != null ? ` ${/^[A-Za-z_]\w*$/.test(String(obj.name)) ? obj.name : JSON.stringify(obj.name)}` : "";
+    let s = `solar_panel${n} at (${obj.x}, ${obj.y})`;
+    if (obj.mount != null) s += `\n  mount ${obj.mount}`;
+    if (obj.capacity_kw != null) s += `\n  capacity_kw ${obj.capacity_kw}`;
+    if (obj.panel_count != null) s += `\n  panel_count ${obj.panel_count}`;
+    if (obj.azimuth != null) s += `\n  azimuth ${obj.azimuth}`;
+    if (obj.tilt != null) s += `\n  tilt ${obj.tilt}`;
+    if (obj.rotation != null) s += `\n  rotation ${obj.rotation}`;
+    if (obj.z_offset != null) s += `\n  z_offset ${obj.z_offset}`;
+    if (obj.enabled != null) s += `\n  enabled ${obj.enabled}`;
+    if (obj.layer != null) s += `\n  layer ${JSON.stringify(obj.layer)}`;
+    return s;
+  },
 };

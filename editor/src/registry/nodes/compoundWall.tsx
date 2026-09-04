@@ -100,4 +100,16 @@ export const compoundWallNode: NodeDefinition = {
       label: (obj.name as string | undefined) ?? "Compound Wall",
     };
   },
+
+  emitWdl(obj) {
+    const n = obj.name != null ? ` ${/^[A-Za-z_]\w*$/.test(String(obj.name)) ? obj.name : JSON.stringify(obj.name)}` : "";
+    let s = `compound_wall${n} at (${obj.x}, ${obj.y}) size (${obj.width}, ${obj.length}) height ${obj.height}`;
+    if (obj.thickness != null) s += `\n  thickness ${obj.thickness}`;
+    if (obj.material != null) s += `\n  material ${JSON.stringify(obj.material)}`;
+    if (obj.rotation != null) s += `\n  rotation ${obj.rotation}`;
+    if (obj.z_offset != null) s += `\n  z_offset ${obj.z_offset}`;
+    if (obj.enabled != null) s += `\n  enabled ${obj.enabled}`;
+    if (obj.layer != null) s += `\n  layer ${JSON.stringify(obj.layer)}`;
+    return s;
+  },
 };
