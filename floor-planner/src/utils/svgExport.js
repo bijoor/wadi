@@ -1,5 +1,6 @@
 import { analyze, roomById, floorColor } from '../model/graph.js'
 import { roomCenter } from '../model/geometry.js'
+import { fmtLen, unitsOf } from './physical.js'
 
 const esc = (s) =>
   String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]))
@@ -7,6 +8,7 @@ const esc = (s) =>
 // Build a clean, standalone SVG string of the current plan (no UI chrome).
 export function buildSVG(model) {
   const { grid, plot, rooms, edges } = model
+  const U = unitsOf(model.build)
   // Coords are PROJECT UNITS; a grid cell is `step` units and `grid.cell` px.
   const step = grid.unitPerCell || 10
   const cell = grid.cell / step // px per project unit (for coords)
@@ -54,7 +56,7 @@ export function buildSVG(model) {
     const cx = x + w / 2
     const cy = y + h / 2
     roomG += `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="13" font-weight="600" fill="#111827">${esc(r.name)}</text>`
-    roomG += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="#4b5563">${r.w}×${r.h} units</text>`
+    roomG += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="#4b5563">${fmtLen(r.w, U.system, U.perUnit)}×${fmtLen(r.h, U.system, U.perUnit)}</text>`
     roomG += `</g>`
   }
   parts.push(`<g>${roomG}</g>`)
@@ -84,6 +86,7 @@ const SHEET_GAP = 4 // cells between plates (matches the on-screen view)
 
 export function buildSheetsSVG(model) {
   const { grid, plot, floors, rooms, edges } = model
+  const U = unitsOf(model.build)
   const cellPx = grid.cell // px per grid cell (for gaps)
   const cell = grid.cell / (grid.unitPerCell || 10) // px per project unit (for coords)
   const pad = cellPx
@@ -125,7 +128,7 @@ export function buildSheetsSVG(model) {
       const cy = y + h / 2
       g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${r.color}" fill-opacity="0.55" stroke="${bad ? '#dc2626' : '#334155'}" stroke-width="${bad ? 2.5 : 1.5}"/>`
       g += `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="13" font-weight="600" fill="#111827">${esc(r.name)}</text>`
-      g += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="#4b5563">${r.w}×${r.h} units</text>`
+      g += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="#4b5563">${fmtLen(r.w, U.system, U.perUnit)}×${fmtLen(r.h, U.system, U.perUnit)}</text>`
     }
     // connections
     for (const e of fe) {

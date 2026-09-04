@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react'
 import { analyze, roomById, floorColor } from '../model/graph.js'
 import { roomCenter, sharesWall, rectsOverlap } from '../model/geometry.js'
 import { PALETTE } from '../store/initialState.js'
+import { fmtLen, unitsOf } from '../utils/physical.js'
 
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 const SHEET_GAP = 4 // cells between floor plates in side-by-side view
@@ -32,6 +33,7 @@ export default function Canvas({ state, dispatch }) {
   const gapU = SHEET_GAP * step // side-by-side gap, in project units
   const snap = (u) => Math.round(u / step) * step
   const snapFloor = (u) => Math.floor(u / step) * step
+  const U = unitsOf(state.build) // display units for on-diagram labels (physical)
   const svgRef = useRef(null)
   const [interaction, setInteraction] = useState(null)
   const selectedIds = state.selectedIds || []
@@ -405,6 +407,7 @@ export default function Canvas({ state, dispatch }) {
             allEdges={state.edges}
             grid={grid}
             plot={plot}
+            build={state.build}
             activeFloor={activeFloor}
             selectedSet={selectedSet}
             onPickFloor={(id) => dispatch({ type: 'SET_ACTIVE_FLOOR', id })}
@@ -509,7 +512,7 @@ export default function Canvas({ state, dispatch }) {
                 y={(r.y + r.h / 2) * cell + 12}
                 className="room-sub"
               >
-                {r.w}×{r.h}
+                {fmtLen(r.w, U.system, U.perUnit)}×{fmtLen(r.h, U.system, U.perUnit)}
               </text>
             </g>
           )
@@ -687,11 +690,12 @@ function FloorGhost({ rooms, cell, color }) {
 // satisfied, red when not). Clicking empty plate space activates that floor;
 // clicking a room activates the floor and selects the room (editable via the
 // sidebar form). Dragging still happens in Single view.
-function SheetsLayers({ floors, allRooms, allEdges, grid, plot, activeFloor, selectedSet, onPickFloor, onPickRoom }) {
+function SheetsLayers({ floors, allRooms, allEdges, grid, plot, build, activeFloor, selectedSet, onPickFloor, onPickRoom }) {
   // Coords are project units; `cell` = pixels per project unit (see main Canvas).
   const step = grid.unitPerCell || 10
   const cell = grid.cell / step
   const gapU = SHEET_GAP * step
+  const U = unitsOf(build)
   const pw = plot.w * cell
   const ph = plot.h * cell
   return (
@@ -738,7 +742,7 @@ function SheetsLayers({ floors, allRooms, allEdges, grid, plot, activeFloor, sel
                     {r.name}
                   </text>
                   <text x={(r.x + r.w / 2) * cell} y={(r.y + r.h / 2) * cell + 12} textAnchor="middle" className="room-sub" pointerEvents="none">
-                    {r.w}×{r.h}
+                    {fmtLen(r.w, U.system, U.perUnit)}×{fmtLen(r.h, U.system, U.perUnit)}
                   </text>
                 </g>
               )

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { analyze, roomById, floorView } from '../model/graph.js'
 import { PALETTE } from '../store/initialState.js'
+import { fmtLen, fmtArea, unitsOf } from '../utils/physical.js'
 
 // Input that only commits its value on Enter or blur (Esc cancels). It keeps a
 // local draft while typing so edits aren't applied on every keystroke, and
@@ -95,7 +96,7 @@ function RoomEditor({ state, dispatch, room }) {
         <NumberField label="W" value={room.w} min={1} max={maxW} onCommit={(v) => update({ w: Math.min(Math.max(v, 1), maxW) })} />
         <NumberField label="H" value={room.h} min={1} max={maxH} onCommit={(v) => update({ h: Math.min(Math.max(v, 1), maxH) })} />
       </div>
-      <div className="area-note">{room.w} × {room.h} units</div>
+      <div className="area-note">{(() => { const u = unitsOf(state.build); return `${fmtLen(room.w, u.system, u.perUnit)} × ${fmtLen(room.h, u.system, u.perUnit)}` })()}</div>
       <div className="swatches">
         {PALETTE.map((c) => (
           <button
@@ -131,7 +132,7 @@ function PlotEditor({ state, dispatch }) {
         <NumberField label="W" value={plot.w} min={step} max={maxW} step={step} float onCommit={(v) => update({ w: Math.min(Math.max(v, step), maxW) })} />
         <NumberField label="H" value={plot.h} min={step} max={maxH} step={step} float onCommit={(v) => update({ h: Math.min(Math.max(v, step), maxH) })} />
       </div>
-      <div className="area-note">Plot area: {plot.w * plot.h} units²</div>
+      <div className="area-note">{(() => { const u = unitsOf(state.build); return `Plot: ${fmtLen(plot.w, u.system, u.perUnit)} × ${fmtLen(plot.h, u.system, u.perUnit)} · ${fmtArea(plot.w * plot.h, u.system, u.perUnit)}` })()}</div>
       <button
         className="secondary"
         onClick={() =>
@@ -180,7 +181,7 @@ function MultiPanel({ state, dispatch }) {
         <NumberField label="X" value={minX} onCommit={(v) => moveTo(v, minY)} />
         <NumberField label="Y" value={minY} onCommit={(v) => moveTo(minX, v)} />
       </div>
-      <div className="area-note">Extent: {maxX - minX} × {maxY - minY} units</div>
+      <div className="area-note">{(() => { const u = unitsOf(state.build); return `Extent: ${fmtLen(maxX - minX, u.system, u.perUnit)} × ${fmtLen(maxY - minY, u.system, u.perUnit)}` })()}</div>
       <button className="secondary" onClick={() => dispatch({ type: 'DUPLICATE_SELECTED' })}>
         Duplicate {rooms.length} rooms (⌘/Ctrl+D)
       </button>
@@ -287,6 +288,7 @@ function GridEditor({ state, dispatch }) {
 }
 
 function Health({ state }) {
+  const U = unitsOf(state.build)
   const floor = state.floors.find((f) => f.id === state.activeFloor)
   const fm = floorView(state, state.activeFloor)
   const r = analyze(fm)
@@ -308,9 +310,9 @@ function Health({ state }) {
         <li className={r.overlaps.length ? 'warn' : ''}><span>Overlaps</span><b>{r.overlaps.length}</b></li>
         <li className={r.outOfPlot.length ? 'warn' : ''}><span>Out of plot</span><b>{r.outOfPlot.length}</b></li>
         <li className={r.unsatisfied.length ? 'warn' : ''}><span>Unsatisfied links</span><b>{r.unsatisfied.length}</b></li>
-        <li><span>Plot area</span><b>{r.plotArea} units²</b></li>
-        <li><span>Rooms area</span><b>{r.roomArea} units²</b></li>
-        <li className={r.remainingArea < 0 ? 'warn' : ''}><span>Remaining</span><b>{r.remainingArea} units²</b></li>
+        <li><span>Plot area</span><b>{fmtArea(r.plotArea, U.system, U.perUnit)}</b></li>
+        <li><span>Rooms area</span><b>{fmtArea(r.roomArea, U.system, U.perUnit)}</b></li>
+        <li className={r.remainingArea < 0 ? 'warn' : ''}><span>Remaining</span><b>{fmtArea(r.remainingArea, U.system, U.perUnit)}</b></li>
         <li><span>House</span><b>{state.floors.length} {state.floors.length === 1 ? 'floor' : 'floors'} · {state.rooms.length} rooms</b></li>
       </ul>
     </div>
