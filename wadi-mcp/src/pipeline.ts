@@ -39,9 +39,19 @@ export interface CheckResult {
 
 type Cfg = Record<string, unknown>;
 
+// Resolve a `.wdl`'s imports: custom modules (from a live session, ref -> source)
+// win over the bundled std packs.
+function makeResolver(modules?: Record<string, string>): (ref: string) => string | undefined {
+  if (!modules) return stdResolveModule;
+  return (ref) => modules[ref] ?? stdResolveModule(ref);
+}
+
 /** Compile + resolve, keeping the formula diagnostics (unresolved refs etc.). */
-function compileWithWarnings(wdl: string): { config: Cfg; warnings: FormulaWarning[] } {
-  const compiled = compileDsl(wdl, { resolveModule: stdResolveModule }); // throws on syntax/import error
+function compileWithWarnings(
+  wdl: string,
+  modules?: Record<string, string>,
+): { config: Cfg; warnings: FormulaWarning[] } {
+  const compiled = compileDsl(wdl, { resolveModule: makeResolver(modules) }); // throws on syntax/import error
   // Register any exposed components as typed primitives before validate/expand.
   registerExposedComponents(compiled as never);
   const { config, warnings } = resolveParametric(compiled as never);
@@ -92,12 +102,14 @@ export function scopeWdl(wdl: string): RefsView {
   return buildRefsView(compiled as never);
 }
 
-/** Full check: parse + resolve + schema + wall/roof geometry + structural conventions. */
-export function checkWdl(wdl: string): CheckResult {
+/** Full check: parse + resolve + schema + wall/roof geometry + structural conventions.
+ *  `modules` are the model's custom component modules (ref -> `.wdl` source), resolved
+ *  before the std packs, so a `.wdl` that imports a live-session module checks cleanly. */
+export function checkWdl(wdl: string, modules?: Record<string, string>): CheckResult {
   let config: Cfg;
   let formulaWarnings: FormulaWarning[];
   try {
-    ({ config, warnings: formulaWarnings } = compileWithWarnings(wdl));
+    ({ config, warnings: formulaWarnings } = compileWithWarnings(wdl, modules));
   } catch (e) {
     return { ok: false, errors: [{ level: "error", message: (e as Error).message }], warnings: [] };
   }

@@ -577,20 +577,39 @@ server.registerTool(
   if (sessionBaseUrl) {
     const base = sessionBaseUrl.replace(/\/$/, "");
     const sessionUrl = (code: string) => `${base}/session/${encodeURIComponent(code)}`;
+    // Read the session's current state (wdl + custom component modules).
+    const getSession = async (
+      code: string,
+    ): Promise<{ wdl: string; modules: Record<string, string> }> => {
+      const resp = await fetch(sessionUrl(code));
+      const j = (await resp.json().catch(() => ({}))) as { wdl?: string; modules?: Record<string, string> };
+      return { wdl: j.wdl ?? "", modules: j.modules ?? {} };
+    };
+    const postSession = async (code: string, body: unknown): Promise<number> => {
+      const resp = await fetch(sessionUrl(code), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return ((await resp.json().catch(() => ({}))) as { clients?: number }).clients ?? 0;
+    };
 
     server.registerTool(
       "wadi_session_set",
       {
         title: "Push WDL to the live app session",
         description:
-          "Compile-check a `.wdl` and, if it builds, push it to a LIVE session the user is watching in the Wadi app — they see it render (2D + 3D) as you edit. Use this INSTEAD of just returning WDL text whenever the user has given you a session code (they start one in the app via “Co-edit with an agent”). Returns the structural conventions check. Typical loop: wadi_session_get to read the current model → edit → wadi_session_set → read warnings → repeat.",
+          "Compile-check a `.wdl` and, if it builds, push it to a LIVE session the user is watching in the Wadi app — they see it render (2D + 3D) as you edit. Use this INSTEAD of just returning WDL text whenever the user has given you a session code (they start one in the app via “Co-edit with an agent”). If the `.wdl` imports a custom component module, register it first with wadi_session_add_module. Returns the structural conventions check. Typical loop: wadi_session_get → edit → wadi_session_set → read warnings → repeat.",
         inputSchema: {
           session: z.string().describe("The session code the user started in the Wadi app."),
           wdl: z.string().describe("The full .wdl source to push."),
         },
       },
       async ({ session, wdl }) => {
-        const r = checkWdl(wdl);
+        // Compile against the session's registered modules so an `import "ref"` of a
+        // custom component resolves (add it with wadi_session_add_module first).
+        const { modules } = await getSession(session).catch(() => ({ modules: {} as Record<string, string> }));
+        const r = checkWdl(wdl, modules);
         if (!r.ok) {
           const lines = [`❌ Not pushed — ${r.errors.length} error(s). Fix and retry:`];
           for (const e of r.errors) lines.push(`  ✖ ${e.rule ? `[${e.rule}] ` : ""}${e.message}`);
@@ -598,12 +617,7 @@ server.registerTool(
         }
         let clients = 0;
         try {
-          const resp = await fetch(sessionUrl(session), {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ wdl }),
-          });
-          clients = ((await resp.json().catch(() => ({}))) as { clients?: number }).clients ?? 0;
+          clients = await postSession(session, { wdl });
         } catch (e) {
           return { content: [{ type: "text", text: "❌ Push failed: " + (e as Error).message }], isError: true };
         }
@@ -620,18 +634,63 @@ server.registerTool(
       {
         title: "Read the live app session's WDL",
         description:
-          "Return the current `.wdl` in a live session — use it to pick up where the user's model is (or edits they made in the app) before you start changing it. `session` is the code from the app.",
+          "Return the current `.wdl` in a live session (and the names of any custom component modules registered) — use it to pick up where the user's model is (or edits they made in the app) before you start changing it. `session` is the code from the app.",
         inputSchema: { session: z.string().describe("The session code from the Wadi app.") },
       },
       async ({ session }) => {
         try {
-          const resp = await fetch(sessionUrl(session));
-          const wdl = ((await resp.json().catch(() => ({}))) as { wdl?: string }).wdl ?? "";
+          const { wdl, modules } = await getSession(session);
+          const mods = Object.keys(modules);
+          const suffix = mods.length ? `\n\n(custom modules registered: ${mods.join(", ")})` : "";
           return {
             content: [
-              { type: "text", text: wdl ? wdl : "(the session is empty — no model yet; author one and wadi_session_set it)" },
+              { type: "text", text: (wdl ? wdl : "(the session is empty — no model yet; author one and wadi_session_set it)") + suffix },
             ],
           };
+        } catch (e) {
+          return { content: [{ type: "text", text: "❌ Read failed: " + (e as Error).message }], isError: true };
+        }
+      },
+    );
+
+    server.registerTool(
+      "wadi_session_add_module",
+      {
+        title: "Register a reusable component module in the session",
+        description:
+          "Register (or replace) a reusable component module in a LIVE session, so the main `.wdl` can `import \"ref\" as ns` and place it with `use ns.Name at (x,y)`. The module is a `.wdl` holding `component Name { … }` definitions in LOCAL coords (no `house` block). The module is saved inside the user's `.wadi` so the design stays self-contained. Add it BEFORE the wadi_session_set that imports it. Compile-checks the module standalone first.",
+        inputSchema: {
+          session: z.string().describe("The session code from the Wadi app."),
+          ref: z.string().describe('The import ref, e.g. "dining-set".'),
+          wdl: z.string().describe("The module's .wdl source (component definitions only, no house block)."),
+        },
+      },
+      async ({ session, ref, wdl }) => {
+        const key = ref.trim();
+        if (!key) return { content: [{ type: "text", text: "❌ A module ref is required." }], isError: true };
+        try {
+          const clients = await postSession(session, { setModule: { ref: key, wdl } });
+          return {
+            content: [{ type: "text", text: `✅ Registered module "${key}" in session "${session}" (${clients} viewer(s) connected). Now \`import "${key}" as ns\` in the main WDL and wadi_session_set it.` }],
+          };
+        } catch (e) {
+          return { content: [{ type: "text", text: "❌ Add failed: " + (e as Error).message }], isError: true };
+        }
+      },
+    );
+
+    server.registerTool(
+      "wadi_session_list_modules",
+      {
+        title: "List the session's component modules",
+        description: "List the custom component modules registered in a live session (their import refs). Inbuilt packs (std-furniture, konkan/base) are always available and are not listed.",
+        inputSchema: { session: z.string().describe("The session code from the Wadi app.") },
+      },
+      async ({ session }) => {
+        try {
+          const { modules } = await getSession(session);
+          const mods = Object.keys(modules);
+          return { content: [{ type: "text", text: mods.length ? mods.join("\n") : "(no custom modules registered)" }] };
         } catch (e) {
           return { content: [{ type: "text", text: "❌ Read failed: " + (e as Error).message }], isError: true };
         }

@@ -33,6 +33,7 @@
     "gen-parser": "npm --prefix ../wadi-dsl run langium:generate",
     "gen-assets": "node scripts/gen-assets.mjs",
     "dev": "npm run gen-parser && npm run gen-assets && tsx src/server.ts",
+    "local": "npm run gen-parser && npm run gen-assets && tsx src/localCoedit.ts",
     "smoke": "npm run gen-parser && npm run gen-assets && tsx scripts/smoke.mjs",
     "build": "npm run gen-parser && npm run gen-assets && node esbuild.mjs",
     "start": "node dist/server.mjs",

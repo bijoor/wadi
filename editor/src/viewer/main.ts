@@ -1989,7 +1989,16 @@ async function copyAgentPrompt(): Promise<void> {
 // pushes an edit via the wadi_session_set MCP tool — so you watch the design build
 // as the agent works. The app keeps owning Save. See plans/remote-mcp-server.md.
 // ============================================================================
-const MCP_ORIGIN = "https://mcp.wadi.house";
+// The co-edit relay + MCP origin: the hosted server by default, overridden ONLY by a
+// `?mcp=<origin>` query param (used to point at a local dev server for testing). The
+// co-edit prompt is built from this, so it reflects whichever origin is in effect.
+const MCP_ORIGIN = ((): string => {
+  try {
+    const v = new URLSearchParams(location.search).get("mcp");
+    if (v) return v.trim().replace(/\/$/, "");
+  } catch { /* no location */ }
+  return "https://mcp.wadi.house";
+})();
 
 function randomSessionCode(): string {
   // 8 chars from an unambiguous base32 alphabet — the unguessable session capability.
@@ -2003,6 +2012,7 @@ interface LiveSession {
   code: string;
   ws: WebSocket;
   lastWdl: string; // the last WDL sent OR applied — guards the echo loop
+  lastModules: string; // JSON of the last module set sent OR applied — same guard
   updates: number;
   connected: boolean;
   error?: string; // set when an agent's pushed WDL fails to load in the app
@@ -2014,27 +2024,38 @@ const liveSessionPrompt = (code: string): string =>
   `server at ${MCP_ORIGIN}/mcp with session code "${code}": call ` +
   `wadi_session_get({session:"${code}"}) to read the current model, edit the .wdl, and ` +
   `wadi_session_set({session:"${code}", wdl}) to push each change — I am watching it render ` +
-  `live in the Wadi app. Call wadi_wdl_reference first if unsure of the syntax.`;
+  `live in the Wadi app. To reuse a component, register it with ` +
+  `wadi_session_add_module({session:"${code}", ref, wdl}) BEFORE importing it in the main WDL. ` +
+  `Call wadi_wdl_reference first if unsure of the syntax.`;
 
 function startLiveSession(): void {
   if (liveSession) return;
   const code = randomSessionCode();
   const ws = new WebSocket(`${MCP_ORIGIN.replace(/^http/, "ws")}/session/${code}/ws`);
-  liveSession = { code, ws, lastWdl: "", updates: 0, connected: false };
+  liveSession = { code, ws, lastWdl: "", lastModules: "{}", updates: 0, connected: false };
 
   ws.addEventListener("open", () => {
     if (!liveSession) return;
     liveSession.connected = true;
-    // Seed the session with the current model so the agent can read it.
-    const wdl = useConfigStore.getState().wdl;
-    if (wdl) { liveSession.lastWdl = wdl; try { ws.send(JSON.stringify({ type: "wdl", wdl })); } catch { /* */ } }
+    // Seed the session with the current model + its custom modules so the agent reads both.
+    const st = useConfigStore.getState();
+    if (st.wdl) { liveSession.lastWdl = st.wdl; try { ws.send(JSON.stringify({ type: "wdl", wdl: st.wdl })); } catch { /* */ } }
+    const modJson = JSON.stringify(st.modules ?? {});
+    liveSession.lastModules = modJson;
+    if (modJson !== "{}") { try { ws.send(JSON.stringify({ type: "modules", modules: st.modules })); } catch { /* */ } }
     renderLivePanel();
   });
   ws.addEventListener("message", (evt) => {
     if (!liveSession) return;
     try {
-      const msg = JSON.parse(typeof evt.data === "string" ? evt.data : "") as { type?: string; wdl?: string };
-      if (msg?.type === "wdl" && typeof msg.wdl === "string" && msg.wdl !== liveSession.lastWdl) {
+      const msg = JSON.parse(typeof evt.data === "string" ? evt.data : "") as { type?: string; wdl?: string; modules?: Record<string, string> };
+      if (msg?.type === "modules" && msg.modules && typeof msg.modules === "object") {
+        const json = JSON.stringify(msg.modules);
+        if (json !== liveSession.lastModules) {
+          liveSession.lastModules = json; // set BEFORE applying so our store subscriber doesn't echo it back
+          void applyIncomingModules(msg.modules);
+        }
+      } else if (msg?.type === "wdl" && typeof msg.wdl === "string" && msg.wdl !== liveSession.lastWdl) {
         liveSession.lastWdl = msg.wdl; // set BEFORE applying so our store subscriber doesn't echo it back
         liveSession.updates++;
         void applyIncomingWdl(msg.wdl);
@@ -2059,6 +2080,15 @@ async function applyIncomingWdl(wdl: string): Promise<void> {
   renderLivePanel();
 }
 
+// Apply an agent's pushed module set: register it and recompile the live model so an
+// `import "ref"` of a just-added component resolves and renders.
+async function applyIncomingModules(modules: Record<string, string>): Promise<void> {
+  useConfigStore.getState().setModules(modules);
+  const cur = useConfigStore.getState().wdl;
+  if (cur) await window.wadi?.setWdl(cur); // recompile against the new modules
+  renderLivePanel();
+}
+
 function stopLiveSession(): void {
   if (!liveSession) return;
   try { liveSession.ws.close(); } catch { /* */ }
@@ -2074,6 +2104,16 @@ function pushLiveSession(wdl: string): void {
   if (!wdl || wdl === liveSession.lastWdl) return;
   liveSession.lastWdl = wdl;
   try { liveSession.ws.send(JSON.stringify({ type: "wdl", wdl })); } catch { /* */ }
+}
+
+// Push a user- (or agent-) made module change to the session (same echo guard), so the
+// module set stays in sync with the co-editing agent.
+function pushLiveSessionModules(modules: Record<string, string>): void {
+  if (!liveSession || !liveSession.connected) return;
+  const json = JSON.stringify(modules ?? {});
+  if (json === liveSession.lastModules) return;
+  liveSession.lastModules = json;
+  try { liveSession.ws.send(JSON.stringify({ type: "modules", modules })); } catch { /* */ }
 }
 
 function renderLivePanel(flash = false): void {
@@ -2108,10 +2148,17 @@ function renderLivePanel(flash = false): void {
 // pushLiveSession skips edits that came FROM the session). Registered once.
 function wireLiveSessionSync(): void {
   let lastWdl = useConfigStore.getState().wdl;
+  let lastModules = JSON.stringify(useConfigStore.getState().modules ?? {});
   useConfigStore.subscribe((state) => {
-    if (state.wdl === lastWdl) return;
-    lastWdl = state.wdl;
-    pushLiveSession(state.wdl);
+    if (state.wdl !== lastWdl) {
+      lastWdl = state.wdl;
+      pushLiveSession(state.wdl);
+    }
+    const modJson = JSON.stringify(state.modules ?? {});
+    if (modJson !== lastModules) {
+      lastModules = modJson;
+      pushLiveSessionModules(state.modules);
+    }
   });
 }
 
