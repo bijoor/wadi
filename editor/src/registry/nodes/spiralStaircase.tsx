@@ -12,6 +12,7 @@ import { defaultLayerFor } from "../../three/layers";
 import { uniqueName } from "../../state/naming";
 import { spiralStaircaseFields } from "../../schema/fields/spiralStaircase";
 import { SPIRAL_POLE } from "./spiralStaircase.constraints";
+import { spiralStaircaseToWdl } from "../../../../wadi-dsl/src/generator/fromHouseConfig"; // shared pure decompiler builder (see item.tsx)
 import type { HouseObject } from "../../schema/houseConfig";
 import type { NodeDefinition } from "../types";
 
@@ -26,6 +27,9 @@ export const spiralStaircaseNode: NodeDefinition = {
   layerRole: "structure",
   fields: spiralStaircaseFields, // → AutoForm (no bespoke Form needed)
   constraints: [SPIRAL_POLE], // per-primitive rule (P5) — merged into allConstraints()
+
+  // Decompile: own the bespoke `spiral_staircase … radius … total_height …` line.
+  emitWdl: (obj) => spiralStaircaseToWdl(obj),
 
   makeDefault: (cfg, existing) =>
     ({

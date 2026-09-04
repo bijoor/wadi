@@ -15,6 +15,12 @@ import { defaultLayerFor } from "../../three/layers";
 import { metersToUnits as metersToUnitsPlan } from "../../svg2d/format";
 import { furnitureAsset, DEFAULT_FURNITURE_ID } from "../../furniture/catalog";
 import { uniqueName } from "../../state/naming";
+// Decompiler for this primitive: the shared PURE string builder in the sibling
+// wadi-dsl emitter (imported by relative path — the same cross-package convention
+// wadi-dsl uses to reach editor/src; fromHouseConfig is headless-pure, so this keeps
+// the node headless-safe). The DSL switch and this `emitWdl` call the ONE builder —
+// no drift, and no build alias needed since a relative path resolves everywhere.
+import { itemToWdl } from "../../../../wadi-dsl/src/generator/fromHouseConfig";
 import type { HouseObject } from "../../schema/houseConfig";
 import type { NodeDefinition } from "../types";
 
@@ -36,6 +42,10 @@ export const itemNode: NodeDefinition = {
   label: "Furniture",
   addable: true,
   defaultLayerId: "furniture",
+
+  // Decompile: own the bespoke `item … at (x, y) …` line (the editor injects this
+  // via fromHouseConfig's per-object hook; headless keeps the same builder).
+  emitWdl: (obj) => itemToWdl(obj),
 
   makeDefault: (cfg, existing) => {
     return {

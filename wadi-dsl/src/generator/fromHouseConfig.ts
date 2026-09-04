@@ -217,7 +217,11 @@ function emitKitchen(w: W, indent: number, o: Obj): void {
   w.line(indent, s + commonSuffix(o));
 }
 
-function emitItem(w: W, indent: number, o: Obj): void {
+// Per-primitive `.wdl` emitters, exported as PURE string builders so a registry
+// primitive's NodeDefinition.emitWdl can own its decompile by delegating here (the
+// editor injects them via emitFloorObject's hook; headless keeps the switch below).
+// One source of truth: the switch and the node capability call the same function.
+export function itemToWdl(o: Obj): string {
   let s = "item";
   if (o.name !== undefined) s += ` name ${str(o.name)}`;
   s += " " + assetText(o) + ` ${at(o)}`;
@@ -226,7 +230,7 @@ function emitItem(w: W, indent: number, o: Obj): void {
   if (o.anchor_to !== undefined) s += ` anchor_to ${str(o.anchor_to)}`;
   if (o.anchor !== undefined) s += ` anchor ${o.anchor}`;
   if (has(o, "gap_x") || has(o, "gap_y")) s += ` gap (${fld(o, "gap_x")}, ${fld(o, "gap_y")})`;
-  w.line(indent, s + commonSuffix(o, false));
+  return s + commonSuffix(o, false);
 }
 
 function emitRigOp(o: Obj): string {
@@ -256,7 +260,7 @@ function emitRigOp(o: Obj): string {
   }
 }
 
-function emitModel(w: W, indent: number, o: Obj): void {
+export function modelToWdl(o: Obj): string {
   let s = "model";
   if (o.name !== undefined) s += ` name ${str(o.name)}`;
   s += " " + assetText(o) + ` ${at(o)}`;
@@ -264,13 +268,10 @@ function emitModel(w: W, indent: number, o: Obj): void {
   if (has(o, "scale")) s += ` scale ${fld(o, "scale")}`;
   s += commonSuffix(o, false);
   const rig = (o.rig as Obj[] | undefined) ?? [];
-  if (!rig.length) {
-    w.line(indent, s);
-    return;
-  }
-  w.line(indent, s + " {");
-  for (const op of rig) w.line(indent + 1, emitRigOp(op));
-  w.line(indent, "}");
+  if (!rig.length) return s;
+  // Rig ops are one indent level in from the header; emitBlock re-applies the
+  // object's base indent to each relative-indented line.
+  return [s + " {", ...rig.map((op) => "  " + emitRigOp(op)), "}"].join("\n");
 }
 
 function emitComponentUse(w: W, indent: number, o: Obj): void {
@@ -399,14 +400,14 @@ function emitObjectDecl(w: W, indent: number, o: Obj): void {
 
 // Bespoke `spiral_staircase` emit (a PROMOTED primitive): `at (x, y)` placement +
 // named clauses, no braces — the inverse of the SpiralStaircase grammar rule.
-function emitSpiralStaircase(w: W, indent: number, o: Obj): void {
+export function spiralStaircaseToWdl(o: Obj): string {
   let s = "spiral_staircase";
   if (o.name !== undefined) s += ` ${nameTok(o.name)}`;
   s += ` ${at(o)} radius ${fld(o, "radius")} total_height ${fld(o, "total_height")}`;
   for (const f of ["turns", "steps", "tread_thickness", "pole_radius"]) {
     if (has(o, f)) s += ` ${f} ${fld(o, f)}`;
   }
-  w.line(indent, s + commonSuffix(o, false));
+  return s + commonSuffix(o, false);
 }
 
 // A per-object WDL emitter a caller can inject so a contributed primitive owns
@@ -425,6 +426,13 @@ function emitBlock(w: W, indent: number, block: string): void {
 }
 
 function emitFloorObject(w: W, indent: number, o: Obj, emit?: EmitObjectHook): void {
+  // Consult the registry-injected per-primitive emitter FIRST, for ANY type. The
+  // editor supplies it (NodeDefinition.emitWdl), so a registry-driven primitive's
+  // own decompiler wins — including our own item / model / spiral_staircase, whose
+  // node files delegate back to the exported *ToWdl builders below. Headless callers
+  // pass no hook and fall through to the built-in switch (byte-identical output).
+  const custom = emit?.(o);
+  if (custom != null) return emitBlock(w, indent, custom);
   switch (o.type) {
     case "room": return emitRoom(w, indent, o);
     case "wall": return emitWall(w, indent, o);
@@ -434,20 +442,15 @@ function emitFloorObject(w: W, indent: number, o: Obj, emit?: EmitObjectHook): v
     case "plinth": return emitNamedBox(w, indent, "plinth", o, { height: true, material: true });
     case "ground": return emitNamedBox(w, indent, "ground", o, { height: true, material: true });
     case "staircase": return emitStaircase(w, indent, o);
-    case "spiral_staircase": return emitSpiralStaircase(w, indent, o);
+    case "spiral_staircase": return emitBlock(w, indent, spiralStaircaseToWdl(o));
     case "kitchen_platform": return emitKitchen(w, indent, o);
-    case "item": return emitItem(w, indent, o);
-    case "model": return emitModel(w, indent, o);
+    case "item": return emitBlock(w, indent, itemToWdl(o));
+    case "model": return emitBlock(w, indent, modelToWdl(o));
     case "component": return emitComponentUse(w, indent, o);
     case "roof": return emitRoof(w, indent, o);
-    // Any other (contributed) type: let a registered per-primitive emitter own
-    // its bespoke syntax; otherwise decompile through the generic ObjectDecl
-    // path, which itself falls back to `raw` for non-scalar fields.
-    default: {
-      const custom = emit?.(o);
-      if (custom !== undefined) return emitBlock(w, indent, custom);
-      return emitObjectDecl(w, indent, o);
-    }
+    // Any other (contributed) type decompiles through the generic ObjectDecl path,
+    // which itself falls back to `raw` for non-scalar fields.
+    default: return emitObjectDecl(w, indent, o);
   }
 }
 

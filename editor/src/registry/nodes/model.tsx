@@ -11,6 +11,7 @@ import { toThreePos } from "../../three/coords";
 import { metersToUnits as metersToUnits3D } from "../../three/units";
 import { defaultLayerFor } from "../../three/layers";
 import { metersToUnits as metersToUnitsPlan } from "../../svg2d/format";
+import { modelToWdl } from "../../../../wadi-dsl/src/generator/fromHouseConfig"; // shared pure decompiler builder (see item.tsx)
 import type { RigOp } from "../../three/rig";
 import type { NodeDefinition } from "../types";
 
@@ -34,6 +35,9 @@ export const modelNode: NodeDefinition = {
   // DSL (`model asset { … } { rig }`) or placed by a plugin, not spawned blank.
   addable: false,
   layerRole: "structure",
+
+  // Decompile: own the bespoke `model … { rig … }` block (headless keeps the same builder).
+  emitWdl: (obj) => modelToWdl(obj),
 
   render3D: (obj, ctx) => {
     const asset = obj.asset as ItemAssetShape | undefined;
