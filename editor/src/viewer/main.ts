@@ -5182,6 +5182,27 @@ function wireWdlEditor(): void {
     }
   };
 
+  // Two Monaco editors in one WDL pane fight over keyboard input: the main editor keeps
+  // focus and absorbs the component the user pastes/types for the module, so the module
+  // saves its untouched placeholder ("the code is gone" bug) and the main WDL gets
+  // corrupted. While the module editor is open we HIDE the main editor's host: a
+  // display:none element cannot be focused or receive input, so the module editor owns
+  // it. Hiding (not disposing) preserves the instance, its content, and its layout —
+  // we just nudge Monaco to re-measure on restore. readOnly is a belt-and-suspenders.
+  const suspendMainEditor = (): void => {
+    if (!handle) return;
+    host.style.display = "none";
+    handle.setReadOnly(true);
+  };
+  const resumeMainEditor = (): void => {
+    if (!handle) return;
+    host.style.display = "";
+    handle.setReadOnly(false);
+    // The editor was hidden when Monaco last measured; re-layout now it's visible.
+    handle.layout();
+    requestAnimationFrame(() => handle?.layout());
+  };
+
   const apply = async (): Promise<void> => {
     const src = getVal();
     setStatus("busy", "Compiling…");
@@ -5332,7 +5353,11 @@ function wireWdlEditor(): void {
   // The module code editor's Monaco instance (when the editor view is open). Disposed
   // whenever we leave that view so it never leaks.
   let moduleEditor: import("./wdlMonaco").WdlEditorHandle | null = null;
-  const disposeModuleEditor = (): void => { moduleEditor?.dispose(); moduleEditor = null; };
+  const disposeModuleEditor = (): void => {
+    moduleEditor?.dispose();
+    moduleEditor = null;
+    resumeMainEditor(); // main editor editable again now that the module editor is gone
+  };
 
   const importRefs = (): string[] => {
     const out: string[] = [];
@@ -5374,13 +5399,15 @@ function wireWdlEditor(): void {
   // the main pane, mounted into the panel. Create a new module or edit an existing
   // custom one. Saving stores the module and re-applies, so any error in the component
   // surfaces in the compile status.
+  const NEW_MODULE_TEMPLATE =
+    `component MyComponent {\n  // Reusable objects in LOCAL coords (origin 0,0):\n  //   item, room, wall, slab, beam, pillar, staircase, …\n}\n`;
   const openModuleEditor = (ref?: string, initialSrc?: string): void => {
     disposeModuleEditor();
+    suspendMainEditor(); // hide + freeze the main editor so it can't absorb the module's input
     const isEdit = ref !== undefined && ref in useConfigStore.getState().modules;
     const src0 =
       initialSrc ??
-      (ref ? useConfigStore.getState().modules[ref] ?? "" :
-        `component MyComponent {\n  // Reusable objects in LOCAL coords (origin 0,0):\n  //   item, room, wall, slab, beam, pillar, staircase, …\n}\n`);
+      (ref ? useConfigStore.getState().modules[ref] ?? "" : NEW_MODULE_TEMPLATE);
     modsBody.innerHTML =
       `<div class="mod-sec">${isEdit ? "Edit module" : "New module"}</div>` +
       `<div class="mod-editor">` +
@@ -5395,11 +5422,23 @@ function wireWdlEditor(): void {
       `</div></div>`;
     const errEl = document.getElementById("mod-ed-err") as HTMLElement;
     const refInput = document.getElementById("mod-ed-ref") as HTMLInputElement;
+    const showErr = (msg: string): void => { errEl.hidden = false; errEl.textContent = msg; };
     const saveModule = (): void => {
       const key = refInput.value.trim();
-      const code = moduleEditor ? moduleEditor.getValue() : src0;
-      if (!key) { errEl.hidden = false; errEl.textContent = "Give the module a name (the import ref)."; return; }
-      if (!code.trim()) { errEl.hidden = false; errEl.textContent = "The module source is empty."; return; }
+      // Don't read src0 as a fallback: if the editor hasn't mounted we'd silently
+      // store the starter template as the module (the "code is gone" bug). Wait for it.
+      if (!moduleEditor) { showErr("The code editor is still loading — try again in a moment."); return; }
+      const code = moduleEditor.getValue();
+      if (!key) { showErr("Give the module a name (the import ref)."); return; }
+      if (!code.trim()) { showErr("The module source is empty."); return; }
+      // Guard against saving the untouched starter template. This almost always means
+      // the pasted/typed component landed somewhere other than this editor, so saving
+      // it would register a module with no real component (import resolves, but
+      // `use ns.Whatever` fails). Surface it instead of losing the user's work silently.
+      if (!isEdit && code.trim() === NEW_MODULE_TEMPLATE.trim()) {
+        showErr("This is still the starter template — click into the code box above, paste your component there, then Save.");
+        return;
+      }
       useConfigStore.getState().addModule(key, code);
       disposeModuleEditor();
       renderModules();

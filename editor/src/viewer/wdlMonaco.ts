@@ -43,6 +43,9 @@ export interface WdlEditorHandle {
   onApplyShortcut(cb: () => void): void;
   focus(): void;
   layout(): void;
+  /** Toggle readOnly (used to make the main editor inert while the module editor
+   *  overlay is open, so input for the module can't land in the main WDL). */
+  setReadOnly(ro: boolean): void;
   /** Tear down the underlying Monaco instance (call when removing the editor DOM). */
   dispose(): void;
 }
@@ -120,6 +123,7 @@ export function mountWdlMonaco(container: HTMLElement, initialValue: string): Wd
     },
     focus: () => ed.focus(),
     layout: () => ed.layout(),
+    setReadOnly: (ro) => ed.updateOptions({ readOnly: ro }),
     dispose: () => {
       document.removeEventListener("keydown", onDocKeyDown, true);
       ed.dispose();
