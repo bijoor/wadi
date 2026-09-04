@@ -9,6 +9,12 @@ import { validate, type HouseConfig } from "../schema/houseConfig";
 // almost nothing and can run on every model change. It stays out of the lazy
 // compiler chunk. Only compiling WDL -> model (below) needs the heavy Langium path.
 import { emitWdl } from "wadi-wdl-emitter";
+// The registry's per-primitive decompile capability: a contributed primitive can
+// own its bespoke `.wdl` via NodeDefinition.emitWdl. Injected here so the generic
+// decompiler consults it; headless callers (wadi-mcp/CLI) omit it and keep the
+// generic form. Registry is already in the app graph (the store loads it), so this
+// static import adds no new weight to the everyday viewer.
+import { emitNodeWdl } from "../registry/registry";
 
 // SYNC decompile: the current model -> its .wdl text. Cheap enough that the store
 // keeps it ALWAYS in sync, so the model natively carries its WDL. Guarded: a
@@ -16,7 +22,7 @@ import { emitWdl } from "wadi-wdl-emitter";
 export function configToWdlText(config: HouseConfig | null | undefined): string {
   if (!config) return "";
   try {
-    return emitWdl(config as unknown as Record<string, unknown>);
+    return emitWdl(config as unknown as Record<string, unknown>, "House", { emitObject: emitNodeWdl });
   } catch {
     return "";
   }

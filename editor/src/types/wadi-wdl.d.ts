@@ -12,8 +12,18 @@ declare module "wadi-wdl-compiler" {
 }
 
 declare module "wadi-wdl-emitter" {
+  export interface EmitWdlOptions {
+    /** Per-primitive decompile hook (the registry `emitWdl` capability). Returns a
+     *  contributed primitive's bespoke `.wdl` block, or undefined for the generic
+     *  form. Omitted by headless callers. */
+    emitObject?: (obj: Record<string, unknown>) => string | null | undefined;
+  }
   /** Decompile a HouseConfig back to editable .wdl text. */
-  export function emitWdl(config: Record<string, unknown>, houseName?: string): string;
+  export function emitWdl(
+    config: Record<string, unknown>,
+    houseName?: string,
+    opts?: EmitWdlOptions,
+  ): string;
 }
 
 // The Monaco WDL language, reused from the DSL playground (highlighting + the

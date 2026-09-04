@@ -41,6 +41,14 @@ export function addableNodeTypes(): string[] {
   return allNodes().filter((d) => d.addable).map((d) => d.type);
 }
 
+/** Decompile capability: a registered primitive's bespoke `.wdl` for one object,
+ *  or undefined to let the generic decompiler handle it. Injected into
+ *  `fromHouseConfig` (via `configToWdlText`) as the per-primitive emitter map. */
+export function emitNodeWdl(obj: Record<string, unknown>): string | undefined {
+  const out = getNode(String((obj as { type?: unknown }).type))?.emitWdl?.(obj);
+  return out == null ? undefined : out;
+}
+
 // --- builtin registrations ---------------------------------------------------
 // Legacy object types (room, wall, pillar, roof, …) still live on the per-type
 // switches in the renderers; migrate them here opportunistically. `item` (GLB

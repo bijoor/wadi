@@ -409,7 +409,22 @@ function emitSpiralStaircase(w: W, indent: number, o: Obj): void {
   w.line(indent, s + commonSuffix(o, false));
 }
 
-function emitFloorObject(w: W, indent: number, o: Obj): void {
+// A per-object WDL emitter a caller can inject so a contributed primitive owns
+// its own bespoke decompile (the registry `emitWdl` capability). Returns the
+// object's WDL block (one or more lines, relative-indented), or `undefined` to
+// let the generic path handle it. Headless callers pass none → generic form.
+export type EmitObjectHook = (o: Obj) => string | undefined;
+
+// Write a multi-line block from an injected emitter at `indent`, preserving any
+// relative indentation the block carries.
+function emitBlock(w: W, indent: number, block: string): void {
+  for (const line of block.split("\n")) {
+    if (line.trim() === "") w.blank();
+    else w.line(indent, line);
+  }
+}
+
+function emitFloorObject(w: W, indent: number, o: Obj, emit?: EmitObjectHook): void {
   switch (o.type) {
     case "room": return emitRoom(w, indent, o);
     case "wall": return emitWall(w, indent, o);
@@ -425,9 +440,14 @@ function emitFloorObject(w: W, indent: number, o: Obj): void {
     case "model": return emitModel(w, indent, o);
     case "component": return emitComponentUse(w, indent, o);
     case "roof": return emitRoof(w, indent, o);
-    // Any other (contributed) type decompiles through the generic ObjectDecl path,
-    // which itself falls back to `raw` for non-scalar fields.
-    default: return emitObjectDecl(w, indent, o);
+    // Any other (contributed) type: let a registered per-primitive emitter own
+    // its bespoke syntax; otherwise decompile through the generic ObjectDecl
+    // path, which itself falls back to `raw` for non-scalar fields.
+    default: {
+      const custom = emit?.(o);
+      if (custom !== undefined) return emitBlock(w, indent, custom);
+      return emitObjectDecl(w, indent, o);
+    }
   }
 }
 
@@ -616,7 +636,7 @@ function baseName(ref: string): string {
   return ref.includes(".") ? ref.slice(ref.lastIndexOf(".") + 1) : ref;
 }
 
-function emitComponentDef(w: W, indent: number, name: string, def: Obj): void {
+function emitComponentDef(w: W, indent: number, name: string, def: Obj, emit?: EmitObjectHook): void {
   let head = `component ${baseName(name)}`;
   if (def.goal !== undefined) head += ` goal ${str(def.goal)}`;
   // `expose as <ns.type>` promotes this component to a typed primitive (P0).
@@ -637,13 +657,21 @@ function emitComponentDef(w: W, indent: number, name: string, def: Obj): void {
   }
   if (def.variables) emitVars(w, indent + 1, def.variables);
   if (def.points) emitPoints(w, indent + 1, def.points);
-  for (const o of (def.objects ?? []) as Obj[]) emitFloorObject(w, indent + 1, o);
+  for (const o of (def.objects ?? []) as Obj[]) emitFloorObject(w, indent + 1, o, emit);
   w.line(indent, "}");
 }
 
 // ---- top level ------------------------------------------------------------
 
-export function emitWdl(config: Obj, houseName = "House"): string {
+export interface EmitWdlOptions {
+  // Per-primitive WDL emitter (the registry `emitWdl` capability). When it
+  // returns a string for a contributed object type, that bespoke form is used
+  // instead of the generic ObjectDecl decompile. Omitted by headless callers.
+  emitObject?: EmitObjectHook;
+}
+
+export function emitWdl(config: Obj, houseName = "House", opts: EmitWdlOptions = {}): string {
+  const emit = opts.emitObject;
   // Clone up front: hoistConfiguratorTargets mutates the config (synthesises vars,
   // rewrites points), and callers pass their own object.
   config = structuredClone(config);
@@ -653,7 +681,7 @@ export function emitWdl(config: Obj, houseName = "House"): string {
 
   // Top-level component library (before `house`).
   if (config.components && typeof config.components === "object") {
-    for (const [cname, def] of Object.entries(config.components as Record<string, Obj>)) emitComponentDef(w, 0, cname, def);
+    for (const [cname, def] of Object.entries(config.components as Record<string, Obj>)) emitComponentDef(w, 0, cname, def, emit);
     w.blank();
   }
 
@@ -694,7 +722,7 @@ export function emitWdl(config: Obj, houseName = "House"): string {
     if (floor.slab_thickness !== undefined) fh += ` slab_thickness ${num(floor.slab_thickness)}`;
     if (floor.enabled !== undefined) fh += ` enabled ${val(floor.enabled === true ? 1 : floor.enabled === false ? 0 : floor.enabled)}`;
     w.line(1, fh + " {");
-    for (const o of (floor.objects ?? []) as Obj[]) emitFloorObject(w, 2, o);
+    for (const o of (floor.objects ?? []) as Obj[]) emitFloorObject(w, 2, o, emit);
     w.line(1, "}");
   }
 

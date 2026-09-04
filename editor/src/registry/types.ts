@@ -132,6 +132,13 @@ export interface NodeDefinition {
   /** CAPABILITY — 2D elevation: an SVG fragment for one elevation direction.
    *  Consumed by the "elevation" view (wired in P1d). */
   drawElevation?: (obj: Record<string, unknown>, ctx: NodeElevationCtx) => string | null;
+  /** CAPABILITY — decompile: emit this object's bespoke `.wdl` for the given
+   *  instance, so a contributed primitive owns its own round-trip syntax instead
+   *  of the generic `type Name { field value … }` form. Return the WDL block
+   *  (one or more lines; relative indentation is preserved), or undefined/null to
+   *  fall back to the generic decompiler. Consulted by `fromHouseConfig` via the
+   *  editor's injected emitter map; headless callers keep the generic form. */
+  emitWdl?: (obj: Record<string, unknown>) => string | null | undefined;
   /** Structural constraints this primitive contributes, checked alongside the
    *  house-level C-rules (merged into allConstraints() by the lint registry).
    *  Typed `unknown[]` here to avoid a value dependency on the lint package;
