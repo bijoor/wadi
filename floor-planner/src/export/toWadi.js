@@ -9,6 +9,8 @@
 // emitted — that is exactly what you refine in Wadi next: a declared connection
 // with no door is C11's cue to add one (or leave the wall off for an opening).
 
+import { emitWdl } from 'wadi-wdl-emitter'
+
 const PER_UNIT = 10 // Wadi feet_inches default: 10 project units = 1 ft
 
 // Connections reference rooms BY NAME, so two rooms sharing a name would collapse
@@ -82,6 +84,13 @@ export function modelToWadi(model, opts = {}) {
     },
     floors: wadiFloors,
   }
+}
+
+/** The planner model → editable Wadi `.wdl` text (the decompile of the HouseConfig).
+ *  This is what we hand off / push to a live session so the viewer renders it and the
+ *  agent can keep editing it as code. */
+export function modelToWdl(model, opts = {}) {
+  return emitWdl(modelToWadi(model, opts), opts.houseName ?? 'Sketch')
 }
 
 // The low-level Tauri invoke, present in ANY Tauri v2 webview (no package needed).

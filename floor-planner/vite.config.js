@@ -9,6 +9,14 @@ import path from 'node:path'
 export default defineConfig({
   base: './',
   plugins: [react()],
+  resolve: {
+    alias: {
+      // The pure config -> .wdl decompiler from the sibling wadi-dsl package, so the
+      // planner can hand off editable WDL (and push it to a live co-edit session).
+      // Same bare specifier the editor aliases; Vite transpiles the .ts on import.
+      'wadi-wdl-emitter': path.resolve(__dirname, '..', 'wadi-dsl', 'src', 'generator', 'fromHouseConfig.ts'),
+    },
+  },
   build: {
     outDir: path.resolve(__dirname, '../docs/planner'),
     emptyOutDir: true,
