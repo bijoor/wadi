@@ -1,4 +1,6 @@
-const KEY = 'floor-planner:model:v1'
+// v2: coordinates are PROJECT UNITS (was cells in v1). Old v1 autosaves are on a
+// different scale, so bumping the key drops them and loads the fresh sample.
+const KEY = 'floor-planner:model:v2'
 
 export function saveLocal(model) {
   try {

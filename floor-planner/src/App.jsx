@@ -31,11 +31,12 @@ export default function App() {
     saveTimer.current = setTimeout(() => {
       saveLocal({
         grid: state.grid, plot: state.plot, floors: state.floors,
-        rooms: state.rooms, edges: state.edges, activeFloor: state.activeFloor,
+        rooms: state.rooms, edges: state.edges, build: state.build,
+        activeFloor: state.activeFloor,
       })
     }, 400)
     return () => clearTimeout(saveTimer.current)
-  }, [state.grid, state.plot, state.floors, state.rooms, state.edges, state.activeFloor])
+  }, [state.grid, state.plot, state.floors, state.rooms, state.edges, state.build, state.activeFloor])
 
   // Keyboard shortcuts.
   useEffect(() => {
