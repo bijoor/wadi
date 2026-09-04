@@ -10,7 +10,7 @@ house TwoRoom {
   // No slab modelled ⇒ slab_thickness 0 so the walls don't float (convention C3).
   floor 1 "Ground" slab_thickness 0 {
     room Living at (4, 4) size (200, 240) {
-      wall west                                       // exterior side, enclosed (C2)
+      wall west  { gap   Padvi     at 90 size (48, 108) }  // full-height frameless opening
       wall south { door  FrontDoor at 80 size (34, 84) }
       wall east  { door  Passage   at 90 size (32, 84) }
       wall north { window LivWin    at 70 size (60, 50) sill 35 }

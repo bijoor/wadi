@@ -58,7 +58,9 @@ function doorOnShared(room: Bag, side: Side, lo: number, hi: number): boolean {
   const base = vertical ? num(room.y) : num(room.x);
   const wallLength = vertical ? num(room.length) : num(room.width);
   for (const op of ops) {
-    if (op?.kind !== "door") continue;
+    // A `door` OR a `gap` (frameless passage) satisfies a declared connection;
+    // a `window` does not (you can't pass through it).
+    if (op?.kind !== "door" && op?.kind !== "gap") continue;
     const start = openingStartOffset(
       op.anchor as "start" | "center" | "end" | undefined,
       num(op.offset),

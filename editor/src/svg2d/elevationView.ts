@@ -337,7 +337,7 @@ export function generateElevationView(
         }
       }
 
-      if (objType === "door" || objType === "window") continue;
+      if (objType === "door" || objType === "window" || objType === "gap") continue;
       // Plinth/ground are drawn separately (plinth rect below, ground datum
       // above) — they don't take part in the wall/opening pipeline.
       if (objType === "plinth" || objType === "ground") continue;
@@ -353,7 +353,7 @@ export function generateElevationView(
     // Pre-group doors/windows by parent wall
     const wallOpenings: Record<string, Obj[]> = {};
     for (const obj of activeObjects(floorConfig.objects as Obj[])) {
-      if (obj.type === "door" || obj.type === "window") {
+      if (obj.type === "door" || obj.type === "window" || obj.type === "gap") {
         let wallKey: string;
         if ("room" in obj) {
           const roomName = obj.room as string;
@@ -944,13 +944,18 @@ export function generateElevationView(
         if (openingType === "window") {
           const sillHeight = (opening.sill_height as number | undefined) ?? 30;
           openingZBottom = objZ + sillHeight;
+        } else if (openingType === "gap") {
+          // A gap can be lifted off the floor (a pass-through); default flush.
+          openingZBottom = objZ + ((opening.sill_height as number | undefined) ?? 0);
         } else {
           openingZBottom = objZ;
         }
         const openingSvgBottomY = zToY(openingZBottom);
         const openingSvgTopY = zToY(openingZBottom + openingHeight);
         const openingSvgHeight = openingSvgBottomY - openingSvgTopY;
-        const fillColor = openingType === "window" ? "#87CEEB" : "#D2691E";
+        // door → leaf brown, window → glass blue, gap → open (light void).
+        const fillColor =
+          openingType === "window" ? "#87CEEB" : openingType === "gap" ? "#f5f5f5" : "#D2691E";
         svg += `<rect x="${f(openingX)}" y="${fFloat(openingSvgTopY)}" width="${f(openingWidth)}" height="${fFloat(openingSvgHeight)}" fill="${fillColor}" stroke="#000" stroke-width="0.5"/>\n`;
 
         // Collect every viewer-facing window for sill dimensioning, not

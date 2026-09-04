@@ -20,6 +20,7 @@ export const BUILTIN_ROLE: Record<string, LayerRole> = {
   item: "furniture",
   door: "openings",
   window: "openings",
+  gap: "openings",
   plinth: "site",
   ground: "site",
 };

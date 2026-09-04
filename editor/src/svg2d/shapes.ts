@@ -115,6 +115,31 @@ export function svgDrawDoor(
   return `<rect x="${f(x - 2)}" y="${f(y)}" width="4" height="${f(width)}" fill="#A0522D" stroke="#000" stroke-width="0.5"/>\n`;
 }
 
+// A frameless gap (open passage / cased opening): drawn as an open threshold —
+// no leaf, no glass. Two jamb ticks bracket a light dashed sill line across the
+// opening, so it reads as a break in the wall rather than a door or window.
+export function svgDrawGap(
+  x: number,
+  y: number,
+  width: number,
+  direction: string = "north",
+): string {
+  const d = direction.toLowerCase();
+  const jamb = 3; // tick half-length across the wall
+  if (d === "north" || d === "south") {
+    return (
+      `<line x1="${f(x)}" y1="${f(y - jamb)}" x2="${f(x)}" y2="${f(y + jamb)}" stroke="#555" stroke-width="0.75"/>\n` +
+      `<line x1="${f(x + width)}" y1="${f(y - jamb)}" x2="${f(x + width)}" y2="${f(y + jamb)}" stroke="#555" stroke-width="0.75"/>\n` +
+      `<line x1="${f(x)}" y1="${f(y)}" x2="${f(x + width)}" y2="${f(y)}" stroke="#999" stroke-width="0.5" stroke-dasharray="3 2"/>\n`
+    );
+  }
+  return (
+    `<line x1="${f(x - jamb)}" y1="${f(y)}" x2="${f(x + jamb)}" y2="${f(y)}" stroke="#555" stroke-width="0.75"/>\n` +
+    `<line x1="${f(x - jamb)}" y1="${f(y + width)}" x2="${f(x + jamb)}" y2="${f(y + width)}" stroke="#555" stroke-width="0.75"/>\n` +
+    `<line x1="${f(x)}" y1="${f(y)}" x2="${f(x)}" y2="${f(y + width)}" stroke="#999" stroke-width="0.5" stroke-dasharray="3 2"/>\n`
+  );
+}
+
 export function svgDrawWindow(
   x: number,
   y: number,

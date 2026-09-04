@@ -346,7 +346,7 @@ RoomWall:
         ('height' height=Expr)? ('height_end' height_end=Expr)?
         ('{' openings+=Opening* '}')?;
 Opening:
-    kind=('door' | 'window') name=NameRef
+    kind=('door' | 'window' | 'gap') name=NameRef
     'at' offset=Expr ('from' anchor=OpeningAnchor)? 'size' '(' width=Expr ',' height=Expr ')'
     ('sill' sill=Expr)? (open?='open')? ('direction' direction=Side)?;
 OpeningAnchor returns string:

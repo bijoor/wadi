@@ -166,6 +166,23 @@ export function roomSideOpenToWeather(
   return true;
 }
 
+// Is the world point (px,py) open to the weather on floor `wallFloor`? True iff
+// no room on that floor contains it. This is the per-FACE version of the
+// exterior test: a wall's big faces are classified along their length by
+// `splitWallByCoverage`, but a corner block's exposed END CAP needs its own
+// verdict — probe just past that end cap and brick it iff exposed. Without this,
+// an internal N/S wall that owns an external corner leaves a flat-paint (white)
+// end cap standing against the adjacent external wall's brick (the "white column
+// at the corner"): the external/internal call, made per whole wall, breaks where
+// an external and an internal wall meet. `wallFloor` omitted → all floors count.
+export function pointExposedOnFloor(
+  rects: ReadonlyArray<Rect & { floor?: number }>,
+  px: number, py: number, wallFloor?: number,
+): boolean {
+  const same = wallFloor === undefined ? rects : rects.filter((r) => (r.floor ?? 0) === wallFloor);
+  return !inAnyRoom(same, px, py);
+}
+
 // Split a wall run [lo,hi] (varying along `alongAxis`) into exposed/covered
 // segments, based on which sub-intervals have a room JUST BEYOND the outer face.
 // `beyond` is the fixed perpendicular coordinate of the sample line (already a

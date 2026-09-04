@@ -83,7 +83,7 @@ export function modelToWadi(model, opts = {}) {
         name: nameById.get(r.id),
         x: r.x, y: r.y, width: r.w, length: r.h,
       }
-      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1)
+      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight)
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]

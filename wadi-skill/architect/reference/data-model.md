@@ -356,6 +356,27 @@ Flat door/window remain valid as a legacy schema — new configs nest them insid
 | `open` | boolean |  |  |
 
 
+### `gap`
+
+A flat `gap` — the frameless-void counterpart of the flat door/window, produced when a nested `gap` opening is expanded. A gap is always bare (no leaf/glazing); `sill_height` lifts a pass-through off the floor.
+
+| field | type | req | notes |
+|---|---|---|---|
+| `type` | literal `gap` | **yes** |  |
+| `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
+| `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
+| `layer` | string |  | *(shared — see top)* |
+| `name` | string | **yes** |  |
+| `x` | number | **yes** |  |
+| `y` | number | **yes** |  |
+| `width` | number > 0 | **yes** |  |
+| `height` | number > 0 | **yes** |  |
+| `sill_height` | number ≥ 0 |  |  |
+| `direction` | enum: `north` `south` `east` `west` | **yes** |  |
+| `room` | string |  |  |
+| `wall` | string |  |  |
+
+
 ### `kitchen_platform`
 
 Kitchen platform — a polyline countertop / cooking slab that runs along the base of walls. Path is the wall-side edge; the platform extends `depth` units perpendicular to each segment on the given `side`. Renders as one box per path segment; corners meet at the shared point (no fancy mitering in v1).
@@ -437,7 +458,7 @@ The plinth is now a normal object placed on the "Plinth" floor (the first floor,
 
 | field | type | req | notes |
 |---|---|---|---|
-| `kind` | enum: `door` `window` | **yes** |  |
+| `kind` | enum: `door` `window` `gap` | **yes** | `door` (framed leaf) / `window` (framed glazing) / `gap` (a FRAMELESS void in the wall: an open passage, cased opening, or pass-through — no leaf, no frame, no glazing). A full-height gap (`height` = the wall height) is a clean floor-to-ceiling opening; a lower `height` (with `sill_height`) is a pass-through / serving hatch. Prefer `gap` over a `door` with `open: true`. |
 | `name` | string |  |  |
 | `formulas` | map: field name → `"= formula"` string |  | Numeric fields hold the RESOLVED value; a `= formula` for any of them lives in `formulas` (e.g. formulas.offset), evaluated by resolveParametric against the house variables/points — same pattern as every other object. |
 | `offset` | number | **yes** | Any number: `center` anchor takes a signed shift; the resolved placement is fit-checked against the wall in expand.ts, so a bad value errors there. |
@@ -447,7 +468,7 @@ The plinth is now a normal object placed on the "Plinth" floor (the first floor,
 | `sill_height` | number |  |  |
 | `direction` | enum: `north` `south` `east` `west` |  |  |
 | `facing` | enum: `north` `south` `east` `west` |  |  |
-| `open` | boolean |  | When true, the opening is left BARE (just a hole) — no glazing/frame for a window, no leaf for a door — e.g. an open doorway or unglazed vent. |
+| `open` | boolean |  | When true, a `door`/`window` is left BARE (just a hole) — no leaf/glazing, e.g. an unglazed vent. A `gap` is always bare, so this is redundant there. |
 
 
 ### RoomWallSide

@@ -22,8 +22,9 @@ export interface WallOpening {
   from: number;
   width: number;
   height: number;
-  kind: "door" | "window";
-  // When true, leave the opening bare (hole only) — no window/door fill.
+  kind: "door" | "window" | "gap";
+  // When true, leave the opening bare (hole only) — no window/door fill. A `gap`
+  // is inherently bare, so it is always treated as open.
   open?: boolean;
 }
 
@@ -60,6 +61,15 @@ interface Props {
   // opening reveals included — so exposed edges wrap in brick; only the inner
   // face stays flat-painted (interior surface).
   outerSign?: number;
+  // A corner block belongs to ONE wall, so an INTERNAL wall that owns an external
+  // corner would leave a bare (flat-paint) end cap next to the neighbouring
+  // external wall's brick. These flag an END CAP as weather-exposed so it gets
+  // brick even on an internal wall: `brickStart` = the local -X end (the wall's
+  // start / smaller along-coord), `brickEnd` = the local +X end. On an EXTERNAL
+  // wall the ends are already brick, so these are only consulted when the wall
+  // body is internal.
+  brickStart?: boolean;
+  brickEnd?: boolean;
 }
 
 // A single shared evaluator — creating one per mesh is wasteful.
@@ -67,17 +77,22 @@ const evaluator = new Evaluator();
 evaluator.useGroups = false;
 
 export function WallWithOpenings(props: Props) {
-  const { cx, cy, cz, length, depth, height, heightEnd, rotY, color, openings, units, external = true, outerSign = 0 } = props;
+  const { cx, cy, cz, length, depth, height, heightEnd, rotY, color, openings, units, external = true, outerSign = 0, brickStart = false, brickEnd = false } = props;
 
+  // An internal wall is normally single-material flat paint, but if it owns an
+  // exposed corner (an end cap open to weather) that end cap needs brick — so
+  // the mesh is grouped whenever ANY face is brick, not only for external walls.
+  const hasBrick = external || brickStart || brickEnd;
   const uvK = wallUvK(units);
   const geometry = useMemo(() => {
     const g = buildWallGeometry(length, depth, height, heightEnd, openings, uvK);
-    // Split the mesh into two material groups: the outward (weather) face →
-    // laterite, everything else (inner face, top, ends, opening reveals) →
-    // plain paint. Only needed for external walls.
-    if (external) splitOuterFaceGroups(g, outerSign);
+    // Split the mesh into two material groups (0 = laterite brick, 1 = plain
+    // paint), deciding each face on its own: an external wall's outer face + top
+    // + ends + reveals are brick and only the inner face is plain; an internal
+    // wall is plain except for an exposed end cap flagged by brickStart/brickEnd.
+    if (hasBrick) splitBrickGroups(g, external, outerSign, brickStart, brickEnd);
     return g;
-  }, [length, depth, height, heightEnd, openings, uvK, external, outerSign]);
+  }, [length, depth, height, heightEnd, openings, uvK, external, outerSign, brickStart, brickEnd, hasBrick]);
 
   const laterite = lateriteMaps();
 
@@ -89,7 +104,7 @@ export function WallWithOpenings(props: Props) {
       castShadow
       receiveShadow
     >
-      {external ? (
+      {hasBrick ? (
         // group 0 = outward face (laterite stone); group 1 = every other face
         // (interior paint) — so the inside of an external wall reads as interior.
         <>
@@ -111,18 +126,38 @@ export function WallWithOpenings(props: Props) {
   );
 }
 
-// Reorder a wall's triangles into two contiguous index runs — the outward
-// (weather) face first, then everything else — and set two geometry groups
-// (materialIndex 0 = outer/laterite, 1 = inner/plain). The wall is authored in
-// its LOCAL frame with thickness along Z, so the outward face is the big face
-// whose triangle normal points along `outerSign * Z`. outerSign 0 (both faces
-// weather-facing) textures both big faces.
-function splitOuterFaceGroups(geom: THREE.BufferGeometry, outerSign: number): void {
+// Reorder a wall's triangles into two contiguous index runs — brick first, then
+// plain paint — and set two geometry groups (materialIndex 0 = laterite, 1 =
+// plain). The wall is authored in its LOCAL frame with X along its length, Y up,
+// and thickness along Z, so faces are told apart by their triangle normal:
+//   - big faces  (|n.z|>0.5): the two thickness faces (the wall's outer / inner)
+//   - end caps   (|n.x|>0.5 AND at the extreme ±length/2): the wall's two ends
+//   - reveals    (|n.x|>0.5 but interior in X): a door/window jamb
+//   - top/bottom (n.y dominant)
+// Decision, per face:
+//   external wall → outer big face + top + ends + reveals brick, inner big face
+//     plain (unchanged: outerSign is the sign of the outer big face's Z; 0 =
+//     freestanding, so both big faces brick).
+//   internal wall → all plain EXCEPT an end cap flagged brick because it owns an
+//     exposed corner. This is the per-FACE fix: a corner shared by an external
+//     and an internal wall no longer forces the whole corner block to one verdict.
+function splitBrickGroups(
+  geom: THREE.BufferGeometry,
+  external: boolean,
+  outerSign: number,
+  brickStart: boolean,
+  brickEnd: boolean,
+): void {
   const pos = geom.getAttribute("position");
   if (!pos) return;
   const existing = geom.getIndex();
   const triCount = existing ? existing.count / 3 : pos.count / 3;
   const gi = (i: number) => (existing ? existing.getX(i) : i);
+  // Half-length in local X, so an end cap (a triangle sitting at the extreme end)
+  // is told apart from an interior opening reveal that also has an ±X normal.
+  let halfLen = 0;
+  for (let i = 0; i < pos.count; i++) halfLen = Math.max(halfLen, Math.abs(pos.getX(i)));
+  const endEps = Math.max(0.25, halfLen * 1e-3);
   const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
   const ab = new THREE.Vector3(), ac = new THREE.Vector3(), n = new THREE.Vector3();
   const brick: number[] = [], plain: number[] = [];
@@ -134,13 +169,27 @@ function splitOuterFaceGroups(geom: THREE.BufferGeometry, outerSign: number): vo
     ab.subVectors(vB, vA);
     ac.subVectors(vC, vA);
     n.crossVectors(ab, ac).normalize();
-    // ONLY the inner big face (the Z-face opposite the weather face) is interior
-    // paint; every other face — outer face, top, ends, opening reveals — is
-    // exterior brick, so the wall's exposed edges/corners wrap in brick rather
-    // than showing bare plaster trim. outerSign 0 (freestanding) ⇒ no inner
-    // face, so the whole wall is brick.
-    const isInnerFace = outerSign !== 0 && Math.abs(n.z) > 0.5 && Math.sign(n.z) === -outerSign;
-    (isInnerFace ? plain : brick).push(a, b, c);
+    let isBrick: boolean;
+    if (Math.abs(n.z) > 0.5) {
+      // Big face: brick iff external and this is the outer face (outerSign 0 =
+      // both faces weather → both brick).
+      isBrick = external && (outerSign === 0 || Math.sign(n.z) === outerSign);
+    } else if (Math.abs(n.x) > 0.5) {
+      const cxT = (vA.x + vB.x + vC.x) / 3;
+      const isEndCap = Math.abs(cxT) > halfLen - endEps;
+      if (isEndCap) {
+        // The wall's own end. On an external wall both ends brick (as before);
+        // on an internal wall only an end flagged as an exposed corner.
+        isBrick = external || (cxT > 0 ? brickEnd : brickStart);
+      } else {
+        // An interior opening reveal (jamb): brick only on an external wall.
+        isBrick = external;
+      }
+    } else {
+      // Top / bottom: brick only on an external wall (as before).
+      isBrick = external;
+    }
+    (isBrick ? brick : plain).push(a, b, c);
   }
   geom.setIndex(brick.concat(plain));
   geom.clearGroups();
@@ -173,21 +222,29 @@ function buildWallGeometry(
   brush.updateMatrixWorld();
 
   for (const op of openings) {
+    // An opening whose top reaches the wall top (a full-height gap / open
+    // passage) would leave its cutter's top face COINCIDENT with the wall top —
+    // CSG then leaves a razor sliver / z-fighting band there. Overshoot the top
+    // by a hair in that case so the void reaches the top cleanly (this is what
+    // the old "wall_height - 1" authoring hack was working around). The bottom
+    // stays anchored at op.from, so doors/windows are unaffected.
+    const reachesTop = op.from + op.height >= height - 1e-3;
+    const cutH = op.height + (reachesTop ? 0.5 : 0);
     // Cutter extends slightly beyond the wall thickness (depth + a hair)
     // so CSG doesn't leave a razor-thin sliver on the far face.
     const cutterGeom = new THREE.BoxGeometry(
       op.width,
-      op.height,
+      cutH,
       depth + 0.5,
     );
     const cutter = new Brush(cutterGeom);
     // Position the cutter in the wall's local frame:
     //   X: opening centre along the wall's length
-    //   Y: opening centre stacked from bottom
+    //   Y: stacked from the bottom (op.from), so a taller cutH overshoots the top
     //   Z: 0 (centred through wall thickness)
     cutter.position.set(
       op.along + op.width / 2 - length / 2,
-      op.from + op.height / 2 - height / 2,
+      op.from + cutH / 2 - height / 2,
       0,
     );
     cutter.updateMatrixWorld();

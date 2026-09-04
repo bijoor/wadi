@@ -12,7 +12,7 @@ import { pillarRects } from "./wallTrim";
 import { formatDimension, f, fFloat } from "./format";
 import { getNode } from "../registry/registry";
 import {
-  svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawFloorSlab,
+  svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawGap, svgDrawFloorSlab,
   svgDrawPillar, svgDrawBeam, svgDrawStaircase, svgDrawKitchenPlatform,
   svgDrawGround, svgDrawPlinth, svgDrawItem,
 } from "./shapes";
@@ -372,6 +372,12 @@ export function generateFloorPlanSvg(
         obj.width as number,
         (obj.direction as string | undefined) ?? "north",
       );
+    } else if (t === "gap") {
+      svg += svgDrawGap(
+        obj.x as number, obj.y as number,
+        obj.width as number,
+        (obj.direction as string | undefined) ?? "north",
+      );
     }
   }
 
@@ -420,7 +426,7 @@ export function generateFloorPlanSvg(
     const openingsByWall: Record<string, Array<Record<string, unknown>>> = {};
     for (const obj of objects) {
       const t = obj.type as string;
-      if (t === "door" || t === "window") {
+      if (t === "door" || t === "window" || t === "gap") {
         const direction = ((obj.direction as string | undefined) ?? "north").toLowerCase();
         const room = obj.room as string | undefined;
         let wallName = obj.wall as string | undefined;

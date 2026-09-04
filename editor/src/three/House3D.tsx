@@ -40,6 +40,7 @@ import {
   buildRoomRects,
   splitWallByCoverage,
   classifyStandaloneWall,
+  pointExposedOnFloor,
   type RoomRect,
 } from "../estimate/wallArea";
 
@@ -566,8 +567,10 @@ function matchOpeningToRoomWall(
 ): WallOpening | null {
   const x = op.x as number, y = op.y as number;
   const w = op.width as number, h = op.height as number;
-  const kind = op.type as "door" | "window";
+  const kind = op.type as "door" | "window" | "gap";
   const sill = kind === "window" ? ((op.sill_height as number | undefined) ?? 0) : 0;
+  // A gap is a frameless void: always bare (no leaf/glazing fill).
+  const open = kind === "gap" ? true : (op.open as boolean | undefined);
 
   // Orientation guard: an opening belongs to walls of ONE orientation
   // (direction north/south → horizontal wall, east/west → vertical). Without
@@ -584,22 +587,22 @@ function matchOpeningToRoomWall(
     // Wall at y ~ ry
     if (Math.abs(y - ry) > POS_TOL) return null;
     if (x < rx - POS_TOL || x + w > rx + rw + POS_TOL) return null;
-    return { along: x - rx, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
+    return { along: x - rx, from: sill, width: w, height: h, kind, open };
   }
   if (side === "south") {
     if (Math.abs(y - (ry + rl - t)) > POS_TOL) return null;
     if (x < rx - POS_TOL || x + w > rx + rw + POS_TOL) return null;
-    return { along: x - rx, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
+    return { along: x - rx, from: sill, width: w, height: h, kind, open };
   }
   if (side === "west") {
     if (Math.abs(x - rx) > POS_TOL) return null;
     if (y < ry - POS_TOL || y + w > ry + rl + POS_TOL) return null;
-    return { along: y - ry, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
+    return { along: y - ry, from: sill, width: w, height: h, kind, open };
   }
   // east
   if (Math.abs(x - (rx + rw - t)) > POS_TOL) return null;
   if (y < ry - POS_TOL || y + w > ry + rl + POS_TOL) return null;
-  return { along: y - ry, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
+  return { along: y - ry, from: sill, width: w, height: h, kind, open };
 }
 
 function matchOpeningToStandaloneWall(
@@ -612,8 +615,9 @@ function matchOpeningToStandaloneWall(
   const ux = dx / length, uy = dy / length;
   const x = op.x as number, y = op.y as number;
   const w = op.width as number, h = op.height as number;
-  const kind = op.type as "door" | "window";
+  const kind = op.type as "door" | "window" | "gap";
   const sill = kind === "window" ? ((op.sill_height as number | undefined) ?? 0) : 0;
+  const open = kind === "gap" ? true : (op.open as boolean | undefined);
 
   // Orientation guard (see matchOpeningToRoomWall): an opening's `direction`
   // (north/south → horizontal wall, east/west → vertical) must match this
@@ -637,7 +641,7 @@ function matchOpeningToStandaloneWall(
   const perp = Math.abs((cx - sx) * nx + (cy - sy) * ny);
   if (perp > POS_TOL) return null;
   if (proj < -POS_TOL || proj + w > length + POS_TOL) return null;
-  return { along: proj, from: sill, width: w, height: h, kind, open: op.open as boolean | undefined };
+  return { along: proj, from: sill, width: w, height: h, kind, open };
 }
 
 function emitRoomWalls(
@@ -715,6 +719,14 @@ function emitRoomWalls(
     for (const { s: ws, e: we, external } of segments) {
       const subLen = we - ws;
       if (subLen < 1e-6) continue;
+      // End-cap exposure: probe just past each end (at the wall's centreline) on
+      // this floor. An end open to weather gets brick even on an internal wall,
+      // so a corner it owns doesn't leave a flat-paint stub against the adjacent
+      // external wall. `ws` is the local -X (start) end, `we` the local +X (end).
+      const startPt: [number, number] = axis === "x" ? [ws - probe, perp] : [perp, ws - probe];
+      const endPt: [number, number] = axis === "x" ? [we + probe, perp] : [perp, we + probe];
+      const brickStart = pointExposedOnFloor(globals.roomRects, startPt[0], startPt[1], floorIdx);
+      const brickEnd = pointExposedOnFloor(globals.roomRects, endPt[0], endPt[1], floorIdx);
       const off = ws - aStart; // this piece's offset into the original wall
       const sub = matched
         .filter((m) => {
@@ -741,6 +753,8 @@ function emitRoomWalls(
           units={globals.units}
           external={external}
           outerSign={outerSign}
+          brickStart={brickStart}
+          brickEnd={brickEnd}
         />,
       );
       // Fill each opening with a framed window / slab door — unless it's
@@ -761,7 +775,7 @@ function emitRoomWalls(
             width={m.width}
             height={m.height}
             rotY={rotY}
-            kind={m.kind}
+            kind={m.kind === "gap" ? "door" : m.kind}
             wallDepth={t}
           />,
         );
@@ -839,7 +853,7 @@ function emitStandaloneWall(
         const localFrom = m.from + m.height / 2 - h / 2;
         push(
           openingsLayer,
-          <OpeningPane key={`${key}-op-${m.along.toFixed(2)}`} cx={cc.x + Math.cos(rotY) * localAlong} cy={baseZ + h / 2 + localFrom} cz={cc.z - Math.sin(rotY) * localAlong} width={m.width} height={m.height} rotY={rotY} kind={m.kind} wallDepth={t} />,
+          <OpeningPane key={`${key}-op-${m.along.toFixed(2)}`} cx={cc.x + Math.cos(rotY) * localAlong} cy={baseZ + h / 2 + localFrom} cz={cc.z - Math.sin(rotY) * localAlong} width={m.width} height={m.height} rotY={rotY} kind={m.kind === "gap" ? "door" : m.kind} wallDepth={t} />,
         );
       }
     }
@@ -883,7 +897,7 @@ function emitStandaloneWall(
         width={m.width}
         height={m.height}
         rotY={rotY}
-        kind={m.kind}
+        kind={m.kind === "gap" ? "door" : m.kind}
         wallDepth={t}
       />,
     );

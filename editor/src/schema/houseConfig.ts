@@ -111,7 +111,12 @@ const site = z
 
 const opening = z
   .object({
-    kind: z.enum(["door", "window"]),
+    // `door` (framed leaf) / `window` (framed glazing) / `gap` (a FRAMELESS void
+    // in the wall: an open passage, cased opening, or pass-through — no leaf, no
+    // frame, no glazing). A full-height gap (`height` = the wall height) is a
+    // clean floor-to-ceiling opening; a lower `height` (with `sill_height`) is a
+    // pass-through / serving hatch. Prefer `gap` over a `door` with `open: true`.
+    kind: z.enum(["door", "window", "gap"]),
     name: z.string().optional(),
     // Numeric fields hold the RESOLVED value; a `= formula` for any of them lives
     // in `formulas` (e.g. formulas.offset), evaluated by resolveParametric against
@@ -132,8 +137,8 @@ const opening = z
     sill_height: z.number().optional(),
     direction: side.optional(),
     facing: side.optional(),
-    // When true, the opening is left BARE (just a hole) — no glazing/frame for a
-    // window, no leaf for a door — e.g. an open doorway or unglazed vent.
+    // When true, a `door`/`window` is left BARE (just a hole) — no leaf/glazing,
+    // e.g. an unglazed vent. A `gap` is always bare, so this is redundant there.
     open: z.boolean().optional(),
   })
   .strict();
@@ -417,6 +422,27 @@ const windowObj = z
   })
   .strict();
 
+// A flat `gap` — the frameless-void counterpart of the flat door/window,
+// produced when a nested `gap` opening is expanded. A gap is always bare (no
+// leaf/glazing); `sill_height` lifts a pass-through off the floor.
+const gapObj = z
+  .object({
+    type: z.literal("gap"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    name: z.string(),
+    x: z.number(),
+    y: z.number(),
+    width: positive(),
+    height: positive(),
+    sill_height: nonNegative().optional(),
+    direction: side,
+    room: z.string().optional(),
+    wall: z.string().optional(),
+  })
+  .strict();
+
 // v2 roof — unified segment-based type that replaces hip/gable/flat/shed.
 // Schema is permissive; the v2 pipeline (svg2d/roof/v2/) validates
 // segments + slope + endpoint style at derivation time.
@@ -567,6 +593,7 @@ export const object = z.discriminatedUnion("type", [
   spiralStaircase,
   door,
   windowObj,
+  gapObj,
   kitchenPlatform,
   roofV2,
 ]);

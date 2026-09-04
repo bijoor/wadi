@@ -21,7 +21,7 @@ type Side = "north" | "south" | "east" | "west";
 const SIDES: readonly Side[] = ["north", "south", "east", "west"];
 
 type Opening = {
-  kind: "door" | "window";
+  kind: "door" | "window" | "gap";
   name?: string;
   offset: number;
   width: number;
@@ -705,9 +705,9 @@ function roomOpeningToFlat(
   index: number,
 ): Obj {
   const kind = op.kind;
-  if (kind !== "door" && kind !== "window") {
+  if (kind !== "door" && kind !== "window" && kind !== "gap") {
     throw new Error(
-      `Room '${rname}' ${side} opening #${index}: kind must be 'door' or 'window'.`,
+      `Room '${rname}' ${side} opening #${index}: kind must be 'door', 'window' or 'gap'.`,
     );
   }
   const { offset, width, height } = op;
@@ -846,9 +846,9 @@ function wallOpeningToFlat(
   index: number,
 ): Obj {
   const kind = op.kind;
-  if (kind !== "door" && kind !== "window") {
+  if (kind !== "door" && kind !== "window" && kind !== "gap") {
     throw new Error(
-      `Wall '${wallName}' opening #${index}: kind must be 'door' or 'window'.`,
+      `Wall '${wallName}' opening #${index}: kind must be 'door', 'window' or 'gap'.`,
     );
   }
   const { offset, width, height } = op;

@@ -35,7 +35,7 @@ export interface DrawFilter {
   textScale?: number;
 }
 
-const OPENING_TYPES = new Set(["door", "window"]);
+const OPENING_TYPES = new Set(["door", "window", "gap"]);
 
 // Object identity used by the per-object filter + the panel's checkbox list.
 export function objectKey(floorNumber: number, objectIndex: number): string {
