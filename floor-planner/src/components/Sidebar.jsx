@@ -224,14 +224,32 @@ function EdgeEditor({ state, dispatch, edge }) {
   )
 }
 
+const UNIT_ABBR = { feet_inches: 'ft', feet: 'ft', meters: 'm', centimeters: 'cm', millimeters: 'mm' }
+
 function DimensionsEditor({ state, dispatch }) {
   const b = state.build || {}
   const set = (patch) => dispatch({ type: 'UPDATE_BUILD', patch })
-  const unit = state.grid?.unit || 'ft'
+  const system = b.unitSystem || 'feet_inches'
+  const unit = UNIT_ABBR[system] || 'ft'
   return (
     <div className="panel">
       <h3>Dimensions (export)</h3>
-      <p className="area-note">In {unit}. Used when building the 3-D Wadi model.</p>
+      <p className="area-note">Physical sizes ({unit}) for the 3-D Wadi model.</p>
+      <label className="field">
+        <span>Units</span>
+        <select value={system} onChange={(e) => set({ unitSystem: e.target.value })}>
+          <option value="feet_inches">Feet &amp; inches</option>
+          <option value="feet">Feet (decimal)</option>
+          <option value="meters">Meters</option>
+          <option value="centimeters">Centimeters</option>
+          <option value="millimeters">Millimeters</option>
+        </select>
+      </label>
+      <NumberField
+        label={`Project units / ${unit} (scale)`}
+        value={b.perUnit ?? 10} min={0.001} max={1000} step={1} float
+        onCommit={(v) => set({ perUnit: v > 0 ? v : 10 })}
+      />
       <div className="row">
         <NumberField label={`Wall thick (${unit})`} value={b.wallThickness ?? 0.75} min={0.1} max={3} step={0.05} float
           onCommit={(v) => set({ wallThickness: Math.max(0.1, v) })} />

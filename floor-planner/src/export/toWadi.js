@@ -34,8 +34,11 @@ function uniqueNames(rooms) {
 /** The planner model → a Wadi HouseConfig object (ready to JSON.stringify). */
 export function modelToWadi(model, opts = {}) {
   const { grid = {}, plot = {}, floors = [], rooms = [], edges = [] } = model || {}
-  const perUnit = opts.perUnit ?? PER_UNIT
-  const S = (Number(grid.unitPerCell) || 1) * perUnit // Wadi units per grid cell
+  const b = model?.build || {}
+  // per_unit = project units per ONE physical unit (the project↔physical conversion).
+  const perUnit = Number(b.perUnit) > 0 ? Number(b.perUnit) : (opts.perUnit ?? PER_UNIT)
+  const unitSystem = b.unitSystem || 'feet_inches'
+  const S = (Number(grid.unitPerCell) || 1) * perUnit // project units per grid cell
   const nameById = uniqueNames(rooms)
 
   // Undirected connections, stored on the lower room by neighbour NAME.
@@ -54,9 +57,8 @@ export function modelToWadi(model, opts = {}) {
   const plotL = (Number(plot.h) || 20) * S
   const edgeKind = edgeKindLookup(edges)
 
-  // Build dimensions (set in the planner's Dimensions panel; stored in feet, so a
-  // wall reads as ~0.75 ft ≈ 9"). Converted to Wadi units here.
-  const b = model.build || {}
+  // Build dimensions (set in the planner's Dimensions panel; stored in the physical
+  // unit, e.g. a wall ~0.75 ft). Converted to project units by per_unit here.
   const uft = (v, def) => Math.round((Number.isFinite(Number(v)) ? Number(v) : def) * perUnit)
   const wallThickness = uft(b.wallThickness, 0.75)
   const slabThickness = uft(b.slabThickness, 0.5)
@@ -100,7 +102,7 @@ export function modelToWadi(model, opts = {}) {
   }
 
   return {
-    units: { system: 'feet_inches', per_unit: perUnit },
+    units: { system: unitSystem, per_unit: perUnit },
     coord_convention: 'center',
     defaults: {
       wall_thickness: wallThickness,

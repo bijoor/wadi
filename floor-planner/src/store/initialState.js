@@ -10,9 +10,13 @@ export const PALETTE = [
   '#f45b5b', '#8085e9', '#43d1c4', '#e08fd6',
 ]
 
-// Build dimensions used on export to Wadi (in FEET). Wall/slab/plinth thickness +
-// heights that the graph alone can't imply. Tuned so the 3-D model has real walls.
+// Build settings used on export to Wadi. Thicknesses/heights are in the PHYSICAL
+// display unit (ft by default) — values the graph alone can't imply. `perUnit` is
+// the project→physical conversion Wadi stores as `units.per_unit`: how many project
+// units equal ONE display unit (10 = 10 project units per foot, Wadi's default).
 export const BUILD_DEFAULTS = {
+  unitSystem: 'feet_inches', // feet_inches | feet | meters | centimeters | millimeters
+  perUnit: 10, // project units per 1 display unit
   wallThickness: 0.75, // ~9"
   wallHeight: 10,
   slabThickness: 0.5, // ~6"
