@@ -49,6 +49,8 @@ import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
 import { computeWallAreas } from "../estimate/wallArea";
 import { wallAreaHtml } from "../estimate/wallAreaHtml";
+import { computeQuantities } from "../estimate/quantities";
+import { quantitiesHtml } from "../estimate/quantitiesHtml";
 import { setDimensionUnits } from "../svg2d/format";
 import { setTextScale, computeTextScale, houseSpanUnits } from "../svg2d/config";
 import {
@@ -788,6 +790,13 @@ function rebuildSvgMap(): void {
     window.quantitiesManifest = [
       { filename: "2d/quantities/wall_area.html", displayName: "Wall areas" },
     ];
+  });
+  safe("quantities BOM", () => {
+    const bomReport = computeQuantities(cfg);
+    svgMap.set("2d/quantities/bom.html", quantitiesHtml(bomReport));
+    (window.quantitiesManifest ??= []).push(
+      { filename: "2d/quantities/bom.html", displayName: "Bill of Materials" },
+    );
   });
 }
 

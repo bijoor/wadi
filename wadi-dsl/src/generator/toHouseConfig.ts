@@ -721,6 +721,12 @@ function floorObject(o: ast.FloorObject): Record<string, unknown> {
       return staircase(o);
     case "SpiralStaircase":
       return spiralStaircase(o);
+    case "CompoundWall":
+      return compoundWall(o);
+    case "Well":
+      return well(o);
+    case "SolarPanel":
+      return solarPanel(o);
     case "KitchenPlatform":
       return kitchen(o);
     case "Item":
@@ -780,6 +786,74 @@ function spiralStaircase(o: ast.SpiralStaircase): Record<string, unknown> {
     const v = put(f, o[f]);
     if (v !== undefined) out[f] = v;
   }
+  applyCommon(out, formulas, o);
+  return done(out, formulas);
+}
+
+// ---- Promoted site/boundary primitives (same pattern as spiralStaircase) ----
+
+function compoundWall(o: ast.CompoundWall): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const out: Record<string, unknown> = {
+    type: "compound_wall",
+    x: put("x", o.x, 0),
+    y: put("y", o.y, 0),
+    width: put("width", o.w, 1),
+    length: put("length", o.l, 1),
+    height: put("height", o.height, 1),
+  };
+  if (o.name) out.name = unquote(o.name);
+  const t = put("thickness", o.thickness);
+  if (t !== undefined) out.thickness = t;
+  if (o.asset) out.asset = asset(o.asset);
+  applyCommon(out, formulas, o);
+  return done(out, formulas);
+}
+
+function well(o: ast.Well): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const out: Record<string, unknown> = {
+    type: "well",
+    x: put("x", o.x, 0),
+    y: put("y", o.y, 0),
+  };
+  if (o.name) out.name = unquote(o.name);
+  if (o.shape) out.shape = o.shape;
+  const d = put("diameter", o.diameter);
+  if (d !== undefined) out.diameter = d;
+  const w = put("width", o.w);
+  if (w !== undefined) out.width = w;
+  const l = put("length", o.l);
+  if (l !== undefined) out.length = l;
+  const ph = put("parapet_height", o.parapet_height);
+  if (ph !== undefined) out.parapet_height = ph;
+  if (o.asset) out.asset = asset(o.asset);
+  applyCommon(out, formulas, o);
+  return done(out, formulas);
+}
+
+function solarPanel(o: ast.SolarPanel): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const out: Record<string, unknown> = {
+    type: "solar_panel",
+    x: put("x", o.x, 0),
+    y: put("y", o.y, 0),
+  };
+  if (o.name) out.name = unquote(o.name);
+  if (o.mount) out.mount = o.mount;
+  const ckw = put("capacity_kw", o.capacity_kw, 1);
+  if (ckw !== undefined) out.capacity_kw = ckw;
+  const pc = put("panel_count", o.panel_count, 1);
+  if (pc !== undefined) out.panel_count = pc;
+  const az = put("azimuth", o.azimuth);
+  if (az !== undefined) out.azimuth = az;
+  const tilt = put("tilt", o.tilt);
+  if (tilt !== undefined) out.tilt = tilt;
+  const rot = put("rotation", o.rotation);
+  if (rot !== undefined) out.rotation = rot;
+  const sc = put("scale", o.scale, 1);
+  if (sc !== undefined) out.scale = sc;
+  if (o.asset) out.asset = asset(o.asset);
   applyCommon(out, formulas, o);
   return done(out, formulas);
 }
@@ -992,9 +1066,9 @@ export function modelToHouseConfig(
       if (g.spacing_x !== undefined) {
         // GENERATED guides: origin + spacing (+ extent), referenced by index.
         const gen: Record<string, unknown> = {
-          spacing: [exprToValue(g.spacing_x), exprToValue(g.spacing_y)],
+          spacing: [exprToValue(g.spacing_x), exprToValue(g.spacing_y!)],
         };
-        if (g.origin_x !== undefined) gen.origin = [exprToValue(g.origin_x), exprToValue(g.origin_y)];
+        if (g.origin_x !== undefined) gen.origin = [exprToValue(g.origin_x), exprToValue(g.origin_y!)];
         if (g.extent_x !== undefined) gen.extent = [Number(g.extent_x), Number(g.extent_y)];
         grids[g.name] = gen;
       } else {

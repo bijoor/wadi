@@ -173,7 +173,7 @@ const wallHeightsEntry = z.union([
 
 // The asset backing a furniture item — stored INLINE so a .wadi is self-contained
 // (share links / web load the GLB from `src`). A catalog is just a picker convenience.
-const itemAsset = z
+export const itemAsset = z
   .object({
     id: z.string(),
     name: z.string().optional(),
@@ -552,6 +552,105 @@ const modelObject = z
   })
   .strict();
 
+// --- compound_wall: perimeter / boundary wall --------------------------------
+// A solid rectangular block placed by its TOP-LEFT (NW) corner. Renders as a
+// GLB asset when `asset` is provided; otherwise plan-only. Four compound_wall
+// objects typically enclose a plot (North, South, East, West sides).
+export const compoundWallSchema = z
+  .object({
+    type: z.literal("compound_wall"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    name: z.string().optional(),
+    // Top-left (NW) corner X (project units)
+    x: z.number(),
+    // Top-left (NW) corner Y (project units)
+    y: z.number(),
+    // East extent — wall length along the X axis (project units)
+    width: positive(),
+    // South extent — wall length along the Y axis (project units)
+    length: positive(),
+    // Uniform wall height above grade (project units)
+    height: positive(),
+    // Wall body depth; defaults to house wall_thickness (project units)
+    thickness: positive().optional(),
+    material: z.string().optional(),
+    // Optional GLB for 3D render; omit for a plan-only footprint
+    asset: itemAsset.optional(),
+    rotation: z.number().optional(),
+    z_offset: z.number().optional(),
+  })
+  .strict();
+export type CompoundWall = z.infer<typeof compoundWallSchema>;
+
+// --- well: water well with circular, square, or rectangular footprint --------
+// Placed by its plan CENTRE (x, y). `shape` defaults to circular; `diameter`
+// is the outer diameter for circular wells; `width`/`length` for rectangular.
+export const wellSchema = z
+  .object({
+    type: z.literal("well"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    name: z.string().optional(),
+    // Plan centre X (project units)
+    x: z.number(),
+    // Plan centre Y (project units)
+    y: z.number(),
+    // Well footprint shape; default circular
+    shape: z.enum(["circular", "rectangular", "square"]).optional(),
+    // Outer diameter for circular wells (project units)
+    diameter: positive().optional(),
+    // Footprint width for rectangular or square wells (project units)
+    width: positive().optional(),
+    // Footprint length for rectangular wells (project units)
+    length: positive().optional(),
+    // Height of the raised parapet ring above grade (project units)
+    parapet_height: positive().optional(),
+    // Optional GLB for 3D render; omit for plan-only
+    asset: itemAsset.optional(),
+    rotation: z.number().optional(),
+    z_offset: z.number().optional(),
+  })
+  .strict();
+export type Well = z.infer<typeof wellSchema>;
+
+// --- solar_panel: solar array, roof-mount or ground-mount -------------------
+// Placed by its plan CENTRE (x, y). `capacity_kw` and `panel_count` are
+// metadata only (not used by geometry). `azimuth` (0=north, 180=south-facing)
+// and `tilt` (degrees above horizontal) describe the panel orientation.
+export const solarPanelSchema = z
+  .object({
+    type: z.literal("solar_panel"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    name: z.string().optional(),
+    // Array centre X (project units)
+    x: z.number(),
+    // Array centre Y (project units)
+    y: z.number(),
+    // Mounting type: roof-mount (default) or ground-mount
+    mount: z.enum(["roof", "ground"]).optional(),
+    // Installed capacity in kilowatts peak (metadata only — not used by geometry)
+    capacity_kw: positive().optional(),
+    // Number of panels (metadata only)
+    panel_count: z.number().int().positive().optional(),
+    // Panel orientation: compass bearing in degrees (0=north, 180=south-facing)
+    azimuth: z.number().optional(),
+    // Panel pitch angle in degrees above horizontal
+    tilt: z.number().optional(),
+    // Optional GLB for 3D render; omit for plan-only
+    asset: itemAsset.optional(),
+    // Plan yaw of the array footprint (degrees)
+    rotation: z.number().optional(),
+    scale: positive().optional(),
+    z_offset: z.number().optional(),
+  })
+  .strict();
+export type SolarPanel = z.infer<typeof solarPanelSchema>;
+
 export const object = z.discriminatedUnion("type", [
   plinthObject,
   groundObject,
@@ -569,6 +668,9 @@ export const object = z.discriminatedUnion("type", [
   windowObj,
   kitchenPlatform,
   roofV2,
+  compoundWallSchema,
+  wellSchema,
+  solarPanelSchema,
 ]);
 export type HouseObject = z.infer<typeof object>;
 

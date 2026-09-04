@@ -79,6 +79,24 @@ house CompleteShowcase {
     pillar C1 at (main.x1, main.yA) size (10, 10) height 116 layer "structure"
     use Bench as "WindowBench" at (60, 60) with { blen = 80 }
     use kb.Otla at (155, 420) with { wide = 90, deep = 55 }   // entrance platform in the front yard
+
+    // --- compound walls — 5 ft perimeter boundary (height 50) ----------------
+    // at (x,y) = top-left corner; size (w,l) = east × south extent.
+    compound_wall NorthWall at (0, 0)   size (400, 8)   height 50
+    compound_wall SouthWall at (0, 492) size (400, 8)   height 50
+    compound_wall EastWall  at (392, 0) size (8, 500)   height 50
+    compound_wall WestWall  at (0, 0)   size (8, 500)   height 50
+
+    // --- well — circular, rear-east yard, ≥64 units from all room walls -----
+    // House footprint ends at X≈296 (east) and Y≈396 (south).
+    well BackWell at (360, 460)
+        shape circular diameter 30 parapet_height 10
+
+    // --- solar panel — 3.5 kW roof-mount, south-facing (azimuth 180) --------
+    // Centred over the house plan; tilt 15° for a flat/low-pitch roof.
+    solar_panel RoofArray at (150, 200)
+        mount roof capacity_kw 3.5 azimuth 180 tilt 15
+
   }
 
   floor 2 "Loft" {

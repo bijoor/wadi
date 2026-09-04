@@ -35,5 +35,23 @@ house KonkanCottage {
     use kb.Verandah at (40, 350) with { across = 200, deep = 70 } // "shaded sit-out along the front"
     use kb.Otla     at (260, 360)                        // "raised entrance platform (otla)"
     use kb.TulsiVrindavan at (360, 370)                  // "courtyard planter for tulsi"
+
+    // --- compound walls — 5 ft perimeter boundary (height 50) ----------------
+    // at (x,y) = top-left corner; size (w,l) = east × south extent.
+    compound_wall NorthWall at (0, 0)   size (420, 8)   height 50
+    compound_wall SouthWall at (0, 432) size (420, 8)   height 50
+    compound_wall EastWall  at (412, 0) size (8, 440)   height 50
+    compound_wall WestWall  at (0, 0)   size (8, 440)   height 50
+
+    // --- well — circular, 3 ft diameter, rear-east yard ----------------------
+    // at (x,y) = plan centre; ≥80 units from any room wall (verandah east X=240).
+    well BackWell at (320, 400)
+        shape circular diameter 30 parapet_height 10
+
+    // --- solar panel — 3.5 kW roof-mount, south-facing (azimuth 180) --------
+    // Centred over the main rooms; tilt 15° (low-angle for flat roof).
+    solar_panel RoofArray at (210, 160)
+        mount roof capacity_kw 3.5 azimuth 180 tilt 15
+
   }
 }

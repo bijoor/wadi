@@ -116,7 +116,7 @@ export const nonParamFields = PLACEMENT_NAMES;
 export const CORE_OBJECT_TYPES = new Set<string>([
   "plinth", "ground", "component", "item", "model", "floor_slab", "pillar", "beam",
   "room", "wall", "staircase", "spiral_staircase", "door", "window", "kitchen_platform",
-  "roof",
+  "roof", "compound_wall", "well", "solar_panel",
 ]);
 
 /** Scan a config's `components` for `expose`d definitions and register each as a

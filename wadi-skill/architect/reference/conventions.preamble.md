@@ -85,3 +85,29 @@ style, not rules:
   floor. The staircase starts on the lowest floor and rises to the underside of the
   topmost occupied floor (not the roof floor). Size the stair space so climbing one
   storey takes at most two flights (use `max_run` on the `staircase` to switchback).
+
+## Site element conventions (advisory — NOT linted)
+
+Placement guidance for the three first-class site primitives
+(`compound_wall`, `well`, `solar_panel`). Not checked by `check.sh`; apply
+your judgement.
+
+- **Compound walls sit at the plot perimeter.** The four walls that enclose a
+  plot are anchored to its edges. For a plot of width W and length L, with wall
+  thickness T:
+  - North wall: `at (0, 0) size (W, T)`
+  - South wall: `at (0, L - T) size (W, T)`
+  - East wall:  `at (W - T, 0) size (T, L)`
+  - West wall:  `at (0, 0) size (T, L)`
+- **Height for a compound wall.** A typical boundary wall is 4–6 ft (40–60 project
+  units). Use the same `height` on all four walls so the parapet is level.
+- **Well placement.** Place a well minimum 60 project units from any room wall —
+  rear or side yard preferred, never under the roofline. For a circular well,
+  `diameter 30` (3 ft) is a sensible default.
+- **Solar panel azimuth.** For India and the northern hemisphere, use `azimuth 180`
+  (south-facing); `tilt 15` is a reasonable flat-low default (15°).
+- **Solar panel mount floor.** A `mount roof` array belongs on **floor 2 or
+  higher** (the roof or top floor band). A `mount ground` array goes on floor 1
+  in a garden or rear yard.
+- **Solar panel coordinate.** `at (x, y)` is the **array centre**, so place it at
+  the midpoint of the roof band or garden area it covers.
