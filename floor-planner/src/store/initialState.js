@@ -10,6 +10,15 @@ export const PALETTE = [
   '#f45b5b', '#8085e9', '#43d1c4', '#e08fd6',
 ]
 
+// Build dimensions used on export to Wadi (in FEET). Wall/slab/plinth thickness +
+// heights that the graph alone can't imply. Tuned so the 3-D model has real walls.
+export const BUILD_DEFAULTS = {
+  wallThickness: 0.75, // ~9"
+  wallHeight: 10,
+  slabThickness: 0.5, // ~6"
+  plinthHeight: 1.5, // ~18"
+}
+
 export function sampleModel() {
   const grid = { cols: 40, rows: 30, cell: 26, unit: 'ft', unitPerCell: 1 }
   const plot = { x: 0, y: 0, w: 30, h: 20 } // plot origin is fixed at 0,0
@@ -39,7 +48,7 @@ export function sampleModel() {
     { id: 'e8', a: 'r_bath', b: 'r_bed1' },
   ]
 
-  return { grid, plot, floors, rooms, edges }
+  return { grid, plot, floors, rooms, edges, build: { ...BUILD_DEFAULTS } }
 }
 
 // Bring any loaded/older document up to the multi-floor shape:
@@ -62,7 +71,8 @@ export function normalizeModel(doc) {
     const first = floors[0].id
     rooms = rooms.map((r) => ({ ...r, floor: known.has(r.floor) ? r.floor : first }))
   }
-  return { grid, plot, floors, rooms, edges }
+  const build = { ...BUILD_DEFAULTS, ...(doc.build || {}) }
+  return { grid, plot, floors, rooms, edges, build }
 }
 
 export function initialState() {

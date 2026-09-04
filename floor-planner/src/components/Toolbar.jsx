@@ -8,7 +8,7 @@ import { pushModelToSession, getSessionCode, setSessionCode } from '../export/se
 function docFrom(state) {
   return {
     grid: state.grid, plot: state.plot, floors: state.floors,
-    rooms: state.rooms, edges: state.edges,
+    rooms: state.rooms, edges: state.edges, build: state.build,
   }
 }
 

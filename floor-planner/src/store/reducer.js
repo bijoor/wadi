@@ -2,7 +2,7 @@ import { makeId, edgeExists } from '../model/graph.js'
 import { clampRoomPosToPlot } from '../model/geometry.js'
 import { sampleModel, normalizeModel } from './initialState.js'
 
-const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges']
+const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build']
 const HISTORY_LIMIT = 60
 
 function docOf(state) {
@@ -210,6 +210,10 @@ export function reducer(state, action) {
     case 'UPDATE_GRID': {
       const grid = { ...state.grid, ...action.patch }
       return commit(state, { grid })
+    }
+    case 'UPDATE_BUILD': {
+      const build = { ...(state.build || {}), ...action.patch }
+      return commit(state, { build })
     }
 
     // ---- floors ----

@@ -50,32 +50,67 @@ export function modelToWadi(model, opts = {}) {
 
   const px = (Number(plot.x) || 0) * S
   const py = (Number(plot.y) || 0) * S
+  const plotW = (Number(plot.w) || 30) * S
+  const plotL = (Number(plot.h) || 20) * S
   const edgeKind = edgeKindLookup(edges)
 
-  const wadiFloors = floors.map((f, i) => {
+  // Build dimensions (set in the planner's Dimensions panel; stored in feet, so a
+  // wall reads as ~0.75 ft ≈ 9"). Converted to Wadi units here.
+  const b = model.build || {}
+  const uft = (v, def) => Math.round((Number.isFinite(Number(v)) ? Number(v) : def) * perUnit)
+  const wallThickness = uft(b.wallThickness, 0.75)
+  const slabThickness = uft(b.slabThickness, 0.5)
+  const wallHeight = uft(b.wallHeight, 10)
+  const plinthHeight = uft(b.plinthHeight, 1.5)
+  const floorHeight = wallHeight + slabThickness // wall sits on the slab
+
+  // The room floors: each room becomes a `room` (walls + doors from the graph) sitting
+  // on a `floor_slab` of the same footprint — the per-room slabs tile the rooms' union.
+  const roomFloors = floors.map((f, i) => {
     const floorRooms = rooms.filter((r) => r.floor === f.id)
-    const objects = floorRooms.map((r) => {
+    const slabs = floorRooms.map((r) => ({
+      type: 'floor_slab', x: r.x * S, y: r.y * S, width: r.w * S, length: r.h * S,
+    }))
+    const roomObjs = floorRooms.map((r) => {
       const o = {
         type: 'room',
         name: nameById.get(r.id),
         x: r.x * S, y: r.y * S, width: r.w * S, length: r.h * S,
       }
-      // Walls + doors derived from adjacency + connection kinds (open/door).
       const walls = computeRoomWalls(r, floorRooms, edgeKind, S)
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
       return o
     })
-    return { floor_number: i + 1, name: f.name || `Floor ${i + 1}`, slab_thickness: 0, objects }
+    // floor_number 1.. — floor 0 is the Plinth we prepend below.
+    return { floor_number: i + 1, name: f.name || `Floor ${i + 1}`, objects: [...slabs, ...roomObjs] }
   })
+
+  // Floor 0: the Plinth. A plot-sized ground plane + a plot-sized plinth the whole
+  // house rests on. Its floor `height` must equal the plinth height (Wadi convention).
+  const plinthFloor = {
+    floor_number: 0,
+    name: 'Plinth',
+    height: plinthHeight,
+    objects: [
+      { type: 'ground', name: 'Ground', x: px, y: py, width: plotW, length: plotL },
+      { type: 'plinth', name: 'Plinth', x: px, y: py, width: plotW, length: plotL, height: plinthHeight },
+    ],
+  }
 
   return {
     units: { system: 'feet_inches', per_unit: perUnit },
     coord_convention: 'center',
+    defaults: {
+      wall_thickness: wallThickness,
+      slab_thickness: slabThickness,
+      wall_height: wallHeight,
+      floor_height: floorHeight,
+    },
     site: {
-      plot_width: (Number(plot.w) || 30) * S,
-      plot_length: (Number(plot.h) || 20) * S,
+      plot_width: plotW,
+      plot_length: plotL,
       reference_x: px,
       reference_y: py,
     },
@@ -86,7 +121,7 @@ export function modelToWadi(model, opts = {}) {
         extent: [Number(grid.cols) || 40, Number(grid.rows) || 30],
       },
     },
-    floors: wadiFloors,
+    floors: [plinthFloor, ...roomFloors],
   }
 }
 

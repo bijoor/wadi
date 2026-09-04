@@ -5,7 +5,7 @@ import { PALETTE } from '../store/initialState.js'
 // Input that only commits its value on Enter or blur (Esc cancels). It keeps a
 // local draft while typing so edits aren't applied on every keystroke, and
 // re-syncs when the underlying value changes (e.g. from dragging on the canvas).
-function CommitInput({ value, type = 'text', min, max, onCommit }) {
+function CommitInput({ value, type = 'text', min, max, step, float = false, onCommit }) {
   const [draft, setDraft] = useState(String(value))
   useEffect(() => {
     setDraft(String(value))
@@ -13,7 +13,7 @@ function CommitInput({ value, type = 'text', min, max, onCommit }) {
 
   const commit = () => {
     if (type === 'number') {
-      const v = parseInt(draft, 10)
+      const v = float ? parseFloat(draft) : parseInt(draft, 10)
       if (!Number.isNaN(v)) onCommit(v)
       else setDraft(String(value)) // revert invalid entry
     } else if (draft !== String(value)) {
@@ -28,6 +28,7 @@ function CommitInput({ value, type = 'text', min, max, onCommit }) {
       value={draft}
       min={min}
       max={max}
+      step={step}
       onChange={(e) => setDraft(e.target.value)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') { commit(); e.currentTarget.blur() }
@@ -38,11 +39,11 @@ function CommitInput({ value, type = 'text', min, max, onCommit }) {
   )
 }
 
-function NumberField({ label, value, min, max, onCommit }) {
+function NumberField({ label, value, min, max, step, float, onCommit }) {
   return (
     <label className="field">
       <span>{label}</span>
-      <CommitInput type="number" value={value} min={min} max={max} onCommit={onCommit} />
+      <CommitInput type="number" value={value} min={min} max={max} step={step} float={float} onCommit={onCommit} />
     </label>
   )
 }
@@ -223,6 +224,30 @@ function EdgeEditor({ state, dispatch, edge }) {
   )
 }
 
+function DimensionsEditor({ state, dispatch }) {
+  const b = state.build || {}
+  const set = (patch) => dispatch({ type: 'UPDATE_BUILD', patch })
+  const unit = state.grid?.unit || 'ft'
+  return (
+    <div className="panel">
+      <h3>Dimensions (export)</h3>
+      <p className="area-note">In {unit}. Used when building the 3-D Wadi model.</p>
+      <div className="row">
+        <NumberField label={`Wall thick (${unit})`} value={b.wallThickness ?? 0.75} min={0.1} max={3} step={0.05} float
+          onCommit={(v) => set({ wallThickness: Math.max(0.1, v) })} />
+        <NumberField label={`Wall height (${unit})`} value={b.wallHeight ?? 10} min={4} max={20} step={0.5} float
+          onCommit={(v) => set({ wallHeight: Math.max(4, v) })} />
+      </div>
+      <div className="row">
+        <NumberField label={`Slab thick (${unit})`} value={b.slabThickness ?? 0.5} min={0.1} max={3} step={0.05} float
+          onCommit={(v) => set({ slabThickness: Math.max(0.1, v) })} />
+        <NumberField label={`Plinth ht (${unit})`} value={b.plinthHeight ?? 1.5} min={0.2} max={6} step={0.25} float
+          onCommit={(v) => set({ plinthHeight: Math.max(0.2, v) })} />
+      </div>
+    </div>
+  )
+}
+
 function GridEditor({ state, dispatch }) {
   const { grid } = state
   const update = (patch) => dispatch({ type: 'UPDATE_GRID', patch })
@@ -351,6 +376,7 @@ export default function Sidebar({ state, dispatch }) {
       <Health state={state} />
       <FloorsPanel state={state} dispatch={dispatch} />
       <GridEditor state={state} dispatch={dispatch} />
+      <DimensionsEditor state={state} dispatch={dispatch} />
       {selection.type !== 'plot' && <PlotEditor state={state} dispatch={dispatch} />}
     </aside>
   )
