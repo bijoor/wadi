@@ -179,12 +179,18 @@ export function reducer(state, action) {
       // It shows as unsatisfied until the rooms are arranged to share a wall.
       const { a, b } = action
       if (a === b || edgeExists(state.edges, a, b)) return state
-      const edge = { id: makeId('e'), a, b }
+      // `kind` decides the shared wall on export: 'door' = wall + centred door
+      // (default), 'open' = no wall on the shared side.
+      const edge = { id: makeId('e'), a, b, kind: 'door' }
       return {
         ...commit(state, { edges: [...state.edges, edge] }),
         selection: { type: 'edge', id: edge.id },
         selectedIds: [],
       }
+    }
+    case 'SET_EDGE_KIND': {
+      const edges = state.edges.map((e) => (e.id === action.id ? { ...e, kind: action.kind } : e))
+      return { ...commit(state, { edges }) }
     }
     case 'DELETE_EDGE': {
       const edges = state.edges.filter((e) => e.id !== action.id)

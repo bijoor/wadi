@@ -274,6 +274,25 @@ button.danger {
 }
 button.danger:hover { background: #ffecec; }
 
+/* Segmented toggle (e.g. connection kind: Door / Open). */
+button.seg {
+  flex: 1;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+}
+button.seg:hover { background: #f0f2f5; }
+button.seg.on {
+  border-color: var(--accent, #2d6cdf);
+  background: #eaf1fe;
+  color: var(--accent, #2d6cdf);
+  font-weight: 600;
+}
+
 .status {
   border-radius: 7px;
   padding: 8px 10px;

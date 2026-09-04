@@ -10,6 +10,7 @@
 // with no door is C11's cue to add one (or leave the wall off for an opening).
 
 import { emitWdl } from 'wadi-wdl-emitter'
+import { computeRoomWalls, edgeKindLookup } from './wallsFromGraph.js'
 
 const PER_UNIT = 10 // Wadi feet_inches default: 10 project units = 1 ft
 
@@ -49,20 +50,23 @@ export function modelToWadi(model, opts = {}) {
 
   const px = (Number(plot.x) || 0) * S
   const py = (Number(plot.y) || 0) * S
+  const edgeKind = edgeKindLookup(edges)
 
   const wadiFloors = floors.map((f, i) => {
-    const objects = rooms
-      .filter((r) => r.floor === f.id)
-      .map((r) => {
-        const o = {
-          type: 'room',
-          name: nameById.get(r.id),
-          x: r.x * S, y: r.y * S, width: r.w * S, length: r.h * S,
-        }
-        const c = conns.get(r.id)
-        if (c && c.size) o.connections = [...c]
-        return o
-      })
+    const floorRooms = rooms.filter((r) => r.floor === f.id)
+    const objects = floorRooms.map((r) => {
+      const o = {
+        type: 'room',
+        name: nameById.get(r.id),
+        x: r.x * S, y: r.y * S, width: r.w * S, length: r.h * S,
+      }
+      // Walls + doors derived from adjacency + connection kinds (open/door).
+      const walls = computeRoomWalls(r, floorRooms, edgeKind, S)
+      if (Object.keys(walls).length) o.walls = walls
+      const c = conns.get(r.id)
+      if (c && c.size) o.connections = [...c]
+      return o
+    })
     return { floor_number: i + 1, name: f.name || `Floor ${i + 1}`, slab_thickness: 0, objects }
   })
 

@@ -192,11 +192,31 @@ function MultiPanel({ state, dispatch }) {
 function EdgeEditor({ state, dispatch, edge }) {
   const a = roomById(state.rooms, edge.a)
   const b = roomById(state.rooms, edge.b)
+  const kind = edge.kind || 'door'
+  const setKind = (k) => dispatch({ type: 'SET_EDGE_KIND', id: edge.id, kind: k })
   return (
     <div className="panel">
       <h3>Connection</h3>
       <div className="area-note">{a ? a.name : '?'} ⟷ {b ? b.name : '?'}</div>
-      <button className="danger" onClick={() => dispatch({ type: 'DELETE_EDGE', id: edge.id })}>
+      <label className="field"><span>Shared wall</span></label>
+      <div className="row" role="radiogroup" aria-label="Connection kind">
+        <button
+          className={kind === 'door' ? 'seg on' : 'seg'}
+          onClick={() => setKind('door')}
+          title="A wall with a door centred on the shared segment"
+        >🚪 Door</button>
+        <button
+          className={kind === 'open' ? 'seg on' : 'seg'}
+          onClick={() => setKind('open')}
+          title="No wall on the shared side — the rooms flow together"
+        >↔ Open</button>
+      </div>
+      <p className="area-note" style={{ marginTop: 6 }}>
+        {kind === 'door'
+          ? 'Exports as a wall with a centred door on the shared side.'
+          : 'Exports with no wall on the shared side (open passage).'}
+      </p>
+      <button className="danger" onClick={() => dispatch({ type: 'DELETE_EDGE', id: edge.id })} style={{ marginTop: 8 }}>
         Delete connection
       </button>
     </div>
