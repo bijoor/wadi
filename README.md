@@ -25,9 +25,9 @@ automated check after edits and renders previews it can read (see
 edit the file by hand, and a home-owner works at a higher level, picking a ready-made
 design and adjusting a set of controls.
 
-Wadi is also built to extend. Each object type is declared once, and the schema, the
-property forms, the documentation, and the language syntax are generated from that
-declaration, so adding a new type is about two files. The
+Wadi is also built to extend. Each object type is declared once in a registry file, and
+the schema, the documentation, the `.wdl` language syntax, and the decompiler all read
+from that one declaration, so adding a new type is a single self-contained file. The
 [`documentation/`](documentation/) folder explains the concepts, the personas, and the
 architecture. Start there if you are new.
 
@@ -38,7 +38,7 @@ architecture. Start there if you are new.
 The primary way to create a design is to describe it to an AI coding assistant, which
 writes and checks the `.wdl` while Wadi renders it. You state what you want, the
 assistant writes the file, and you steer in chat and co-edit as needed. The assistant
-writes the language, not raw JSON, because the DSL editor does that conversion. After
+writes the language, not the compiled config, because Wadi's compiler does that. After
 each edit it runs an automated check (parse, resolve, schema, wall and roof geometry,
 structural conventions) and renders preview images it can read. Most functional testing
 today is visual; more automatic functional tests are planned.
@@ -50,22 +50,20 @@ section "The AI architect skill".
 
 ## For architects (by hand)
 
-An architect can also work without the assistant, in three places. All of them drive
-the same model.
+An architect can also work without the assistant. The `.wdl` is the edit surface; the
+form-based object editor is retired. Both routes drive the same model.
 
-- In studio mode, a form-based editor at <https://wadi.house/app?mode=studio>. Add and
-  edit every element through the object tree and property panels: rooms (with per-side
-  walls, doors, and windows), free-standing walls, a roof (hip, gable, shed, or flat),
-  columns, beams, slabs, staircases, kitchen platforms, and furniture. Openings are cut
-  into the walls live. Tabs give per-floor plans, a filtered composite sheet, elevations
-  (front, back, left, right), roof views, and a wall-area estimate, all dimensioned.
-- In the DSL editor, writing `.wdl` directly (browser: <https://wadi.house/dsl>; or the
-  desktop app, ⌘⇧D). The [Wadi DSL Author's Guide](documentation/03-authoring.md) is the
-  walkthrough, from your first room to grids, reusable components, libraries, and the
-  owner-facing configurator. It is part of the guided
-  [`documentation/`](documentation/) folder.
-- On the desktop, editing a file. The Wadi desktop app watches a `.wadi` file on disk,
-  so you can edit it in any tool and see the 3D model update within about a second.
+- In the WDL editor built into the app, writing `.wdl` directly (browser: the WDL tab at
+  <https://wadi.house/app>; or the desktop app, ⌘⇧D). It compiles live and shows the 3D
+  model, per-floor plans, a filtered composite sheet, elevations, roof views, and a
+  wall-area estimate, all dimensioned, with parse errors surfaced inline. The 🧩 Modules
+  panel manages the reusable component files a design imports. The
+  [Wadi DSL Author's Guide](documentation/03-authoring.md) is the walkthrough, from your
+  first room to grids, reusable components, libraries, and the owner-facing configurator.
+  It is part of the guided [`documentation/`](documentation/) folder.
+- On the desktop, editing a file. The Wadi desktop app watches a `.wdl` or `.wadi` file
+  on disk, so you can edit it in any tool and see the 3D model update within about a
+  second. Opening a `.wdl` auto-loads its sibling component modules.
 
 To make a design reusable, define it on a structural grid with formulas so it stays
 valid when the plot is resized, then expose a configurator. That is the basis for the
@@ -94,18 +92,27 @@ Everything runs in the browser. There is nothing to install, and it works on a p
 
 # Technical details
 
-Everything below is for running, extending, or deploying Wadi. A house is a single JSON
-document (a `.wadi` file). One TypeScript codebase under `editor/src` renders every
-surface, and the Zod schema at `editor/src/schema/houseConfig.ts` is the single source
-of truth for the format.
+Everything below is for running, extending, or deploying Wadi. A house is authored as a
+`.wdl` (the Wadi Design Language) and saved as a `.wadi` bundle. One TypeScript codebase
+under `editor/src` renders every surface, and the Zod schema at
+`editor/src/schema/houseConfig.ts` is the single source of truth for the compiled config.
 
-## The `.wadi` file & schema
+## The `.wadi` bundle & schema
 
-- A house is one JSON document: `.wadi` (or `house_config.json`). The repo's default
-  design is `docs/house_config.json` (the root `house_config.json` is a symlink to it)
-  and auto-loads in the app.
-- The format is defined and validated by the Zod schema (`editor/src/schema/houseConfig.ts`).
-  The complete, always-current field reference is
+- A `.wadi` is a **zip bundle** that carries a design and its dependencies together:
+  - `wadi.json` — the compiled `HouseConfig` (what every renderer reads).
+  - `model.wdl` — the authored DSL source, so the design round-trips back to editable
+    `.wdl`.
+  - `thumbnails/` — gallery preview images.
+  - `modules/` — the imported component `.wdl` files, one per import ref, mapped in the
+    manifest, so a design that reuses custom components stays self-contained (see
+    [components & libraries](documentation/04-components-and-libraries.md)).
+- A plain-JSON `.wadi` or `house_config.json` still loads (the loader sniffs the magic
+  bytes: a zip vs. a `{` document vs. `.wdl` text), so older single-document designs keep
+  working. The repo's default design is `docs/house_config.json` (the root
+  `house_config.json` is a symlink to it) and auto-loads in the app.
+- The compiled config is defined and validated by the Zod schema
+  (`editor/src/schema/houseConfig.ts`). The complete, always-current field reference is
   **`wadi-skill/architect/reference/data-model.md`**, generated from that schema so it
   cannot drift.
 
@@ -146,9 +153,9 @@ Full details: `wadi-skill/architect/reference/coordinate-system.md` and
 ## The AI architect skill: setup & use
 
 Describe a house to a coding agent and it authors the design in the **Wadi DSL**, a
-small formal language saved as a **`.wdl`** file, while the Wadi **DSL editor** compiles
+small formal language saved as a **`.wdl`** file, while the Wadi **WDL editor** compiles
 and renders it live. The `.wdl` is a single file you and the agent **co-edit**; the
-agent never produces raw JSON (`.wadi`), because the DSL editor does that conversion.
+agent never hand-writes the compiled config, because the compiler does that conversion.
 
 The skill ships as an **agent-neutral core** plus thin per-agent adapters, so the same
 content drives any coding agent:
@@ -168,36 +175,25 @@ npm --prefix editor   install    # the skill's check/preview scripts reuse the a
 npm --prefix wadi-dsl install    # the DSL compiler (its `prepare` hook builds the parser)
 ```
 
-### 2. Open the DSL editor for the live preview (recommended)
+### 2. Open the WDL editor for the live preview (recommended)
 
-Keep your `.wdl` open in the Wadi DSL editor so the 3D model + plans update as the agent
+Keep your `.wdl` open in the Wadi WDL editor so the 3D model + plans update as the agent
 saves (and it watches the file, so your own edits show too):
 
 - **Desktop:** the Wadi app → **⌘⇧D → Open** your `.wdl` (see [Desktop app](#desktop-app-tauri)).
-- **Browser:** **<https://wadi.house/dsl>**, paste or open a `.wdl`.
+- **Browser:** the **WDL** tab in the app at **<https://wadi.house/app>**, paste or open
+  a `.wdl`.
 
 ### 3. Ask the agent to design
 
-**Claude Code** (auto-discovers the skill from `.claude/skills/` when run inside the repo):
-
-1. `cd wadi && claude` (or open the repo in the Claude Code IDE extension / desktop app).
-2. Ask naturally (*"design a 3-bed L-shaped bungalow, hip roof, ~1500 sq ft"*), or invoke
-   it explicitly with `/wadi-architect`. It creates a `.wdl`, tells you the path, and runs
-   `check.sh` after every edit.
-3. Open that `.wdl` in the DSL editor (step 2) to watch it render; edit it yourself too and
-   the agent picks up your changes.
-4. To use the skill in *every* project, copy the adapter into your user skills dir (it
-   still points back at this repo, so keep it checked out):
-   `cp -R .claude/skills/wadi-architect ~/.claude/skills/`
-
-**Google Antigravity / Cursor / other `AGENTS.md`-aware agents** (read `AGENTS.md`
-automatically):
-
-1. Open the `wadi` repo as your workspace.
-2. Ask it to create or edit a house (*"make a coastal Konkan cottage with a verandah"*). It
-   follows `AGENTS.md` → `wadi-skill/architect/SKILL.md` and authors the `.wdl`.
-3. If your agent doesn't pick up `AGENTS.md` on its own, tell it:
-   *"Follow the instructions in `wadi-skill/architect/SKILL.md` to author this `.wdl`."*
+- **Claude Code** auto-discovers the skill from `.claude/skills/` when run inside the
+  repo: `cd wadi && claude`, then ask naturally or invoke `/wadi-architect`. It creates a
+  `.wdl`, tells you the path, and runs `check.sh` after every edit. To use it in *every*
+  project, copy the adapter to your user skills dir (it still points back at this repo, so
+  keep it checked out): `cp -R .claude/skills/wadi-architect ~/.claude/skills/`.
+- **Antigravity / Cursor / other `AGENTS.md`-aware agents** read the repo-root `AGENTS.md`,
+  which routes to `wadi-skill/architect/SKILL.md`. If yours doesn't pick it up, tell it to
+  follow that file.
 
 ### 4. The tooling the agent runs (you can too)
 
@@ -205,22 +201,14 @@ Both scripts reuse the app's own generators, so they match the app byte-for-byte
 **absolute** path to the `.wdl`:
 
 ```bash
-# Check a .wdl: parse + resolve + schema/roof-wall geometry + structural conventions.
-# (No .wadi is written; it checks against a throwaway temp.)
-wadi-skill/architect/scripts/check.sh <ABS_PATH_TO.wdl>
-
-# Render floor plans / elevations / roof to PNGs the agent (and you) can read.
-wadi-skill/architect/scripts/preview.sh <ABS_PATH_TO.wdl>
+wadi-skill/architect/scripts/check.sh   <ABS_PATH_TO.wdl>   # parse + resolve + schema/geometry + conventions
+wadi-skill/architect/scripts/preview.sh <ABS_PATH_TO.wdl>   # render plans / elevations / roof to PNGs
 ```
 
-`check.sh` also enforces the **structural conventions**
-(`wadi-skill/architect/reference/conventions.md`): for example, the plinth-floor height
-must match the plinth block, a room must wall its exterior sides, and a floor with no
-slab must set `slab_thickness 0`. It fails on errors and prints warnings, so the agent
-(and you) catch a house that would float or a room left open on an exterior side.
-
-> Hand-written raw JSON? `validate.mjs` still checks a `.wadi` directly:
-> `cd editor && npx tsx ../wadi-skill/architect/scripts/validate.mjs <ABS_PATH_TO.wadi>`.
+`check.sh` also enforces the **structural conventions** (plinth match, exterior walls,
+no-slab floors, and more), failing on errors and printing warnings. The full workflow,
+the conventions, and the per-agent setup are in
+[Designing with an AI assistant](documentation/07-ai-assistants.md).
 
 ### Repo-free: run it as an MCP server
 
@@ -233,9 +221,15 @@ examples/reference docs into one self-contained file. It exposes agent-native to
 | --- | --- |
 | `wadi_check` | `check.sh`: parse + resolve + schema/geometry + structural conventions |
 | `wadi_preview` | `preview.sh`: renders plans / elevations / roof to **PNG images** the agent reads |
+| `wadi_scope` | resolve the design's variables, points, and grid lines to actual values |
 | `wadi_examples` | the `examples/*.wdl` (embedded) |
 | `wadi_reference` | the reference docs (embedded: guide, dsl, conventions, …) |
+| `wadi_modules` / `wadi_module` | discover and inspect the bundled component / furniture libraries |
+| `wadi_glb_inspect` | inspect a GLB's node rig (for `model` primitives) |
 | `wadi_view_3d` / `wadi_capture_3d` | *(needs the desktop app open)* load a design into the app's live 3D view, or get a real 3D image back, via a localhost bridge the app serves |
+
+Agents can also register reusable `component` modules so they bundle into the `.wadi`;
+see [components & libraries](documentation/04-components-and-libraries.md).
 
 Register it with any MCP client (Claude Code, Cursor, Claude Desktop, …). Published to npm,
 it needs no install:
@@ -253,7 +247,7 @@ only `@resvg/resvg-js` external), point at the bundle by path:
 
 Then the agent authors a `.wdl` using `wadi_reference` / `wadi_examples` and verifies with
 `wadi_check` / `wadi_preview`, with no repo and no desktop app. (The live 3D preview still
-comes from the DSL editor if you want it.) See **`wadi-mcp/README.md`**.
+comes from the WDL editor if you want it.) See **`wadi-mcp/README.md`**.
 
 ## Run & develop locally
 
@@ -299,11 +293,11 @@ editor/                    React + Three.js + Zod app: THE source of truth
   src/registry/               object-type registry (one file per new type)
 docs/                      GitHub Pages root, served at wadi.house
   index.html               landing page  → /app
-  app/                     the 3D home designer (homeowner + architect modes)
-  templates/               bundled starter templates + index.json
+  app/                     the app (viewer): 3D model + plans + WDL editor + configurator
+  templates/               bundled starter templates (self-describing; the folder is the catalog)
   house_config.json        default design (root house_config.json → symlink)
 src-tauri/                 desktop app (Tauri) wrapping docs/
-wadi-dsl/                  the Wadi DSL (.wdl): Langium grammar, compiler, DSL editor
+wadi-dsl/                  the Wadi DSL (.wdl): Langium grammar, compiler, decompiler
   examples/*.wdl              validated sample houses the skill copies from
 wadi-skill/architect/      agent-neutral AI skill (Claude Code, Antigravity, …)
 wadi-mcp/                  MCP server: the skill's tooling, repo-free (check/preview/examples)
@@ -342,7 +336,7 @@ python/  archive/          RETIRED Blender/Python pipeline: history only, do not
   loop) + `reference/{dsl,data-model,coordinate-system,parametric-conventions,conventions,
   roof-v2-guide}.md` + validated `examples/`. The reference docs are the authoritative,
   current description of the DSL, the model, and the structural conventions.
-- **`wadi-dsl/README.md`**: the Wadi DSL (`.wdl`): grammar, compiler, and the DSL editor.
+- **`wadi-dsl/README.md`**: the Wadi DSL (`.wdl`): grammar, compiler, and decompiler.
 - **`editor/README.md`**: editor internals and architecture.
 - **`TEMPLATE_HOSTING.md`**: R2 bucket + CORS setup for templates / furniture.
 
