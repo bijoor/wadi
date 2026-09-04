@@ -538,33 +538,17 @@ library component may <code>use</code> a sibling or place furniture from its own
 <li><code>konkan/base</code>: goal-tagged Konkan parts: <code>Stairwell</code>, <code>Verandah</code>, <code>Otla</code>,
 <code>Bathroom</code>, <code>Kitchen</code>, <code>TulsiVrindavan</code>, <code>Parapet</code> → <code>use kb.Verandah …</code>.</li>
 </ul>
-<h3 id="save--reuse-your-own-libraries">Save &amp; reuse your own libraries</h3>
-<p>The editor keeps a cache of loaded libraries that <code>import</code> resolves from, the
-same on the web app and desktop. Open the <strong>📚 Library</strong> toolbar menu:</p>
-<table>
-<thead>
-<tr>
-<th>Action</th>
-<th>What it does</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong>💾 Save current as library…</strong></td>
-<td>names the current file and puts it in the cache</td>
-</tr>
-<tr>
-<td><strong>📂 Load library file…</strong></td>
-<td>loads one or more <code>.wdl</code> files into the cache</td>
-</tr>
-<tr>
-<td><em>(the cached list)</em></td>
-<td>click a name to insert its <code>import</code> line · <strong>✎</strong> open it · <strong>×</strong> remove it</td>
-</tr>
-</tbody></table>
-<p>Resolution order: <strong>your cache → the bundled packs</strong>. If a file imports something
-uncached, the editor names exactly what&#39;s missing so you can load it. On the
-<strong>desktop app</strong>, any <code>.wdl</code> beside your open file (or in a <code>modules/</code> subfolder) is
-auto-loaded and importable by its basename.</p>
+<h3 id="add--reuse-your-own-component-modules">Add &amp; reuse your own component modules</h3>
+<p>A design carries a <strong>module list</strong>: the custom component <code>.wdl</code> files it imports,
+saved <strong>inside the <code>.wadi</code></strong> so the design is self-contained. Open the <strong>🧩 Modules</strong>
+panel in the WDL editor. It lists every <code>import</code>, tagged <strong>inbuilt</strong> (a std pack),
+<strong>bundled</strong> (a custom module in this model), or <strong>missing</strong>, and lets you add one with
+<strong>New module (edit code)</strong> (author/paste it in the same editor) or <strong>Add a .wdl file</strong>,
+plus Edit / Replace / Remove.</p>
+<p>Resolution order: <strong>your custom modules → the bundled packs</strong>. A missing import is
+flagged (and counted on the 🧩 badge) so you know to add it. On the <strong>desktop app</strong>,
+any <code>.wdl</code> beside your open file (or in a <code>modules/</code> subfolder) is auto-loaded and
+importable by its basename. An AI agent can register modules too (<code>wadi_add_module</code>).</p>
 <p>See <a href="components.html"><strong>components &amp; libraries</strong></a> for the full story.</p>
 <hr>
 <h2 id="13-the-configurator">13. The configurator</h2>
@@ -636,8 +620,9 @@ this file or into the imported library (which opens read-only).</li>
 <li>Rename (F2): rename an in-file component and all its <code>use</code> sites at once.</li>
 </ul>
 <p><strong>Toolbar:</strong> a sample picker (<code>✨ New</code>), <strong>Open</strong> / <strong>Save .wdl</strong>, <strong>⬇ .wadi</strong>
-(download the compiled model), <strong>📚 Library</strong> (§12), <strong>↩ Import .wadi</strong> (§16), and
-<strong>📖 Reference</strong>, a built-in cheat-sheet of every construct.</p>
+(save the design as a <code>.wadi</code> bundle), <strong>↩ Import .wadi</strong> (§16), and <strong>📖 Reference</strong>,
+a built-in cheat-sheet of every construct. The WDL editor also has a <strong>🧩 Modules</strong>
+panel (§12) for the design&#39;s component modules.</p>
 <hr>
 <h2 id="16-sharing--exporting">16. Sharing &amp; exporting</h2>
 <ul>

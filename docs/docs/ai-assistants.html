@@ -193,6 +193,12 @@ updates as the file is saved.</p>
 </tr>
 </tbody></table>
 <p>The last two need the desktop app running; the rest work on their own.</p>
+<p><strong>Reusing your own components.</strong> To reuse a <code>component</code> across designs, author it as a
+sibling module file: put <code>component Name { … }</code> in a <code>.wdl</code> next to the main file (or in
+a <code>modules/</code> subfolder) and <code>import &quot;name&quot;</code> it. The desktop app auto-loads those sibling
+files on open and saves them inside the <code>.wadi</code>, so the design stays self-contained. (An
+in-browser agent instead registers modules with the WebMCP <code>wadi_add_module</code> tool.) See
+<a href="components.html">components &amp; libraries</a>.</p>
 <h2 id="alternative-an-agent-working-inside-the-repo-no-mcp">Alternative: an agent working inside the repo (no MCP)</h2>
 <p>If your assistant is a coding agent with the Wadi repository checked out, it can use the
 built-in skill instead of the MCP server:</p>

@@ -87,7 +87,7 @@ a:hover{text-decoration:underline}
 <div class="grp"><div class="grp-t">References</div><a href="grammar-and-data-model.html">Grammar & data model</a>
 <a href="applying-the-method-to-saas.html">Applying the method to SaaS</a></div></aside>
   <main class="content">
-    <nav class="toc"><div class="toc-t">On this page</div><a href="#1-components">1. Components</a><a href="#2-libraries-reusable-wdl-modules">2. Libraries (reusable .wdl modules)</a><a href="#3-saving--reusing-libraries-in-the-wdl-editor">3. Saving &amp; reusing libraries in the WDL editor</a><a href="#4-mcp-for-coding-agents">4. MCP (for coding agents)</a><a href="#5-quick-reference">5. Quick reference</a></nav>
+    <nav class="toc"><div class="toc-t">On this page</div><a href="#1-components">1. Components</a><a href="#2-libraries-reusable-wdl-modules">2. Libraries (reusable .wdl modules)</a><a href="#3-modules-in-the-wdl-editor-managing-what-import-resolves">3. Modules in the WDL editor (managing what import resolves)</a><a href="#4-mcp-for-coding-agents">4. MCP (for coding agents)</a><a href="#5-quick-reference">5. Quick reference</a></nav>
     <article class="md"><h1 id="components--libraries-in-the-wadi-dsl">Components &amp; libraries in the Wadi DSL</h1>
 <blockquote>
 <p>Part of the <a href="index.html">Wadi documentation</a>. Prerequisite: the
@@ -101,8 +101,9 @@ verandah, a bench…) you define once and stamp onto any floor with <code>use</c
 files <code>import</code> and reuse. <strong>A library <em>is</em> a <code>.wdl</code> file</strong>. There is no separate
 format.</li>
 </ul>
-<p>Both are first-class in the language. This guide shows how to author them and how
-to save / load / resolve libraries in the WDL editor (web app + desktop app).</p>
+<p>Both are first-class in the language. This guide shows how to author them and how the
+WDL editor manages the modules a design imports (the 🧩 Modules panel), which travel
+inside the saved <code>.wadi</code>.</p>
 <hr>
 <h2 id="1-components">1. Components</h2>
 <h3 id="define-a-component">Define a component</h3>
@@ -209,10 +210,35 @@ notice. That&#39;s expected; it isn&#39;t a renderable house. To see your compon
 you build them, give the library a <strong>demo <code>house</code></strong> that <code>use</code>s them. Importers
 pull only the library&#39;s <code>component</code> / <code>asset</code> exports and ignore the demo house.</p>
 <hr>
-<h2 id="3-saving--reusing-libraries-in-the-wdl-editor">3. Saving &amp; reusing libraries in the WDL editor</h2>
-<p>The editor keeps a <strong>cache of loaded libraries</strong> that <code>import</code> resolves from. It is
-<strong>identical on the web app and the desktop app</strong>. Open the <strong>📚 Library</strong> toolbar
-menu:</p>
+<h2 id="3-modules-in-the-wdl-editor-managing-what-import-resolves">3. Modules in the WDL editor (managing what <code>import</code> resolves)</h2>
+<p>A model carries a <strong>module list</strong>: the custom component <code>.wdl</code> files it imports.
+That list travels <strong>inside the saved <code>.wadi</code></strong> (each module a readable file under
+<code>modules/</code>, mapped by import ref in the manifest), so a design is self-contained and
+a component can be reused in other models by unzipping the <code>.wadi</code>. Inbuilt packs
+(<code>std-furniture</code>, <code>konkan/base</code>) are always available and are not stored per model.</p>
+<p>Open the <strong>🧩 Modules</strong> panel in the WDL editor. It lists every <code>import</code> in the
+current WDL, each tagged:</p>
+<table>
+<thead>
+<tr>
+<th>Tag</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>inbuilt</strong></td>
+<td>a bundled std pack — always available, nothing to add</td>
+</tr>
+<tr>
+<td><strong>bundled</strong></td>
+<td>a custom module registered for this model (saved in the <code>.wadi</code>)</td>
+</tr>
+<tr>
+<td><strong>missing</strong></td>
+<td>imported but not registered yet — add it to resolve the import</td>
+</tr>
+</tbody></table>
+<p>Panel actions:</p>
 <table>
 <thead>
 <tr>
@@ -221,50 +247,68 @@ menu:</p>
 </tr>
 </thead>
 <tbody><tr>
-<td><strong>💾 Save current as library…</strong></td>
-<td>Names the current file and puts it in the cache.</td>
+<td><strong>＋ New module (edit code)</strong></td>
+<td>opens the same WDL editor to author or paste a component <code>.wdl</code></td>
 </tr>
 <tr>
-<td><strong>📂 Load library file…</strong></td>
-<td>Loads one <em>or more</em> <code>.wdl</code> files into the cache (multi-select).</td>
+<td><strong>Add a .wdl file</strong></td>
+<td>loads a component <code>.wdl</code> from disk into the model</td>
 </tr>
 <tr>
-<td><em>(the list of cached libraries)</em></td>
-<td>Click a name to insert its <code>import &quot;…&quot; as ns</code> line · <strong>✎</strong> opens it in the editor · <strong>×</strong> removes it from the cache.</td>
+<td><strong>Edit</strong> / <strong>Replace</strong></td>
+<td>edit a custom module&#39;s code, or replace it from a file</td>
+</tr>
+<tr>
+<td><strong>Create</strong> (on a <em>missing</em> import)</td>
+<td>author the missing module, its ref pre-filled</td>
+</tr>
+<tr>
+<td><strong>Remove</strong></td>
+<td>drop a custom module</td>
 </tr>
 </tbody></table>
-<p>Each entry shows an origin badge: <strong>saved</strong> (from <em>Save current as library</em>) or
-<strong>file</strong> (loaded from a <code>.wdl</code>).</p>
+<p>A badge on the 🧩 Modules button counts any missing imports.</p>
 <h3 id="resolution-order">Resolution order</h3>
 <p><code>import &quot;name&quot;</code> resolves in this order:</p>
 <ol>
-<li><strong>Your cache</strong> (saved + loaded libraries)</li>
-<li><strong>Bundled packs</strong> (<code>std-furniture</code>, <code>konkan/base</code>)</li>
+<li>The model&#39;s <strong>custom modules</strong> (the registry, saved in the <code>.wadi</code>)</li>
+<li>The <strong>bundled packs</strong> (<code>std-furniture</code>, <code>konkan/base</code>)</li>
 </ol>
-<h3 id="desktop-libraries-as-real-files">Desktop: libraries as real files</h3>
-<p>In the desktop app, a library can be a <strong>file on disk</strong>, with no explicit load:</p>
+<h3 id="desktop-sibling-files-auto-load">Desktop: sibling files auto-load</h3>
+<p>In the desktop app, opening a plain <code>.wdl</code> from disk auto-loads its imported
+component files with no manual step: any <code>&lt;ref&gt;.wdl</code> <strong>beside the file</strong>, or in a
+<strong><code>modules/</code> subfolder</strong>, is read in and registered, importable by its <strong>basename</strong>
+(<code>kitchens.wdl</code> → <code>import &quot;kitchens&quot;</code>). These are real files you can <strong>commit,
+share, and version</strong>, and the coding agent + MCP read them. In a browser there is no
+filesystem, so you add modules through the 🧩 Modules panel instead.</p>
+<h3 id="agents-can-add-modules-too">Agents can add modules too</h3>
+<p>An AI agent registers a component module the same way it edits the main design, so
+the module bundles into the <code>.wadi</code> and its <code>import</code> resolves:</p>
 <ul>
-<li>Any <code>.wdl</code> <strong>beside your open file</strong>, or in a <strong><code>modules/</code> subfolder</strong>, is
-auto-loaded into the cache when you open the house, importable by its
-<strong>basename</strong> (<code>kitchens.wdl</code> → <code>import &quot;kitchens&quot;</code>).</li>
-<li>These are real files you can <strong>commit, share, and version</strong>, and the coding
-agent + MCP can read them.</li>
+<li>In the browser (WebMCP / <code>window.wadi</code>): <code>wadi_add_module(ref, wdl)</code>,
+<code>wadi_list_modules</code>, <code>wadi_remove_module</code>.</li>
+<li>In a live co-edit session (the hosted MCP server):
+<code>wadi_session_add_module(session, ref, wdl)</code>, <code>wadi_session_list_modules</code>.</li>
 </ul>
-<h3 id="if-a-library-isnt-loaded">If a library isn&#39;t loaded</h3>
-<p>Open a house that imports something not in the cache and the editor names exactly
-what&#39;s missing:</p>
-<blockquote>
-<p>⚠ missing libraries &quot;kitchens&quot;, &quot;bathrooms&quot;. 📚 Library → Load library file…</p>
-</blockquote>
-<p>Load the named <code>.wdl</code>(s), several at once, and it resolves.</p>
+<p>Register the module, then <code>import &quot;ref&quot; as ns</code> in the main WDL and <code>use ns.Comp</code>.</p>
 <hr>
 <h2 id="4-mcp-for-coding-agents">4. MCP (for coding agents)</h2>
 <p>Over the Wadi MCP server:</p>
 <ul>
-<li><code>wadi_modules [query]</code>: list importable modules (filter by a component <strong>goal</strong>
-keyword, e.g. &quot;stairs&quot;, &quot;sit-out&quot;).</li>
-<li><code>wadi_module &quot;&lt;name&gt;&quot; [query]</code>: show a module&#39;s components (name + goal +
+<li><code>wadi_modules [query]</code>: list the <strong>bundled</strong> importable modules (filter by a
+component <strong>goal</strong> keyword, e.g. &quot;stairs&quot;, &quot;sit-out&quot;).</li>
+<li><code>wadi_module &quot;&lt;name&gt;&quot; [query]</code>: show a bundled module&#39;s components (name + goal +
 params) and assets (id + dimensions).</li>
+</ul>
+<p>To REGISTER a custom component module (so it bundles into the user&#39;s <code>.wadi</code>), an
+agent uses the surface it is on:</p>
+<ul>
+<li><strong>WebMCP</strong> (agent in the browser): <code>wadi_add_module</code>, <code>wadi_list_modules</code>,
+<code>wadi_remove_module</code>.</li>
+<li><strong>Live co-edit session</strong> (the hosted server): <code>wadi_session_add_module</code>,
+<code>wadi_session_list_modules</code>, alongside <code>wadi_session_get</code> / <code>wadi_session_set</code>.</li>
+<li><strong>Offline coding agent</strong>: author the component <code>.wdl</code> as a sibling file next to the
+main <code>.wdl</code> (<code>&lt;ref&gt;.wdl</code> or <code>modules/&lt;ref&gt;.wdl</code>); the desktop app auto-loads it.</li>
 </ul>
 <hr>
 <h2 id="5-quick-reference">5. Quick reference</h2>

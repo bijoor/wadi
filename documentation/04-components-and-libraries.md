@@ -11,8 +11,9 @@ Reuse in the Wadi DSL (`.wdl`) comes in two layers:
   files `import` and reuse. **A library *is* a `.wdl` file**. There is no separate
   format.
 
-Both are first-class in the language. This guide shows how to author them and how
-to save / load / resolve libraries in the WDL editor (web app + desktop app).
+Both are first-class in the language. This guide shows how to author them and how the
+WDL editor manages the modules a design imports (the 🧩 Modules panel), which travel
+inside the saved `.wadi`.
 
 ---
 
@@ -150,46 +151,62 @@ pull only the library's `component` / `asset` exports and ignore the demo house.
 
 ---
 
-## 3. Saving & reusing libraries in the WDL editor
+## 3. Modules in the WDL editor (managing what `import` resolves)
 
-The editor keeps a **cache of loaded libraries** that `import` resolves from. It is
-**identical on the web app and the desktop app**. Open the **📚 Library** toolbar
-menu:
+A model carries a **module list**: the custom component `.wdl` files it imports.
+That list travels **inside the saved `.wadi`** (each module a readable file under
+`modules/`, mapped by import ref in the manifest), so a design is self-contained and
+a component can be reused in other models by unzipping the `.wadi`. Inbuilt packs
+(`std-furniture`, `konkan/base`) are always available and are not stored per model.
+
+Open the **🧩 Modules** panel in the WDL editor. It lists every `import` in the
+current WDL, each tagged:
+
+| Tag | Meaning |
+|---|---|
+| **inbuilt** | a bundled std pack — always available, nothing to add |
+| **bundled** | a custom module registered for this model (saved in the `.wadi`) |
+| **missing** | imported but not registered yet — add it to resolve the import |
+
+Panel actions:
 
 | Action | What it does |
 |---|---|
-| **💾 Save current as library…** | Names the current file and puts it in the cache. |
-| **📂 Load library file…** | Loads one *or more* `.wdl` files into the cache (multi-select). |
-| *(the list of cached libraries)* | Click a name to insert its `import "…" as ns` line · **✎** opens it in the editor · **×** removes it from the cache. |
+| **＋ New module (edit code)** | opens the same WDL editor to author or paste a component `.wdl` |
+| **Add a .wdl file** | loads a component `.wdl` from disk into the model |
+| **Edit** / **Replace** | edit a custom module's code, or replace it from a file |
+| **Create** (on a *missing* import) | author the missing module, its ref pre-filled |
+| **Remove** | drop a custom module |
 
-Each entry shows an origin badge: **saved** (from *Save current as library*) or
-**file** (loaded from a `.wdl`).
+A badge on the 🧩 Modules button counts any missing imports.
 
 ### Resolution order
 
 `import "name"` resolves in this order:
 
-1. **Your cache** (saved + loaded libraries)
-2. **Bundled packs** (`std-furniture`, `konkan/base`)
+1. The model's **custom modules** (the registry, saved in the `.wadi`)
+2. The **bundled packs** (`std-furniture`, `konkan/base`)
 
-### Desktop: libraries as real files
+### Desktop: sibling files auto-load
 
-In the desktop app, a library can be a **file on disk**, with no explicit load:
+In the desktop app, opening a plain `.wdl` from disk auto-loads its imported
+component files with no manual step: any `<ref>.wdl` **beside the file**, or in a
+**`modules/` subfolder**, is read in and registered, importable by its **basename**
+(`kitchens.wdl` → `import "kitchens"`). These are real files you can **commit,
+share, and version**, and the coding agent + MCP read them. In a browser there is no
+filesystem, so you add modules through the 🧩 Modules panel instead.
 
-- Any `.wdl` **beside your open file**, or in a **`modules/` subfolder**, is
-  auto-loaded into the cache when you open the house, importable by its
-  **basename** (`kitchens.wdl` → `import "kitchens"`).
-- These are real files you can **commit, share, and version**, and the coding
-  agent + MCP can read them.
+### Agents can add modules too
 
-### If a library isn't loaded
+An AI agent registers a component module the same way it edits the main design, so
+the module bundles into the `.wadi` and its `import` resolves:
 
-Open a house that imports something not in the cache and the editor names exactly
-what's missing:
+- In the browser (WebMCP / `window.wadi`): `wadi_add_module(ref, wdl)`,
+  `wadi_list_modules`, `wadi_remove_module`.
+- In a live co-edit session (the hosted MCP server):
+  `wadi_session_add_module(session, ref, wdl)`, `wadi_session_list_modules`.
 
-> ⚠ missing libraries "kitchens", "bathrooms". 📚 Library → Load library file…
-
-Load the named `.wdl`(s), several at once, and it resolves.
+Register the module, then `import "ref" as ns` in the main WDL and `use ns.Comp`.
 
 ---
 
@@ -197,10 +214,20 @@ Load the named `.wdl`(s), several at once, and it resolves.
 
 Over the Wadi MCP server:
 
-- `wadi_modules [query]`: list importable modules (filter by a component **goal**
-  keyword, e.g. "stairs", "sit-out").
-- `wadi_module "<name>" [query]`: show a module's components (name + goal +
+- `wadi_modules [query]`: list the **bundled** importable modules (filter by a
+  component **goal** keyword, e.g. "stairs", "sit-out").
+- `wadi_module "<name>" [query]`: show a bundled module's components (name + goal +
   params) and assets (id + dimensions).
+
+To REGISTER a custom component module (so it bundles into the user's `.wadi`), an
+agent uses the surface it is on:
+
+- **WebMCP** (agent in the browser): `wadi_add_module`, `wadi_list_modules`,
+  `wadi_remove_module`.
+- **Live co-edit session** (the hosted server): `wadi_session_add_module`,
+  `wadi_session_list_modules`, alongside `wadi_session_get` / `wadi_session_set`.
+- **Offline coding agent**: author the component `.wdl` as a sibling file next to the
+  main `.wdl` (`<ref>.wdl` or `modules/<ref>.wdl`); the desktop app auto-loads it.
 
 ---
 

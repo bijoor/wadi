@@ -567,21 +567,19 @@ house Home {
 - `konkan/base`: goal-tagged Konkan parts: `Stairwell`, `Verandah`, `Otla`,
   `Bathroom`, `Kitchen`, `TulsiVrindavan`, `Parapet` → `use kb.Verandah …`.
 
-### Save & reuse your own libraries
+### Add & reuse your own component modules
 
-The editor keeps a cache of loaded libraries that `import` resolves from, the
-same on the web app and desktop. Open the **📚 Library** toolbar menu:
+A design carries a **module list**: the custom component `.wdl` files it imports,
+saved **inside the `.wadi`** so the design is self-contained. Open the **🧩 Modules**
+panel in the WDL editor. It lists every `import`, tagged **inbuilt** (a std pack),
+**bundled** (a custom module in this model), or **missing**, and lets you add one with
+**New module (edit code)** (author/paste it in the same editor) or **Add a .wdl file**,
+plus Edit / Replace / Remove.
 
-| Action | What it does |
-|---|---|
-| **💾 Save current as library…** | names the current file and puts it in the cache |
-| **📂 Load library file…** | loads one or more `.wdl` files into the cache |
-| *(the cached list)* | click a name to insert its `import` line · **✎** open it · **×** remove it |
-
-Resolution order: **your cache → the bundled packs**. If a file imports something
-uncached, the editor names exactly what's missing so you can load it. On the
-**desktop app**, any `.wdl` beside your open file (or in a `modules/` subfolder) is
-auto-loaded and importable by its basename.
+Resolution order: **your custom modules → the bundled packs**. A missing import is
+flagged (and counted on the 🧩 badge) so you know to add it. On the **desktop app**,
+any `.wdl` beside your open file (or in a `modules/` subfolder) is auto-loaded and
+importable by its basename. An AI agent can register modules too (`wadi_add_module`).
 
 See [**components & libraries**](04-components-and-libraries.md) for the full story.
 
@@ -671,8 +669,9 @@ squiggles and in a Problems panel with line numbers.
 - Rename (F2): rename an in-file component and all its `use` sites at once.
 
 **Toolbar:** a sample picker (`✨ New`), **Open** / **Save .wdl**, **⬇ .wadi**
-(download the compiled model), **📚 Library** (§12), **↩ Import .wadi** (§16), and
-**📖 Reference**, a built-in cheat-sheet of every construct.
+(save the design as a `.wadi` bundle), **↩ Import .wadi** (§16), and **📖 Reference**,
+a built-in cheat-sheet of every construct. The WDL editor also has a **🧩 Modules**
+panel (§12) for the design's component modules.
 
 ---
 

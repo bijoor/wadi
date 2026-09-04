@@ -85,6 +85,13 @@ You do not call these; the assistant does, once connected.
 
 The last two need the desktop app running; the rest work on their own.
 
+**Reusing your own components.** To reuse a `component` across designs, author it as a
+sibling module file: put `component Name { … }` in a `.wdl` next to the main file (or in
+a `modules/` subfolder) and `import "name"` it. The desktop app auto-loads those sibling
+files on open and saves them inside the `.wadi`, so the design stays self-contained. (An
+in-browser agent instead registers modules with the WebMCP `wadi_add_module` tool.) See
+[components & libraries](04-components-and-libraries.md).
+
 ## Alternative: an agent working inside the repo (no MCP)
 
 If your assistant is a coding agent with the Wadi repository checked out, it can use the
