@@ -25,22 +25,23 @@ export const BUILD_DEFAULTS = {
 }
 
 export function sampleModel() {
-  // `cell` = pixels per cell (canvas only). `unitPerCell` = PROJECT UNITS per cell.
+  // `cell` = pixels per cell (canvas only). `unitPerCell` = PROJECT UNITS per cell,
+  // the grid snap step. Room/plot coords below are in PROJECT UNITS (= cells × 10).
   const grid = { cols: 40, rows: 30, cell: 26, unitPerCell: 10 }
-  const plot = { x: 0, y: 0, w: 30, h: 20 } // plot origin is fixed at 0,0
+  const plot = { x: 0, y: 0, w: 300, h: 200 } // plot origin is fixed at 0,0
 
   const fg = 'f_ground'
   const floors = [{ id: fg, name: 'Ground' }]
 
   const rooms = [
-    { id: 'r_living', name: 'Living', floor: fg, x: 0, y: 0, w: 10, h: 9, color: '#7cb5ec' },
-    { id: 'r_kitchen', name: 'Kitchen', floor: fg, x: 10, y: 0, w: 8, h: 6, color: '#90ed7d' },
-    { id: 'r_dining', name: 'Dining', floor: fg, x: 18, y: 0, w: 7, h: 6, color: '#f7a35c' },
-    { id: 'r_bed1', name: 'Bedroom 1', floor: fg, x: 25, y: 0, w: 5, h: 10, color: '#8085e9' },
-    { id: 'r_hall', name: 'Hall', floor: fg, x: 10, y: 6, w: 8, h: 9, color: '#e4d354' },
-    { id: 'r_bath', name: 'Bath', floor: fg, x: 18, y: 6, w: 7, h: 4, color: '#43d1c4' },
-    { id: 'r_bed2', name: 'Bedroom 2', floor: fg, x: 18, y: 10, w: 7, h: 9, color: '#e08fd6' },
-    { id: 'r_balcony', name: 'Balcony', floor: fg, x: 0, y: 9, w: 10, h: 4, color: '#f45b5b' },
+    { id: 'r_living', name: 'Living', floor: fg, x: 0, y: 0, w: 100, h: 90, color: '#7cb5ec' },
+    { id: 'r_kitchen', name: 'Kitchen', floor: fg, x: 100, y: 0, w: 80, h: 60, color: '#90ed7d' },
+    { id: 'r_dining', name: 'Dining', floor: fg, x: 180, y: 0, w: 70, h: 60, color: '#f7a35c' },
+    { id: 'r_bed1', name: 'Bedroom 1', floor: fg, x: 250, y: 0, w: 50, h: 100, color: '#8085e9' },
+    { id: 'r_hall', name: 'Hall', floor: fg, x: 100, y: 60, w: 80, h: 90, color: '#e4d354' },
+    { id: 'r_bath', name: 'Bath', floor: fg, x: 180, y: 60, w: 70, h: 40, color: '#43d1c4' },
+    { id: 'r_bed2', name: 'Bedroom 2', floor: fg, x: 180, y: 100, w: 70, h: 90, color: '#e08fd6' },
+    { id: 'r_balcony', name: 'Balcony', floor: fg, x: 0, y: 90, w: 100, h: 40, color: '#f45b5b' },
   ]
 
   const edges = [

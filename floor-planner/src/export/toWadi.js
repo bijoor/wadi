@@ -41,7 +41,9 @@ export function modelToWadi(model, opts = {}) {
   // / metres — so it does NOT scale geometry.
   const perUnit = Number(b.perUnit) > 0 ? Number(b.perUnit) : (opts.perUnit ?? PER_UNIT)
   const unitSystem = b.unitSystem || 'feet_inches'
-  const S = Number(grid.unitPerCell) || 10 // project units per grid cell
+  // Room/plot coords are ALREADY project units, so no scaling. `step` is only the grid
+  // spacing (project units per cell) for the generated guides.
+  const step = Number(grid.unitPerCell) || 10
   const nameById = uniqueNames(rooms)
 
   // Undirected connections, stored on the lower room by neighbour NAME.
@@ -54,10 +56,10 @@ export function modelToWadi(model, opts = {}) {
     conns.get(e.a).add(bn)
   }
 
-  const px = (Number(plot.x) || 0) * S
-  const py = (Number(plot.y) || 0) * S
-  const plotW = (Number(plot.w) || 30) * S
-  const plotL = (Number(plot.h) || 20) * S
+  const px = Number(plot.x) || 0
+  const py = Number(plot.y) || 0
+  const plotW = Number(plot.w) || 300
+  const plotL = Number(plot.h) || 200
   const edgeKind = edgeKindLookup(edges)
 
   // Build dimensions from the Dimensions panel — already PROJECT UNITS, used as-is.
@@ -73,15 +75,15 @@ export function modelToWadi(model, opts = {}) {
   const roomFloors = floors.map((f, i) => {
     const floorRooms = rooms.filter((r) => r.floor === f.id)
     const slabs = floorRooms.map((r) => ({
-      type: 'floor_slab', x: r.x * S, y: r.y * S, width: r.w * S, length: r.h * S,
+      type: 'floor_slab', x: r.x, y: r.y, width: r.w, length: r.h,
     }))
     const roomObjs = floorRooms.map((r) => {
       const o = {
         type: 'room',
         name: nameById.get(r.id),
-        x: r.x * S, y: r.y * S, width: r.w * S, length: r.h * S,
+        x: r.x, y: r.y, width: r.w, length: r.h,
       }
-      const walls = computeRoomWalls(r, floorRooms, edgeKind, S)
+      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1)
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
@@ -121,7 +123,7 @@ export function modelToWadi(model, opts = {}) {
     grids: {
       module: {
         origin: [px, py],
-        spacing: [S, S],
+        spacing: [step, step],
         extent: [Number(grid.cols) || 40, Number(grid.rows) || 30],
       },
     },

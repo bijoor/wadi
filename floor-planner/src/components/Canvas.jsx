@@ -21,7 +21,17 @@ function clamp(v, lo, hi) {
 
 export default function Canvas({ state, dispatch }) {
   const { grid, plot, tool, selection, view, floors, activeFloor, viewMode } = state
-  const cell = grid.cell
+  // Coordinates (rooms/plot) are in PROJECT UNITS. A grid cell spans `step` project
+  // units and `grid.cell` pixels, so `cell` here is pixels-per-project-unit and every
+  // `coord * cell` maps a project-unit coordinate to pixels. GridLines still draws at
+  // grid.cell intervals. Snapping + bounds work in project units (multiples of step).
+  const step = grid.unitPerCell || 10
+  const cell = grid.cell / step
+  const GW = grid.cols * step // grid extent in project units
+  const GH = grid.rows * step
+  const gapU = SHEET_GAP * step // side-by-side gap, in project units
+  const snap = (u) => Math.round(u / step) * step
+  const snapFloor = (u) => Math.floor(u / step) * step
   const svgRef = useRef(null)
   const [interaction, setInteraction] = useState(null)
   const selectedIds = state.selectedIds || []
@@ -46,7 +56,7 @@ export default function Canvas({ state, dispatch }) {
   // In side-by-side, the active floor's plate is offset to its column; the
   // interactive layer (rooms, handles, drag/resize) renders inside that column
   // and all pointer math is shifted by it so editing works exactly like Single.
-  const dxCells = sheets ? activeIndex * (plot.w + SHEET_GAP) : 0
+  const dxCells = sheets ? activeIndex * (plot.w + gapU) : 0 // project units
 
   // Rooms being moved/resized render from their live rects; validity is computed
   // on the live layout so warnings update as you drag.
@@ -157,9 +167,9 @@ export default function Canvas({ state, dispatch }) {
     }
     const { fx, fy } = toCell(e.clientX, e.clientY)
     if (tool === 'draw-room') {
-      const gx = clamp(Math.floor(fx), 0, grid.cols - 1)
-      const gy = clamp(Math.floor(fy), 0, grid.rows - 1)
-      setInteraction({ kind: 'draw-room', x0: gx, y0: gy, cur: { x: gx + 1, y: gy + 1 } })
+      const gx = clamp(snapFloor(fx), 0, GW - step)
+      const gy = clamp(snapFloor(fy), 0, GH - step)
+      setInteraction({ kind: 'draw-room', x0: gx, y0: gy, cur: { x: gx + step, y: gy + step } })
       return
     }
     if (tool === 'draw-edge') return
@@ -179,14 +189,14 @@ export default function Canvas({ state, dispatch }) {
 
     if (interaction.kind === 'move-rooms') {
       // Free group move, snapped to grid; clamp so every room stays on the canvas.
-      const dx = Math.round(fx - interaction.startFx)
-      const dy = Math.round(fy - interaction.startFy)
+      const dx = snap(fx - interaction.startFx)
+      const dy = snap(fy - interaction.startFy)
       let lowX = -Infinity, highX = Infinity, lowY = -Infinity, highY = Infinity
       for (const g of interaction.group) {
         lowX = Math.max(lowX, -g.x0)
-        highX = Math.min(highX, grid.cols - (g.x0 + g.w))
+        highX = Math.min(highX, GW - (g.x0 + g.w))
         lowY = Math.max(lowY, -g.y0)
-        highY = Math.min(highY, grid.rows - (g.y0 + g.h))
+        highY = Math.min(highY, GH - (g.y0 + g.h))
       }
       const cdx = clamp(dx, lowX, highX)
       const cdy = clamp(dy, lowY, highY)
@@ -200,15 +210,15 @@ export default function Canvas({ state, dispatch }) {
     if (interaction.kind === 'resize-room') {
       // Free resize within the grid; overlaps/out-of-plot are flagged, not blocked.
       const cand = resizeRect(interaction.r0, interaction.handle, fx, fy, {
-        x: 0, y: 0, w: grid.cols, h: grid.rows,
-      })
+        x: 0, y: 0, w: GW, h: GH,
+      }, step)
       setInteraction({ ...interaction, live: cand })
       return
     }
 
     if (interaction.kind === 'draw-room') {
-      const gx = clamp(Math.round(fx), 0, grid.cols)
-      const gy = clamp(Math.round(fy), 0, grid.rows)
+      const gx = clamp(snap(fx), 0, GW)
+      const gy = clamp(snap(fy), 0, GH)
       setInteraction({ ...interaction, cur: { x: gx, y: gy } })
       return
     }
@@ -221,8 +231,8 @@ export default function Canvas({ state, dispatch }) {
 
     if (interaction.kind === 'resize-plot') {
       const live = resizeRect(interaction.p0, interaction.handle, fx, fy, {
-        x: 0, y: 0, w: grid.cols, h: grid.rows,
-      })
+        x: 0, y: 0, w: GW, h: GH,
+      }, step)
       setInteraction({ ...interaction, live })
       return
     }
@@ -237,7 +247,7 @@ export default function Canvas({ state, dispatch }) {
     if (it.kind === 'rubber') {
       // Select all rooms intersecting the drawn window (tiny window = click = clear).
       const r = normRect(it.x0, it.y0, it.cur.x, it.cur.y)
-      if (r.w < 0.15 && r.h < 0.15) {
+      if (r.w < step * 0.4 && r.h < step * 0.4) {
         dispatch({ type: 'SELECT', itemType: null, id: null })
       } else {
         const ids = rooms.filter((rm) => rectsOverlap(r, rm)).map((rm) => rm.id)
@@ -258,7 +268,7 @@ export default function Canvas({ state, dispatch }) {
       }
     } else if (it.kind === 'draw-room') {
       const r = normRect(it.x0, it.y0, it.cur.x, it.cur.y)
-      if (r.w >= 1 && r.h >= 1) {
+      if (r.w >= step && r.h >= step) {
         const n = rooms.length
         dispatch({
           type: 'ADD_ROOM',
@@ -322,7 +332,7 @@ export default function Canvas({ state, dispatch }) {
       const titleH = 18 // space above each plate for its floor name
       originX = 0
       originY = -titleH
-      contentW = (floors.length * (plot.w + SHEET_GAP) - SHEET_GAP) * cell
+      contentW = (floors.length * (plot.w + gapU) - gapU) * cell
       contentH = plot.h * cell + titleH
     } else {
       // plot ∪ rooms bounding box (overlay counts every floor's rooms)
@@ -478,7 +488,6 @@ export default function Canvas({ state, dispatch }) {
         {liveRooms.map((r) => {
           const bad = report.overlapRoomIds.has(r.id) || report.outOfPlotSet.has(r.id)
           const sel = selectedSet.has(r.id)
-          const area = r.w * r.h * grid.unitPerCell * grid.unitPerCell
           return (
             <g key={r.id}>
               <rect
@@ -500,7 +509,7 @@ export default function Canvas({ state, dispatch }) {
                 y={(r.y + r.h / 2) * cell + 12}
                 className="room-sub"
               >
-                {r.w * (grid.unitPerCell || 10)}×{r.h * (grid.unitPerCell || 10)}
+                {r.w}×{r.h}
               </text>
             </g>
           )
@@ -679,7 +688,10 @@ function FloorGhost({ rooms, cell, color }) {
 // clicking a room activates the floor and selects the room (editable via the
 // sidebar form). Dragging still happens in Single view.
 function SheetsLayers({ floors, allRooms, allEdges, grid, plot, activeFloor, selectedSet, onPickFloor, onPickRoom }) {
-  const cell = grid.cell
+  // Coords are project units; `cell` = pixels per project unit (see main Canvas).
+  const step = grid.unitPerCell || 10
+  const cell = grid.cell / step
+  const gapU = SHEET_GAP * step
   const pw = plot.w * cell
   const ph = plot.h * cell
   return (
@@ -688,7 +700,7 @@ function SheetsLayers({ floors, allRooms, allEdges, grid, plot, activeFloor, sel
         // The active floor is drawn by the editable layer (offset to this same
         // column), so skip it here to avoid a double render.
         if (f.id === activeFloor) return null
-        const dx = i * (plot.w + SHEET_GAP) * cell
+        const dx = i * (plot.w + gapU) * cell
         const rooms = allRooms.filter((r) => r.floor === f.id)
         const idset = new Set(rooms.map((r) => r.id))
         const edges = allEdges.filter((e) => idset.has(e.a) && idset.has(e.b))
@@ -714,7 +726,6 @@ function SheetsLayers({ floors, allRooms, allEdges, grid, plot, activeFloor, sel
             {rooms.map((r) => {
               const bad = report.overlapRoomIds.has(r.id) || report.outOfPlotSet.has(r.id)
               const sel = selectedSet.has(r.id)
-              const area = r.w * r.h * grid.unitPerCell * grid.unitPerCell
               return (
                 <g key={r.id}>
                   <rect
@@ -727,7 +738,7 @@ function SheetsLayers({ floors, allRooms, allEdges, grid, plot, activeFloor, sel
                     {r.name}
                   </text>
                   <text x={(r.x + r.w / 2) * cell} y={(r.y + r.h / 2) * cell + 12} textAnchor="middle" className="room-sub" pointerEvents="none">
-                    {r.w * (grid.unitPerCell || 10)}×{r.h * (grid.unitPerCell || 10)}
+                    {r.w}×{r.h}
                   </text>
                 </g>
               )
@@ -792,31 +803,32 @@ function handleCursor(h) {
   return map[h]
 }
 
-// Resize a rect given a handle + pointer cell coords, snapped & clamped to bounds.
-function resizeRect(r0, handle, fx, fy, bounds) {
+// Resize a rect given a handle + pointer coords, snapped to `step` & clamped to bounds.
+function resizeRect(r0, handle, fx, fy, bounds, step = 1) {
   let { x, y, w, h } = r0
-  const gx = Math.round(fx)
-  const gy = Math.round(fy)
+  const snap = (u) => Math.round(u / step) * step
+  const gx = snap(fx)
+  const gy = snap(fy)
   const bx1 = bounds.x + bounds.w
   const by1 = bounds.y + bounds.h
 
   if (handle.includes('e')) {
-    const right = clamp(gx, x + 1, bx1)
+    const right = clamp(gx, x + step, bx1)
     w = right - x
   }
   if (handle.includes('w')) {
-    const left = clamp(gx, bounds.x, x + w - 1)
+    const left = clamp(gx, bounds.x, x + w - step)
     w = x + w - left
     x = left
   }
   if (handle.includes('s')) {
-    const bottom = clamp(gy, y + 1, by1)
+    const bottom = clamp(gy, y + step, by1)
     h = bottom - y
   }
   if (handle.includes('n')) {
-    const top = clamp(gy, bounds.y, y + h - 1)
+    const top = clamp(gy, bounds.y, y + h - step)
     h = y + h - top
     y = top
   }
-  return { x, y, w: Math.max(1, w), h: Math.max(1, h) }
+  return { x, y, w: Math.max(step, w), h: Math.max(step, h) }
 }

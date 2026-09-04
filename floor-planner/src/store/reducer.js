@@ -122,6 +122,7 @@ export function reducer(state, action) {
       const src = ids.map((id) => state.rooms.find((r) => r.id === id)).filter(Boolean)
       if (src.length === 0) return state
       const g = state.grid
+      const step = g.unitPerCell || 10 // offset by one grid cell (project units)
       const cl = (v, lo, hi) => Math.min(Math.max(v, lo), hi)
       const idMap = new Map()
       const newRooms = src.map((r) => {
@@ -133,8 +134,8 @@ export function reducer(state, action) {
           floor: r.floor, // duplicate stays on the same floor
           w: r.w, h: r.h,
           color: r.color,
-          x: cl(r.x + 1, 0, g.cols - r.w),
-          y: cl(r.y + 1, 0, g.rows - r.h),
+          x: cl(r.x + step, 0, g.cols * step - r.w),
+          y: cl(r.y + step, 0, g.rows * step - r.h),
         }
       })
       const newEdges = state.edges

@@ -79,7 +79,6 @@ function RoomEditor({ state, dispatch, room }) {
   const maxY = plot.y + plot.h - room.h
   const maxW = plot.x + plot.w - room.x
   const maxH = plot.y + plot.h - room.y
-  const area = room.w * room.h * grid.unitPerCell * grid.unitPerCell
 
   return (
     <div className="panel">
@@ -96,7 +95,7 @@ function RoomEditor({ state, dispatch, room }) {
         <NumberField label="W" value={room.w} min={1} max={maxW} onCommit={(v) => update({ w: Math.min(Math.max(v, 1), maxW) })} />
         <NumberField label="H" value={room.h} min={1} max={maxH} onCommit={(v) => update({ h: Math.min(Math.max(v, 1), maxH) })} />
       </div>
-      <div className="area-note">{room.w * (grid.unitPerCell || 10)} × {room.h * (grid.unitPerCell || 10)} units</div>
+      <div className="area-note">{room.w} × {room.h} units</div>
       <div className="swatches">
         {PALETTE.map((c) => (
           <button
@@ -122,15 +121,17 @@ function PlotEditor({ state, dispatch }) {
   const { plot, grid } = state
   const update = (patch) => dispatch({ type: 'UPDATE_PLOT', patch })
   const selected = state.selection.type === 'plot'
+  const step = grid.unitPerCell || 10
+  const maxW = grid.cols * step, maxH = grid.rows * step
   return (
     <div className="panel">
       <h3>Plot</h3>
-      <div className="area-note">Origin fixed at 0, 0</div>
+      <div className="area-note">Origin fixed at 0, 0 · project units</div>
       <div className="row">
-        <NumberField label="W" value={plot.w} min={1} max={grid.cols} onCommit={(v) => update({ w: Math.min(Math.max(v, 1), grid.cols) })} />
-        <NumberField label="H" value={plot.h} min={1} max={grid.rows} onCommit={(v) => update({ h: Math.min(Math.max(v, 1), grid.rows) })} />
+        <NumberField label="W" value={plot.w} min={step} max={maxW} step={step} float onCommit={(v) => update({ w: Math.min(Math.max(v, step), maxW) })} />
+        <NumberField label="H" value={plot.h} min={step} max={maxH} step={step} float onCommit={(v) => update({ h: Math.min(Math.max(v, step), maxH) })} />
       </div>
-      <div className="area-note">Plot area: {plot.w * plot.h * grid.unitPerCell * grid.unitPerCell} {grid.unit}²</div>
+      <div className="area-note">Plot area: {plot.w * plot.h} units²</div>
       <button
         className="secondary"
         onClick={() =>
@@ -157,12 +158,13 @@ function MultiPanel({ state, dispatch }) {
   const maxY = Math.max(...rooms.map((r) => r.y + r.h))
 
   // Move the whole group so its top-left lands at (nx, ny), clamped to the grid.
+  const step = grid.unitPerCell || 10
   const moveTo = (nx, ny) => {
     let dx = nx - minX
     let dy = ny - minY
     for (const r of rooms) {
-      dx = Math.min(Math.max(dx, -r.x), grid.cols - (r.x + r.w))
-      dy = Math.min(Math.max(dy, -r.y), grid.rows - (r.y + r.h))
+      dx = Math.min(Math.max(dx, -r.x), grid.cols * step - (r.x + r.w))
+      dy = Math.min(Math.max(dy, -r.y), grid.rows * step - (r.y + r.h))
     }
     dispatch({
       type: 'UPDATE_ROOMS',
@@ -178,7 +180,7 @@ function MultiPanel({ state, dispatch }) {
         <NumberField label="X" value={minX} onCommit={(v) => moveTo(v, minY)} />
         <NumberField label="Y" value={minY} onCommit={(v) => moveTo(minX, v)} />
       </div>
-      <div className="area-note">Extent: {(maxX - minX) * (grid.unitPerCell || 10)} × {(maxY - minY) * (grid.unitPerCell || 10)} units</div>
+      <div className="area-note">Extent: {maxX - minX} × {maxY - minY} units</div>
       <button className="secondary" onClick={() => dispatch({ type: 'DUPLICATE_SELECTED' })}>
         Duplicate {rooms.length} rooms (⌘/Ctrl+D)
       </button>
@@ -306,9 +308,9 @@ function Health({ state }) {
         <li className={r.overlaps.length ? 'warn' : ''}><span>Overlaps</span><b>{r.overlaps.length}</b></li>
         <li className={r.outOfPlot.length ? 'warn' : ''}><span>Out of plot</span><b>{r.outOfPlot.length}</b></li>
         <li className={r.unsatisfied.length ? 'warn' : ''}><span>Unsatisfied links</span><b>{r.unsatisfied.length}</b></li>
-        <li><span>Plot area</span><b>{r.plotArea * state.grid.unitPerCell * state.grid.unitPerCell} {state.grid.unit}²</b></li>
-        <li><span>Rooms area</span><b>{r.roomArea * state.grid.unitPerCell * state.grid.unitPerCell} {state.grid.unit}²</b></li>
-        <li className={r.remainingArea < 0 ? 'warn' : ''}><span>Remaining</span><b>{r.remainingArea * state.grid.unitPerCell * state.grid.unitPerCell} {state.grid.unit}²</b></li>
+        <li><span>Plot area</span><b>{r.plotArea} units²</b></li>
+        <li><span>Rooms area</span><b>{r.roomArea} units²</b></li>
+        <li className={r.remainingArea < 0 ? 'warn' : ''}><span>Remaining</span><b>{r.remainingArea} units²</b></li>
         <li><span>House</span><b>{state.floors.length} {state.floors.length === 1 ? 'floor' : 'floors'} · {state.rooms.length} rooms</b></li>
       </ul>
     </div>

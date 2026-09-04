@@ -7,12 +7,16 @@ const esc = (s) =>
 // Build a clean, standalone SVG string of the current plan (no UI chrome).
 export function buildSVG(model) {
   const { grid, plot, rooms, edges } = model
-  const cell = grid.cell
-  const pad = cell
-  const W = grid.cols * cell + pad * 2
-  const H = grid.rows * cell + pad * 2
+  // Coords are PROJECT UNITS; a grid cell is `step` units and `grid.cell` px.
+  const step = grid.unitPerCell || 10
+  const cell = grid.cell / step // px per project unit (for coords)
+  const cellPx = grid.cell // px per grid cell (for grid lines)
+  const pad = cellPx
+  const W = grid.cols * cellPx + pad * 2
+  const H = grid.rows * cellPx + pad * 2
   const report = analyze(model)
-  const px = (v) => v * cell + pad
+  const px = (v) => v * cell + pad // project-unit coord -> px
+  const gx = (c) => c * cellPx + pad // grid-cell index -> px
 
   const parts = []
   parts.push(
@@ -23,18 +27,18 @@ export function buildSVG(model) {
   // Grid lines
   let gridLines = ''
   for (let c = 0; c <= grid.cols; c++) {
-    const x = px(c)
-    gridLines += `<line x1="${x}" y1="${px(0)}" x2="${x}" y2="${px(grid.rows)}" stroke="${c % 5 === 0 ? '#d0d5dd' : '#eceef1'}" stroke-width="1"/>`
+    const x = gx(c)
+    gridLines += `<line x1="${x}" y1="${gx(0)}" x2="${x}" y2="${gx(grid.rows)}" stroke="${c % 5 === 0 ? '#d0d5dd' : '#eceef1'}" stroke-width="1"/>`
   }
   for (let r = 0; r <= grid.rows; r++) {
-    const y = px(r)
-    gridLines += `<line x1="${px(0)}" y1="${y}" x2="${px(grid.cols)}" y2="${y}" stroke="${r % 5 === 0 ? '#d0d5dd' : '#eceef1'}" stroke-width="1"/>`
+    const y = gx(r)
+    gridLines += `<line x1="${gx(0)}" y1="${y}" x2="${gx(grid.cols)}" y2="${y}" stroke="${r % 5 === 0 ? '#d0d5dd' : '#eceef1'}" stroke-width="1"/>`
   }
   parts.push(`<g>${gridLines}</g>`)
 
   // Plot boundary
   parts.push(
-    `<rect x="${px(plot.x)}" y="${px(plot.y)}" width="${plot.w * cell}" height="${plot.h * cell}" fill="none" stroke="#111827" stroke-width="2.5"/>`
+    `<rect x="${px(plot.x)}" y="${px(plot.y)}" width="${plot.w * cell}" height="${plot.h * cell}" fill="none" stroke="#111827" stroke-width="2.5"/>` // cell = px/unit
   )
 
   // Rooms
@@ -50,7 +54,7 @@ export function buildSVG(model) {
     const cx = x + w / 2
     const cy = y + h / 2
     roomG += `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="13" font-weight="600" fill="#111827">${esc(r.name)}</text>`
-    roomG += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="#4b5563">${r.w}×${r.h} · ${r.w * r.h * grid.unitPerCell * grid.unitPerCell} ${esc(grid.unit)}²</text>`
+    roomG += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="#4b5563">${r.w}×${r.h} units</text>`
     roomG += `</g>`
   }
   parts.push(`<g>${roomG}</g>`)
@@ -80,13 +84,14 @@ const SHEET_GAP = 4 // cells between plates (matches the on-screen view)
 
 export function buildSheetsSVG(model) {
   const { grid, plot, floors, rooms, edges } = model
-  const cell = grid.cell
-  const pad = cell
+  const cellPx = grid.cell // px per grid cell (for gaps)
+  const cell = grid.cell / (grid.unitPerCell || 10) // px per project unit (for coords)
+  const pad = cellPx
   const titleH = 24
   const plateW = plot.w * cell
   const plateH = plot.h * cell
-  const step = plateW + SHEET_GAP * cell
-  const W = floors.length * plateW + Math.max(0, floors.length - 1) * SHEET_GAP * cell + pad * 2
+  const step = plateW + SHEET_GAP * cellPx // plate stride in px
+  const W = floors.length * plateW + Math.max(0, floors.length - 1) * SHEET_GAP * cellPx + pad * 2
   const H = plateH + titleH + pad * 2
 
   const parts = []
@@ -120,7 +125,7 @@ export function buildSheetsSVG(model) {
       const cy = y + h / 2
       g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${r.color}" fill-opacity="0.55" stroke="${bad ? '#dc2626' : '#334155'}" stroke-width="${bad ? 2.5 : 1.5}"/>`
       g += `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="13" font-weight="600" fill="#111827">${esc(r.name)}</text>`
-      g += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="#4b5563">${r.w}×${r.h} · ${r.w * r.h * grid.unitPerCell * grid.unitPerCell} ${esc(grid.unit)}²</text>`
+      g += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="#4b5563">${r.w}×${r.h} units</text>`
     }
     // connections
     for (const e of fe) {
