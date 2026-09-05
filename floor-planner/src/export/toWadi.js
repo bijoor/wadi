@@ -31,9 +31,56 @@ function uniqueNames(rooms) {
   return byId
 }
 
+// Excel-style column label for a Y guide line: 0→A, 25→Z, 26→AA (the convention
+// numbers X lines 1,2,3… and letters Y lines A,B,C…).
+function colLabel(i) {
+  let s = ''
+  let n = i + 1
+  while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26) }
+  return s
+}
+
+// Derive a `main` guides grid from the ROOM CORNERS: the distinct X edges become
+// numbered X lines and the distinct Y edges lettered Y lines, each at its own
+// position (the centreline the abutting rooms share). This gives a coarse,
+// meaningful grid (only where a wall runs) instead of the planner's fine editing
+// pitch, and lets rooms derive their coordinates from named lines (`main.x2`)
+// rather than hard-coded numbers. Returns the grid plus lookups edge→line-ref.
+function guidesFromRooms(rooms) {
+  const R = (n) => Math.round(Number(n) * 1000) / 1000
+  const xs = new Set(), ys = new Set()
+  for (const r of rooms) {
+    xs.add(R(r.x)); xs.add(R(r.x + r.w))
+    ys.add(R(r.y)); ys.add(R(r.y + r.h))
+  }
+  const xName = new Map(), yName = new Map()
+  const x = [...xs].sort((a, b) => a - b).map((at, i) => { const name = String(i + 1); xName.set(at, name); return { name, at } })
+  const y = [...ys].sort((a, b) => a - b).map((at, i) => { const name = colLabel(i); yName.set(at, name); return { name, at } })
+  return {
+    grid: { x, y },
+    xRef: (v) => { const n = xName.get(R(v)); return n && `main.x${n}` },
+    yRef: (v) => { const n = yName.get(R(v)); return n && `main.y${n}` },
+  }
+}
+
+// Room coordinates as formulas off the guides: x/y are the near lines, width/length
+// the span between the near and far lines. Returns undefined if any edge doesn't
+// land on a line (then the caller keeps the hard-coded numbers).
+function roomGridFormulas(r, guides) {
+  const x0 = guides.xRef(r.x), x1 = guides.xRef(r.x + r.w)
+  const y0 = guides.yRef(r.y), y1 = guides.yRef(r.y + r.h)
+  if (!x0 || !x1 || !y0 || !y1) return undefined
+  return {
+    x: `= ${x0}`,
+    y: `= ${y0}`,
+    width: `= ${x1} - ${x0}`,
+    length: `= ${y1} - ${y0}`,
+  }
+}
+
 /** The planner model → a Wadi HouseConfig object (ready to JSON.stringify). */
 export function modelToWadi(model, opts = {}) {
-  const { grid = {}, plot = {}, floors = [], rooms = [], edges = [] } = model || {}
+  const { plot = {}, floors = [], rooms = [], edges = [] } = model || {}
   const b = model?.build || {}
   // The planner works in PROJECT UNITS throughout: a cell is `unitPerCell` project
   // units, and every dimension below is already in project units. `perUnit` is only
@@ -41,9 +88,7 @@ export function modelToWadi(model, opts = {}) {
   // / metres — so it does NOT scale geometry.
   const perUnit = Number(b.perUnit) > 0 ? Number(b.perUnit) : (opts.perUnit ?? PER_UNIT)
   const unitSystem = b.unitSystem || 'feet_inches'
-  // Room/plot coords are ALREADY project units, so no scaling. `step` is only the grid
-  // spacing (project units per cell) for the generated guides.
-  const step = Number(grid.unitPerCell) || 10
+  // Room/plot coords are ALREADY project units, so no scaling.
   const nameById = uniqueNames(rooms)
 
   // Undirected connections, stored on the lower room by neighbour NAME.
@@ -61,6 +106,9 @@ export function modelToWadi(model, opts = {}) {
   const plotW = Number(plot.w) || 300
   const plotL = Number(plot.h) || 200
   const edgeKind = edgeKindLookup(edges)
+  // Room-corner guides (across every floor), so rooms derive coords from named
+  // lines and the floor plans get a grid at the walls, not the fine editing pitch.
+  const guides = guidesFromRooms(rooms)
 
   // Build dimensions from the Dimensions panel — already PROJECT UNITS, used as-is.
   const pu = (v, def) => (Number.isFinite(Number(v)) ? Number(v) : def)
@@ -83,6 +131,9 @@ export function modelToWadi(model, opts = {}) {
         name: nameById.get(r.id),
         x: r.x, y: r.y, width: r.w, length: r.h,
       }
+      // Derive x/y/width/length from the guide lines (falls back to the numbers).
+      const f = roomGridFormulas(r, guides)
+      if (f) o.formulas = f
       const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness)
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
@@ -124,13 +175,7 @@ export function modelToWadi(model, opts = {}) {
       reference_x: px,
       reference_y: py,
     },
-    grids: {
-      module: {
-        origin: [px, py],
-        spacing: [step, step],
-        extent: [Number(grid.cols) || 40, Number(grid.rows) || 30],
-      },
-    },
+    grids: { main: guides.grid },
     floors: [plinthFloor, ...roomFloors],
   }
 }
