@@ -83,7 +83,7 @@ export function modelToWadi(model, opts = {}) {
         name: nameById.get(r.id),
         x: r.x, y: r.y, width: r.w, length: r.h,
       }
-      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight)
+      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness)
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
@@ -106,6 +106,10 @@ export function modelToWadi(model, opts = {}) {
   }
 
   return {
+    // The planner is NEW authoring, so it emits the current .wadi model version.
+    // v2 = room-wall opening offsets anchor to the wall's CLEAR span (inner
+    // corner). Kept in sync with editor CURRENT_WADI_VERSION.
+    wadi_version: 2,
     units: { system: unitSystem, per_unit: perUnit },
     coord_convention: 'center',
     defaults: {

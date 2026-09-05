@@ -777,8 +777,19 @@ const configuratorSection = z
   .strict();
 export type ConfiguratorSection = z.infer<typeof configuratorSection>;
 
+// The .wadi format/semantics version. A file with no `wadi_version` (or < 2) is a
+// LEGACY file and is rendered with the original semantics; the current version is
+// stamped on new files so behavioural changes never silently move an old model.
+//   v2 (2026-09): room-wall opening `offset` anchors to the wall's CLEAR span
+//       (inner corner to inner corner) instead of the outer corner — see the
+//       offset handling in svg2d/expand.ts and migrate.ts for the one-time upgrade.
+export const CURRENT_WADI_VERSION = 2;
+
 export const HouseConfig = z
   .object({
+    // The .wadi format version (see CURRENT_WADI_VERSION). Absent ⇒ legacy (v1):
+    // behavioural changes are gated on this so old files render unchanged.
+    wadi_version: z.number().int().positive().optional(),
     // How a rectangular object's x/y/width/length relate to its walls
     // (plans/grid-convention.md). "center" (new/canonical): coordinates are wall
     // CENTRELINES — adjacent rooms ABUT on a shared line (no overlap), walls are

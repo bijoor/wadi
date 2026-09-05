@@ -42,7 +42,10 @@ export async function pushModelToSession(model, code, origin = sessionOrigin()) 
     res = await fetch(`${origin}/session/${encodeURIComponent(c)}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ wdl }),
+      // The MODEL version travels beside the WDL (the WDL carries none). The
+      // viewer also defaults a live push to the current version, so this is
+      // belt-and-braces until the relay forwards the field.
+      body: JSON.stringify({ wdl, wadi_version: 2 }),
     })
   } catch (e) {
     throw new Error(`Couldn't reach the session relay (${origin}). Is the Wadi app's live session running? ${e.message || e}`)

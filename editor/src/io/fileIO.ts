@@ -225,6 +225,9 @@ async function wadiBytesFor(
     {
       meta: { title: entry.title, description: entry.description, ...entry.meta },
       cover,
+      // Persist the MODEL version (the WDL doesn't carry it). Absent on a legacy
+      // config ⇒ omitted ⇒ the reloaded bundle stays v1.
+      wadiVersion: (config as { wadi_version?: number }).wadi_version,
     },
     modules,
   );

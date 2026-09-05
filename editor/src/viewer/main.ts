@@ -28,7 +28,7 @@ import "../index.css";
 import { createRoot } from "react-dom/client";
 import { createElement } from "react";
 import { useConfigStore } from "../state/configStore";
-import { validate } from "../schema/houseConfig";
+import { validate, CURRENT_WADI_VERSION } from "../schema/houseConfig";
 import type { HouseConfig as ValidatedHouseConfig, HouseObject } from "../schema/houseConfig";
 import type { HouseConfig } from "../svg2d/expand";
 import { roomBlocksOf, connectionSatisfied } from "../graph/graphModel";
@@ -1032,7 +1032,7 @@ export interface WadiApi {
    *  model. Returns compile/schema errors (model unchanged on error), else the
    *  C1-C12 structural check. The full DSL — every object type, variables,
    *  formulas, components — is the agent's authoring surface. */
-  setWdl: (wdl: string) => Promise<unknown>;
+  setWdl: (wdl: string, wadiVersion?: number) => Promise<unknown>;
   /** Show/hide both side panels (configurator + WDL editor) so the 3D model has the
    *  full surface. Auto-called (hidden) on agent edits; call with `true` to reveal. */
   setPanels: (visible: boolean) => { ok: true; visible: boolean };
@@ -2048,7 +2048,7 @@ function startLiveSession(): void {
   ws.addEventListener("message", (evt) => {
     if (!liveSession) return;
     try {
-      const msg = JSON.parse(typeof evt.data === "string" ? evt.data : "") as { type?: string; wdl?: string; modules?: Record<string, string> };
+      const msg = JSON.parse(typeof evt.data === "string" ? evt.data : "") as { type?: string; wdl?: string; wadi_version?: number; modules?: Record<string, string> };
       if (msg?.type === "modules" && msg.modules && typeof msg.modules === "object") {
         const json = JSON.stringify(msg.modules);
         if (json !== liveSession.lastModules) {
@@ -2058,7 +2058,7 @@ function startLiveSession(): void {
       } else if (msg?.type === "wdl" && typeof msg.wdl === "string" && msg.wdl !== liveSession.lastWdl) {
         liveSession.lastWdl = msg.wdl; // set BEFORE applying so our store subscriber doesn't echo it back
         liveSession.updates++;
-        void applyIncomingWdl(msg.wdl);
+        void applyIncomingWdl(msg.wdl, msg.wadi_version);
         renderLivePanel(true);
       }
     } catch { /* ignore malformed frames */ }
@@ -2071,8 +2071,11 @@ function startLiveSession(): void {
 // Apply an agent's pushed WDL to the live model; on a compile/schema failure,
 // record the error so the panel can show it (instead of silently doing nothing —
 // which looks like "agent edited" but no change).
-async function applyIncomingWdl(wdl: string): Promise<void> {
-  const res = (await window.wadi?.setWdl(wdl)) as { ok?: boolean; errors?: string[] } | undefined;
+async function applyIncomingWdl(wdl: string, wadiVersion?: number): Promise<void> {
+  // A live co-edit push is NEW authoring, and the hosted relay forwards only the
+  // WDL (no version field), so default to the current model version when the push
+  // doesn't carry one — the planner's gaps then use the clear-span offsets.
+  const res = (await window.wadi?.setWdl(wdl, wadiVersion ?? CURRENT_WADI_VERSION)) as { ok?: boolean; errors?: string[] } | undefined;
   if (!liveSession) return;
   liveSession.error = res && res.ok === false
     ? "the agent's edit didn't load: " + (res.errors?.[0] ?? "compile error")
@@ -3238,12 +3241,22 @@ function wireWadiApi(): void {
 
     setPanels(visible: boolean) { setViewerPanels(!!visible); return { ok: true as const, visible: !!visible }; },
 
-    async setWdl(wdl: string) {
+    async setWdl(wdl: string, wadiVersion?: number) {
       const src = String(wdl ?? "");
       // Resolve imports against the model's custom modules; preserve them across the
       // edit (loadConfig omits `modules`), since the agent edited the MAIN file.
       const res = await wdlToConfig(src, store().modules);
       if (!res.ok || !res.config) return { ok: false as const, errors: res.errors };
+      // The MODEL version rides beside the WDL (the WDL carries none). An explicit
+      // `wadiVersion` (a live planner push) wins; otherwise PRESERVE the currently
+      // loaded model's version, so an in-place edit of a v1 model stays v1 (and a
+      // v2 model stays v2). Stamps version-gated behaviour (clear-span offsets).
+      const effV = typeof wadiVersion === "number"
+        ? wadiVersion
+        : (store().config as { wadi_version?: number } | undefined)?.wadi_version;
+      if (typeof effV === "number") {
+        (res.config as { wadi_version?: number }).wadi_version = effV;
+      }
       // Keep the agent's exact WDL as the model's source (WDL is the source of truth);
       // preserve the current module list across the edit.
       store().loadConfig(res.config, "wadi.setWdl", null, src, store().modules);

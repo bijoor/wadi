@@ -282,6 +282,11 @@ async function parseBundle(
     if (m) shotSeq = Math.max(shotSeq, Number(m[1]));
   }
 
+  // The MODEL semantics version rides in wadi.json (the WDL carries none), so
+  // apply it onto the compiled config. Absent ⇒ a legacy (v1) bundle, left as-is.
+  if (typeof manifest.wadi_version === "number") {
+    (res.config as { wadi_version?: number }).wadi_version = manifest.wadi_version;
+  }
   // A bundle declares its FULL module set (possibly empty), so the loader replaces
   // the model's modules with exactly these.
   return { config: res.config, wdl, modules, filename, filePath };
@@ -349,6 +354,10 @@ function migrateLegacyThumbnails(cfg: Record<string, unknown>): void {
 export interface BundleManifestExtra {
   meta?: unknown;
   cover?: string;
+  // The MODEL semantics version (config.wadi_version), written to wadi.json so it
+  // survives the WDL round-trip (the WDL itself carries no version). Absent ⇒ a
+  // legacy (v1) model. Distinct from `version` above, which is the bundle FORMAT.
+  wadiVersion?: number;
 }
 
 // Build a `.wadi` bundle (zip bytes) from the WDL source + thumbnail files + the
@@ -370,6 +379,7 @@ export async function buildWadiBundle(
   };
   if (extra.meta !== undefined) manifestObj.meta = extra.meta;
   if (extra.cover) manifestObj.cover = extra.cover;
+  if (extra.wadiVersion !== undefined) manifestObj.wadi_version = extra.wadiVersion;
   const entries: Record<string, Uint8Array> = {
     [MODEL]: strToU8(wdl),
   };

@@ -105,6 +105,11 @@ export function expandRoomWalls(
     wallThickness ??
     DEFAULT_GLOBAL_CONFIG.wall_thickness;
 
+  // wadi_version >= 2 → room-wall openings anchor to the clear span (inner
+  // corner). Absent / < 2 → legacy outer-corner origin, so old files are
+  // byte-identical. Gated so a behavioural change never silently moves a model.
+  const innerOffsets = (Number((houseConfig as { wadi_version?: number }).wadi_version) || 1) >= 2;
+
   const hc = structuredClone(houseConfig);
   // Drop switched-off FLOORS entirely (a floor `enabled === false`/`0`, e.g.
   // driven by "= has_upper_floor") — every 2D/3D/roof consumer reads hc.floors,
@@ -343,14 +348,14 @@ export function expandRoomWalls(
       let first: Obj;
       let extras: Obj[];
       try {
-        [first, extras] = expandObject(obj, t);
+        [first, extras] = expandObject(obj, t, innerOffsets);
       } catch (e) {
         // Strict (default): propagate — preserves the parity harness and
         // any caller that wants hard failures. Lenient: drop this object's
         // openings so it still renders as a solid wall, and report why.
         if (!opts?.lenient) throw e;
         opts.onWarning?.(e instanceof Error ? e.message : String(e));
-        [first, extras] = expandObject(stripOpenings(obj), t);
+        [first, extras] = expandObject(stripOpenings(obj), t, innerOffsets);
       }
       head.push(first);
       for (const e of extras) {
@@ -609,13 +614,16 @@ function expandComponent(
   );
 }
 
-function expandObject(obj: Obj, wallThickness: number): [Obj, Obj[]] {
-  if (obj.type === "room") return expandRoom(obj as Room, wallThickness);
+function expandObject(obj: Obj, wallThickness: number, innerOffsets = false): [Obj, Obj[]] {
+  if (obj.type === "room") return expandRoom(obj as Room, wallThickness, innerOffsets);
   if (obj.type === "wall") return expandWall(obj as Wall, wallThickness);
   return [obj, []];
 }
 
-function expandRoom(room: Room, wallThickness: number): [Obj, Obj[]] {
+// `innerOffsets` (wadi_version >= 2): room-wall opening `offset` anchors to the
+// CLEAR span (inner corner), not the outer corner. Legacy files (v1) keep the
+// outer-corner origin so they render unchanged.
+function expandRoom(room: Room, wallThickness: number, innerOffsets = false): [Obj, Obj[]] {
   const walls = room.walls;
   // Old list-form or absent → nothing to expand.
   if (walls === undefined || Array.isArray(walls)) return [room, []];
@@ -681,11 +689,20 @@ function expandRoom(room: Room, wallThickness: number): [Obj, Obj[]] {
     const wc = walls[side];
     const openings = wc?.openings ?? [];
     if (openings.length === 0) continue;
+    // v2 (`innerOffsets`): openings anchor to the wall's CLEAR span (inner corner
+    // to inner corner), not the outer wall extent. A room side's corners belong
+    // to the two perpendicular walls (each `t` deep), so the openable run is
+    // `wallLength - 2t`, starting `t` in from the outer corner. offset 0 = the
+    // inner corner, consistently for every side (N/S walls used to anchor at the
+    // OUTER corner — an `offset 0` opening landed in the corner while E/W clipped
+    // it). Centred openings are unchanged (the clear span is symmetric). v1 files
+    // keep the outer-corner origin + full-length span so they render unchanged.
     const wallLength = side === "north" || side === "south" ? rw : rl;
-    const placed = resolveOpeningAnchors(openings, wallLength);
-    validateOpenings(placed, `Room '${rname}' ${side} wall`, wallLength);
+    const spanLen = innerOffsets ? wallLength - 2 * t : wallLength;
+    const placed = resolveOpeningAnchors(openings, spanLen);
+    validateOpenings(placed, `Room '${rname}' ${side} wall`, spanLen);
     for (let i = 0; i < placed.length; i++) {
-      const flat = roomOpeningToFlat(rname, side, t, rx, ry, rw, rl, placed[i], i);
+      const flat = roomOpeningToFlat(rname, side, t, rx, ry, rw, rl, placed[i], i, innerOffsets);
       (flat.type === "door" ? doorExtras : windowExtras).push(flat);
     }
   }
@@ -703,6 +720,7 @@ function roomOpeningToFlat(
   rl: number,
   op: Opening,
   index: number,
+  innerOffsets = false,
 ): Obj {
   const kind = op.kind;
   if (kind !== "door" && kind !== "window" && kind !== "gap") {
@@ -711,22 +729,27 @@ function roomOpeningToFlat(
     );
   }
   const { offset, width, height } = op;
+  // v2 (`innerOffsets`): `offset` is measured along the wall's CLEAR span, so the
+  // along-origin is inset by `t` from the outer corner (the perpendicular wall's
+  // inner face). v1: the origin is the outer corner (`along = offset`). The
+  // perpendicular (fixed) coordinate is unchanged.
+  const along = innerOffsets ? t + offset : offset;
   let x: number, y: number, direction: Side;
   if (side === "north") {
-    x = rx + offset;
+    x = rx + along;
     y = ry;
     direction = "north";
   } else if (side === "south") {
-    x = rx + offset;
+    x = rx + along;
     y = ry + rl - t;
     direction = "south";
   } else if (side === "west") {
     x = rx;
-    y = ry + offset;
+    y = ry + along;
     direction = "west";
   } else {
     x = rx + rw - t;
-    y = ry + offset;
+    y = ry + along;
     direction = "east";
   }
   if (op.direction) direction = op.direction;
