@@ -327,6 +327,22 @@ export function generateFloorPlanSvg(
   // stop at the pillar faces (walls butt into columns, no overlap).
   const pillars = pillarRects(objects);
 
+  // A `gap` (open passage) breaks the wall poché — the floor slab underneath then
+  // shows through, so the opening reads as a real break rather than a solid wall
+  // with a faint symbol on top. Collect each gap's span on its owner room + side.
+  type Side = "north" | "south" | "east" | "west";
+  const gapCutsByRoom: Record<string, Partial<Record<Side, Array<[number, number]>>>> = {};
+  for (const o of objects) {
+    if (o.type !== "gap") continue;
+    const room = o.room as string | undefined;
+    const dir = ((o.direction as string | undefined) ?? "").toLowerCase() as Side;
+    if (!room || (dir !== "north" && dir !== "south" && dir !== "east" && dir !== "west")) continue;
+    const gx = o.x as number, gy = o.y as number, gw = o.width as number;
+    const span: [number, number] = (dir === "north" || dir === "south") ? [gx, gx + gw] : [gy, gy + gw];
+    (gapCutsByRoom[room] ??= {});
+    ((gapCutsByRoom[room][dir] ??= []) as Array<[number, number]>).push(span);
+  }
+
   for (const obj of objects) {
     const t = obj.type as string;
     if (t === "room") {
@@ -340,6 +356,7 @@ export function generateFloorPlanSvg(
         ((obj.wall_thickness as number | undefined) ?? wallThickness),
         wallsList ?? ["north", "south", "east", "west"],
         pillars,
+        gapCutsByRoom[obj.name as string],
       );
     } else if (t === "wall") {
       const thickness = (obj.thickness as number | undefined) ?? wallThickness;

@@ -36,6 +36,27 @@ function drawWallPoly(
 // axis-aligned, it's trimmed so it stops at any overlapping pillar's faces
 // (walls butt into columns instead of running under them); a wall with no
 // overlap draws exactly as before.
+// Remove a set of `[lo,hi]` intervals from each span, so a wall run breaks around
+// openings (or pillars). Intervals are along the wall's own axis.
+function subtractIntervals(
+  spans: Array<[number, number]>,
+  cuts: Array<[number, number]>,
+): Array<[number, number]> {
+  let out = spans.map(([s, e]) => [Math.min(s, e), Math.max(s, e)] as [number, number]);
+  for (const [ca, cb] of cuts) {
+    const clo = Math.min(ca, cb), chi = Math.max(ca, cb);
+    if (chi - clo <= 1e-9) continue;
+    const next: Array<[number, number]> = [];
+    for (const [lo, hi] of out) {
+      if (chi <= lo + 1e-9 || clo >= hi - 1e-9) { next.push([lo, hi]); continue; } // no overlap
+      if (clo > lo + 1e-9) next.push([lo, clo]);
+      if (chi < hi - 1e-9) next.push([chi, hi]);
+    }
+    out = next;
+  }
+  return out;
+}
+
 export function svgDrawWall(
   startX: number,
   startY: number,
@@ -44,25 +65,32 @@ export function svgDrawWall(
   thickness: number,
   color = "#8B4513",
   pillars?: PillarRect[],
+  // Opening spans to CUT out of this wall run (along its own axis), so a gap /
+  // open passage shows as a real break in the wall poché. Empty ⇒ byte-identical.
+  cuts?: Array<[number, number]>,
 ): string {
-  if (pillars && pillars.length) {
-    const horiz = Math.abs(startY - endY) < 1e-9;
-    const vert = Math.abs(startX - endX) < 1e-9;
-    if (horiz || vert) {
-      const axis = horiz ? "h" : "v";
-      const center = horiz ? startY : startX;
-      const start = horiz ? startX : startY;
-      const end = horiz ? endX : endY;
-      const spans = trimSpans(axis, center, start, end, thickness, pillars);
-      const untouched = spans.length === 1 && Math.abs(spans[0][0] - Math.min(start, end)) < 1e-9 && Math.abs(spans[0][1] - Math.max(start, end)) < 1e-9;
-      if (!untouched) {
-        let svg = "";
-        for (const [s, e] of spans) {
-          if (horiz) svg += drawWallPoly(s, center, e, center, thickness, color);
-          else svg += drawWallPoly(center, s, center, e, thickness, color);
-        }
-        return svg;
+  const horiz = Math.abs(startY - endY) < 1e-9;
+  const vert = Math.abs(startX - endX) < 1e-9;
+  const hasCuts = !!(cuts && cuts.length && (horiz || vert));
+  if ((pillars && pillars.length && (horiz || vert)) || hasCuts) {
+    const axis = horiz ? "h" : "v";
+    const center = horiz ? startY : startX;
+    const start = horiz ? startX : startY;
+    const end = horiz ? endX : endY;
+    let spans: Array<[number, number]> = (pillars && pillars.length)
+      ? trimSpans(axis, center, start, end, thickness, pillars)
+      : [[Math.min(start, end), Math.max(start, end)]];
+    if (hasCuts) spans = subtractIntervals(spans, cuts!);
+    // Preserve the exact single-poly output (byte parity) when nothing changed.
+    const untouched = !hasCuts && spans.length === 1 && Math.abs(spans[0][0] - Math.min(start, end)) < 1e-9 && Math.abs(spans[0][1] - Math.max(start, end)) < 1e-9;
+    if (!untouched) {
+      let svg = "";
+      for (const [s, e] of spans) {
+        if (e - s <= 1e-9) continue;
+        if (horiz) svg += drawWallPoly(s, center, e, center, thickness, color);
+        else svg += drawWallPoly(center, s, center, e, thickness, color);
       }
+      return svg;
     }
   }
   return drawWallPoly(startX, startY, endX, endY, thickness, color);
@@ -79,22 +107,26 @@ export function svgDrawRoom(
   thickness: number,
   walls: string[] = ["north", "south", "east", "west"],
   pillars?: PillarRect[],
+  // Per-side opening spans to cut out of the wall poché (world coords along the
+  // side's axis: x for north/south, y for east/west). Used for `gap` openings so
+  // an open passage reads as a break in the wall.
+  openingCuts?: Partial<Record<"north" | "south" | "east" | "west", Array<[number, number]>>>,
 ): string {
   const t = thickness;
   const sides = walls.map((w) => w.toLowerCase());
   const c = "#8B4513";
   let svg = "";
   if (sides.includes("north")) {
-    svg += svgDrawWall(x, y + t / 2, x + width, y + t / 2, thickness, c, pillars);
+    svg += svgDrawWall(x, y + t / 2, x + width, y + t / 2, thickness, c, pillars, openingCuts?.north);
   }
   if (sides.includes("south")) {
-    svg += svgDrawWall(x, y + length - t / 2, x + width, y + length - t / 2, thickness, c, pillars);
+    svg += svgDrawWall(x, y + length - t / 2, x + width, y + length - t / 2, thickness, c, pillars, openingCuts?.south);
   }
   if (sides.includes("east")) {
-    svg += svgDrawWall(x + width - t / 2, y + t, x + width - t / 2, y + length - t, thickness, c, pillars);
+    svg += svgDrawWall(x + width - t / 2, y + t, x + width - t / 2, y + length - t, thickness, c, pillars, openingCuts?.east);
   }
   if (sides.includes("west")) {
-    svg += svgDrawWall(x + t / 2, y + t, x + t / 2, y + length - t, thickness, c, pillars);
+    svg += svgDrawWall(x + t / 2, y + t, x + t / 2, y + length - t, thickness, c, pillars, openingCuts?.west);
   }
   return svg;
 }

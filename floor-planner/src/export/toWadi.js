@@ -122,9 +122,14 @@ export function modelToWadi(model, opts = {}) {
   // on a `floor_slab` of the same footprint — the per-room slabs tile the rooms' union.
   const roomFloors = floors.map((f, i) => {
     const floorRooms = rooms.filter((r) => r.floor === f.id)
-    const slabs = floorRooms.map((r) => ({
-      type: 'floor_slab', x: r.x, y: r.y, width: r.w, length: r.h,
-    }))
+    const slabs = floorRooms.map((r) => {
+      const s = { type: 'floor_slab', x: r.x, y: r.y, width: r.w, length: r.h }
+      // Each per-room slab shares the room footprint, so derive it from the same
+      // guide lines (falls back to the numbers when an edge isn't on a line).
+      const sf = roomGridFormulas(r, guides)
+      if (sf) s.formulas = sf
+      return s
+    })
     const roomObjs = floorRooms.map((r) => {
       const o = {
         type: 'room',
