@@ -196,7 +196,7 @@ export function House3D({ config }: { config: HouseConfig }) {
       // bare "openings" id is NOT in effectiveLayers, so it would be dropped.
       const openingsLayer = defaultLayerFor("door", floorNum, layerDefaults);
       const slabLayer = defaultLayerFor("floor_slab", floorNum, layerDefaults);
-      const openings = objects.filter((o) => o.type === "door" || o.type === "window");
+      const openings = objects.filter((o) => o.type === "door" || o.type === "window" || o.type === "gap");
       // Pillar footprints that pass through this floor — walls trim to their
       // faces (no overlap). Include full-height columns declared on lower floors
       // whose vertical extent reaches this floor's slot, not just this floor's
