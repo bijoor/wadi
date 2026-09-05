@@ -951,6 +951,9 @@ declare global {
     // `apply` replaces the filter, re-bakes every drawing, and reloads the tab.
     wadiApplyDrawFilter?: (filter: DrawFilter) => void;
     wadiGetDrawFilter?: () => DrawFilter;
+    // Force the WDL editor to adopt `wdl`, overriding any unapplied local edits.
+    // Used by a live co-edit push so a re-push always shows the pushed source.
+    wadiForceAdoptWdl?: (wdl: string) => void;
     // Published from rebuildSvgMap so the 2D tabs build cards from the
     // actual floors (config-driven, no hardcoded floor list).
     floorPlanManifest?: { filename: string; displayName: string }[];
@@ -2094,11 +2097,19 @@ function startLiveSession(): void {
           liveSession.lastModules = json; // set BEFORE applying so our store subscriber doesn't echo it back
           void applyIncomingModules(msg.modules);
         }
-      } else if (msg?.type === "wdl" && typeof msg.wdl === "string" && msg.wdl !== liveSession.lastWdl) {
-        liveSession.lastWdl = msg.wdl; // set BEFORE applying so our store subscriber doesn't echo it back
-        liveSession.updates++;
-        void applyIncomingWdl(msg.wdl, msg.wadi_version);
-        renderLivePanel(true);
+      } else if (msg?.type === "wdl" && typeof msg.wdl === "string") {
+        if (msg.wdl !== liveSession.lastWdl) {
+          liveSession.lastWdl = msg.wdl; // set BEFORE applying so our store subscriber doesn't echo it back
+          liveSession.updates++;
+          void applyIncomingWdl(msg.wdl, msg.wadi_version);
+          renderLivePanel(true);
+        } else {
+          // A deliberate RE-PUSH of the SAME WDL (the planner model didn't change):
+          // no model re-render is needed, but the user may have unapplied editor
+          // edits diverging from it — reset the editor to the pushed source so the
+          // push is always visible.
+          window.wadiForceAdoptWdl?.(msg.wdl);
+        }
       }
     } catch { /* ignore malformed frames */ }
   });
@@ -2115,6 +2126,9 @@ async function applyIncomingWdl(wdl: string, wadiVersion?: number): Promise<void
   // WDL (no version field), so default to the current model version when the push
   // doesn't carry one — the planner's gaps then use the clear-span offsets.
   const res = (await window.wadi?.setWdl(wdl, wadiVersion ?? CURRENT_WADI_VERSION)) as { ok?: boolean; errors?: string[] } | undefined;
+  // The push is authoritative: adopt it into the WDL editor even over unapplied
+  // local edits (syncFromStore's dirty-guard would otherwise hide it).
+  if (!res || res.ok !== false) window.wadiForceAdoptWdl?.(wdl);
   if (!liveSession) return;
   liveSession.error = res && res.ok === false
     ? "the agent's edit didn't load: " + (res.errors?.[0] ?? "compile error")
@@ -5211,6 +5225,21 @@ function wireWdlEditor(): void {
   };
   useConfigStore.subscribe(syncFromStore);
   reflectDirty();
+
+  // A LIVE co-edit push (the floor planner / an agent) is AUTHORITATIVE: adopt its
+  // WDL into the editor even over unapplied local edits, so a re-push always shows
+  // the pushed source. syncFromStore deliberately protects passive store changes
+  // (undo, a thumbnail path); this is the explicit external "set this WDL" and
+  // must win — otherwise a stale unapplied edit hides every subsequent push.
+  window.wadiForceAdoptWdl = (wdl: string): void => {
+    const v = wdl ?? "";
+    if (getVal() === v && applied === v) return; // already showing it, and clean
+    setVal(v);
+    applied = v;
+    const s = statusFromCheck(checkBrief(useConfigStore.getState().config));
+    setStatus(s.cls, s.body);
+    reflectDirty();
+  };
 
   // Lazily bring up Monaco the first time the pane is shown. Heavy (Monaco +
   // Langium LSP), so it never loads for a visitor who leaves the WDL pane closed.
