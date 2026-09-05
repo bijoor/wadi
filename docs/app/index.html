@@ -841,195 +841,52 @@
         #quantities-grid {
             grid-template-columns: 1fr;
         }
-        /* --- Layout tab: fixed shell + inline pan/zoom viewport ------- */
-        .layout-shell {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            background: #f5f5f5;
-        }
-        .layout-header {
-            flex: 0 0 auto;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 0.6rem 1rem;
-            background: #fff;
-            border-bottom: 1px solid #e2e2e2;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-            z-index: 2;
-        }
-        .layout-header .section-header { margin: 0; font-size: 1.25rem; }
-        .layout-spacer { flex: 1 1 auto; }
-        .layout-floor-picker {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            color: #444;
-        }
-        .layout-floor-picker select {
-            padding: 0.35rem 0.6rem;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            background: white;
-            font-size: 0.9rem;
-        }
-        .layout-btn {
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            background: white;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .layout-btn:hover { background: #f2f2f2; }
-        .layout-btn[aria-pressed="true"] { background: #eef3fb; border-color: #9db8de; color: #2c5aa0; }
-        /* Zoom / export toolbar */
-        .layout-zoombar {
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            background: #f2f2f2;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 2px;
-        }
-        .layout-zbtn {
-            min-width: 30px;
-            height: 30px;
-            padding: 0 6px;
-            border: none;
-            background: transparent;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            line-height: 1;
-            color: #333;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .layout-zbtn:hover { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-        .layout-zoom-pct {
-            min-width: 48px;
-            text-align: center;
-            font-size: 0.82rem;
-            color: #444;
-            cursor: pointer;
-            user-select: none;
-        }
-        .layout-zsep { width: 1px; height: 20px; background: #d5d5d5; margin: 0 4px; }
-        .layout-body {
-            flex: 1 1 auto;
-            display: flex;
-            min-height: 0;      /* let children own the scroll, not the body */
-            position: relative;
-        }
-        .layout-filters {
-            flex: 0 0 230px;
-            background: white;
-            border-right: 1px solid #e2e2e2;
-            padding: 1rem;
+        /* ---- Dimensions/filters DOCK: a left panel matching the configurator
+               (#viewer-config-dock), driving every 2D drawing via the global draw
+               filter. Shown only on the 2D tabs (body[data-dim2d="on"]). --------- */
+        #viewer-filters-dock {
+            display: none;
+            flex: 0 0 288px;
             overflow-y: auto;
-            overflow-x: hidden;
+            background: #faf7f4;
+            border-right: 1px solid #e6ddd4;
+            padding: 0.9rem 1.1rem;
+            color: #1e293b;
         }
-        .layout-filters.hidden { display: none; }
-        /* Pan/zoom viewport — the sheet is dragged/zoomed inside this box. */
-        .layout-viewport {
-            flex: 1 1 auto;
-            position: relative;
-            overflow: hidden;
-            min-width: 0;
-            background:
-                linear-gradient(45deg, #ececec 25%, transparent 25%, transparent 75%, #ececec 75%) 0 0 / 24px 24px,
-                linear-gradient(45deg, #ececec 25%, transparent 25%, transparent 75%, #ececec 75%) 12px 12px / 24px 24px,
-                #f5f5f5;
-            cursor: grab;
-            touch-action: none;
+        body[data-dim2d="on"][data-filters="open"] #viewer-filters-dock { display: block; }
+        #filters-dock-title { margin: 0 0 0.6rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
+        body[data-embed="1"] #viewer-filters-dock, body[data-embed="1"] #filters-toggle { display: none !important; }
+        /* FILTERS pull-tab — same tabbed look as #left-toggle, sitting just BELOW
+           the CONFIG tab so both can show at once. Only on a 2D drawing tab. */
+        #filters-toggle {
+            display: none;
+            position: fixed; top: calc(50% + 44px); left: 0; transform: translateY(-50%);
+            z-index: 55; width: 24px; min-height: 54px;
+            border: 1px solid #e0dfda; border-left: none; border-radius: 0 10px 10px 0;
+            background: #fff; color: #B85028; cursor: pointer; padding: 6px 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.10);
         }
-        .layout-viewport.grabbing { cursor: grabbing; }
-        .layout-stage {
-            position: absolute;
-            top: 0;
-            left: 0;
-            transform-origin: 0 0;
-            will-change: transform;
-        }
-        .layout-stage svg {
-            display: block;
-            background: #fff;
-            box-shadow: 0 3px 18px rgba(0,0,0,0.18);
-        }
-        .layout-empty {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: #666;
-            padding: 2rem;
-            pointer-events: none;
-        }
-        .layout-filter-group { margin-bottom: 1rem; }
-        .layout-filter-group:last-child { margin-bottom: 0; }
-        .layout-filter-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #333;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 0.3rem;
-            margin-bottom: 0.4rem;
-        }
-        .layout-filter-actions a {
-            font-size: 0.72rem;
-            font-weight: 400;
-            color: #4a80c0;
-            text-decoration: none;
-            margin-left: 0.4rem;
-        }
-        .layout-filter-actions a:hover { text-decoration: underline; }
-        .layout-filter-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-        .layout-filter-list label {
-            display: flex;
-            align-items: center;
-            gap: 0.45rem;
-            font-size: 0.82rem;
-            color: #444;
-            cursor: pointer;
-            line-height: 1.3;
-        }
-        .layout-filter-list input[type="checkbox"] { flex: 0 0 auto; }
-        .layout-obj-floor {
-            font-size: 0.72rem;
-            font-weight: 600;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            margin: 0.4rem 0 0.1rem;
-        }
-        @media (max-width: 820px) {
-            /* Filters slide over the viewport instead of squeezing it. */
-            .layout-filters {
-                position: absolute;
-                z-index: 3;
-                top: 0;
-                bottom: 0;
-                left: 0;
-                width: 78%;
-                max-width: 300px;
-                box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+        #filters-toggle:hover { background: #faf3ee; }
+        #filters-toggle .tab-lbl { writing-mode: vertical-rl; text-orientation: upright;
+            font-size: 8px; font-weight: 800; color: #B85028; opacity: .8; line-height: 1; }
+        #filters-toggle .lt-arw { font-size: 1rem; line-height: 1; transition: transform 0.15s ease; }
+        body[data-dim2d="on"] #filters-toggle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+        body[data-filters="open"] #filters-toggle { left: 288px; }
+        body[data-filters="open"] #filters-toggle .lt-arw { transform: rotate(180deg); }
+        @media (max-width: 900px) {
+            body[data-dim2d="on"][data-filters="open"] #viewer-filters-dock {
+                position: absolute; top: 0; left: 0; width: min(88%, 340px); height: 100%;
+                z-index: 60; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
             }
-            .layout-header { flex-wrap: wrap; }
+            body[data-filters="open"] #filters-toggle { left: min(88%, 340px); z-index: 61; }
         }
+        .dim-group { margin-bottom: 1rem; }
+        .dim-group-head { display: flex; justify-content: space-between; align-items: baseline; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.35rem; color: #333; }
+        .dim-actions a { font-size: 0.78rem; color: #2c5aa0; text-decoration: none; margin-left: 0.55rem; cursor: pointer; }
+        .dim-actions a:hover { text-decoration: underline; }
+        .dim-group label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.12rem 0; cursor: pointer; }
+        .dim-hint { font-size: 0.78rem; color: #888; margin-top: 0.2rem; }
+        .dim-obj-floor { font-size: 0.72rem; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.03em; margin: 0.45rem 0 0.1rem; }
         .svg-item {
             background: white;
             border-radius: 10px;
@@ -2310,7 +2167,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-BoyTE6x8.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-Ccjjj7d6.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>
@@ -2421,6 +2278,9 @@
          A chevron tab on the LEFT EDGE (distinct from the toolbar ☰). Shown by
          main.ts only when a left panel exists; icon flips with the state. -->
     <button id="left-toggle" type="button" title="Show / hide the configurator" aria-label="Toggle configurator panel"><span class="tab-lbl" aria-hidden="true">CONFIG</span><span class="lt-arw">❯</span></button>
+    <!-- FILTERS pull-tab: same left-edge tabbed look as CONFIG, shown ONLY on the
+         2D drawing tabs (body[data-dim2d="on"]). Toggles the filters dock. -->
+    <button id="filters-toggle" type="button" title="Show / hide the drawing dimensions + filters" aria-label="Toggle dimensions and filters panel" onclick="toggleDimDrawer()"><span class="tab-lbl" aria-hidden="true">FILTERS</span><span class="lt-arw">❯</span></button>
     <div id="viewer-container">
         <!-- Owner welcome / empty state — covers the viewer until a home is
              chosen, so a fresh owner never lands on a model they didn't pick.
@@ -2444,6 +2304,48 @@
         <aside id="viewer-config-dock" aria-label="Configure your home">
             <h4 id="cfg-dock-title">Configure your home</h4>
             <div id="viewer-config-list"></div>
+        </aside>
+        <!-- Dimensions & filters: a docked, collapsible LEFT panel (same pattern as
+             the configurator), available only on the 2D drawing tabs. Drives the
+             GLOBAL draw filter, so every plan + elevation (and the combined sheets /
+             PDF) re-render as its controls change. -->
+        <aside id="viewer-filters-dock" aria-label="Drawing dimensions and filters">
+            <h4 id="filters-dock-title">Dimensions &amp; filters</h4>
+            <div class="dim-group">
+                <div class="dim-group-head"><span>Dimensions</span></div>
+                <label><input type="checkbox" data-dim="outer" onchange="onDimFilterChange()"> Outer</label>
+                <label><input type="checkbox" data-dim="inner" onchange="onDimFilterChange()"> Inner</label>
+                <label><input type="checkbox" data-dim="room" onchange="onDimFilterChange()"> Room</label>
+                <label><input type="checkbox" data-dim="opening" onchange="onDimFilterChange()"> Openings</label>
+            </div>
+            <div class="dim-group">
+                <div class="dim-group-head"><span>Room labels</span></div>
+                <label><input type="checkbox" data-label="names" onchange="onDimFilterChange()"> Room names</label>
+                <label><input type="checkbox" data-label="abbrev" onchange="onDimFilterChange()"> Abbreviate + legend</label>
+            </div>
+            <div class="dim-group">
+                <div class="dim-group-head"><span>Smart dimensions</span></div>
+                <label><input type="checkbox" data-smart="withinView" onchange="onDimFilterChange()"> Skip repeated measures</label>
+                <label><input type="checkbox" data-smart="overlap" onchange="onDimFilterChange()"> Un-overlap labels</label>
+            </div>
+            <div class="dim-group">
+                <div class="dim-group-head"><span>Text size</span><span id="dim-ts-val" style="opacity:.7;font-variant-numeric:tabular-nums;">1.0&times;</span></div>
+                <input type="range" id="dim-ts" min="0.3" max="1.5" step="0.1" value="1" style="width:100%;"
+                    oninput="document.getElementById('dim-ts-val').innerHTML=(parseFloat(this.value).toFixed(1)+'&times;'); onDimFilterChange();">
+                <div class="dim-hint">Lower it on large houses where text looks oversized.</div>
+            </div>
+            <div class="dim-group">
+                <div class="dim-group-head"><span>Object types</span><span class="dim-actions"><a onclick="dimSetGroup('type',true);return false;">all</a><a onclick="dimSetGroup('type',false);return false;">none</a></span></div>
+                <div id="dim-types-list"></div>
+            </div>
+            <div class="dim-group">
+                <div class="dim-group-head"><span>Layers</span><span class="dim-actions"><a onclick="dimSetGroup('layer',true);return false;">all</a><a onclick="dimSetGroup('layer',false);return false;">none</a></span></div>
+                <div id="dim-layers-list"></div>
+            </div>
+            <div class="dim-group">
+                <div class="dim-group-head"><span>Objects</span><span class="dim-actions"><a onclick="dimSetGroup('obj',true);return false;">all</a><a onclick="dimSetGroup('obj',false);return false;">none</a></span></div>
+                <div id="dim-objects-list"></div>
+            </div>
         </aside>
         <!-- (Form-studio Sidebar + PropertyPanel retired — WDL is the only edit
              surface. Their React mount slots are gone.) -->
@@ -2494,17 +2396,6 @@
                     <line x1="7" y1="11.5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
                     <line x1="17" y1="11.5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
                 </svg><span class="tab-label"> Roof Details</span>
-            </button>
-            <button class="tab" onclick="switchView('layout')" title="Layout (plan + elevations)">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <!-- general-arrangement cross: plan centre + 4 elevations -->
-                    <rect x="9" y="9" width="6" height="6" fill="#B85028"/>
-                    <rect x="9" y="9" width="6" height="6" stroke="currentColor" stroke-width="1.3"/>
-                    <rect x="9" y="2" width="6" height="4.5" stroke="currentColor" stroke-width="1.3"/>
-                    <rect x="9" y="17.5" width="6" height="4.5" stroke="currentColor" stroke-width="1.3"/>
-                    <rect x="2" y="9" width="4.5" height="6" stroke="currentColor" stroke-width="1.3"/>
-                    <rect x="17.5" y="9" width="4.5" height="6" stroke="currentColor" stroke-width="1.3"/>
-                </svg><span class="tab-label"> Layout</span>
             </button>
             <button class="tab" onclick="switchView('quantities')" title="Quantities (wall areas)">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -2624,110 +2515,6 @@
         </div>
         <!-- End Quantities View -->
 
-        <!-- Layout View — composite general-arrangement sheet (plan centre
-             + four elevations) per floor. Fixed header + toggleable filter
-             panel; the single sheet is pan/zoom/scrollable IN PLACE (no
-             click-to-open lightbox). -->
-        <div id="view-layout" class="view-container">
-            <div class="layout-shell">
-                <div class="layout-header">
-                    <h2 class="section-header">Layout</h2>
-                    <div class="layout-floor-picker">
-                        <label for="layout-floor-select">Floor</label>
-                        <select id="layout-floor-select" onchange="onLayoutFloorChange()"></select>
-                    </div>
-                    <button id="layout-filter-toggle" class="layout-btn" onclick="toggleLayoutFilters()" title="Show/hide filters" aria-pressed="true">⚙ Filters</button>
-                    <div class="layout-spacer"></div>
-                    <!-- Zoom / export toolbar (fixed in the header). -->
-                    <div class="layout-zoombar" role="group" aria-label="Zoom and export">
-                        <button class="layout-zbtn" onclick="layoutZoomStep(1/1.25)" title="Zoom out (−)" aria-label="Zoom out">−</button>
-                        <span id="layout-zoom-pct" class="layout-zoom-pct" onclick="layoutFit()" title="Fit to view">100%</span>
-                        <button class="layout-zbtn" onclick="layoutZoomStep(1.25)" title="Zoom in (+)" aria-label="Zoom in">+</button>
-                        <button class="layout-zbtn" onclick="layoutFit()" title="Fit to view (0)" aria-label="Fit to view">⤢</button>
-                        <span class="layout-zsep"></span>
-                        <button class="layout-zbtn" onclick="layoutExportSvg()" title="Export as SVG" aria-label="Export SVG">💾</button>
-                        <button class="layout-zbtn" onclick="layoutExportPdf()" title="Export as PDF" aria-label="Export PDF">📄</button>
-                        <span class="layout-zsep"></span>
-                        <button id="layout-capture-btn" class="layout-zbtn" onclick="captureLayoutShot(this)" title="Add this sheet to the template previews" aria-label="Add to previews">📸</button>
-                    </div>
-                </div>
-                <div class="layout-body">
-                    <!-- Filter panel: three independent AND object filters
-                         (Types / Layers / Objects) + annotation toggles. -->
-                    <aside id="layout-filters" class="layout-filters">
-                        <div class="layout-filter-group">
-                            <div class="layout-filter-head">
-                                <span>Object types</span>
-                                <span class="layout-filter-actions">
-                                    <a href="#" onclick="layoutSetGroup('types', true); return false;">all</a>
-                                    <a href="#" onclick="layoutSetGroup('types', false); return false;">none</a>
-                                </span>
-                            </div>
-                            <div class="layout-filter-list" id="layout-types-list"></div>
-                        </div>
-                        <div class="layout-filter-group">
-                            <div class="layout-filter-head">
-                                <span>Layers</span>
-                                <span class="layout-filter-actions">
-                                    <a href="#" onclick="layoutSetGroup('layers', true); return false;">all</a>
-                                    <a href="#" onclick="layoutSetGroup('layers', false); return false;">none</a>
-                                </span>
-                            </div>
-                            <div class="layout-filter-list" id="layout-layers-list"></div>
-                        </div>
-                        <div class="layout-filter-group">
-                            <div class="layout-filter-head">
-                                <span>Objects</span>
-                                <span class="layout-filter-actions">
-                                    <a href="#" onclick="layoutSetGroup('objects', true); return false;">all</a>
-                                    <a href="#" onclick="layoutSetGroup('objects', false); return false;">none</a>
-                                </span>
-                            </div>
-                            <div class="layout-filter-list" id="layout-objects-list"></div>
-                        </div>
-                        <div class="layout-filter-group">
-                            <div class="layout-filter-head"><span>Dimensions</span></div>
-                            <div class="layout-filter-list" id="layout-dims-list">
-                                <label><input type="checkbox" data-dim="outer" checked onchange="onLayoutFilterChange()"> Outer</label>
-                                <label><input type="checkbox" data-dim="inner" checked onchange="onLayoutFilterChange()"> Inner</label>
-                                <label><input type="checkbox" data-dim="room" checked onchange="onLayoutFilterChange()"> Room</label>
-                                <label><input type="checkbox" data-dim="opening" checked onchange="onLayoutFilterChange()"> Openings</label>
-                            </div>
-                        </div>
-                        <div class="layout-filter-group">
-                            <div class="layout-filter-head"><span>Room labels</span></div>
-                            <div class="layout-filter-list" id="layout-labels-list">
-                                <label><input type="checkbox" data-label="names" checked onchange="onLayoutFilterChange()"> Room names</label>
-                                <label><input type="checkbox" data-label="abbrev" checked onchange="onLayoutFilterChange()"> Abbreviate + legend</label>
-                            </div>
-                        </div>
-                        <div class="layout-filter-group">
-                            <div class="layout-filter-head"><span>Smart dimensions</span></div>
-                            <div class="layout-filter-list" id="layout-smart-list">
-                                <label><input type="checkbox" data-smart="crossView" checked onchange="onLayoutFilterChange()"> Skip cross-view repeats</label>
-                                <label><input type="checkbox" data-smart="withinView" checked onchange="onLayoutFilterChange()"> Skip in-view repeats</label>
-                                <label><input type="checkbox" data-smart="overlap" checked onchange="onLayoutFilterChange()"> Un-overlap labels</label>
-                            </div>
-                        </div>
-                        <div class="layout-filter-group">
-                            <div class="layout-filter-head"><span>Text size</span><span id="layout-textscale-val" style="opacity:.7;font-variant-numeric:tabular-nums;">1.0&times;</span></div>
-                            <div class="layout-filter-list">
-                                <input type="range" id="layout-textscale" min="0.3" max="1.5" step="0.1" value="1" style="width:100%;"
-                                    oninput="document.getElementById('layout-textscale-val').innerHTML = (parseFloat(this.value).toFixed(1) + '&times;'); onLayoutFilterChange();">
-                                <div style="opacity:.6;font-size:.85em;">Shrinks/grows all labels. Lower it on large houses where text looks oversized.</div>
-                            </div>
-                        </div>
-                    </aside>
-                    <!-- Pan/zoom viewport: the composite sheet renders into
-                         #layout-stage and is dragged/zoomed in place. -->
-                    <div class="layout-viewport" id="layout-viewport">
-                        <div class="layout-stage" id="layout-stage"></div>
-                        <div class="layout-empty" id="layout-empty" style="display:none;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- End Layout View -->
 
         <!-- Template picker modal — opens when the New button is clicked.
              Populated from templates/index.json. Selecting a card loads
@@ -2823,6 +2610,21 @@
             const activeTab = document.querySelector(`.tab[onclick*="switchView('${view}')"]`);
             if (activeTab) activeTab.classList.add('active');
 
+            // The Dimensions/filters dock (a left panel, like the configurator) is
+            // ONLY available on the 2D drawing tabs. Its pull-tab shows via
+            // body[data-dim2d="on"]; leaving a 2D tab collapses + hides it.
+            const is2d = (view === 'plans' || view === 'elevations');
+            document.body.dataset.dim2d = is2d ? 'on' : 'off';
+            if (is2d) {
+                // Default OPEN (like the configurator), remembering a manual collapse.
+                let pref = null; try { pref = localStorage.getItem('wadi:filtersOpen'); } catch (e) { /* ignore */ }
+                const willOpen = pref !== '0';
+                if (willOpen) buildDimDrawer();
+                document.body.dataset.filters = willOpen ? 'open' : 'closed';
+            } else {
+                document.body.dataset.filters = 'closed';
+            }
+
             // Update views
             document.querySelectorAll('.view-container').forEach(container => {
                 container.classList.remove('active');
@@ -2845,10 +2647,6 @@
                 document.getElementById('view-roof').classList.add('active');
                 svgContainer.style.display = 'none';
                 loadRoofPanels();
-            } else if (view === 'layout') {
-                document.getElementById('view-layout').classList.add('active');
-                svgContainer.style.display = 'none';
-                loadLayout();
             } else if (view === 'quantities') {
                 document.getElementById('view-quantities').classList.add('active');
                 svgContainer.style.display = 'none';
@@ -3149,365 +2947,85 @@
         }
         window.loadQuantities = loadQuantities;
 
-        // The Layout tab is an interactive composite sheet. Three
-        // independent AND object filters (Types / Layers / Objects) plus
-        // dimension toggles drive an on-demand render of the selected
-        // floor's plan + four elevations via window.wadiRenderLayout.
-        // Object selection lives in *Off sets (opt-out) so a freshly added
-        // object starts shown without seeding.
-        window.layoutFilter = {
-            floorNum: null,
-            typesOff: new Set(),
-            layersOff: new Set(),
-            objectsOff: new Set(),
-            dims: { outer: true, inner: true, room: true, opening: true },
-            // Abbreviate room names by default in the composite (declutters the
-            // sheet — the whole point of the feature). The standalone Floor
-            // Plans tab is unaffected (renderer default stays full names).
-            labels: { names: true, abbrev: true },
-            // Smart dimensioning: default ON in the composite (decluttering the
-            // sheet is the whole point). Renderer-level defaults stay OFF so the
-            // standalone Floor Plan / Elevation tabs are unaffected.
-            smart: { crossView: true, withinView: true, overlap: true },
-            // Manual text-size multiplier on top of the auto span-based scale.
-            textScale: 1,
+        // ---- Shared dimension/filter drawer (Floor Plans + Elevations) ----------
+        // One panel drives the GLOBAL draw filter (window.wadiApplyDrawFilter), which
+        // re-bakes every 2D drawing + reloads the active tab. Metadata (types/layers/
+        // objects) comes from window.wadiLayoutMeta(); current state from
+        // window.wadiGetDrawFilter().
+        function dimEsc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+        window.toggleDimDrawer = function (show) {
+            const open = document.body.dataset.filters === 'open';
+            const willShow = (show === undefined) ? !open : !!show;
+            if (willShow) buildDimDrawer();
+            document.body.dataset.filters = willShow ? 'open' : 'closed';
+            try { localStorage.setItem('wadi:filtersOpen', willShow ? '1' : '0'); } catch (e) { /* ignore */ }
         };
-        let layoutMeta = null;
 
-        function layoutEscape(s) {
-            return String(s).replace(/[&<>"']/g, (c) => (
-                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-            ));
-        }
-
-        window.layoutLoaded = false;
-        async function loadLayout() {
-            if (window.layoutLoaded) return;
-            buildLayoutPanel();
-            renderLayoutSheet();
-            window.layoutLoaded = true;
-        }
-
-        // (Re)build the filter panel's checkbox groups from the current
-        // config's objects/types/layers. Called on every (re)load so live
-        // config edits refresh the lists; selection state (the *Off sets)
-        // persists across rebuilds.
-        function buildLayoutPanel() {
-            const meta = window.wadiLayoutMeta ? window.wadiLayoutMeta() : null;
-            layoutMeta = meta;
-            const empty = document.getElementById('layout-empty');
-            const stage = document.getElementById('layout-stage');
-            if (!meta || !meta.floors.length) {
-                if (stage) { stage.innerHTML = ''; stage.style.transform = 'none'; }
-                layoutSvgEl = null;
-                if (empty) {
-                    empty.innerHTML = '<div><h3>No layout available</h3><p>Load a house to see its composite plan + elevations sheet.</p></div>';
-                    empty.style.display = 'flex';
-                }
-                return;
-            }
-            const f = window.layoutFilter;
-            const floorSel = document.getElementById('layout-floor-select');
-            floorSel.innerHTML = meta.floors
-                .map((fl) => `<option value="${fl.num}">${layoutEscape(fl.name)}</option>`)
-                .join('');
-            if (f.floorNum == null || !meta.floors.some((fl) => fl.num === f.floorNum)) {
-                f.floorNum = meta.floors[0].num;
-            }
-            floorSel.value = String(f.floorNum);
-
-            const emptyHint = '<span style="color:#999;font-size:.8rem">None</span>';
-            document.getElementById('layout-types-list').innerHTML = meta.types
-                .map((t) => `<label><input type="checkbox" data-type="${layoutEscape(t.id)}" ${f.typesOff.has(t.id) ? '' : 'checked'} onchange="onLayoutFilterChange()"> ${layoutEscape(t.label)}</label>`)
-                .join('') || emptyHint;
-            document.getElementById('layout-layers-list').innerHTML = meta.layers
-                .map((l) => `<label><input type="checkbox" data-layer="${layoutEscape(l.id)}" ${f.layersOff.has(l.id) ? '' : 'checked'} onchange="onLayoutFilterChange()"> ${layoutEscape(l.label)}</label>`)
-                .join('') || emptyHint;
-
-            let objHtml = '';
-            let lastFloor = null;
+        function buildDimDrawer() {
+            const f = (window.wadiGetDrawFilter && window.wadiGetDrawFilter()) || {};
+            const meta = (window.wadiLayoutMeta && window.wadiLayoutMeta()) || { floors: [], types: [], layers: [], objects: [] };
+            const chk = (sel, on) => { const c = document.querySelector(sel); if (c) c.checked = !!on; };
+            const dims = f.dims;
+            for (const k of ['outer', 'inner', 'room', 'opening']) chk(`#viewer-filters-dock [data-dim="${k}"]`, dims ? dims[k] !== false : true);
+            chk('#viewer-filters-dock [data-label="names"]', f.labels ? f.labels.roomNames !== false : true);
+            chk('#viewer-filters-dock [data-label="abbrev"]', f.labels ? f.labels.roomAbbrev !== false : true);
+            const smart = f.smart || {};
+            chk('#viewer-filters-dock [data-smart="withinView"]', smart.withinView !== false);
+            chk('#viewer-filters-dock [data-smart="overlap"]', smart.overlap !== false);
+            const ts = (typeof f.textScale === 'number' && f.textScale > 0) ? f.textScale : 1;
+            const tsEl = document.getElementById('dim-ts'); if (tsEl) tsEl.value = ts;
+            const tsVal = document.getElementById('dim-ts-val'); if (tsVal) tsVal.innerHTML = ts.toFixed(1) + '&times;';
+            const typeSet = f.types ? new Set(f.types) : null;
+            const typesList = document.getElementById('dim-types-list'); typesList.innerHTML = '';
+            for (const t of meta.types) typesList.insertAdjacentHTML('beforeend', `<label><input type="checkbox" data-type="${dimEsc(t.id)}" ${(!typeSet || typeSet.has(t.id)) ? 'checked' : ''} onchange="onDimFilterChange()"> ${dimEsc(t.label)}</label>`);
+            const layerSet = f.layers ? new Set(f.layers) : null;
+            const layersList = document.getElementById('dim-layers-list'); layersList.innerHTML = '';
+            for (const l of meta.layers) layersList.insertAdjacentHTML('beforeend', `<label><input type="checkbox" data-layer="${dimEsc(l.id)}" ${(!layerSet || layerSet.has(l.id)) ? 'checked' : ''} onchange="onDimFilterChange()"> ${dimEsc(l.label)}</label>`);
+            const hidden = new Set(f.hiddenObjects || []);
+            const objList = document.getElementById('dim-objects-list'); objList.innerHTML = '';
+            let curFloor = null;
             for (const o of meta.objects) {
-                if (o.floor !== lastFloor) {
-                    const fl = meta.floors.find((x) => x.num === o.floor);
-                    objHtml += `<div class="layout-obj-floor">${layoutEscape(fl ? fl.name : 'Floor ' + o.floor)}</div>`;
-                    lastFloor = o.floor;
+                if (o.floor !== curFloor) {
+                    curFloor = o.floor;
+                    const fl = (meta.floors || []).find(x => x.num === o.floor);
+                    objList.insertAdjacentHTML('beforeend', `<div class="dim-obj-floor">${dimEsc(fl ? fl.name : 'Floor ' + o.floor)}</div>`);
                 }
-                objHtml += `<label><input type="checkbox" data-obj="${layoutEscape(o.key)}" ${f.objectsOff.has(o.key) ? '' : 'checked'} onchange="onLayoutFilterChange()"> ${layoutEscape(o.name)}</label>`;
-            }
-            document.getElementById('layout-objects-list').innerHTML = objHtml || emptyHint;
-
-            document.querySelectorAll('#layout-dims-list input[data-dim]').forEach((cb) => {
-                cb.checked = f.dims[cb.dataset.dim] !== false;
-            });
-            document.querySelectorAll('#layout-labels-list input[data-label]').forEach((cb) => {
-                cb.checked = f.labels[cb.dataset.label] === true;
-            });
-            document.querySelectorAll('#layout-smart-list input[data-smart]').forEach((cb) => {
-                cb.checked = (f.smart || {})[cb.dataset.smart] !== false;
-            });
-            const ts = document.getElementById('layout-textscale');
-            if (ts) {
-                const v = (typeof f.textScale === 'number' && f.textScale > 0) ? f.textScale : 1;
-                ts.value = String(v);
-                const lbl = document.getElementById('layout-textscale-val');
-                if (lbl) lbl.innerHTML = v.toFixed(1) + '&times;';
+                objList.insertAdjacentHTML('beforeend', `<label><input type="checkbox" data-obj="${dimEsc(o.key)}" ${hidden.has(o.key) ? '' : 'checked'} onchange="onDimFilterChange()"> ${dimEsc(o.name)}</label>`);
             }
         }
 
-        // Pull the current checkbox states back into window.layoutFilter.
-        function readLayoutFilterFromDom() {
-            const f = window.layoutFilter;
-            f.typesOff = new Set();
-            document.querySelectorAll('#layout-types-list input[data-type]').forEach((cb) => { if (!cb.checked) f.typesOff.add(cb.dataset.type); });
-            f.layersOff = new Set();
-            document.querySelectorAll('#layout-layers-list input[data-layer]').forEach((cb) => { if (!cb.checked) f.layersOff.add(cb.dataset.layer); });
-            f.objectsOff = new Set();
-            document.querySelectorAll('#layout-objects-list input[data-obj]').forEach((cb) => { if (!cb.checked) f.objectsOff.add(cb.dataset.obj); });
-            f.dims = {};
-            document.querySelectorAll('#layout-dims-list input[data-dim]').forEach((cb) => { f.dims[cb.dataset.dim] = cb.checked; });
-            f.labels = {};
-            document.querySelectorAll('#layout-labels-list input[data-label]').forEach((cb) => { f.labels[cb.dataset.label] = cb.checked; });
-            f.smart = {};
-            document.querySelectorAll('#layout-smart-list input[data-smart]').forEach((cb) => { f.smart[cb.dataset.smart] = cb.checked; });
-            const ts = document.getElementById('layout-textscale');
-            if (ts) { const v = parseFloat(ts.value); f.textScale = (v > 0) ? v : 1; }
-        }
-
-        function onLayoutFilterChange() {
-            readLayoutFilterFromDom();
-            renderLayoutSheet();
-        }
-
-        function onLayoutFloorChange() {
-            const sel = document.getElementById('layout-floor-select');
-            window.layoutFilter.floorNum = parseInt(sel.value, 10) || 0;
-            renderLayoutSheet();
-        }
-
-        function layoutSetGroup(group, on) {
-            const sel = group === 'types'
-                ? '#layout-types-list input'
-                : group === 'layers'
-                    ? '#layout-layers-list input'
-                    : '#layout-objects-list input';
-            document.querySelectorAll(sel).forEach((cb) => { cb.checked = on; });
-            onLayoutFilterChange();
-        }
-
-        function toggleLayoutFilters() {
-            const el = document.getElementById('layout-filters');
-            const hidden = el.classList.toggle('hidden');
-            const btn = document.getElementById('layout-filter-toggle');
-            if (btn) btn.setAttribute('aria-pressed', hidden ? 'false' : 'true');
-        }
-
-        // -------- Inline Layout viewer: pan / zoom / export -----------
-        // The Layout tab shows ONE composite sheet, so it's dragged and
-        // zoomed in place (no click-to-open lightbox). State is scoped to
-        // this view; the shared lightbox (other tabs) is untouched.
-        const layoutZoom = { scale: 1, tx: 0, ty: 0, fit: 1 };
-        let layoutSvgEl = null;         // current <svg> in the stage
-        let layoutRenderedFloor = null; // floor last rendered (fit vs preserve)
-        let layoutFloorName = '';
-        let layoutViewportWired = false;
-
-        function layoutApplyTransform() {
-            const stage = document.getElementById('layout-stage');
-            if (!stage) return;
-            stage.style.transform =
-                'translate(' + layoutZoom.tx + 'px,' + layoutZoom.ty + 'px) scale(' + layoutZoom.scale + ')';
-            const pct = document.getElementById('layout-zoom-pct');
-            if (pct) pct.textContent = Math.round(layoutZoom.scale * 100) + '%';
-        }
-
-        function layoutSvgSize() {
-            if (!layoutSvgEl) return { w: 0, h: 0 };
-            const vb = layoutSvgEl.viewBox && layoutSvgEl.viewBox.baseVal;
-            if (vb && vb.width > 0) return { w: vb.width, h: vb.height };
-            const r = layoutSvgEl.getBoundingClientRect();
-            return { w: r.width || 800, h: r.height || 600 };
-        }
-
-        function layoutMinZoom() { return Math.min(0.02, layoutZoom.fit * 0.5); }
-
-        // Fit the whole sheet in the viewport and centre it.
-        function layoutFit() {
-            const vp = document.getElementById('layout-viewport');
-            if (!vp || !layoutSvgEl) return;
-            const { w, h } = layoutSvgSize();
-            if (w <= 0 || h <= 0) return;
-            const pad = 32;
-            const vw = vp.clientWidth, vh = vp.clientHeight;
-            const scale = Math.max(
-                layoutMinZoom(),
-                Math.min((vw - pad * 2) / w, (vh - pad * 2) / h)
-            );
-            layoutZoom.fit = scale;
-            layoutZoom.scale = scale;
-            layoutZoom.tx = (vw - w * scale) / 2;
-            layoutZoom.ty = (vh - h * scale) / 2;
-            layoutApplyTransform();
-        }
-
-        // Zoom by a factor toward a viewport-space point (default centre).
-        function layoutZoomTo(factor, cx, cy) {
-            const vp = document.getElementById('layout-viewport');
-            if (!vp || !layoutSvgEl) return;
-            if (cx == null) { cx = vp.clientWidth / 2; cy = vp.clientHeight / 2; }
-            const target = Math.min(8, Math.max(layoutMinZoom(), layoutZoom.scale * factor));
-            const f = target / layoutZoom.scale;
-            layoutZoom.tx = cx - (cx - layoutZoom.tx) * f;
-            layoutZoom.ty = cy - (cy - layoutZoom.ty) * f;
-            layoutZoom.scale = target;
-            layoutApplyTransform();
-        }
-        function layoutZoomStep(factor) { layoutZoomTo(factor); }
-
-        function layoutExportSvg() {
-            if (!layoutSvgEl || typeof window.exportSvgElement !== 'function') {
-                alert('Nothing to export yet.');
-                return;
-            }
-            window.exportSvgElement(layoutSvgEl, (layoutFloorName || 'layout').replace(/\s+/g, '_') + '-layout.svg');
-        }
-        function layoutExportPdf() {
-            if (!layoutSvgEl || typeof window.exportSvgElementAsPdf !== 'function') {
-                alert('Nothing to export yet.');
-                return;
-            }
-            const pct = document.getElementById('layout-zoom-pct');
-            const prev = pct ? pct.textContent : '';
-            if (pct) pct.textContent = 'PDF…';
-            Promise.resolve(
-                window.exportSvgElementAsPdf(layoutSvgEl, (layoutFloorName || 'layout').replace(/\s+/g, '_') + '-layout.pdf')
-            ).finally(() => { if (pct) pct.textContent = prev; });
-        }
-
-        // Wire pan (drag) + zoom (wheel) on the viewport, once.
-        function wireLayoutViewport() {
-            if (layoutViewportWired) return;
-            const vp = document.getElementById('layout-viewport');
-            if (!vp) return;
-            layoutViewportWired = true;
-
-            vp.addEventListener('wheel', (e) => {
-                if (!layoutSvgEl) return;
-                e.preventDefault();
-                const rect = vp.getBoundingClientRect();
-                const factor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
-                layoutZoomTo(factor, e.clientX - rect.left, e.clientY - rect.top);
-            }, { passive: false });
-
-            let dragging = false, lastX = 0, lastY = 0, pid = null;
-            vp.addEventListener('pointerdown', (e) => {
-                if (!layoutSvgEl || e.button !== 0) return;
-                dragging = true; pid = e.pointerId; lastX = e.clientX; lastY = e.clientY;
-                vp.classList.add('grabbing');
-                vp.setPointerCapture(e.pointerId);
-            });
-            vp.addEventListener('pointermove', (e) => {
-                if (!dragging) return;
-                layoutZoom.tx += e.clientX - lastX;
-                layoutZoom.ty += e.clientY - lastY;
-                lastX = e.clientX; lastY = e.clientY;
-                layoutApplyTransform();
-            });
-            const endDrag = (e) => {
-                if (!dragging) return;
-                dragging = false;
-                vp.classList.remove('grabbing');
-                if (pid != null) { try { vp.releasePointerCapture(pid); } catch (_) {} pid = null; }
-            };
-            vp.addEventListener('pointerup', endDrag);
-            vp.addEventListener('pointercancel', endDrag);
-            vp.addEventListener('dblclick', () => layoutFit());
-
-            // Keyboard zoom when the Layout tab is active.
-            document.addEventListener('keydown', (e) => {
-                const active = document.querySelector('.view-container.active');
-                if (!active || active.id !== 'view-layout') return;
-                if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
-                if (e.key === '+' || e.key === '=') { e.preventDefault(); layoutZoomStep(1.25); }
-                else if (e.key === '-' || e.key === '_') { e.preventDefault(); layoutZoomStep(1 / 1.25); }
-                else if (e.key === '0') { e.preventDefault(); layoutFit(); }
-            });
-
-            // Keep centred-ish on viewport resize (window resize / edit panel
-            // toggle). Re-fit only if the whole sheet no longer fits; otherwise
-            // leave the user's zoom/pan alone.
-            let ro;
-            try {
-                ro = new ResizeObserver(() => {
-                    if (!layoutSvgEl) return;
-                    const { w, h } = layoutSvgSize();
-                    if (w <= 0) return;
-                    if (Math.abs(layoutZoom.scale - layoutZoom.fit) < 1e-6) layoutFit();
-                });
-                ro.observe(vp);
-            } catch (_) { /* ResizeObserver unsupported — ignore */ }
-        }
-
-        // Build a DrawFilter from panel state and render the composite into
-        // the viewport. Re-fits on floor change; preserves zoom/pan on a
-        // filter toggle.
-        function renderLayoutSheet() {
-            const stage = document.getElementById('layout-stage');
-            const empty = document.getElementById('layout-empty');
-            if (!stage || !window.wadiRenderLayout || !layoutMeta) return;
-            wireLayoutViewport();
-            const f = window.layoutFilter;
-            const allTypeIds = layoutMeta.types.map((t) => t.id);
-            const allLayerIds = layoutMeta.layers.map((l) => l.id);
+        window.onDimFilterChange = function () {
+            const q = (sel) => Array.from(document.querySelectorAll('#viewer-filters-dock ' + sel));
+            const allTypes = q('[data-type]'), allLayers = q('[data-layer]'), allObjs = q('[data-obj]');
+            const checkedTypes = allTypes.filter(c => c.checked).map(c => c.getAttribute('data-type'));
+            const checkedLayers = allLayers.filter(c => c.checked).map(c => c.getAttribute('data-layer'));
+            const hiddenObjects = allObjs.filter(c => !c.checked).map(c => c.getAttribute('data-obj'));
+            const dimOf = (k) => document.querySelector(`#viewer-filters-dock [data-dim="${k}"]`).checked;
+            const smartOf = (k) => document.querySelector(`#viewer-filters-dock [data-smart="${k}"]`).checked;
+            const tsEl = document.getElementById('dim-ts');
             const filter = {
-                types: f.typesOff.size ? allTypeIds.filter((id) => !f.typesOff.has(id)) : null,
-                layers: f.layersOff.size ? allLayerIds.filter((id) => !f.layersOff.has(id)) : null,
-                hiddenObjects: Array.from(f.objectsOff),
-                dims: f.dims,
-                labels: { roomNames: f.labels.names, roomAbbrev: f.labels.abbrev },
-                smart: f.smart,
-                textScale: f.textScale,
+                // Positive list only when SOME are off (else null = all), matching applyDrawFilter.
+                types: (allTypes.length && checkedTypes.length < allTypes.length) ? checkedTypes : null,
+                layers: (allLayers.length && checkedLayers.length < allLayers.length) ? checkedLayers : null,
+                hiddenObjects,
+                dims: { outer: dimOf('outer'), inner: dimOf('inner'), room: dimOf('room'), opening: dimOf('opening') },
+                labels: {
+                    roomNames: document.querySelector('#viewer-filters-dock [data-label="names"]').checked,
+                    roomAbbrev: document.querySelector('#viewer-filters-dock [data-label="abbrev"]').checked,
+                },
+                smart: { withinView: smartOf('withinView'), overlap: smartOf('overlap'), crossView: false },
+                textScale: parseFloat((tsEl && tsEl.value) || '1') || 1,
             };
-            const floor = layoutMeta.floors.find((fl) => fl.num === f.floorNum);
-            layoutFloorName = floor ? floor.name : 'Floor ' + f.floorNum;
+            window.wadiApplyDrawFilter && window.wadiApplyDrawFilter(filter);
+        };
 
-            const showEmpty = (html) => {
-                stage.innerHTML = '';
-                layoutSvgEl = null;
-                stage.style.transform = 'none';
-                empty.innerHTML = html;
-                empty.style.display = 'flex';
-            };
+        window.dimSetGroup = function (kind, on) {
+            const attr = kind === 'type' ? 'data-type' : kind === 'layer' ? 'data-layer' : 'data-obj';
+            document.querySelectorAll(`#viewer-filters-dock [${attr}]`).forEach(c => { c.checked = on; });
+            onDimFilterChange();
+        };
 
-            let svgContent = '';
-            try {
-                svgContent = window.wadiRenderLayout(f.floorNum, filter);
-            } catch (e) {
-                showEmpty('<div style="color:#b00;">Render failed: ' + layoutEscape(e && e.message ? e.message : String(e)) + '</div>');
-                return;
-            }
-            if (!svgContent) {
-                showEmpty('<div><h3>Nothing to draw</h3><p>No objects match the current filter selection.</p></div>');
-                return;
-            }
-            empty.style.display = 'none';
-            stage.innerHTML = svgContent;
-            layoutSvgEl = stage.querySelector('svg');
-            if (layoutSvgEl) {
-                // Lay the SVG out at its intrinsic (viewBox) pixel size so the
-                // stage transform controls the zoom precisely.
-                const vb = layoutSvgEl.viewBox && layoutSvgEl.viewBox.baseVal;
-                if (vb && vb.width > 0) {
-                    layoutSvgEl.setAttribute('width', vb.width);
-                    layoutSvgEl.setAttribute('height', vb.height);
-                    layoutSvgEl.style.maxWidth = 'none';
-                    layoutSvgEl.style.width = vb.width + 'px';
-                    layoutSvgEl.style.height = vb.height + 'px';
-                }
-            }
-            const refit = layoutRenderedFloor !== f.floorNum || !Number.isFinite(layoutZoom.scale);
-            layoutRenderedFloor = f.floorNum;
-            if (refit) layoutFit(); else layoutApplyTransform();
-        }
 
         // Zoom and Pan state for combined views
         // Single state for the shared SVG container

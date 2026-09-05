@@ -35,9 +35,9 @@ import { roomBlocksOf, connectionSatisfied } from "../graph/graphModel";
 import { lintStructure, partitionFindings, type LintFinding } from "../lint/structural";
 import { generateAllFloorPlans } from "../svg2d/floorPlansAll";
 import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
-import { generateCompositeSheet } from "../svg2d/compositeSheet";
 import type { DrawFilter } from "../svg2d/drawFilter";
-import { objectKey } from "../svg2d/drawFilter";
+import { objectKey, applyDrawFilter, dimShowFlags } from "../svg2d/drawFilter";
+import { beginDimResolve, endDimResolve } from "../svg2d/dimResolve";
 import { effectiveLayers, heuristicLayerId, useLayerStore } from "../three/layers";
 import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
@@ -50,7 +50,7 @@ import { generateAllPillarSvgs } from "../svg2d/pillar/index";
 import { computeWallAreas } from "../estimate/wallArea";
 import { wallAreaHtml } from "../estimate/wallAreaHtml";
 import { setDimensionUnits } from "../svg2d/format";
-import { setTextScale, computeTextScale, houseSpanUnits } from "../svg2d/config";
+import { setTextScale, computeTextScale, houseSpanUnits, setActiveDimFlags } from "../svg2d/config";
 import {
   pickAndLoadConfig,
   loadConfigFromPath,
@@ -644,6 +644,56 @@ function wireCloseGuard(): void {
   }
 }
 
+// The GLOBAL draw filter — the dimension/label/smart controls that used to live
+// only in the Layout tab now drive every 2D drawing (Floor Plans + Elevations, and
+// their combined sheets / PDF exports). Display preferences (dims / labels / smart /
+// textScale) persist across sessions; object filters (types / layers / hiddenObjects)
+// are per-house and stay in memory. Default: the smart resolver ON (dedup +
+// un-overlap) so drawings are de-cluttered out of the box, all categories shown.
+const DRAW_FILTER_KEY = "wadi:drawFilter";
+
+function defaultDrawFilter(): DrawFilter {
+  // Clean baseline: outer extents + per-room sizes, with the dense inner-wall and
+  // opening-position dims off (toggle them on in the panel). Smart de-clutter on.
+  return {
+    dims: { outer: true, inner: false, room: true, opening: false },
+    labels: { roomNames: true, roomAbbrev: false },
+    smart: { withinView: true, overlap: true, crossView: false },
+  };
+}
+
+function loadDrawFilter(): DrawFilter {
+  const f = defaultDrawFilter();
+  try {
+    const raw = localStorage.getItem(DRAW_FILTER_KEY);
+    if (raw) {
+      const p = JSON.parse(raw) as DrawFilter;
+      if (p.dims) f.dims = p.dims;
+      if (p.labels) f.labels = p.labels;
+      if (p.smart) f.smart = { ...f.smart, ...p.smart };
+      if (typeof p.textScale === "number") f.textScale = p.textScale;
+    }
+  } catch { /* private mode / bad JSON — use defaults */ }
+  return f;
+}
+
+let drawFilterState: DrawFilter = loadDrawFilter();
+
+/** The live global draw filter (read by rebuildSvgMap + the filter panels). */
+function getDrawFilter(): DrawFilter { return drawFilterState; }
+
+/** Merge a partial update into the global filter, persist the display prefs, and
+ *  re-bake every 2D drawing + reload the active tab so the change is visible. */
+function updateDrawFilter(patch: Partial<DrawFilter>): void {
+  drawFilterState = { ...drawFilterState, ...patch };
+  try {
+    const { dims, labels, smart, textScale } = drawFilterState;
+    localStorage.setItem(DRAW_FILTER_KEY, JSON.stringify({ dims, labels, smart, textScale }));
+  } catch { /* ignore */ }
+  rebuildSvgMap();
+  reloadActiveTab();
+}
+
 function rebuildSvgMap(): void {
   const cfg = useConfigStore.getState().config as HouseConfig | null;
   svgMap.clear();
@@ -653,9 +703,16 @@ function rebuildSvgMap(): void {
   // generating any dimensioned SVG — formatDimension reads these.
   setDimensionUnits((cfg as { units?: Parameters<typeof setDimensionUnits>[0] }).units);
 
-  // Scale dimension/label fonts to the house's physical span so text stays
-  // legible at fit-to-view regardless of how big or small the house is.
-  setTextScale(computeTextScale(houseSpanUnits(cfg)));
+  // The global draw filter drives every plan + elevation drawing (object
+  // selection + dimension categories + the smart de-clutter resolver), so the
+  // Floor Plans / Elevations tabs and their combined sheets / PDFs all render
+  // filtered and de-cluttered — the Layout tab's controls, applied everywhere.
+  const filter = getDrawFilter();
+  const filtered = applyDrawFilter(cfg, filter) as HouseConfig;
+  // Font legibility auto-scale × the panel's manual multiplier (default 1).
+  const manual = filter.textScale;
+  const tsFactor = typeof manual === "number" && manual > 0 ? manual : 1;
+  setTextScale(computeTextScale(houseSpanUnits(cfg)) * tsFactor);
 
   // Each generator wrapped independently so a bad opening (which
   // makes expandRoomWalls throw) doesn't take down every SVG. The
@@ -668,23 +725,39 @@ function rebuildSvgMap(): void {
     }
   };
 
-  safe("floor plans", () => {
-    for (const { filename, content } of generateAllFloorPlans(cfg)) {
-      svgMap.set(`2d/floor_plans/${filename}`, content);
-    }
-  });
-  safe("combined floor plans", () => {
-    svgMap.set("2d/floor_plans/floor_plans_combined.svg", generateCombinedFloorPlans(cfg));
-  });
-  // Config-driven manifests: the 2D tabs build their cards from the ACTUAL
+  // Bracket the dimensioned drawings with the active dimension flags + the smart
+  // resolver (dedup + un-overlap), exactly as the composite sheet did. Cleared in
+  // `finally` so the global state never leaks to the roof / pillar / quantity
+  // renders below (which draw their own dimensions).
+  setActiveDimFlags(dimShowFlags(filter));
+  beginDimResolve({ dedup: !!filter.smart?.withinView, overlap: !!filter.smart?.overlap });
+  try {
+    safe("floor plans", () => {
+      for (const { filename, content } of generateAllFloorPlans(filtered)) {
+        svgMap.set(`2d/floor_plans/${filename}`, content);
+      }
+    });
+    safe("combined floor plans", () => {
+      svgMap.set("2d/floor_plans/floor_plans_combined.svg", generateCombinedFloorPlans(filtered));
+    });
+    safe("elevations", () => {
+      for (const { view, content } of generateAllElevations(filtered)) {
+        svgMap.set(`2d/elevations/elevation_${view}.svg`, content);
+      }
+    });
+    safe("combined elevations", () => {
+      svgMap.set("2d/elevations/elevations_combined.svg", generateCombinedElevations(filtered));
+    });
+  } finally {
+    endDimResolve();
+    setActiveDimFlags(null);
+  }
+
+  // Config-driven manifest: the Floor Plans tab builds its cards from the ACTUAL
   // floors of this house (not a hardcoded list), so we never request a
-  // non-existent view — which is what made the viewer inject the site's
-  // homepage HTML into a card (patchFetch falls through to the server for
-  // unknown keys, and the SPA returns index.html with 200).
-  // The Layout tab renders its composite sheets on demand (filtered) via
-  // window.wadiRenderLayout, so we no longer bake them into svgMap here —
-  // that avoids re-rendering every floor's whole sheet on each config edit.
-  // We still publish floorPlanManifest for the Floor Plans tab.
+  // non-existent view — which is what made the viewer inject the site's homepage
+  // HTML into a card (patchFetch falls through to the server for unknown keys,
+  // and the SPA returns index.html with 200). Read AFTER the drawings are baked.
   const floorPlanManifest: { filename: string; displayName: string }[] = [];
   safe("floor-plan manifest", () => {
     const floors = (cfg.floors ?? []) as Array<{ floor_number?: number; name?: string }>;
@@ -696,14 +769,6 @@ function rebuildSvgMap(): void {
     }
   });
   window.floorPlanManifest = floorPlanManifest;
-  safe("elevations", () => {
-    for (const { view, content } of generateAllElevations(cfg)) {
-      svgMap.set(`2d/elevations/elevation_${view}.svg`, content);
-    }
-  });
-  safe("combined elevations", () => {
-    svgMap.set("2d/elevations/elevations_combined.svg", generateCombinedElevations(cfg));
-  });
   // Roof pipeline (v2 unified roof only). Throws on incomplete roof
   // configs; swallow so a partial config still renders floor plans +
   // elevations — the roof tab shows its empty state until the required
@@ -876,13 +941,16 @@ declare global {
     floorPlansLoaded?: boolean;
     elevationsLoaded?: boolean;
     roofPanelsLoaded?: boolean;
-    layoutLoaded?: boolean;
     quantitiesLoaded?: boolean;
     loadFloorPlans?: () => Promise<void>;
     loadElevations?: () => Promise<void>;
     loadRoofPanels?: () => Promise<void>;
-    loadLayout?: () => Promise<void>;
     loadQuantities?: () => Promise<void>;
+    // The GLOBAL draw filter (dimensions / labels / smart / object selection) that
+    // drives the Floor Plans + Elevations tabs, wired to the shared filter panel.
+    // `apply` replaces the filter, re-bakes every drawing, and reloads the tab.
+    wadiApplyDrawFilter?: (filter: DrawFilter) => void;
+    wadiGetDrawFilter?: () => DrawFilter;
     // Published from rebuildSvgMap so the 2D tabs build cards from the
     // actual floors (config-driven, no hardcoded floor list).
     floorPlanManifest?: { filename: string; displayName: string }[];
@@ -915,21 +983,15 @@ declare global {
       defaultName: string,
       opts?: { orientation?: "portrait" | "landscape" },
     ) => Promise<void>;
-    // On-demand Layout composite render, driven by the filter panel.
-    // Returns the composite SVG string for `floorNum` with `filter`
-    // applied (object/type/layer selection + dimension toggles).
-    wadiRenderLayout?: (floorNum: number, filter?: DrawFilter | null) => string;
     // Panel metadata: the floors, object types, layers, and per-object
-    // list the filter panel builds its checkbox groups from.
+    // list the shared filter panel builds its checkbox groups from.
     wadiLayoutMeta?: () => LayoutMeta | null;
-    // Rasterize the SVG in the currently active 2D tab (Layout / Floor Plans /
+    // Rasterize the SVG in the currently active 2D tab (Floor Plans /
     // Elevations / Roof) to a JPEG data URL — architect "take a shot".
     wadiCaptureActiveSvg?: () => Promise<string | null>;
     // Rasterize the ground-floor plan SVG to a JPEG data URL — used by
     // auto-capture so every template carries a legible plan.
     wadiCaptureFloorPlan?: () => Promise<string | null>;
-    // Layout-tab capture button handler (inline onclick).
-    captureLayoutShot?: (btn?: HTMLElement) => Promise<void>;
     // Rasterize one 2D view's SVG element and add it to the previews. Returns
     // true on success. Used by the per-card 📸 buttons on the 2D grids.
     wadiAddSvgShot?: (svg: SVGSVGElement) => Promise<boolean>;
@@ -1144,18 +1206,6 @@ function wireCaptureBridges(): void {
     return rasterizeSvgString(svg);
   };
 
-  // Layout tab "📸" — rasterize the current composite sheet and append it to
-  // this template's previews. Flashes ✓ on the button.
-  window.captureLayoutShot = async (btn?: HTMLElement) => {
-    const url = await window.wadiCaptureActiveSvg?.();
-    if (!url) {
-      alert("Couldn't capture the sheet — make sure a Layout sheet is visible.");
-      return;
-    }
-    useConfigStore.getState().addThumbnail(url);
-    if (btn) flashSaved(btn, "✓");
-  };
-
   // Per-card "📸" on the 2D grids (Floor Plans / Elevations / Roof Details) —
   // rasterize THAT individual view's SVG and add it to the template previews.
   window.wadiAddSvgShot = async (svg: SVGSVGElement): Promise<boolean> => {
@@ -1199,22 +1249,13 @@ const TYPE_LABELS: Record<string, string> = {
   openings: "Doors & windows",
 };
 
+// Wire the shared filter-panel API: the global draw filter (read/write) + the
+// metadata (floors / types / layers / objects) the panel builds its lists from.
+// (Formerly also hosted the retired Layout tab's on-demand composite render.)
 function wireLayoutApi(): void {
-  window.wadiRenderLayout = (floorNum: number, filter?: DrawFilter | null): string => {
-    const cfg = useConfigStore.getState().config as HouseConfig | null;
-    if (!cfg) return "";
-    // Apply this house's display units + text scale before rendering, so the
-    // composite is correct on its own (not reliant on a prior rebuildSvgMap
-    // having set the module-level "active" values).
-    setDimensionUnits((cfg as { units?: Parameters<typeof setDimensionUnits>[0] }).units);
-    // Auto legibility scale × the panel's manual multiplier (default 1). The
-    // manual lever lets the user tame oversized text on large houses, where
-    // the span-based auto factor can reach its cap.
-    const manual = filter?.textScale;
-    const factor = typeof manual === "number" && manual > 0 ? manual : 1;
-    setTextScale(computeTextScale(houseSpanUnits(cfg)) * factor);
-    return generateCompositeSheet(cfg as never, floorNum, { filter });
-  };
+  // The shared filter panel reads + writes the global draw filter through these.
+  window.wadiApplyDrawFilter = (filter: DrawFilter) => updateDrawFilter(filter);
+  window.wadiGetDrawFilter = () => getDrawFilter();
 
   window.wadiLayoutMeta = (): LayoutMeta | null => {
     const cfg = useConfigStore.getState().config as
@@ -1708,7 +1749,6 @@ function reloadActiveTab(): void {
   window.floorPlansLoaded = false;
   window.elevationsLoaded = false;
   window.roofPanelsLoaded = false;
-  window.layoutLoaded = false;
   window.quantitiesLoaded = false;
   const activeView = document.querySelector(".view-container.active");
   if (!activeView) return;
@@ -1716,7 +1756,6 @@ function reloadActiveTab(): void {
   if (id === "view-plans") void window.loadFloorPlans?.();
   else if (id === "view-elevations") void window.loadElevations?.();
   else if (id === "view-roof") void window.loadRoofPanels?.();
-  else if (id === "view-layout") void window.loadLayout?.();
   else if (id === "view-quantities") void window.loadQuantities?.();
   // 3D tab reacts automatically via React subscription — no manual call.
 }
