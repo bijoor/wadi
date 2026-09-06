@@ -20,6 +20,39 @@ function clamp(v, lo, hi) {
   return Math.min(Math.max(v, lo), hi)
 }
 
+// Guide lines (permanent = solid accent, provisional = faint dashed) + labels for the
+// named/editable bays between them. Non-interactive; coords are project units × cell.
+function GuidesLayer({ guides, bays = {}, cell, plot }) {
+  if (!guides) return null
+  const x0 = plot.x * cell, y0 = plot.y * cell
+  const x1 = (plot.x + plot.w) * cell, y1 = (plot.y + plot.h) * cell
+  const key = (a, b) => [a, b].sort().join('|')
+  const lines = [], labels = []
+  for (const g of guides.x || []) {
+    const gx = g.at * cell
+    lines.push(<line key={'gx' + g.id} x1={gx} y1={y0} x2={gx} y2={y1} className={`guide ${g.permanent ? 'perm' : 'prov'}`} />)
+  }
+  for (const g of guides.y || []) {
+    const gy = g.at * cell
+    lines.push(<line key={'gy' + g.id} x1={x0} y1={gy} x2={x1} y2={gy} className={`guide ${g.permanent ? 'perm' : 'prov'}`} />)
+  }
+  const labelAxis = (lines0, axis) => {
+    const L = [...(lines0 || [])].sort((a, b) => a.at - b.at)
+    for (let i = 0; i + 1 < L.length; i++) {
+      const m = bays[key(L[i].id, L[i + 1].id)]
+      if (!m || (!m.name && !m.editable)) continue
+      const mid = ((L[i].at + L[i + 1].at) / 2) * cell
+      const cls = `bay-label${m.editable ? ' editable' : ''}`
+      const txt = m.name || '◇'
+      if (axis === 'x') labels.push(<text key={'lx' + i} x={mid} y={y0 - 6} textAnchor="middle" className={cls}>{txt}</text>)
+      else labels.push(<text key={'ly' + i} x={x0 - 6} y={mid} textAnchor="end" dominantBaseline="middle" className={cls}>{txt}</text>)
+    }
+  }
+  labelAxis(guides.x, 'x')
+  labelAxis(guides.y, 'y')
+  return <g className="guides-layer" style={{ pointerEvents: 'none' }}>{lines}{labels}</g>
+}
+
 export default function Canvas({ state, dispatch }) {
   const { grid, plot, tool, selection, view, floors, activeFloor, viewMode } = state
   // Coordinates (rooms/plot) are in PROJECT UNITS. A grid cell spans `step` project
@@ -33,6 +66,29 @@ export default function Canvas({ state, dispatch }) {
   const gapU = SHEET_GAP * step // side-by-side gap, in project units
   const snap = (u) => Math.round(u / step) * step
   const snapFloor = (u) => Math.floor(u / step) * step
+  // Snap an edge to the nearest GUIDE within ~3/4 of a cell (so rooms bind to the
+  // structural lines and share them), else fall back to the grid. Guides are grid-
+  // aligned, so this composes with the grid snap the resize/draw math already does.
+  const gxPos = (state.guides?.x || []).map((l) => l.at)
+  const gyPos = (state.guides?.y || []).map((l) => l.at)
+  const GSNAP = step * 0.75
+  const snapAxis = (u, positions) => {
+    let best = null, bd = GSNAP
+    for (const p of positions) { const d = Math.abs(u - p); if (d < bd) { bd = d; best = p } }
+    return best != null ? best : snap(u)
+  }
+  const snapX = (u) => snapAxis(u, gxPos)
+  const snapY = (u) => snapAxis(u, gyPos)
+  // Shift a group-move delta so the nearest room edge lands on a guide (single-room
+  // move only; multi keeps the plain grid delta).
+  const snapDelta = (d, edgeVals, positions) => {
+    let best = null, bd = GSNAP
+    for (const e of edgeVals) for (const p of positions) {
+      const diff = p - (e + d)
+      if (Math.abs(diff) < bd) { bd = Math.abs(diff); best = d + diff }
+    }
+    return best != null ? best : d
+  }
   const U = unitsOf(state.build) // display units for on-diagram labels (physical)
   const svgRef = useRef(null)
   const [interaction, setInteraction] = useState(null)
@@ -169,8 +225,8 @@ export default function Canvas({ state, dispatch }) {
     }
     const { fx, fy } = toCell(e.clientX, e.clientY)
     if (tool === 'draw-room') {
-      const gx = clamp(snapFloor(fx), 0, GW - step)
-      const gy = clamp(snapFloor(fy), 0, GH - step)
+      const gx = clamp(snapX(fx), 0, GW - step)
+      const gy = clamp(snapY(fy), 0, GH - step)
       setInteraction({ kind: 'draw-room', x0: gx, y0: gy, cur: { x: gx + step, y: gy + step } })
       return
     }
@@ -191,8 +247,14 @@ export default function Canvas({ state, dispatch }) {
 
     if (interaction.kind === 'move-rooms') {
       // Free group move, snapped to grid; clamp so every room stays on the canvas.
-      const dx = snap(fx - interaction.startFx)
-      const dy = snap(fy - interaction.startFy)
+      // A single-room move also snaps its edges to guides (so it binds to the skeleton).
+      let dx = snap(fx - interaction.startFx)
+      let dy = snap(fy - interaction.startFy)
+      if (interaction.group.length === 1) {
+        const g0 = interaction.group[0]
+        dx = snapDelta(dx, [g0.x0, g0.x0 + g0.w], gxPos)
+        dy = snapDelta(dy, [g0.y0, g0.y0 + g0.h], gyPos)
+      }
       let lowX = -Infinity, highX = Infinity, lowY = -Infinity, highY = Infinity
       for (const g of interaction.group) {
         lowX = Math.max(lowX, -g.x0)
@@ -210,8 +272,9 @@ export default function Canvas({ state, dispatch }) {
     }
 
     if (interaction.kind === 'resize-room') {
-      // Free resize within the grid; overlaps/out-of-plot are flagged, not blocked.
-      const cand = resizeRect(interaction.r0, interaction.handle, fx, fy, {
+      // Free resize; the dragged edge snaps to a guide (then grid), overlaps/out-of-plot
+      // are flagged, not blocked.
+      const cand = resizeRect(interaction.r0, interaction.handle, snapX(fx), snapY(fy), {
         x: 0, y: 0, w: GW, h: GH,
       }, step)
       setInteraction({ ...interaction, live: cand })
@@ -219,8 +282,8 @@ export default function Canvas({ state, dispatch }) {
     }
 
     if (interaction.kind === 'draw-room') {
-      const gx = clamp(snap(fx), 0, GW)
-      const gy = clamp(snap(fy), 0, GH)
+      const gx = clamp(snapX(fx), 0, GW)
+      const gy = clamp(snapY(fy), 0, GH)
       setInteraction({ ...interaction, cur: { x: gx, y: gy } })
       return
     }
@@ -447,6 +510,9 @@ export default function Canvas({ state, dispatch }) {
         ) : (
           <GridLines grid={grid} />
         )}
+
+        {/* First-class guides + named/editable bay labels (the structural skeleton). */}
+        <GuidesLayer guides={state.guides} bays={state.bays} cell={cell} plot={plot} />
 
         {/* ghosts: overlay superimposes every other floor (colour-coded); single
             shows just the floor below. Not shown in side-by-side. */}
