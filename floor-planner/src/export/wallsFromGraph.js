@@ -144,17 +144,19 @@ function openingFormulas(anchor, u0e, u1e, LO, HI, withWidth) {
 // edge lands at centreline coordinate `u0`. Everything here is in project units
 // (`S` = units per cell, 1 in practice).
 //
-// A `gap` fills the shared span. At a wall END (a shared corner) the N/S wall owns a
-// t-wide corner square, so the gap stops half a thickness short of the centreline end
-// (`g.hi - t/2`), leaving that corner post. When the corner is FULLY OPEN (both walls
-// there are gaps) the post is a floating pillar, so the gap is carved right through to
-// the outer corner (`g.hi + t/2`) via `extendLo` / `extendHi`. Interior ends are flush.
-function placeGap(g, a, b, S, name, height, t, extendLo, extendHi, ref) {
-  const loAtEnd = Math.abs(a - g.lo) < EPS
-  const hiAtEnd = Math.abs(b - g.hi) < EPS
-  const u0 = loAtEnd ? (extendLo ? g.lo - t / 2 : g.lo + t / 2) : a
-  const u1 = hiAtEnd ? (extendHi ? g.hi + t / 2 : g.hi - t / 2) : b
-  const anchor = anchorFor(loAtEnd, hiAtEnd)
+// A `gap` fills the shared span [a,b]. Each END of the segment is a corner (a junction
+// with a perpendicular wall), whether it is the owner wall's own end or a mid-wall
+// junction where the owner's wall continues past it. So each end is treated on its own
+// (`ends.{mergeLo,mergeHi,extendLo,extendHi}` from the caller):
+//   - merge → flush (an adjacent OPEN run on the same wall joins this one)
+//   - extend → carve t/2 PAST the corner (a FULLY-OPEN corner; only N/S walls, which
+//     own the t-wide corner square, do this — dissolves the floating pillar)
+//   - otherwise → reserve t/2 for the corner post of the perpendicular wall there.
+function placeGap(g, a, b, S, name, height, t, ends, ref) {
+  const { mergeLo, mergeHi, extendLo, extendHi } = ends
+  const u0 = mergeLo ? a : extendLo ? a - t / 2 : a + t / 2
+  const u1 = mergeHi ? b : extendHi ? b + t / 2 : b - t / 2
+  const anchor = anchorFor(Math.abs(a - g.lo) < EPS, Math.abs(b - g.hi) < EPS)
   const op = {
     kind: 'gap',
     name,
@@ -165,8 +167,9 @@ function placeGap(g, a, b, S, name, height, t, extendLo, extendHi, ref) {
   }
   if (ref) {
     const LO = coordExpr(g.lo, ref), HI = coordExpr(g.hi, ref), h = r0(t / 2)
-    const u0e = loAtEnd ? `${LO} ${extendLo ? '-' : '+'} ${h}` : coordExpr(a, ref)
-    const u1e = hiAtEnd ? `${HI} ${extendHi ? '+' : '-'} ${h}` : coordExpr(b, ref)
+    const Ae = coordExpr(a, ref), Be = coordExpr(b, ref)
+    const u0e = mergeLo ? Ae : extendLo ? `${Ae} - ${h}` : `${Ae} + ${h}`
+    const u1e = mergeHi ? Be : extendHi ? `${Be} + ${h}` : `${Be} - ${h}`
     op.formulas = openingFormulas(anchor, u0e, u1e, LO, HI, true) // gap width tracks the span
   }
   return op
@@ -264,19 +267,21 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
         if (s.kind === 'door') {
           openings.push(placeDoor(g, a, b, S, `Door${++doorN}`, ref))
         } else if (s.kind === 'open') {
-          // The OPEN run becomes a full-width (the whole shared span), full-HEIGHT
-          // `gap`. Where this run reaches a wall corner that is fully open (both walls
-          // there are gaps), carve the gap through the corner so no floating post
-          // (pillar) is left; at a corner with a solid wall, keep the corner post.
-          // Only N/S walls own (and draw) the t-wide corner square, so only they carve
-          // it. E/W walls are inset from the corner, and extending them would just make
-          // two collinear E/W gaps overlap at the shared point.
+          // Treat EACH end of the shared span as its own corner (a junction with a
+          // perpendicular wall), not just the owner wall's ends — otherwise a segment
+          // that sits MID-WALL on the owner's side (the owner's wall continues past it)
+          // misses its own end-corner and the gap runs t/2 too wide there.
+          //  - merge: an adjacent OPEN run on the SAME wall joins this one → flush.
+          //  - extend: a FULLY-OPEN corner → carve t/2 past it (only N/S walls own the
+          //    corner square; E/W walls are inset and would just collide with a
+          //    collinear neighbour).
+          //  - else: reserve t/2 for the perpendicular wall's corner post.
           const isNS = side === 'north' || side === 'south'
-          const loAtEnd = isNS && Math.abs(a - g.lo) < EPS
-          const hiAtEnd = isNS && Math.abs(b - g.hi) < EPS
-          const extendLo = loAtEnd && openCorners.has(ptKey(...sidePoint(side, g, g.lo)))
-          const extendHi = hiAtEnd && openCorners.has(ptKey(...sidePoint(side, g, g.hi)))
-          openings.push(placeGap(g, a, b, S, `Open${++doorN}`, openH, t, extendLo, extendHi, ref))
+          const mergeLo = shared.some((o) => o.kind === 'open' && o !== s && Math.abs(o.iv[1] - a) < EPS)
+          const mergeHi = shared.some((o) => o.kind === 'open' && o !== s && Math.abs(o.iv[0] - b) < EPS)
+          const extendLo = isNS && !mergeLo && openCorners.has(ptKey(...sidePoint(side, g, a)))
+          const extendHi = isNS && !mergeHi && openCorners.has(ptKey(...sidePoint(side, g, b)))
+          openings.push(placeGap(g, a, b, S, `Open${++doorN}`, openH, t, { mergeLo, mergeHi, extendLo, extendHi }, ref))
         }
         // kind === null (partition) -> solid, no opening
       }
