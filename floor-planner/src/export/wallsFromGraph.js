@@ -92,11 +92,33 @@ function sideInfo(room, side, rooms, edgeKind) {
   return { g, shared, ext }
 }
 
+// Pick the opening ANCHOR from where its shared segment sits on the wall, so the
+// opening stays put when a guide moves and the wall resizes: a segment at the wall
+// START anchors to the start, one at the END anchors to the end, and one in the
+// middle (or spanning the whole wall) anchors to the centre. Anchoring everything to
+// `start` (the default) would let an end/middle opening drift off its wall on resize.
+function anchorFor(loAtEnd, hiAtEnd) {
+  if (loAtEnd && !hiAtEnd) return 'start'
+  if (hiAtEnd && !loAtEnd) return 'end'
+  return 'center'
+}
+
+// The `offset` for `anchor` that makes the opening cover centreline [u0,u1] on wall
+// `g`. Matches `openingStartOffset` in editor/src/svg2d/openingAnchor.ts:
+//   start  → distance from the wall start to the near edge
+//   end    → distance from the wall end to the far edge (0 = flush to the end)
+//   center → signed shift of the opening centre from the wall midpoint
+function anchoredOffset(anchor, u0, u1, g, S) {
+  if (anchor === 'end') return r0((g.hi - u1) * S)
+  if (anchor === 'center') return r0(((u0 + u1) / 2 - (g.lo + g.hi) / 2) * S)
+  return r0((u0 - g.lo) * S)
+}
+
 // Place an opening on wall `g`, covering the centreline interval it should span.
 // The renderer (v2) grows the room by t/2 on each side and maps an opening `offset`
-// to `along = t/2 + offset`, so a plain `offset = u0 - g.lo` lands the opening's near
-// edge at centreline coordinate `u0` — no extra shift. Everything here is in project
-// units (`S` = units per cell, 1 in practice).
+// to `along = t/2 + offset` (relative to the chosen anchor), so the opening's near
+// edge lands at centreline coordinate `u0`. Everything here is in project units
+// (`S` = units per cell, 1 in practice).
 //
 // A `gap` fills the shared span. At a wall END (a shared corner) the N/S wall owns a
 // t-wide corner square, so the gap stops half a thickness short of the centreline end
@@ -108,11 +130,12 @@ function placeGap(g, a, b, S, name, height, t, extendLo, extendHi) {
   const hiAtEnd = Math.abs(b - g.hi) < EPS
   const u0 = loAtEnd ? (extendLo ? g.lo - t / 2 : g.lo + t / 2) : a
   const u1 = hiAtEnd ? (extendHi ? g.hi + t / 2 : g.hi - t / 2) : b
+  const anchor = anchorFor(loAtEnd, hiAtEnd)
   return {
     kind: 'gap',
     name,
-    anchor: 'start',
-    offset: r0((u0 - g.lo) * S),
+    anchor,
+    offset: anchoredOffset(anchor, u0, u1, g, S),
     width: r0(Math.max(1, (u1 - u0) * S)),
     height: r0(height ?? DOOR_H_UNITS),
   }
@@ -123,11 +146,13 @@ function placeDoor(g, a, b, S, name) {
   const seg = b - a
   const w = Math.max(6, Math.min(DOOR_W, seg - DOOR_MARGIN * 2))
   const u0 = (a + b) / 2 - w / 2
+  const u1 = u0 + w
+  const anchor = anchorFor(Math.abs(a - g.lo) < EPS, Math.abs(b - g.hi) < EPS)
   return {
     kind: 'door',
     name,
-    anchor: 'start',
-    offset: r0((u0 - g.lo) * S),
+    anchor,
+    offset: anchoredOffset(anchor, u0, u1, g, S),
     width: r0(w * S),
     height: r0(DOOR_H_UNITS),
   }
