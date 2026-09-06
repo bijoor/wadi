@@ -2814,6 +2814,12 @@ function wireWadiApi(): void {
     const s = store();
     const res = await wdlToConfig(s.wdl, s.modules);
     if (!res.ok || !res.config) return { ok: false as const, errors: res.errors };
+    // Carry the model version across the recompile (the WDL carries none) so a v2
+    // model doesn't silently drop to v1 when its module set changes.
+    const prevV = (s.config as { wadi_version?: number } | undefined)?.wadi_version;
+    if (typeof prevV === "number") {
+      (res.config as { wadi_version?: number }).wadi_version = prevV;
+    }
     s.loadConfig(res.config, s.filename ?? undefined, s.filePath, s.wdl, s.modules);
     window.wadiInvalidate?.();
     return { loaded: true as const, ...checkBrief(store().config, AGENT_CHECK_CAP) };
@@ -5292,6 +5298,14 @@ function wireWdlEditor(): void {
     const res = await wdlToConfig(src, useConfigStore.getState().modules);
     if (!res.ok || !res.config) { setStatus("err", "✖ " + res.errors.join("\n")); return; }
     const st = useConfigStore.getState();
+    // The MODEL version (wadi_version) rides BESIDE the WDL — the WDL carries none —
+    // so a recompile drops it and would fall back to v1 (moving every opening). Carry
+    // the currently-loaded model's version onto the recompiled config, exactly as
+    // window.wadi.setWdl does, so an in-place edit of a v2 model stays v2.
+    const prevV = (st.config as { wadi_version?: number } | undefined)?.wadi_version;
+    if (typeof prevV === "number") {
+      (res.config as { wadi_version?: number }).wadi_version = prevV;
+    }
     // WDL is the SOURCE: keep the author's exact text (don't re-decompile). Pass the
     // current modules back so an Apply preserves the model's custom module list.
     st.loadConfig(res.config, st.filename ?? undefined, st.filePath, src, st.modules);
