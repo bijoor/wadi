@@ -11,6 +11,7 @@
 
 import { emitWdl } from 'wadi-wdl-emitter'
 import { computeRoomWalls, edgeKindLookup, classifyOpenCorners } from './wallsFromGraph.js'
+import { solveModel } from '../model/sizes.js'
 
 const PER_UNIT = 10 // Wadi feet_inches default: 10 project units = 1 ft
 
@@ -63,74 +64,118 @@ function guidesFromRooms(rooms) {
   }
 }
 
-// A safe, unique identifier from a bay name (for a variable): "Living width" ->
-// "living_width", deduped against `used`.
-function bayIdent(label, used) {
-  let base = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
-  if (!base) base = 'bay'
-  if (!/^[a-z_]/.test(base)) base = 'b_' + base
-  let name = base, n = 1
-  while (used.has(name)) { n += 1; name = `${base}_${n}` }
-  used.add(name)
-  return name
-}
-
 const guideUnitLabel = (system) =>
   system === 'meters' ? 'm' : (system === 'feet_inches' || system === 'feet') ? 'ft' : 'units'
 
-// Build the `main` grid from the planner's PERSISTED guides + bays (Phase A). An
-// EDITABLE bay becomes a leaf variable (its span) and a configurator slider; each guide
-// line's `at` is the cumulative sum from the origin over the bay spans (variables for
-// editable bays, constants otherwise), so moving a knob re-flows every room/slab/opening
-// that references the line. Returns the same {grid, xRef, yRef} shape as guidesFromRooms
-// plus {variables, configurator}.
+// A guide position as a resolver formula string `= const + Σ coef*var`, or null when the
+// line has no variable terms (a fixed line, emitted as a plain number instead).
+function atFormula(f) {
+  if (!f) return null
+  const r = (n) => Math.round(Number(n) * 1e6) / 1e6
+  const names = Object.keys(f.coef || {})
+  if (!names.length) return null
+  const terms = [String(r(f.const))]
+  for (const name of names) {
+    const c = r(f.coef[name])
+    if (c === 1) terms.push(`+ ${name}`)
+    else if (c === -1) terms.push(`- ${name}`)
+    else if (c < 0) terms.push(`- ${Math.abs(c)}*${name}`)
+    else terms.push(`+ ${c}*${name}`)
+  }
+  return '= ' + terms.join(' ')
+}
+
+// The feasible range for a variable: how far it can move before any span on its axis
+// (including the free spans to the pinned plot edges) collapses below a small margin. The
+// solve is linear, so this keeps the knob inside the region where the formulas stay valid
+// (no room spilling past the plot / no zero-width span).
+function varRange(solvedAxis, lines0, origin, length, name, cur) {
+  const MARGIN = 1
+  const nodes = [{ at: origin, s: 0 }]
+  for (const l of lines0 || []) {
+    const f = solvedAxis.formula.get(l.id)
+    nodes.push({ at: l.at, s: f ? (f.coef[name] || 0) : 0 })
+  }
+  nodes.push({ at: origin + length, s: 0 })
+  nodes.sort((a, b) => a.at - b.at)
+  // dedupe coincident nodes (a guide sitting on a plot edge)
+  const nd = nodes.filter((n, i) => i === 0 || Math.abs(n.at - nodes[i - 1].at) > 1e-6)
+  let lo = -Infinity, hi = Infinity
+  for (let k = 0; k + 1 < nd.length; k++) {
+    const span = nd[k + 1].at - nd[k].at
+    const ss = nd[k + 1].s - nd[k].s // d(span)/d(var)
+    if (Math.abs(ss) < 1e-9) continue
+    const bound = cur + (MARGIN - span) / ss // value where this span hits MARGIN
+    if (ss < 0) hi = Math.min(hi, bound)
+    else lo = Math.max(lo, bound)
+  }
+  return {
+    min: Number.isFinite(lo) ? lo : Math.max(MARGIN, cur * 0.3),
+    max: Number.isFinite(hi) ? hi : cur * 2,
+  }
+}
+
+// Build the `main` grid from the planner's guides, with positions driven by the room-size
+// SOLVER (model/sizes.js). Every bound room dimension pins its two lines; the plot stays
+// fixed while the rest re-flows proportionally. The solve is linear in the variables, so
+// each line's `at` becomes a linear formula and each variable a configurator slider.
+// Degrades to a static numeric grid when nothing is bound. Returns the same
+// {grid, xRef, yRef} shape as guidesFromRooms plus {variables, configurator}.
 function guidesFromModel(model, ctx) {
   const R = (n) => Math.round(Number(n) * 1000) / 1000
-  const bays = model.bays || {}
-  const key = (a, b) => [a, b].sort().join('|')
-  const used = new Set()
-  const variables = {}
-  const inputs = []
+  const solved = solveModel(model)
+  const usedVars = new Set()
 
-  const axis = (lines0, ax, nameFor) => {
+  const emitAxis = (lines0, solvedAxis, nameFor) => {
     const lines = [...(lines0 || [])].sort((a, b) => a.at - b.at)
     const nameByAt = new Map()
-    const out = []
-    let cum = ''
-    let hasVar = false
-    for (let i = 0; i < lines.length; i++) {
+    const out = lines.map((l, i) => {
       const nm = nameFor(i)
-      nameByAt.set(R(lines[i].at), nm)
-      if (i === 0) { cum = String(R(lines[i].at)); out.push({ name: nm, at: R(lines[i].at) }); continue }
-      const span = R(lines[i].at - lines[i - 1].at)
-      const meta = bays[key(lines[i - 1].id, lines[i].id)]
-      let term
-      if (meta && meta.editable) {
-        const vid = bayIdent(meta.name || `bay ${ax}${i}`, used)
-        variables[vid] = span
-        inputs.push({
-          target: vid,
-          label: meta.name || `Bay ${i}`,
-          control: 'slider',
-          unit: ctx.unit,
-          min: Math.max(ctx.step, R(Math.round(span * 0.4))),
-          max: R(ax === 'x' ? ctx.plotW : ctx.plotL),
-          step: ctx.step,
-          group: ax,
-        })
-        term = vid
-        hasVar = true
-      } else {
-        term = String(span)
-      }
-      cum = `${cum} + ${term}`
-      out.push({ name: nm, at: hasVar ? `= ${cum}` : R(lines[i].at) })
-    }
+      nameByAt.set(R(l.at), nm)
+      const f = solved.feasible ? solvedAxis.formula.get(l.id) : null
+      const fs = atFormula(f)
+      if (fs) for (const n of Object.keys(f.coef)) usedVars.add(n)
+      return { name: nm, at: fs || R(l.at) }
+    })
     return { out, nameByAt }
   }
 
-  const X = axis(model.guides.x, 'x', (i) => String(i + 1))
-  const Y = axis(model.guides.y, 'y', (i) => colLabel(i))
+  const X = emitAxis(model.guides.x, solved.X, (i) => String(i + 1))
+  const Y = emitAxis(model.guides.y, solved.Y, (i) => colLabel(i))
+
+  // Emit only the variables that actually drive a line, seeded with their current value,
+  // each with a configurator slider grouped by the axis of its first binding.
+  const byName = new Map((model.variables || []).map((v) => [v.name, v]))
+  const variables = {}
+  const inputs = []
+  for (const name of usedVars) {
+    const v = byName.get(name)
+    const value = R(Number(v?.value) || 0)
+    variables[name] = value
+    const bind = (model.bindings || []).find((b) => b.var === name)
+    const ax = bind && bind.dim === 'h' ? 'y' : 'x'
+    const step = Number.isFinite(Number(v?.step)) ? Number(v.step) : ctx.step
+    // Feasible range from the solve, snapped inward to whole steps so the slider can never
+    // drive a span past the plot. A user-set min/max is honoured but clamped into it.
+    const range = ax === 'x'
+      ? varRange(solved.X, model.guides.x, ctx.originX, ctx.plotW, name, value)
+      : varRange(solved.Y, model.guides.y, ctx.originY, ctx.plotL, name, value)
+    let min = Math.ceil(range.min / step) * step
+    let max = Math.floor(range.max / step) * step
+    if (Number.isFinite(Number(v?.min))) min = Math.max(min, Number(v.min))
+    if (Number.isFinite(Number(v?.max))) max = Math.min(max, Number(v.max))
+    if (!(min < max)) { min = R(Math.max(step, range.min)); max = R(range.max) } // degenerate guard
+    inputs.push({
+      target: name,
+      label: v?.label || name,
+      control: 'slider',
+      unit: ctx.unit,
+      min: R(min),
+      max: R(max),
+      step,
+      group: ax,
+    })
+  }
   const configurator = inputs.length
     ? {
         title: 'Customize sizes',
@@ -205,6 +250,8 @@ export function modelToWadi(model, opts = {}) {
         step: perUnit,
         plotW: Number(plot.w) || 300,
         plotL: Number(plot.h) || 200,
+        originX: px,
+        originY: py,
       })
     : { ...guidesFromRooms(rooms), variables: {}, configurator: null }
 

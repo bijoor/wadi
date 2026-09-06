@@ -60,7 +60,7 @@ export function sampleModel() {
   ]
 
   const { guides, bays } = syncGuides(rooms, null)
-  return { grid, plot, floors, rooms, edges, guides, bays, build: { ...BUILD_DEFAULTS } }
+  return { grid, plot, floors, rooms, edges, guides, bays, variables: [], bindings: [], build: { ...BUILD_DEFAULTS } }
 }
 
 // Bring any loaded/older document up to the multi-floor shape:
@@ -86,7 +86,13 @@ export function normalizeModel(doc) {
   const build = { ...BUILD_DEFAULTS, ...(doc.build || {}) }
   // Reconcile persisted guides/bays against the rooms (also seeds them for old docs).
   const { guides, bays } = syncGuides(rooms, { guides: doc.guides, bays: doc.bays })
-  return { grid, plot, floors, rooms, edges, guides, bays, build }
+  // Size variables + bindings (tolerant of older docs that lack them). Drop bindings whose
+  // room no longer exists, then GC orphaned variables.
+  const roomIds = new Set(rooms.map((r) => r.id))
+  const bindings = (Array.isArray(doc.bindings) ? doc.bindings : []).filter((b) => roomIds.has(b.room))
+  const variables = (Array.isArray(doc.variables) ? doc.variables : []).filter(
+    (v) => bindings.some((b) => b.var === v.name))
+  return { grid, plot, floors, rooms, edges, guides, bays, variables, bindings, build }
 }
 
 export function initialState() {

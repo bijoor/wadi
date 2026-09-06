@@ -10,6 +10,7 @@ function docFrom(state) {
     grid: state.grid, plot: state.plot, floors: state.floors,
     rooms: state.rooms, edges: state.edges, build: state.build,
     guides: state.guides, bays: state.bays,
+    variables: state.variables, bindings: state.bindings,
   }
 }
 

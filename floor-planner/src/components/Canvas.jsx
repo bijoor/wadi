@@ -22,12 +22,11 @@ function clamp(v, lo, hi) {
 
 // Guide lines (permanent = solid accent, provisional = faint dashed) + labels for the
 // named/editable bays between them. Non-interactive; coords are project units × cell.
-function GuidesLayer({ guides, bays = {}, cell, plot }) {
+function GuidesLayer({ guides, cell, plot }) {
   if (!guides) return null
   const x0 = plot.x * cell, y0 = plot.y * cell
   const x1 = (plot.x + plot.w) * cell, y1 = (plot.y + plot.h) * cell
-  const key = (a, b) => [a, b].sort().join('|')
-  const lines = [], labels = []
+  const lines = []
   for (const g of guides.x || []) {
     const gx = g.at * cell
     lines.push(<line key={'gx' + g.id} x1={gx} y1={y0} x2={gx} y2={y1} className={`guide ${g.permanent ? 'perm' : 'prov'}`} />)
@@ -36,21 +35,31 @@ function GuidesLayer({ guides, bays = {}, cell, plot }) {
     const gy = g.at * cell
     lines.push(<line key={'gy' + g.id} x1={x0} y1={gy} x2={x1} y2={gy} className={`guide ${g.permanent ? 'perm' : 'prov'}`} />)
   }
-  const labelAxis = (lines0, axis) => {
-    const L = [...(lines0 || [])].sort((a, b) => a.at - b.at)
-    for (let i = 0; i + 1 < L.length; i++) {
-      const m = bays[key(L[i].id, L[i + 1].id)]
-      if (!m || (!m.name && !m.editable)) continue
-      const mid = ((L[i].at + L[i + 1].at) / 2) * cell
-      const cls = `bay-label${m.editable ? ' editable' : ''}`
-      const txt = m.name || '◇'
-      if (axis === 'x') labels.push(<text key={'lx' + i} x={mid} y={y0 - 6} textAnchor="middle" className={cls}>{txt}</text>)
-      else labels.push(<text key={'ly' + i} x={x0 - 6} y={mid} textAnchor="end" dominantBaseline="middle" className={cls}>{txt}</text>)
+  return <g className="guides-layer" style={{ pointerEvents: 'none' }}>{lines}</g>
+}
+
+// Badge each bound room dimension (a configurable size) with a bracket + the variable
+// name along the driven edge, so the configurable skeleton is visible while laying out.
+function SizeBadges({ rooms, bindings = [], variables = [], cell }) {
+  if (!bindings.length) return null
+  const byId = new Map((rooms || []).map((r) => [r.id, r]))
+  const labelOf = new Map(variables.map((v) => [v.name, v.label || v.name]))
+  const els = []
+  for (const b of bindings) {
+    const r = byId.get(b.room)
+    if (!r) continue
+    const txt = '◆ ' + (labelOf.get(b.var) || b.var)
+    if (b.dim === 'w') {
+      const y = (r.y) * cell + 12
+      const mx = (r.x + r.w / 2) * cell
+      els.push(<text key={'sw' + b.room} x={mx} y={y} textAnchor="middle" className="size-badge">{txt}</text>)
+    } else {
+      const x = (r.x) * cell + 6
+      const my = (r.y + r.h / 2) * cell
+      els.push(<text key={'sh' + b.room} x={x} y={my} textAnchor="start" dominantBaseline="middle" className="size-badge" transform={`rotate(-90 ${x} ${my})`}>{txt}</text>)
     }
   }
-  labelAxis(guides.x, 'x')
-  labelAxis(guides.y, 'y')
-  return <g className="guides-layer" style={{ pointerEvents: 'none' }}>{lines}{labels}</g>
+  return <g className="size-badges" style={{ pointerEvents: 'none' }}>{els}</g>
 }
 
 export default function Canvas({ state, dispatch }) {
@@ -511,8 +520,9 @@ export default function Canvas({ state, dispatch }) {
           <GridLines grid={grid} />
         )}
 
-        {/* First-class guides + named/editable bay labels (the structural skeleton). */}
-        <GuidesLayer guides={state.guides} bays={state.bays} cell={cell} plot={plot} />
+        {/* First-class guides (the structural skeleton) + size-variable badges. */}
+        <GuidesLayer guides={state.guides} cell={cell} plot={plot} />
+        {!sheets && <SizeBadges rooms={rooms} bindings={state.bindings} variables={state.variables} cell={cell} />}
 
         {/* ghosts: overlay superimposes every other floor (colour-coded); single
             shows just the floor below. Not shown in side-by-side. */}

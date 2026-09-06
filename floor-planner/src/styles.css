@@ -490,8 +490,27 @@ button.seg.on {
 .bay-row input[type="checkbox"] { flex: none; }
 .bay-span { flex: none; min-width: 54px; text-align: right; font-size: 11px; color: #94a3b8; }
 
+/* Room-size variables (configurable layer) */
+.dim-configs { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.dim-config { display: flex; align-items: center; gap: 6px; }
+.dim-config .dim-label { flex: none; width: 44px; font-size: 12px; color: #64748b; }
+.dim-config input[type="text"] { flex: 1; min-width: 0; }
+.dim-config select { flex: none; font-size: 11px; }
+.dim-config .knob-dot { flex: none; color: #7c3aed; font-size: 11px; }
+.dim-config .share-note { flex: none; font-size: 11px; color: #7c3aed; }
+.dim-config .secondary.sm { padding: 2px 8px; font-size: 12px; }
+.size-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.size-row input[type="text"] { flex: 1; min-width: 0; }
+.size-row .knob-dot { flex: none; color: #7c3aed; font-size: 11px; }
+.size-row .size-val { flex: none; min-width: 54px; text-align: right; font-size: 11px; color: #94a3b8; }
+.size-row .size-count { flex: none; font-size: 11px; color: #7c3aed; }
+.area-note.dim { opacity: 0.6; }
+button.icon { flex: none; background: none; border: none; color: #94a3b8; cursor: pointer; padding: 2px 4px; font-size: 12px; }
+button.icon:hover { color: #ef4444; }
+
 /* Guides on the canvas */
 .guide.perm { stroke: #2563eb; stroke-width: 1; opacity: 0.45; }
 .guide.prov { stroke: #94a3b8; stroke-width: 1; opacity: 0.35; stroke-dasharray: 4 4; }
 .bay-label { font-size: 10px; fill: #2563eb; }
+.size-badge { font-size: 10px; fill: #7c3aed; font-weight: 600; }
 .bay-label.editable { font-weight: 700; fill: #7c3aed; }
