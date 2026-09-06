@@ -114,6 +114,30 @@ function anchoredOffset(anchor, u0, u1, g, S) {
   return r0((u0 - g.lo) * S)
 }
 
+// A formula token for a coordinate `v` on the wall's axis: the GUIDE-LINE ref if `v`
+// lands on one (e.g. "main.x4"), else the plain number. So an opening's offset/width
+// track the guides — the shared wall's edges and the neighbour edges it spans are all
+// guide lines — and resize with the grid instead of staying a hard-coded pixel span.
+// `ref` is guides.xRef for N/S walls, guides.yRef for E/W walls (undefined ⇒ no guides,
+// so the numeric value is kept and no formula is emitted).
+function coordExpr(v, ref) {
+  return (ref && ref(v)) || String(r0(v))
+}
+
+// The `formulas` map ({offset, width}) mirroring `anchoredOffset` + the [u0,u1] span,
+// but written against the guide lines so the resolver re-derives them when a guide
+// moves. `u0e`/`u1e` are the near/far edge expressions (guide refs ± half-thickness).
+function openingFormulas(anchor, u0e, u1e, LO, HI, withWidth) {
+  const f = {
+    offset:
+      anchor === 'start' ? `= (${u0e}) - ${LO}`
+      : anchor === 'end' ? `= ${HI} - (${u1e})`
+      : `= ((${u0e}) + (${u1e})) / 2 - (${LO} + ${HI}) / 2`,
+  }
+  if (withWidth) f.width = `= (${u1e}) - (${u0e})`
+  return f
+}
+
 // Place an opening on wall `g`, covering the centreline interval it should span.
 // The renderer (v2) grows the room by t/2 on each side and maps an opening `offset`
 // to `along = t/2 + offset` (relative to the chosen anchor), so the opening's near
@@ -125,13 +149,13 @@ function anchoredOffset(anchor, u0, u1, g, S) {
 // (`g.hi - t/2`), leaving that corner post. When the corner is FULLY OPEN (both walls
 // there are gaps) the post is a floating pillar, so the gap is carved right through to
 // the outer corner (`g.hi + t/2`) via `extendLo` / `extendHi`. Interior ends are flush.
-function placeGap(g, a, b, S, name, height, t, extendLo, extendHi) {
+function placeGap(g, a, b, S, name, height, t, extendLo, extendHi, ref) {
   const loAtEnd = Math.abs(a - g.lo) < EPS
   const hiAtEnd = Math.abs(b - g.hi) < EPS
   const u0 = loAtEnd ? (extendLo ? g.lo - t / 2 : g.lo + t / 2) : a
   const u1 = hiAtEnd ? (extendHi ? g.hi + t / 2 : g.hi - t / 2) : b
   const anchor = anchorFor(loAtEnd, hiAtEnd)
-  return {
+  const op = {
     kind: 'gap',
     name,
     anchor,
@@ -139,16 +163,24 @@ function placeGap(g, a, b, S, name, height, t, extendLo, extendHi) {
     width: r0(Math.max(1, (u1 - u0) * S)),
     height: r0(height ?? DOOR_H_UNITS),
   }
+  if (ref) {
+    const LO = coordExpr(g.lo, ref), HI = coordExpr(g.hi, ref), h = r0(t / 2)
+    const u0e = loAtEnd ? `${LO} ${extendLo ? '-' : '+'} ${h}` : coordExpr(a, ref)
+    const u1e = hiAtEnd ? `${HI} ${extendHi ? '+' : '-'} ${h}` : coordExpr(b, ref)
+    op.formulas = openingFormulas(anchor, u0e, u1e, LO, HI, true) // gap width tracks the span
+  }
+  return op
 }
 
-// A door leaf centred on the shared segment [a,b].
-function placeDoor(g, a, b, S, name) {
+// A door leaf centred on the shared segment [a,b]. The leaf WIDTH is a fixed physical
+// size (not guide-scaled); only its position (offset) tracks the guides.
+function placeDoor(g, a, b, S, name, ref) {
   const seg = b - a
   const w = Math.max(6, Math.min(DOOR_W, seg - DOOR_MARGIN * 2))
   const u0 = (a + b) / 2 - w / 2
   const u1 = u0 + w
   const anchor = anchorFor(Math.abs(a - g.lo) < EPS, Math.abs(b - g.hi) < EPS)
-  return {
+  const op = {
     kind: 'door',
     name,
     anchor,
@@ -156,6 +188,13 @@ function placeDoor(g, a, b, S, name) {
     width: r0(w * S),
     height: r0(DOOR_H_UNITS),
   }
+  if (ref) {
+    // The door centre is the segment centre ((A+B)/2); u0e/u1e are it ± half the leaf.
+    const LO = coordExpr(g.lo, ref), HI = coordExpr(g.hi, ref), h = r0(w / 2)
+    const mid = `(${coordExpr(a, ref)} + ${coordExpr(b, ref)}) / 2`
+    op.formulas = openingFormulas(anchor, `${mid} - ${h}`, `${mid} + ${h}`, LO, HI, false)
+  }
+  return op
 }
 
 /** The set of corner points (keyed by `ptKey`) where EVERY wall meeting the corner
@@ -194,7 +233,7 @@ export function classifyOpenCorners(rooms, edgeKind, t) {
  *  'open' | null (null = adjacent but no connection = a solid partition).
  *  `openCorners` (from classifyOpenCorners) is the set of fully-open corners whose
  *  gap returns are dissolved. */
-export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wallThickness = 8, openCorners = new Set()) {
+export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wallThickness = 8, openCorners = new Set(), guides = null) {
   const walls = {}
   let doorN = 0 // per-room unique opening names
   // An OPEN connection is a wall + a full-width, full-HEIGHT `gap` (a frameless
@@ -214,12 +253,16 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
     const wallHere = ext.length > 0 || (owns && shared.length > 0)
     if (!wallHere) continue
 
+    // The wall runs along X for N/S sides, Y for E/W — pick the matching guide axis
+    // so the opening formulas reference the right lines.
+    const isNSwall = side === 'north' || side === 'south'
+    const ref = guides ? (isNSwall ? guides.xRef : guides.yRef) : null
     const openings = []
     if (owns) {
       for (const s of shared) {
         const [a, b] = s.iv
         if (s.kind === 'door') {
-          openings.push(placeDoor(g, a, b, S, `Door${++doorN}`))
+          openings.push(placeDoor(g, a, b, S, `Door${++doorN}`, ref))
         } else if (s.kind === 'open') {
           // The OPEN run becomes a full-width (the whole shared span), full-HEIGHT
           // `gap`. Where this run reaches a wall corner that is fully open (both walls
@@ -233,7 +276,7 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
           const hiAtEnd = isNS && Math.abs(b - g.hi) < EPS
           const extendLo = loAtEnd && openCorners.has(ptKey(...sidePoint(side, g, g.lo)))
           const extendHi = hiAtEnd && openCorners.has(ptKey(...sidePoint(side, g, g.hi)))
-          openings.push(placeGap(g, a, b, S, `Open${++doorN}`, openH, t, extendLo, extendHi))
+          openings.push(placeGap(g, a, b, S, `Open${++doorN}`, openH, t, extendLo, extendHi, ref))
         }
         // kind === null (partition) -> solid, no opening
       }

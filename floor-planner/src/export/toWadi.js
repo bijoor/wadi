@@ -142,7 +142,7 @@ export function modelToWadi(model, opts = {}) {
       // Derive x/y/width/length from the guide lines (falls back to the numbers).
       const f = roomGridFormulas(r, guides)
       if (f) o.formulas = f
-      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness, openCorners)
+      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness, openCorners, guides)
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
