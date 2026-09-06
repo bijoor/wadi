@@ -63,6 +63,93 @@ function guidesFromRooms(rooms) {
   }
 }
 
+// A safe, unique identifier from a bay name (for a variable): "Living width" ->
+// "living_width", deduped against `used`.
+function bayIdent(label, used) {
+  let base = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  if (!base) base = 'bay'
+  if (!/^[a-z_]/.test(base)) base = 'b_' + base
+  let name = base, n = 1
+  while (used.has(name)) { n += 1; name = `${base}_${n}` }
+  used.add(name)
+  return name
+}
+
+const guideUnitLabel = (system) =>
+  system === 'meters' ? 'm' : (system === 'feet_inches' || system === 'feet') ? 'ft' : 'units'
+
+// Build the `main` grid from the planner's PERSISTED guides + bays (Phase A). An
+// EDITABLE bay becomes a leaf variable (its span) and a configurator slider; each guide
+// line's `at` is the cumulative sum from the origin over the bay spans (variables for
+// editable bays, constants otherwise), so moving a knob re-flows every room/slab/opening
+// that references the line. Returns the same {grid, xRef, yRef} shape as guidesFromRooms
+// plus {variables, configurator}.
+function guidesFromModel(model, ctx) {
+  const R = (n) => Math.round(Number(n) * 1000) / 1000
+  const bays = model.bays || {}
+  const key = (a, b) => [a, b].sort().join('|')
+  const used = new Set()
+  const variables = {}
+  const inputs = []
+
+  const axis = (lines0, ax, nameFor) => {
+    const lines = [...(lines0 || [])].sort((a, b) => a.at - b.at)
+    const nameByAt = new Map()
+    const out = []
+    let cum = ''
+    let hasVar = false
+    for (let i = 0; i < lines.length; i++) {
+      const nm = nameFor(i)
+      nameByAt.set(R(lines[i].at), nm)
+      if (i === 0) { cum = String(R(lines[i].at)); out.push({ name: nm, at: R(lines[i].at) }); continue }
+      const span = R(lines[i].at - lines[i - 1].at)
+      const meta = bays[key(lines[i - 1].id, lines[i].id)]
+      let term
+      if (meta && meta.editable) {
+        const vid = bayIdent(meta.name || `bay ${ax}${i}`, used)
+        variables[vid] = span
+        inputs.push({
+          target: vid,
+          label: meta.name || `Bay ${i}`,
+          control: 'slider',
+          unit: ctx.unit,
+          min: Math.max(ctx.step, R(Math.round(span * 0.4))),
+          max: R(ax === 'x' ? ctx.plotW : ctx.plotL),
+          step: ctx.step,
+          group: ax,
+        })
+        term = vid
+        hasVar = true
+      } else {
+        term = String(span)
+      }
+      cum = `${cum} + ${term}`
+      out.push({ name: nm, at: hasVar ? `= ${cum}` : R(lines[i].at) })
+    }
+    return { out, nameByAt }
+  }
+
+  const X = axis(model.guides.x, 'x', (i) => String(i + 1))
+  const Y = axis(model.guides.y, 'y', (i) => colLabel(i))
+  const configurator = inputs.length
+    ? {
+        title: 'Customize sizes',
+        groups: [
+          { id: 'x', label: 'Widths (east–west)' },
+          { id: 'y', label: 'Depths (north–south)' },
+        ],
+        inputs,
+      }
+    : null
+  return {
+    grid: { x: X.out, y: Y.out },
+    xRef: (v) => { const n = X.nameByAt.get(R(v)); return n && `main.x${n}` },
+    yRef: (v) => { const n = Y.nameByAt.get(R(v)); return n && `main.y${n}` },
+    variables,
+    configurator,
+  }
+}
+
 // Room coordinates as formulas off the guides: x/y are the near lines, width/length
 // the span between the near and far lines. Returns undefined if any edge doesn't
 // land on a line (then the caller keeps the hard-coded numbers).
@@ -106,9 +193,20 @@ export function modelToWadi(model, opts = {}) {
   const plotW = Number(plot.w) || 300
   const plotL = Number(plot.h) || 200
   const edgeKind = edgeKindLookup(edges)
-  // Room-corner guides (across every floor), so rooms derive coords from named
-  // lines and the floor plans get a grid at the walls, not the fine editing pitch.
-  const guides = guidesFromRooms(rooms)
+  // Guides: prefer the planner's PERSISTED guides + bays (variable-backed, with a
+  // configurator for editable bays). Fall back to deriving them from room corners for
+  // older docs that carry no guides.
+  const hasModelGuides = model.guides
+    && Array.isArray(model.guides.x) && model.guides.x.length >= 2
+    && Array.isArray(model.guides.y) && model.guides.y.length >= 2
+  const guides = hasModelGuides
+    ? guidesFromModel(model, {
+        unit: guideUnitLabel(unitSystem),
+        step: perUnit,
+        plotW: Number(plot.w) || 300,
+        plotL: Number(plot.h) || 200,
+      })
+    : { ...guidesFromRooms(rooms), variables: {}, configurator: null }
 
   // Build dimensions from the Dimensions panel — already PROJECT UNITS, used as-is.
   const pu = (v, def) => (Number.isFinite(Number(v)) ? Number(v) : def)
@@ -164,7 +262,7 @@ export function modelToWadi(model, opts = {}) {
     ],
   }
 
-  return {
+  const config = {
     // The planner is NEW authoring, so it emits the current .wadi model version.
     // v2 = room-wall opening offsets anchor to the wall's CLEAR span (inner
     // corner). Kept in sync with editor CURRENT_WADI_VERSION.
@@ -186,6 +284,10 @@ export function modelToWadi(model, opts = {}) {
     grids: { main: guides.grid },
     floors: [plinthFloor, ...roomFloors],
   }
+  // Editable bays → variables + a configurator, so the exported house is tunable.
+  if (guides.variables && Object.keys(guides.variables).length) config.variables = guides.variables
+  if (guides.configurator) config.configurator = guides.configurator
+  return config
 }
 
 /** The planner model → editable Wadi `.wdl` text (the decompile of the HouseConfig).

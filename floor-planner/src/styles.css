@@ -482,3 +482,10 @@ button.seg.on {
   padding: 4px 8px;
   font-size: 12px;
 }
+
+/* Guides & bays panel */
+.bay-axis { margin-bottom: 8px; }
+.bay-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.bay-row input[type="text"] { flex: 1; min-width: 0; }
+.bay-row input[type="checkbox"] { flex: none; }
+.bay-span { flex: none; min-width: 54px; text-align: right; font-size: 11px; color: #94a3b8; }

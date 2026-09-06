@@ -6,7 +6,7 @@ import { fmtLen, fmtArea, unitsOf } from '../utils/physical.js'
 // Input that only commits its value on Enter or blur (Esc cancels). It keeps a
 // local draft while typing so edits aren't applied on every keystroke, and
 // re-syncs when the underlying value changes (e.g. from dragging on the canvas).
-function CommitInput({ value, type = 'text', min, max, step, float = false, onCommit }) {
+function CommitInput({ value, type = 'text', min, max, step, float = false, placeholder, onCommit }) {
   const [draft, setDraft] = useState(String(value))
   useEffect(() => {
     setDraft(String(value))
@@ -30,6 +30,7 @@ function CommitInput({ value, type = 'text', min, max, step, float = false, onCo
       min={min}
       max={max}
       step={step}
+      placeholder={placeholder}
       onChange={(e) => setDraft(e.target.value)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') { commit(); e.currentTarget.blur() }
@@ -370,6 +371,60 @@ function FloorsPanel({ state, dispatch }) {
   )
 }
 
+// Guides & bays: name a bay (the span between two guide lines) and tick it editable to
+// expose it as a configurator knob on export. Naming/flagging a bay locks (makes
+// permanent) its two bounding guide lines. Guides themselves are derived from the room
+// edges; a manual guide is added on the canvas.
+function BaysPanel({ state, dispatch }) {
+  const { system, perUnit } = unitsOf(state.build)
+  const guides = state.guides || { x: [], y: [] }
+  const bays = state.bays || {}
+  const keyOf = (a, b) => [a, b].sort().join('|')
+
+  const axisBlock = (axis, label) => {
+    const lines = guides[axis] || []
+    if (lines.length < 2) return null
+    return (
+      <div className="bay-axis" key={axis}>
+        <label className="field"><span>{label}</span></label>
+        {lines.slice(0, -1).map((g, i) => {
+          const h = lines[i + 1]
+          const key = keyOf(g.id, h.id)
+          const meta = bays[key] || {}
+          return (
+            <div className="bay-row" key={key}>
+              <input
+                type="checkbox"
+                checked={!!meta.editable}
+                title="Editable — becomes a configurator knob the homeowner can adjust"
+                onChange={(e) => dispatch({ type: 'SET_BAY_EDITABLE', key, editable: e.target.checked })}
+              />
+              <CommitInput
+                value={meta.name || ''}
+                placeholder={`Bay ${i + 1}`}
+                onCommit={(v) => dispatch({ type: 'RENAME_BAY', key, name: v })}
+              />
+              <span className="bay-span">{fmtLen(h.at - g.at, system, perUnit)}</span>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div className="panel">
+      <h3>Guides &amp; bays</h3>
+      <p className="area-note">
+        Name a bay and tick it editable to expose it as a configurator knob (a room size
+        the homeowner can adjust). Naming a bay locks its guide lines.
+      </p>
+      {axisBlock('x', 'Widths (east–west)')}
+      {axisBlock('y', 'Depths (north–south)')}
+    </div>
+  )
+}
+
 export default function Sidebar({ state, dispatch }) {
   const { selection } = state
   let selPanel = null
@@ -398,6 +453,7 @@ export default function Sidebar({ state, dispatch }) {
       )}
       <Health state={state} />
       <FloorsPanel state={state} dispatch={dispatch} />
+      <BaysPanel state={state} dispatch={dispatch} />
       <GridEditor state={state} dispatch={dispatch} />
       <DimensionsEditor state={state} dispatch={dispatch} />
       {selection.type !== 'plot' && <PlotEditor state={state} dispatch={dispatch} />}

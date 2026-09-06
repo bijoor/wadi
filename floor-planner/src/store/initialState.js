@@ -4,6 +4,10 @@
 // every floor, exactly like Wadi), `floors` is an ordered list bottom -> top,
 // and each room carries the `floor` id it belongs to. `edges` reference room
 // ids; a connection is only meaningful between two rooms on the SAME floor.
+// `guides` (per-axis division lines, shared across floors) + `bays` (named/
+// editable spans between guides) are derived from the rooms — see model/guides.js.
+
+import { syncGuides } from '../model/guides.js'
 
 export const PALETTE = [
   '#7cb5ec', '#90ed7d', '#f7a35c', '#e4d354',
@@ -55,7 +59,8 @@ export function sampleModel() {
     { id: 'e8', a: 'r_bath', b: 'r_bed1' },
   ]
 
-  return { grid, plot, floors, rooms, edges, build: { ...BUILD_DEFAULTS } }
+  const { guides, bays } = syncGuides(rooms, null)
+  return { grid, plot, floors, rooms, edges, guides, bays, build: { ...BUILD_DEFAULTS } }
 }
 
 // Bring any loaded/older document up to the multi-floor shape:
@@ -79,7 +84,9 @@ export function normalizeModel(doc) {
     rooms = rooms.map((r) => ({ ...r, floor: known.has(r.floor) ? r.floor : first }))
   }
   const build = { ...BUILD_DEFAULTS, ...(doc.build || {}) }
-  return { grid, plot, floors, rooms, edges, build }
+  // Reconcile persisted guides/bays against the rooms (also seeds them for old docs).
+  const { guides, bays } = syncGuides(rooms, { guides: doc.guides, bays: doc.bays })
+  return { grid, plot, floors, rooms, edges, guides, bays, build }
 }
 
 export function initialState() {

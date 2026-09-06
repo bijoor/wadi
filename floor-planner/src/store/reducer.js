@@ -1,8 +1,9 @@
 import { makeId, edgeExists } from '../model/graph.js'
 import { clampRoomPosToPlot } from '../model/geometry.js'
+import { syncGuides, recomputeBays, promoteBayGuides } from '../model/guides.js'
 import { sampleModel, normalizeModel } from './initialState.js'
 
-const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build']
+const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays']
 const HISTORY_LIMIT = 60
 
 function docOf(state) {
@@ -12,6 +13,8 @@ function docOf(state) {
     floors: state.floors,
     rooms: state.rooms,
     edges: state.edges,
+    guides: state.guides,
+    bays: state.bays,
   }
 }
 
@@ -22,11 +25,19 @@ function ensureActiveFloor(state) {
   return { ...state, activeFloor: state.floors[0] ? state.floors[0].id : null }
 }
 
-// Apply a new doc and push the previous doc onto the undo stack.
+// Apply a new doc and push the previous doc onto the undo stack. Whenever an action
+// changes `rooms` (and doesn't set `guides` itself), re-derive the guides + bays from
+// the new rooms so the structural skeleton always tracks the layout (provisional
+// guides follow edges, permanent/named ones persist — see model/guides.js).
 function commit(state, newDoc) {
+  let doc = newDoc
+  if (newDoc.rooms && !('guides' in newDoc)) {
+    const s = syncGuides(newDoc.rooms, { guides: state.guides, bays: state.bays })
+    doc = { ...newDoc, guides: s.guides, bays: s.bays }
+  }
   return {
     ...state,
-    ...newDoc,
+    ...doc,
     history: {
       past: [...state.history.past, docOf(state)].slice(-HISTORY_LIMIT),
       future: [],
@@ -209,6 +220,46 @@ export function reducer(state, action) {
         selection: { type: null, id: null },
         selectedIds: [],
       }
+    }
+
+    // ---- guides / bays ----
+    // A MANUAL guide is permanent from the start (a deliberate division line that
+    // persists even with no room on it).
+    case 'ADD_GUIDE': {
+      const axis = action.axis
+      if (axis !== 'x' && axis !== 'y') return state
+      const at = Math.round(Number(action.at) * 1000) / 1000
+      if (!Number.isFinite(at)) return state
+      const g = state.guides || { x: [], y: [] }
+      if (g[axis].some((l) => Math.abs(l.at - at) < 0.001)) return state // already a line here
+      const line = { id: makeId('g'), at, permanent: true, ...(action.name ? { name: action.name } : {}) }
+      const guides = { ...g, [axis]: [...g[axis], line].sort((a, b) => a.at - b.at) }
+      const bays = recomputeBays(guides, state.bays)
+      return commit(state, { guides, bays })
+    }
+    case 'DELETE_GUIDE': {
+      const g = state.guides || { x: [], y: [] }
+      const guides = { x: g.x.filter((l) => l.id !== action.id), y: g.y.filter((l) => l.id !== action.id) }
+      const bays = recomputeBays(guides, state.bays)
+      return {
+        ...commit(state, { guides, bays }),
+        selection: state.selection.type === 'guide' && state.selection.id === action.id
+          ? { type: null, id: null } : state.selection,
+      }
+    }
+    // Naming a bay (or flagging it editable) promotes its bounding guides to permanent
+    // so the bay survives future room edits and becomes a configurator knob on export.
+    case 'RENAME_BAY': {
+      const guides = promoteBayGuides(state.guides || { x: [], y: [] }, action.key)
+      const bays0 = { ...(state.bays || {}), [action.key]: { ...(state.bays?.[action.key] || {}), name: action.name } }
+      const bays = recomputeBays(guides, bays0)
+      return commit(state, { guides, bays })
+    }
+    case 'SET_BAY_EDITABLE': {
+      const guides = promoteBayGuides(state.guides || { x: [], y: [] }, action.key)
+      const bays0 = { ...(state.bays || {}), [action.key]: { ...(state.bays?.[action.key] || {}), editable: !!action.editable } }
+      const bays = recomputeBays(guides, bays0)
+      return commit(state, { guides, bays })
     }
 
     // ---- plot / grid ----
