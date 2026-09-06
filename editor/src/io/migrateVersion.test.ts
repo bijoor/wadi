@@ -40,10 +40,10 @@ describe("wadi_version — opening-offset semantics gate", () => {
     expect(o.E.y).toBe(96);
   });
 
-  it("v2 anchors a start offset at the INNER corner (outer + wall thickness)", () => {
+  it("v2 anchors a start offset at the INNER corner (outer + half thickness)", () => {
     const o = openings(cfg(2));
-    expect(o.S.x).toBe(104);
-    expect(o.E.y).toBe(104);
+    expect(o.S.x).toBe(100);
+    expect(o.E.y).toBe(100);
   });
 
   it("a centred opening is at the same place under v1 and v2", () => {
@@ -62,11 +62,11 @@ describe("migrateToCurrentVersion — v1 → v2", () => {
     expect(openings(migrated).Wd).toEqual(before.Wd);
     expect(openings(migrated).W).toEqual(before.W);
     const room = (migrated.floors as Array<{ objects: Array<Record<string, unknown>> }>)[0].objects.find((o) => o.type === "room") as { walls: Record<string, { openings?: Array<{ offset: number }> }> };
-    expect(room.walls.west.openings![0].offset).toBe(32);  // 40 - t
+    expect(room.walls.west.openings![0].offset).toBe(36);  // 40 - t/2
     expect(room.walls.north.openings![0].offset).toBe(0);  // center, unchanged
-    // A corner-region opening (offset 0) can't be preserved exactly; it clamps to
-    // the inner corner (offset 0 in the clear span).
-    expect(room.walls.south.openings![0].offset).toBe(0);
+    // A corner opening (offset 0) is preserved exactly now: it shifts to -t/2, the
+    // outer corner, which v2 allows (a gap may reach into the corner).
+    expect(room.walls.south.openings![0].offset).toBe(-4);
   });
 
   it("is a no-op on an already-current config", () => {

@@ -5,10 +5,11 @@
 // the affected authoring so the new engine reproduces the old geometry.
 //
 //   v1 → v2: room-wall opening `offset` moved from the OUTER wall corner to the
-//   wall's CLEAR span (inner corner). To keep a v1 model pixel-identical, subtract
-//   one wall thickness from every room-wall opening `offset` EXCEPT `center`-
-//   anchored ones (the clear span is symmetric, so centred openings don't move).
-//   Standalone `wall` openings are unaffected by the v2 change and are left alone.
+//   wall's CLEAR span (inner corner, half a thickness in). To keep a v1 model
+//   pixel-identical, subtract half a wall thickness from every room-wall opening
+//   `offset` EXCEPT `center`-anchored ones (the clear span is symmetric, so centred
+//   openings don't move). Standalone `wall` openings are unaffected by the v2 change
+//   and are left alone.
 
 import { CURRENT_WADI_VERSION } from "../schema/houseConfig";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
@@ -49,10 +50,11 @@ export function migrateToCurrentVersion(
             if (op.anchor === "center") continue; // symmetric ⇒ unchanged
             const hasFormula = (op.formulas as Bag | undefined)?.offset !== undefined;
             if (hasFormula) { skipped.push(String(op.name ?? "?")); continue; }
-            // Shift inward by one thickness; clamp at 0. An opening that sat in the
-            // corner region (offset < t) has no exact v2 spot — the clear span
-            // starts at the inner corner — so it lands flush at the inner corner.
-            if (typeof op.offset === "number") op.offset = Math.max(0, op.offset - t);
+            // Shift inward by half a thickness so the v2 clear-span origin (the
+            // inner corner) reproduces the v1 outer-corner position. An opening that
+            // sat right at the outer corner (offset 0) lands at -t/2, the outer
+            // corner, which v2 allows.
+            if (typeof op.offset === "number") op.offset = Math.max(-t / 2, op.offset - t / 2);
           }
         }
       }

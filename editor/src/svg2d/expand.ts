@@ -690,17 +690,21 @@ function expandRoom(room: Room, wallThickness: number, innerOffsets = false): [O
     const openings = wc?.openings ?? [];
     if (openings.length === 0) continue;
     // v2 (`innerOffsets`): openings anchor to the wall's CLEAR span (inner corner
-    // to inner corner), not the outer wall extent. A room side's corners belong
-    // to the two perpendicular walls (each `t` deep), so the openable run is
-    // `wallLength - 2t`, starting `t` in from the outer corner. offset 0 = the
-    // inner corner, consistently for every side (N/S walls used to anchor at the
-    // OUTER corner — an `offset 0` opening landed in the corner while E/W clipped
-    // it). Centred openings are unchanged (the clear span is symmetric). v1 files
-    // keep the outer-corner origin + full-length span so they render unchanged.
+    // to inner corner), not the outer wall extent. A room side's corner is shared
+    // with a perpendicular wall, whose poché reaches `t/2` along this wall (half its
+    // thickness), so the openable run is `wallLength - t`, starting `t/2` in from
+    // the outer corner. offset 0 = the inner corner, consistently for every side
+    // (N/S walls used to anchor at the OUTER corner — an `offset 0` opening landed
+    // in the corner while E/W clipped it). Centred openings are unchanged (the clear
+    // span is symmetric). v1 files keep the outer-corner origin + full-length span
+    // so they render unchanged. A gap may deliberately extend `t/2` past either end,
+    // into the corner, to open a corner where two open walls meet (a negative offset
+    // / over-width); `cornerSlack` lets the validator allow that reach.
     const wallLength = side === "north" || side === "south" ? rw : rl;
-    const spanLen = innerOffsets ? wallLength - 2 * t : wallLength;
+    const spanLen = innerOffsets ? wallLength - t : wallLength;
+    const cornerSlack = innerOffsets ? t / 2 : 0;
     const placed = resolveOpeningAnchors(openings, spanLen);
-    validateOpenings(placed, `Room '${rname}' ${side} wall`, spanLen);
+    validateOpenings(placed, `Room '${rname}' ${side} wall`, spanLen, cornerSlack);
     for (let i = 0; i < placed.length; i++) {
       const flat = roomOpeningToFlat(rname, side, t, rx, ry, rw, rl, placed[i], i, innerOffsets);
       (flat.type === "door" ? doorExtras : windowExtras).push(flat);
@@ -730,10 +734,11 @@ function roomOpeningToFlat(
   }
   const { offset, width, height } = op;
   // v2 (`innerOffsets`): `offset` is measured along the wall's CLEAR span, so the
-  // along-origin is inset by `t` from the outer corner (the perpendicular wall's
-  // inner face). v1: the origin is the outer corner (`along = offset`). The
+  // along-origin is inset by `t/2` from the outer corner (the perpendicular wall's
+  // inner face, half a thickness in). offset 0 = inner corner; offset `-t/2` reaches
+  // the outer corner. v1: the origin is the outer corner (`along = offset`). The
   // perpendicular (fixed) coordinate is unchanged.
-  const along = innerOffsets ? t + offset : offset;
+  const along = innerOffsets ? t / 2 + offset : offset;
   let x: number, y: number, direction: Side;
   if (side === "north") {
     x = rx + along;
@@ -918,6 +923,7 @@ function validateOpenings(
   openings: Opening[],
   ctx: string,
   wallLength: number,
+  slack = 0,
 ): void {
   const seen: [number, number, string][] = [];
   for (let i = 0; i < openings.length; i++) {
@@ -932,10 +938,10 @@ function validateOpenings(
     }
     const end = start + width;
     const name = op.name ?? `#${i}`;
-    if (start < -0.001) {
+    if (start < -slack - 0.001) {
       throw new Error(`${ctx}: opening '${name}' has negative offset ${start}.`);
     }
-    if (end > wallLength + 0.001) {
+    if (end > wallLength + slack + 0.001) {
       throw new Error(
         `${ctx}: opening '${name}' ends at ${end.toFixed(2)} but the wall is only ${wallLength.toFixed(2)} units long.`,
       );
