@@ -1,7 +1,10 @@
 # Plan: First-class guides + configurable bays (scale & tune the house)
 
-Status: PROPOSED (for review). Do first, before prebuilt room modules.
-v1 target = **Phase A** (see phasing).
+Status: PARTIALLY SUPERSEDED. The guide + snapping substrate (Phase A guide model,
+canvas rendering, snap-to-guide) shipped in 1b75a17 / 225204c and stays. The
+**configurable-bay** layer below (naming inter-guide gaps -> knobs) is REPLACED by
+`plans/room-size-variables.md` (bind named variables to room dimensions instead).
+Read that plan for the current configurable design; the bay sections here are history.
 
 ## Goal
 
