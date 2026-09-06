@@ -10,7 +10,7 @@
 // with no door is C11's cue to add one (or leave the wall off for an opening).
 
 import { emitWdl } from 'wadi-wdl-emitter'
-import { computeRoomWalls, edgeKindLookup } from './wallsFromGraph.js'
+import { computeRoomWalls, edgeKindLookup, classifyOpenCorners } from './wallsFromGraph.js'
 
 const PER_UNIT = 10 // Wadi feet_inches default: 10 project units = 1 ft
 
@@ -122,6 +122,9 @@ export function modelToWadi(model, opts = {}) {
   // on a `floor_slab` of the same footprint — the per-room slabs tile the rooms' union.
   const roomFloors = floors.map((f, i) => {
     const floorRooms = rooms.filter((r) => r.floor === f.id)
+    // Corners where every wall is an open passage — their gap returns are dissolved
+    // so two open walls join cleanly instead of leaving a floating pillar.
+    const openCorners = classifyOpenCorners(floorRooms, edgeKind, wallThickness)
     const slabs = floorRooms.map((r) => {
       const s = { type: 'floor_slab', x: r.x, y: r.y, width: r.w, length: r.h }
       // Each per-room slab shares the room footprint, so derive it from the same
@@ -139,7 +142,7 @@ export function modelToWadi(model, opts = {}) {
       // Derive x/y/width/length from the guide lines (falls back to the numbers).
       const f = roomGridFormulas(r, guides)
       if (f) o.formulas = f
-      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness)
+      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness, openCorners)
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]

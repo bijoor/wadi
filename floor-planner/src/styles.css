@@ -169,6 +169,7 @@ body {
 .edge.satisfied { stroke: #16a34a; stroke-width: 3.5; }
 .edge.violation { stroke: #ef4444; stroke-width: 3.5; }
 .edge.selected { stroke: var(--accent); stroke-width: 4; }
+.edge-arrowhead { fill: #475569; stroke: none; }
 .draft-edge { stroke: #94a3b8; stroke-dasharray: 5 4; pointer-events: none; }
 .draft-edge.valid { stroke: #16a34a; }
 .draft-edge.bad { stroke: var(--danger); }

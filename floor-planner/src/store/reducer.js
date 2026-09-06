@@ -178,6 +178,9 @@ export function reducer(state, action) {
     case 'ADD_EDGE': {
       // A connection is a desired relationship — allowed between any two rooms.
       // It shows as unsatisfied until the rooms are arranged to share a wall.
+      // A connection is DIRECTED `a -> b` (from the room you dragged from, to the
+      // room you dropped on): the direction is the flow through the house and is
+      // recorded once, on the `a` room, so the shared opening is authored once.
       const { a, b } = action
       if (a === b || edgeExists(state.edges, a, b)) return state
       // `kind` decides the shared wall on export: 'door' = wall + centred door
@@ -191,6 +194,12 @@ export function reducer(state, action) {
     }
     case 'SET_EDGE_KIND': {
       const edges = state.edges.map((e) => (e.id === action.id ? { ...e, kind: action.kind } : e))
+      return { ...commit(state, { edges }) }
+    }
+    case 'REVERSE_EDGE': {
+      // Flip a connection's direction (swap from/to) to set which way the flow
+      // runs through the house.
+      const edges = state.edges.map((e) => (e.id === action.id ? { ...e, a: e.b, b: e.a } : e))
       return { ...commit(state, { edges }) }
     }
     case 'DELETE_EDGE': {

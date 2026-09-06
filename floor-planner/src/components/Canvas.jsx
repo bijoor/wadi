@@ -398,6 +398,14 @@ export default function Canvas({ state, dispatch }) {
       onPointerLeave={onPointerUp}
       onWheel={onWheel}
     >
+      <defs>
+        {/* Arrowhead for a directed connection (points a -> b = the flow). */}
+        <marker id="edge-arrow" viewBox="0 0 10 10" refX="8" refY="5"
+          markerWidth="6" markerHeight="6" orient="auto-start-reverse"
+          markerUnits="userSpaceOnUse">
+          <path d="M0,0 L10,5 L0,10 z" className="edge-arrowhead" />
+        </marker>
+      </defs>
       <g transform={`translate(${view.panX} ${view.panY}) scale(${view.zoom})`}>
         {/* side-by-side: the OTHER floors as static plates behind the editable one */}
         {sheets && (
@@ -542,7 +550,7 @@ export default function Canvas({ state, dispatch }) {
                   dispatch({ type: 'SELECT', itemType: 'edge', id: e.id })
                 }}
               />
-              <line x1={x1} y1={y1} x2={x2} y2={y2} className={cls} />
+              <line x1={x1} y1={y1} x2={x2} y2={y2} className={cls} markerEnd="url(#edge-arrow)" />
             </g>
           )
         })}

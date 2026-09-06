@@ -201,7 +201,12 @@ function EdgeEditor({ state, dispatch, edge }) {
   return (
     <div className="panel">
       <h3>Connection</h3>
-      <div className="area-note">{a ? a.name : '?'} ⟷ {b ? b.name : '?'}</div>
+      <div className="area-note">Flow: {a ? a.name : '?'} → {b ? b.name : '?'}</div>
+      <button
+        onClick={() => dispatch({ type: 'REVERSE_EDGE', id: edge.id })}
+        title="Flip the direction of flow (swap from and to)"
+        style={{ marginTop: 4 }}
+      >⇄ Reverse direction</button>
       <label className="field"><span>Shared wall</span></label>
       <div className="row" role="radiogroup" aria-label="Connection kind">
         <button
