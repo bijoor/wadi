@@ -321,15 +321,29 @@ export function reducer(state, action) {
     // positions (fixed or fit-plot mode) and writes them back into every room + guide.
     // Used by the Sizes-panel number field and by dragging a guide on the canvas.
     case 'SET_VAR_VALUE': {
-      const value = Number(action.value)
-      if (!Number.isFinite(value) || value <= 0) return state
-      const variables0 = (state.variables || []).map((v) => (v.name === action.name ? { ...v, value } : v))
-      const model = {
+      const target = Number(action.value)
+      if (!Number.isFinite(target) || target <= 0) return state
+      const mk = (val) => ({
         plot: state.plot, rooms: state.rooms, guides: state.guides,
-        variables: variables0, bindings: state.bindings, build: state.build,
+        variables: (state.variables || []).map((v) => (v.name === action.name ? { ...v, value: val } : v)),
+        bindings: state.bindings, build: state.build,
+      })
+      let value = target
+      let rf = reflowModel(mk(value))
+      if (!rf) {
+        // The target doesn't fit (fixed plot can't absorb it). Instead of silently doing
+        // nothing, clamp to the largest value that still fits (binary search from the
+        // current, known-feasible value toward the target) so the edit always shows.
+        const cur = Number((state.variables || []).find((v) => v.name === action.name)?.value)
+        if (!Number.isFinite(cur) || !reflowModel(mk(cur))) return state
+        let lo = cur, hi = target
+        for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (reflowModel(mk(mid))) lo = mid; else hi = mid }
+        value = Math.round(lo)
+        rf = reflowModel(mk(value)) || reflowModel(mk(cur))
+        if (!rf) return state
+        if (Math.abs(value - cur) < 1e-6) return state // nothing more fits
       }
-      const rf = reflowModel(model)
-      if (!rf) return state // infeasible (over-constrained) — leave the sketch unchanged
+      const variables0 = (state.variables || []).map((v) => (v.name === action.name ? { ...v, value } : v))
       const variables = syncVarValues(variables0, state.bindings, rf.rooms)
       return commit(state, { rooms: rf.rooms, guides: rf.guides, variables, bindings: state.bindings })
     }
