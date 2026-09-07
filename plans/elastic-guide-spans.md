@@ -178,13 +178,19 @@ are just produced by the tree walk instead of the solver.
 
 ## Phasing
 
-1. Data model: spans as nested intervals with fixed/flex policy, per axis. Build the
-   interval forest from the current guides plus any defined spans (default all cells
-   flex 1, which reproduces today's equal reflow).
-2. Distribution tree walk; replace `sizeSolve.js` on one axis behind a flag; verify
-   guide positions match the current elastic reflow for the no-span-defined case.
+1. **DONE** — Data model + distribution, as a pure module `floor-planner/src/model/spans.js`
+   (tests in `scripts/test-spans.mjs`, `npm run test-spans`): spans as nested intervals with
+   fixed/flex policy per axis; `buildAxisTree` (nesting enforced, whole-axis span pins the
+   container, undefined cells default to flex weighted by current size), the top-down
+   `distribute` tree walk, `naturalSize` (rigid axis grows the plot), and `solveAxisSpans`
+   returning guide positions. No-spans reproduces the current layout; the worked examples
+   (skip-guide group, mixed fixed+flex, 2:1) are covered.
+2. Wire distribution into the store: hold per-axis spans in the doc, run `solveAxisSpans` on
+   an edit to rewrite guide positions + rooms (this is where the removed `sizeSolve.js` sat),
+   and grow the plot for a rigid axis. Verify the no-span case is a no-op on the current
+   layout.
 3. Skip-guide groups: define a group from a selected guide range or a room; nested
-   distribution; verify the worked example.
+   distribution; verify the worked example in the live planner.
 4. Ratios in the UI: mark a span flex with a weight; the 2:1 case.
-5. Migration of room-size variables to spans; export mapping; retire the per-room binding
-   UI once parity holds.
+5. Export mapping: emit the guide positions from the tree (a fixed span as a config variable,
+   a flex span as its resolved position); wire the plot-grow into the site formulas.
