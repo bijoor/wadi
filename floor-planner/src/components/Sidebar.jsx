@@ -3,7 +3,7 @@ import { analyze, roomById, floorView } from '../model/graph.js'
 import { PALETTE } from '../store/initialState.js'
 import { fmtLen, fmtArea, unitsOf } from '../utils/physical.js'
 import { ROOM_TYPES } from '../export/roomModules.js'
-import { fixed, flex } from '../model/spans.js'
+import { flex } from '../model/spans.js'
 
 // The id of the guide line sitting at position `at` on an axis (room edges always land on a
 // guide, since guides are derived from room edges).
@@ -113,23 +113,34 @@ function RoomEditor({ state, dispatch, room }) {
   const setSpan = (axis, lo, hi, policy) => dispatch({ type: 'SET_SPAN', axis, lo, hi, policy })
   const varNames = Object.keys(state.variables || {})
 
+  // A unique auto name for a room's dimension variable ("Living width" -> living_width).
+  const autoName = (dim) => {
+    const base = slug(`${room.name} ${dim === 'w' ? 'width' : 'depth'}`)
+    let name = base, k = 1
+    while (varNames.includes(name)) { k += 1; name = `${base}_${k}` }
+    return name
+  }
+
   const SizingRow = ({ label, dim }) => {
     const { axis, lo, hi, size } = dims[dim]
     const can = !!(lo && hi && lo !== hi)
     const span = spanOf(axis, lo, hi)
     const mode = span ? span.policy.kind : 'auto' // 'auto' | 'fixed' | 'flex'
+    // Fix ALWAYS binds to a named variable (its own auto-named one to start). So every fixed
+    // size is a visible, shareable variable, and any other fixed dimension can adopt it.
     const linkedVar = span?.policy?.kind === 'fixed' ? span.policy.var : null
     const weight = span?.policy?.kind === 'flex' ? span.policy.weight : size
-    const setMode = (m) => setSpan(axis, lo, hi, m === 'auto' ? null : m === 'fixed' ? fixed(size) : flex(size))
+    const mkAuto = () => autoName(dim)
+    const setMode = (m) => setSpan(axis, lo, hi, m === 'auto' ? null : m === 'fixed' ? { kind: 'fixed', var: mkAuto() } : flex(size))
     const Seg = ({ m, children }) => (
       <button type="button" className={mode === m ? 'on' : ''} disabled={!can && m !== 'auto'} onClick={() => setMode(m)}>{children}</button>
     )
-    // The variable-link picker for a Fixed dimension: keep it this-room-only, share an existing
-    // variable, or create a new one (so one knob can drive a width here and a depth elsewhere).
+    // Pick which variable drives this fixed size: an existing one (share it), a fresh own one,
+    // or a newly named shared one. So one knob can drive a width here and a depth elsewhere.
     const onLink = (v) => {
       if (v === '__new__') { const n = window.prompt('New shared size name (e.g. balcony):'); if (n && n.trim()) setSpan(axis, lo, hi, { kind: 'fixed', var: slug(n) }) }
-      else if (v) setSpan(axis, lo, hi, { kind: 'fixed', var: v })
-      else setSpan(axis, lo, hi, fixed(size)) // unlink -> anonymous fixed
+      else if (v === '__own__') setSpan(axis, lo, hi, { kind: 'fixed', var: mkAuto() })
+      else if (v && v !== linkedVar) setSpan(axis, lo, hi, { kind: 'fixed', var: v })
     }
     return (
       <>
@@ -143,17 +154,15 @@ function RoomEditor({ state, dispatch, room }) {
                 onCommit={(v) => setSpan(axis, lo, hi, flex(Math.max(v, 0.1)))} />
                 <span className="dim-sub" title="Current resolved size">{fmtLen(size, u.system, u.perUnit)}</span></>
             : <CommitInput type="number" value={linkedVar ? (state.variables[linkedVar]?.value ?? size) : size} min={1}
-                onCommit={(v) => mode === 'fixed'
-                  ? (linkedVar ? dispatch({ type: 'SET_VAR', name: linkedVar, value: Math.max(v, 1) }) : setSpan(axis, lo, hi, fixed(Math.max(v, 1))))
-                  : update({ [dim]: Math.max(v, 1) })} />}
+                onCommit={(v) => mode === 'fixed' && linkedVar ? dispatch({ type: 'SET_VAR', name: linkedVar, value: Math.max(v, 1) }) : update({ [dim]: Math.max(v, 1) })} />}
         </div>
         {mode === 'fixed' && (
           <div className="sizing-row link">
             <span className="dim-label" />
-            <select className="varlink" value={linkedVar || ''} title="Share this size with other rooms via a named variable"
+            <select className="varlink" value={linkedVar || ''} title="The size variable this dimension is bound to. Pick another to share, or make a new one."
               onChange={(e) => onLink(e.target.value)}>
-              <option value="">This room only</option>
               {varNames.map((nm) => <option key={nm} value={nm}>◆ {nm}</option>)}
+              <option value="__own__">Separate (own size)</option>
               <option value="__new__">New shared size…</option>
             </select>
           </div>

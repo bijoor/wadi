@@ -126,7 +126,10 @@ export default function Canvas({ state, dispatch }) {
   const gidAt = (lines, at) => { const g = lines.find((l) => Math.abs(l.at - at) < 1e-3); return g && g.id }
   const policyMap = (axis) => new Map((state.spans?.[axis] || []).map((s) => [`${s.lo}|${s.hi}`, s.policy]))
   const pxMap = policyMap('x'), pyMap = policyMap('y')
-  const tagFor = (p, letter) => !p ? '' : p.kind === 'fixed' ? (p.var ? `◆${p.var}` : `◆${letter}`) : `${letter}×${p.weight}`
+  // A variable is "shared" (worth naming on the canvas) when more than one span references it.
+  const varCount = {}
+  for (const ax of ['x', 'y']) for (const s of state.spans?.[ax] || []) if (s.policy?.var) varCount[s.policy.var] = (varCount[s.policy.var] || 0) + 1
+  const tagFor = (p, letter) => !p ? '' : p.kind === 'fixed' ? (p.var && varCount[p.var] > 1 ? `◆${p.var}` : `◆${letter}`) : `${letter}×${p.weight}`
   const pinnedById = new Map((state.rooms || []).map((r) => [r.id, {
     w: tagFor(pxMap.get(`${gidAt(gxL, r.x)}|${gidAt(gxL, r.x + r.w)}`), 'W'),
     h: tagFor(pyMap.get(`${gidAt(gyL, r.y)}|${gidAt(gyL, r.y + r.h)}`), 'H'),

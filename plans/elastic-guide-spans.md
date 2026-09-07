@@ -143,6 +143,12 @@ across axes (the balcony where a width equals a depth), both spans reference the
 named **variable**. Variables do not go away; they bind to spans instead of rooms, and a
 ratio is the elastic alternative when you do not want a fixed value.
 
+Every fixed dimension is a named variable (no anonymous fixed spans in the UI): clicking
+Fix auto-creates `<room>_<width|depth>` and binds to it, so the size is immediately visible
+and shareable, and any other fixed dimension can adopt any existing variable (auto or named)
+from its dropdown. The canvas only spells out a variable name when it is actually shared
+(more than one span uses it); a solo pin stays `◆W`/`◆H`.
+
 Built: a fixed span's policy can be `{ kind: 'fixed', var: 'balcony' }`. The doc holds a
 `variables` registry (`{ name: { value, label? } }`); `reflowSpans` resolves a var-span to
 its value before distributing, so one variable drives spans on both axes in one reflow.
