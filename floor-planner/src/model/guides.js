@@ -40,30 +40,21 @@ export function bayKey(idA, idB) {
   return [idA, idB].sort().join('|')
 }
 
-// Reconcile one axis: keep permanent lines, ensure a line at every edge position
-// (reusing a provisional line's id when the position is unchanged), drop unheld
-// provisional lines. Returns the sorted line list.
+// Reconcile one axis: guides are DERIVED PURELY from the current room edges, so they
+// always track the rooms. There is one line per distinct edge position; a line's id is
+// reused when a line already sat at that position (so bay keys / identity stay stable),
+// else a fresh id is minted. Lines with no room edge are dropped. (The permanent/manual
+// concept was retired: it pinned lines in place so they stopped tracking rooms; manual
+// guides will return later as an explicit, separately-tracked feature.)
 function syncAxis(prevLines, edges) {
   const prev = Array.isArray(prevLines) ? prevLines : []
+  const used = new Set()
   const out = []
-  const usedPrev = new Set()
-
-  // 1) permanent lines persist at their position, edge or no edge.
-  for (const g of prev) {
-    if (g.permanent) { out.push({ ...g, at: R(g.at) }); usedPrev.add(g.id) }
-  }
-  const hasLineAt = (at) => out.some((g) => Math.abs(g.at - at) < EPS)
-
-  // 2) every room-edge position gets a line (reuse a provisional id at the same spot).
   for (const at of edges) {
-    if (hasLineAt(at)) continue
-    const reuse = prev.find(
-      (g) => !g.permanent && !usedPrev.has(g.id) && Math.abs(R(g.at) - at) < EPS,
-    )
-    if (reuse) { out.push({ ...reuse, at }); usedPrev.add(reuse.id) }
+    const reuse = prev.find((g) => !used.has(g.id) && Math.abs(R(g.at) - at) < EPS)
+    if (reuse) { out.push({ ...reuse, at, permanent: false }); used.add(reuse.id) }
     else out.push({ id: makeId('g'), at, permanent: false })
   }
-  // provisional prev lines not reused and with no edge are dropped (GC).
   out.sort((a, b) => a.at - b.at)
   return out
 }

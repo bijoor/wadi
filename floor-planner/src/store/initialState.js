@@ -88,8 +88,10 @@ export function normalizeModel(doc) {
     rooms = rooms.map((r) => ({ ...r, floor: known.has(r.floor) ? r.floor : first }))
   }
   const build = { ...BUILD_DEFAULTS, ...(doc.build || {}) }
-  // Reconcile persisted guides/bays against the rooms (also seeds them for old docs).
-  const { guides, bays } = syncGuides(rooms, { guides: doc.guides, bays: doc.bays })
+  // Guides are derived purely from room edges (see model/guides.js). Legacy `bays` +
+  // permanent flags from the retired bay feature are intentionally dropped here, so old
+  // docs stop carrying pinned guides that no longer track the rooms.
+  const { guides, bays } = syncGuides(rooms, { guides: doc.guides })
   // Size variables + bindings (tolerant of older docs that lack them). Drop bindings whose
   // room no longer exists, then GC orphaned variables.
   const roomIds = new Set(rooms.map((r) => r.id))

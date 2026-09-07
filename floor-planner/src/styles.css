@@ -508,9 +508,8 @@ button.seg.on {
 button.icon { flex: none; background: none; border: none; color: #94a3b8; cursor: pointer; padding: 2px 4px; font-size: 12px; }
 button.icon:hover { color: #ef4444; }
 
-/* Guides on the canvas */
-.guide.perm { stroke: #2563eb; stroke-width: 1.5; opacity: 0.7; }
-.guide.prov { stroke: #64748b; stroke-width: 1.25; opacity: 0.55; stroke-dasharray: 5 4; }
+/* Guides on the canvas — derived from room edges, so they track the rooms. */
+.guide { stroke: #2563eb; stroke-width: 1.25; opacity: 0.6; stroke-dasharray: 6 4; }
 .bay-label { font-size: 10px; fill: #2563eb; }
 .size-badge { font-size: 10px; fill: #7c3aed; font-weight: 600; }
 .size-mode { display: flex; gap: 6px; margin: 6px 0; }

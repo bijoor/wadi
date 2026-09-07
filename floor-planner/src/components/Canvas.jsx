@@ -32,11 +32,11 @@ function GuidesLayer({ guides, cell, plot, ext = 0 }) {
   const lines = []
   for (const g of guides.x || []) {
     const gx = g.at * cell
-    lines.push(<line key={'gx' + g.id} x1={gx} y1={y0} x2={gx} y2={y1} className={`guide ${g.permanent ? 'perm' : 'prov'}`} />)
+    lines.push(<line key={'gx' + g.id} x1={gx} y1={y0} x2={gx} y2={y1} className="guide" />)
   }
   for (const g of guides.y || []) {
     const gy = g.at * cell
-    lines.push(<line key={'gy' + g.id} x1={x0} y1={gy} x2={x1} y2={gy} className={`guide ${g.permanent ? 'perm' : 'prov'}`} />)
+    lines.push(<line key={'gy' + g.id} x1={x0} y1={gy} x2={x1} y2={gy} className="guide" />)
   }
   return <g className="guides-layer" style={{ pointerEvents: 'none' }}>{lines}</g>
 }
