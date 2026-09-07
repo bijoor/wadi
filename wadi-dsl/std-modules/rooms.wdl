@@ -1,14 +1,16 @@
 // Furniture layout pack for the floor-planner's prebuilt room modules.
 //
 // Each `room <type>_<variant>` is a fully-furnished layout: contents only (walls stay
-// graph-owned in the planner). A build step (floor-planner/scripts/build-room-layouts.mjs)
-// compiles this to floor-planner/src/export/roomLayouts.json; the planner tries every
-// layout of a room's type and keeps the one whose furniture conflicts least with the
-// doors on that room. Add a layout by writing another `room <type>_<v> { … }`.
+// graph-owned in the planner). A build step (floor-planner/scripts/build-room-layouts.mjs,
+// `npm run build-layouts`) compiles this to floor-planner/src/export/roomLayouts.json; the
+// planner tries every layout of a room's type and keeps the one whose furniture conflicts
+// least with that room's doors. Add a layout by writing another `room <type>_<v> { … }`.
 //
-// The room size/position below is nominal — furniture is ANCHORED (no x/y), so it reflows
-// to the real room. `anchor` picks the wall/corner (top=north, bottom=south, left=west,
-// right=east); `gap (x, y)` is the inset from the wall; `rotation` yaws the piece.
+// Furniture is ANCHORED (no x/y), so it reflows to the real room. `anchor` picks the
+// wall/corner (top=north, bottom=south, left=west, right=east); a `center` anchor floats the
+// piece and its `gap (x, y)` is then a signed offset from the room centre (+x east, +y
+// south) — that is how the "set" clusters (dining chairs around a table, a sofa group) are
+// arranged relative to each other. `rotation` yaws the piece (degrees).
 
 import "std-furniture" as f
 
@@ -17,67 +19,79 @@ house RoomLayouts {
   site { plot (1400, 120) }
 
   floor 1 "Layouts" {
-    // --- Bedroom ---
+    // --- Bedroom: double bed with a bedside table on each side ---
     room bedroom_a at (0, 0) size (100, 100) {
-      item f."bed_double" anchor top-center gap (0, 8)
-      item f."wardrobe" anchor center-left gap (6, 0) rotation 90
-      item f."bedside_table" anchor top-left gap (6, 8)
+      item f."bed_double" anchor top-center gap (0, 6)
+      item f."bedside_table" anchor top-left gap (4, 6)
+      item f."bedside_table" anchor top-right gap (4, 6)
+      item f."wardrobe" anchor bottom-right gap (4, 4) rotation 180
     }
     room bedroom_b at (110, 0) size (100, 100) {
-      item f."bed_double" anchor center-right gap (8, 0) rotation 90
-      item f."wardrobe" anchor bottom-center gap (0, 6) rotation 180
-      item f."bedside_table" anchor top-right gap (8, 8)
+      item f."bed_double" anchor bottom-center gap (0, 6) rotation 180
+      item f."bedside_table" anchor bottom-left gap (4, 6)
+      item f."bedside_table" anchor bottom-right gap (4, 6)
+      item f."wardrobe" anchor top-right gap (4, 4)
     }
 
-    // --- Living ---
-    room living_a at (220, 0) size (100, 100) {
+    // --- Dining: a set — table centred, a chair on each side ---
+    room dining_a at (220, 0) size (100, 100) {
+      item f."dining_table" anchor center
+      item f."chair" anchor center gap (0, -30)
+      item f."chair" anchor center gap (0, 30) rotation 180
+      item f."chair" anchor center gap (-38, 0) rotation 90
+      item f."chair" anchor center gap (38, 0) rotation 270
+    }
+
+    // --- Living: a sofa set — sofa + coffee table + two armchairs ---
+    room living_a at (330, 0) size (100, 100) {
       item f."sofa" anchor bottom-center gap (0, 8) rotation 180
-      item f."coffee_table" anchor center gap (0, 6)
+      item f."coffee_table" anchor center gap (0, 4)
+      item f."armchair" anchor bottom-left gap (6, 6) rotation 135
+      item f."armchair" anchor bottom-right gap (6, 6) rotation 225
       item f."tv_unit" anchor top-center gap (0, 6)
     }
-    room living_b at (330, 0) size (100, 100) {
+    room living_b at (440, 0) size (100, 100) {
       item f."sofa" anchor center-left gap (8, 0) rotation 90
-      item f."coffee_table" anchor center gap (6, 0)
+      item f."coffee_table" anchor center gap (4, 0)
+      item f."armchair" anchor top-left gap (6, 6) rotation 45
+      item f."armchair" anchor bottom-left gap (6, 6) rotation 135
       item f."tv_unit" anchor center-right gap (6, 0) rotation 270
     }
 
-    // --- Dining ---
-    room dining_a at (440, 0) size (100, 100) {
-      item f."dining_table" anchor center
+    // --- Study / desk with chair ---
+    room study_a at (550, 0) size (100, 100) {
+      item f."desk" anchor top-center gap (0, 6)
+      item f."chair" anchor top-center gap (0, 26)
+    }
+    room study_b at (660, 0) size (100, 100) {
+      item f."desk" anchor center-right gap (6, 0) rotation 270
+      item f."chair" anchor center gap (28, 0) rotation 90
     }
 
-    // --- Kitchen ---
-    room kitchen_a at (550, 0) size (100, 100) {
+    // --- Kitchen: counter run + fridge ---
+    room kitchen_a at (770, 0) size (100, 100) {
       item f."kitchen_cabinet" anchor top-left gap (4, 4)
       item f."stove" anchor top-center gap (0, 4)
       item f."kitchen_sink" anchor top-right gap (4, 4)
       item f."fridge" anchor center-right gap (4, 0)
     }
-    room kitchen_b at (660, 0) size (100, 100) {
+    room kitchen_b at (880, 0) size (100, 100) {
       item f."kitchen_cabinet" anchor top-right gap (4, 4)
       item f."stove" anchor center-right gap (4, 0)
       item f."kitchen_sink" anchor bottom-right gap (4, 4)
       item f."fridge" anchor bottom-left gap (4, 4)
     }
 
-    // --- Bathroom ---
-    room bath_a at (770, 0) size (100, 100) {
-      item f."toilet" anchor bottom-left gap (4, 4)
+    // --- Bathroom: basin, toilet, shower ---
+    room bath_a at (990, 0) size (100, 100) {
       item f."bathroom_sink" anchor top-left gap (4, 4)
+      item f."toilet" anchor bottom-left gap (4, 4)
       item f."shower" anchor bottom-right gap (4, 4)
     }
-    room bath_b at (880, 0) size (100, 100) {
-      item f."toilet" anchor bottom-right gap (4, 4)
+    room bath_b at (1100, 0) size (100, 100) {
       item f."bathroom_sink" anchor top-right gap (4, 4)
+      item f."toilet" anchor bottom-right gap (4, 4)
       item f."shower" anchor bottom-left gap (4, 4)
-    }
-
-    // --- Study ---
-    room study_a at (990, 0) size (100, 100) {
-      item f."desk" anchor top-center gap (0, 6)
-    }
-    room study_b at (1100, 0) size (100, 100) {
-      item f."desk" anchor center-right gap (6, 0) rotation 270
     }
   }
 }

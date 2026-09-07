@@ -18,24 +18,7 @@
           },
           "anchor": "top-center",
           "gap_x": 0,
-          "gap_y": 8
-        },
-        {
-          "asset": {
-            "id": "wardrobe",
-            "src": "https://templates.wadi.house/furniture/wardrobe.glb",
-            "dimensions": [
-              1,
-              1.8,
-              0.55
-            ],
-            "name": "Wardrobe",
-            "category": "Bedroom"
-          },
-          "anchor": "center-left",
-          "gap_x": 6,
-          "gap_y": 0,
-          "rotation": 90
+          "gap_y": 6
         },
         {
           "asset": {
@@ -50,8 +33,41 @@
             "category": "Bedroom"
           },
           "anchor": "top-left",
-          "gap_x": 6,
-          "gap_y": 8
+          "gap_x": 4,
+          "gap_y": 6
+        },
+        {
+          "asset": {
+            "id": "bedside_table",
+            "src": "https://templates.wadi.house/furniture/bedside_table.glb",
+            "dimensions": [
+              0.5,
+              0.55,
+              0.4
+            ],
+            "name": "Bedside table",
+            "category": "Bedroom"
+          },
+          "anchor": "top-right",
+          "gap_x": 4,
+          "gap_y": 6
+        },
+        {
+          "asset": {
+            "id": "wardrobe",
+            "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+            "dimensions": [
+              1,
+              1.8,
+              0.55
+            ],
+            "name": "Wardrobe",
+            "category": "Bedroom"
+          },
+          "anchor": "bottom-right",
+          "gap_x": 4,
+          "gap_y": 4,
+          "rotation": 180
         }
       ]
     },
@@ -71,23 +87,6 @@
             "name": "Double bed",
             "category": "Bedroom"
           },
-          "anchor": "center-right",
-          "gap_x": 8,
-          "gap_y": 0,
-          "rotation": 90
-        },
-        {
-          "asset": {
-            "id": "wardrobe",
-            "src": "https://templates.wadi.house/furniture/wardrobe.glb",
-            "dimensions": [
-              1,
-              1.8,
-              0.55
-            ],
-            "name": "Wardrobe",
-            "category": "Bedroom"
-          },
           "anchor": "bottom-center",
           "gap_x": 0,
           "gap_y": 6,
@@ -105,9 +104,128 @@
             "name": "Bedside table",
             "category": "Bedroom"
           },
+          "anchor": "bottom-left",
+          "gap_x": 4,
+          "gap_y": 6
+        },
+        {
+          "asset": {
+            "id": "bedside_table",
+            "src": "https://templates.wadi.house/furniture/bedside_table.glb",
+            "dimensions": [
+              0.5,
+              0.55,
+              0.4
+            ],
+            "name": "Bedside table",
+            "category": "Bedroom"
+          },
+          "anchor": "bottom-right",
+          "gap_x": 4,
+          "gap_y": 6
+        },
+        {
+          "asset": {
+            "id": "wardrobe",
+            "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+            "dimensions": [
+              1,
+              1.8,
+              0.55
+            ],
+            "name": "Wardrobe",
+            "category": "Bedroom"
+          },
           "anchor": "top-right",
-          "gap_x": 8,
-          "gap_y": 8
+          "gap_x": 4,
+          "gap_y": 4
+        }
+      ]
+    },
+    {
+      "id": "dining_a",
+      "type": "dining",
+      "pieces": [
+        {
+          "asset": {
+            "id": "dining_table",
+            "src": "https://templates.wadi.house/furniture/dining_table.glb",
+            "dimensions": [
+              1.5,
+              0.75,
+              0.9
+            ],
+            "name": "Dining table",
+            "category": "Dining"
+          },
+          "anchor": "center"
+        },
+        {
+          "asset": {
+            "id": "chair",
+            "src": "https://templates.wadi.house/furniture/chair.glb",
+            "dimensions": [
+              0.5,
+              0.9,
+              0.5
+            ],
+            "name": "Chair",
+            "category": "Dining"
+          },
+          "anchor": "center",
+          "gap_x": 0,
+          "gap_y": 0
+        },
+        {
+          "asset": {
+            "id": "chair",
+            "src": "https://templates.wadi.house/furniture/chair.glb",
+            "dimensions": [
+              0.5,
+              0.9,
+              0.5
+            ],
+            "name": "Chair",
+            "category": "Dining"
+          },
+          "anchor": "center",
+          "gap_x": 0,
+          "gap_y": 30,
+          "rotation": 180
+        },
+        {
+          "asset": {
+            "id": "chair",
+            "src": "https://templates.wadi.house/furniture/chair.glb",
+            "dimensions": [
+              0.5,
+              0.9,
+              0.5
+            ],
+            "name": "Chair",
+            "category": "Dining"
+          },
+          "anchor": "center",
+          "gap_x": 0,
+          "gap_y": 0,
+          "rotation": 90
+        },
+        {
+          "asset": {
+            "id": "chair",
+            "src": "https://templates.wadi.house/furniture/chair.glb",
+            "dimensions": [
+              0.5,
+              0.9,
+              0.5
+            ],
+            "name": "Chair",
+            "category": "Dining"
+          },
+          "anchor": "center",
+          "gap_x": 38,
+          "gap_y": 0,
+          "rotation": 270
         }
       ]
     },
@@ -146,7 +264,41 @@
           },
           "anchor": "center",
           "gap_x": 0,
-          "gap_y": 6
+          "gap_y": 4
+        },
+        {
+          "asset": {
+            "id": "armchair",
+            "src": "https://templates.wadi.house/furniture/armchair.glb",
+            "dimensions": [
+              0.85,
+              0.8,
+              0.85
+            ],
+            "name": "Armchair",
+            "category": "Living"
+          },
+          "anchor": "bottom-left",
+          "gap_x": 6,
+          "gap_y": 6,
+          "rotation": 135
+        },
+        {
+          "asset": {
+            "id": "armchair",
+            "src": "https://templates.wadi.house/furniture/armchair.glb",
+            "dimensions": [
+              0.85,
+              0.8,
+              0.85
+            ],
+            "name": "Armchair",
+            "category": "Living"
+          },
+          "anchor": "bottom-right",
+          "gap_x": 6,
+          "gap_y": 6,
+          "rotation": 225
         },
         {
           "asset": {
@@ -200,8 +352,42 @@
             "category": "Living"
           },
           "anchor": "center",
-          "gap_x": 6,
+          "gap_x": 4,
           "gap_y": 0
+        },
+        {
+          "asset": {
+            "id": "armchair",
+            "src": "https://templates.wadi.house/furniture/armchair.glb",
+            "dimensions": [
+              0.85,
+              0.8,
+              0.85
+            ],
+            "name": "Armchair",
+            "category": "Living"
+          },
+          "anchor": "top-left",
+          "gap_x": 6,
+          "gap_y": 6,
+          "rotation": 45
+        },
+        {
+          "asset": {
+            "id": "armchair",
+            "src": "https://templates.wadi.house/furniture/armchair.glb",
+            "dimensions": [
+              0.85,
+              0.8,
+              0.85
+            ],
+            "name": "Armchair",
+            "category": "Living"
+          },
+          "anchor": "bottom-left",
+          "gap_x": 6,
+          "gap_y": 6,
+          "rotation": 135
         },
         {
           "asset": {
@@ -223,22 +409,80 @@
       ]
     },
     {
-      "id": "dining_a",
-      "type": "dining",
+      "id": "study_a",
+      "type": "study",
       "pieces": [
         {
           "asset": {
-            "id": "dining_table",
-            "src": "https://templates.wadi.house/furniture/dining_table.glb",
+            "id": "desk",
+            "src": "https://templates.wadi.house/furniture/desk.glb",
             "dimensions": [
-              1.5,
+              1.2,
               0.75,
-              0.9
+              0.6
             ],
-            "name": "Dining table",
+            "name": "Desk",
+            "category": "Study"
+          },
+          "anchor": "top-center",
+          "gap_x": 0,
+          "gap_y": 6
+        },
+        {
+          "asset": {
+            "id": "chair",
+            "src": "https://templates.wadi.house/furniture/chair.glb",
+            "dimensions": [
+              0.5,
+              0.9,
+              0.5
+            ],
+            "name": "Chair",
             "category": "Dining"
           },
-          "anchor": "center"
+          "anchor": "top-center",
+          "gap_x": 0,
+          "gap_y": 26
+        }
+      ]
+    },
+    {
+      "id": "study_b",
+      "type": "study",
+      "pieces": [
+        {
+          "asset": {
+            "id": "desk",
+            "src": "https://templates.wadi.house/furniture/desk.glb",
+            "dimensions": [
+              1.2,
+              0.75,
+              0.6
+            ],
+            "name": "Desk",
+            "category": "Study"
+          },
+          "anchor": "center-right",
+          "gap_x": 6,
+          "gap_y": 0,
+          "rotation": 270
+        },
+        {
+          "asset": {
+            "id": "chair",
+            "src": "https://templates.wadi.house/furniture/chair.glb",
+            "dimensions": [
+              0.5,
+              0.9,
+              0.5
+            ],
+            "name": "Chair",
+            "category": "Dining"
+          },
+          "anchor": "center",
+          "gap_x": 28,
+          "gap_y": 0,
+          "rotation": 90
         }
       ]
     },
@@ -388,22 +632,6 @@
       "pieces": [
         {
           "asset": {
-            "id": "toilet",
-            "src": "https://templates.wadi.house/furniture/toilet.glb",
-            "dimensions": [
-              0.5,
-              0.8,
-              0.7
-            ],
-            "name": "Toilet",
-            "category": "Bathroom"
-          },
-          "anchor": "bottom-left",
-          "gap_x": 4,
-          "gap_y": 4
-        },
-        {
-          "asset": {
             "id": "bathroom_sink",
             "src": "https://templates.wadi.house/furniture/bathroom_sink.glb",
             "dimensions": [
@@ -415,6 +643,22 @@
             "category": "Bathroom"
           },
           "anchor": "top-left",
+          "gap_x": 4,
+          "gap_y": 4
+        },
+        {
+          "asset": {
+            "id": "toilet",
+            "src": "https://templates.wadi.house/furniture/toilet.glb",
+            "dimensions": [
+              0.5,
+              0.8,
+              0.7
+            ],
+            "name": "Toilet",
+            "category": "Bathroom"
+          },
+          "anchor": "bottom-left",
           "gap_x": 4,
           "gap_y": 4
         },
@@ -442,22 +686,6 @@
       "pieces": [
         {
           "asset": {
-            "id": "toilet",
-            "src": "https://templates.wadi.house/furniture/toilet.glb",
-            "dimensions": [
-              0.5,
-              0.8,
-              0.7
-            ],
-            "name": "Toilet",
-            "category": "Bathroom"
-          },
-          "anchor": "bottom-right",
-          "gap_x": 4,
-          "gap_y": 4
-        },
-        {
-          "asset": {
             "id": "bathroom_sink",
             "src": "https://templates.wadi.house/furniture/bathroom_sink.glb",
             "dimensions": [
@@ -469,6 +697,22 @@
             "category": "Bathroom"
           },
           "anchor": "top-right",
+          "gap_x": 4,
+          "gap_y": 4
+        },
+        {
+          "asset": {
+            "id": "toilet",
+            "src": "https://templates.wadi.house/furniture/toilet.glb",
+            "dimensions": [
+              0.5,
+              0.8,
+              0.7
+            ],
+            "name": "Toilet",
+            "category": "Bathroom"
+          },
+          "anchor": "bottom-right",
           "gap_x": 4,
           "gap_y": 4
         },
@@ -487,51 +731,6 @@
           "anchor": "bottom-left",
           "gap_x": 4,
           "gap_y": 4
-        }
-      ]
-    },
-    {
-      "id": "study_a",
-      "type": "study",
-      "pieces": [
-        {
-          "asset": {
-            "id": "desk",
-            "src": "https://templates.wadi.house/furniture/desk.glb",
-            "dimensions": [
-              1.2,
-              0.75,
-              0.6
-            ],
-            "name": "Desk",
-            "category": "Study"
-          },
-          "anchor": "top-center",
-          "gap_x": 0,
-          "gap_y": 6
-        }
-      ]
-    },
-    {
-      "id": "study_b",
-      "type": "study",
-      "pieces": [
-        {
-          "asset": {
-            "id": "desk",
-            "src": "https://templates.wadi.house/furniture/desk.glb",
-            "dimensions": [
-              1.2,
-              0.75,
-              0.6
-            ],
-            "name": "Desk",
-            "category": "Study"
-          },
-          "anchor": "center-right",
-          "gap_x": 6,
-          "gap_y": 0,
-          "rotation": 270
         }
       ]
     }
