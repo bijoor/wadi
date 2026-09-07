@@ -98,8 +98,11 @@ function sideInfo(room, side, rooms, edgeKind) {
 // middle (or spanning the whole wall) anchors to the centre. Anchoring everything to
 // `start` (the default) would let an end/middle opening drift off its wall on resize.
 function anchorFor(loAtEnd, hiAtEnd) {
-  if (loAtEnd && !hiAtEnd) return 'start'
-  if (hiAtEnd && !loAtEnd) return 'end'
+  // Touch the start (a whole-wall opening touches both) -> anchor to the start, so the
+  // opening stays pinned to the wall start and its width tracks the wall as it resizes.
+  // Only a truly interior opening (neither end) is centred.
+  if (loAtEnd) return 'start'
+  if (hiAtEnd) return 'end'
   return 'center'
 }
 
@@ -152,11 +155,15 @@ function openingFormulas(anchor, u0e, u1e, LO, HI, withWidth) {
 //   - extend → carve t/2 PAST the corner (a FULLY-OPEN corner; only N/S walls, which
 //     own the t-wide corner square, do this — dissolves the floating pillar)
 //   - otherwise → reserve t/2 for the corner post of the perpendicular wall there.
-function placeGap(g, a, b, S, name, height, t, ends, ref) {
+// `edge` = { LO, HI } are the wall's own start/end coordinate EXPRESSIONS (from the owner
+// room, so a crossing wall's far edge is `nearGuide + dimensionVar` and tracks the room's
+// size rather than a stale crossing-guide line).
+function placeGap(g, a, b, S, name, height, t, ends, ref, edge) {
   const { mergeLo, mergeHi, extendLo, extendHi } = ends
   const u0 = mergeLo ? a : extendLo ? a - t / 2 : a + t / 2
   const u1 = mergeHi ? b : extendHi ? b + t / 2 : b - t / 2
-  const anchor = anchorFor(Math.abs(a - g.lo) < EPS, Math.abs(b - g.hi) < EPS)
+  const loEnd = Math.abs(a - g.lo) < EPS, hiEnd = Math.abs(b - g.hi) < EPS
+  const anchor = anchorFor(loEnd, hiEnd)
   const op = {
     kind: 'gap',
     name,
@@ -166,8 +173,11 @@ function placeGap(g, a, b, S, name, height, t, ends, ref) {
     height: r0(height ?? DOOR_H_UNITS),
   }
   if (ref) {
-    const LO = coordExpr(g.lo, ref), HI = coordExpr(g.hi, ref), h = r0(t / 2)
-    const Ae = coordExpr(a, ref), Be = coordExpr(b, ref)
+    const LO = edge.LO, HI = edge.HI, h = r0(t / 2)
+    // A segment end that is the wall's own end uses the wall-edge expression (tracks the
+    // room dimension); an interior end lands on a guide line.
+    const Ae = loEnd ? LO : coordExpr(a, ref)
+    const Be = hiEnd ? HI : coordExpr(b, ref)
     const u0e = mergeLo ? Ae : extendLo ? `${Ae} - ${h}` : `${Ae} + ${h}`
     const u1e = mergeHi ? Be : extendHi ? `${Be} + ${h}` : `${Be} - ${h}`
     op.formulas = openingFormulas(anchor, u0e, u1e, LO, HI, true) // gap width tracks the span
@@ -177,12 +187,13 @@ function placeGap(g, a, b, S, name, height, t, ends, ref) {
 
 // A door leaf centred on the shared segment [a,b]. The leaf WIDTH is a fixed physical
 // size (not guide-scaled); only its position (offset) tracks the guides.
-function placeDoor(g, a, b, S, name, ref) {
+function placeDoor(g, a, b, S, name, ref, edge) {
   const seg = b - a
   const w = Math.max(6, Math.min(DOOR_W, seg - DOOR_MARGIN * 2))
   const u0 = (a + b) / 2 - w / 2
   const u1 = u0 + w
-  const anchor = anchorFor(Math.abs(a - g.lo) < EPS, Math.abs(b - g.hi) < EPS)
+  const loEnd = Math.abs(a - g.lo) < EPS, hiEnd = Math.abs(b - g.hi) < EPS
+  const anchor = anchorFor(loEnd, hiEnd)
   const op = {
     kind: 'door',
     name,
@@ -192,9 +203,10 @@ function placeDoor(g, a, b, S, name, ref) {
     height: r0(DOOR_H_UNITS),
   }
   if (ref) {
-    // The door centre is the segment centre ((A+B)/2); u0e/u1e are it ± half the leaf.
-    const LO = coordExpr(g.lo, ref), HI = coordExpr(g.hi, ref), h = r0(w / 2)
-    const mid = `(${coordExpr(a, ref)} + ${coordExpr(b, ref)}) / 2`
+    const LO = edge.LO, HI = edge.HI, h = r0(w / 2)
+    const Ae = loEnd ? LO : coordExpr(a, ref)
+    const Be = hiEnd ? HI : coordExpr(b, ref)
+    const mid = `(${Ae} + ${Be}) / 2`
     op.formulas = openingFormulas(anchor, `${mid} - ${h}`, `${mid} + ${h}`, LO, HI, false)
   }
   return op
@@ -260,12 +272,20 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
     // so the opening formulas reference the right lines.
     const isNSwall = side === 'north' || side === 'south'
     const ref = guides ? (isNSwall ? guides.xRef : guides.yRef) : null
+    // The wall's own start/end as EXPRESSIONS from the room: the near edge is a guide
+    // line; the far edge is `near + dimensionVar` when the room's dimension on this axis
+    // is variable-bound (so a wall that crosses a foreign guide still tracks the room's
+    // size), else the far guide line.
+    const dimVar = guides && guides.dimVar ? guides.dimVar(room.id, isNSwall ? 'w' : 'h') : null
+    const edge = ref
+      ? { LO: coordExpr(g.lo, ref), HI: dimVar ? `${coordExpr(g.lo, ref)} + ${dimVar}` : coordExpr(g.hi, ref) }
+      : null
     const openings = []
     if (owns) {
       for (const s of shared) {
         const [a, b] = s.iv
         if (s.kind === 'door') {
-          openings.push(placeDoor(g, a, b, S, `Door${++doorN}`, ref))
+          openings.push(placeDoor(g, a, b, S, `Door${++doorN}`, ref, edge))
         } else if (s.kind === 'open') {
           // Treat EACH end of the shared span as its own corner (a junction with a
           // perpendicular wall), not just the owner wall's ends — otherwise a segment
@@ -281,7 +301,7 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
           const mergeHi = shared.some((o) => o.kind === 'open' && o !== s && Math.abs(o.iv[0] - b) < EPS)
           const extendLo = isNS && !mergeLo && openCorners.has(ptKey(...sidePoint(side, g, a)))
           const extendHi = isNS && !mergeHi && openCorners.has(ptKey(...sidePoint(side, g, b)))
-          openings.push(placeGap(g, a, b, S, `Open${++doorN}`, openH, t, { mergeLo, mergeHi, extendLo, extendHi }, ref))
+          openings.push(placeGap(g, a, b, S, `Open${++doorN}`, openH, t, { mergeLo, mergeHi, extendLo, extendHi }, ref, edge))
         }
         // kind === null (partition) -> solid, no opening
       }
