@@ -3,6 +3,7 @@ import { analyze, roomById, floorColor } from '../model/graph.js'
 import { roomCenter, sharesWall, rectsOverlap } from '../model/geometry.js'
 import { PALETTE } from '../store/initialState.js'
 import { fmtLen, unitsOf } from '../utils/physical.js'
+import { syncGuides } from '../model/guides.js'
 
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 const SHEET_GAP = 4 // cells between floor plates in side-by-side view
@@ -22,10 +23,12 @@ function clamp(v, lo, hi) {
 
 // Guide lines (permanent = solid accent, provisional = faint dashed) + labels for the
 // named/editable bays between them. Non-interactive; coords are project units × cell.
-function GuidesLayer({ guides, cell, plot }) {
+function GuidesLayer({ guides, cell, plot, ext = 0 }) {
   if (!guides) return null
-  const x0 = plot.x * cell, y0 = plot.y * cell
-  const x1 = (plot.x + plot.w) * cell, y1 = (plot.y + plot.h) * cell
+  // Extend the lines past the plot edges (by `ext`) so they read as full construction
+  // guides, not just room outlines.
+  const x0 = plot.x * cell - ext, y0 = plot.y * cell - ext
+  const x1 = (plot.x + plot.w) * cell + ext, y1 = (plot.y + plot.h) * cell + ext
   const lines = []
   for (const g of guides.x || []) {
     const gx = g.at * cell
@@ -139,6 +142,18 @@ export default function Canvas({ state, dispatch }) {
     return r
   })
   const report = analyze({ plot, rooms: liveRooms, edges })
+
+  // Guides to draw: the committed doc guides normally, but during a drag they are stale
+  // (they re-sync only on commit), so re-derive them from the live layout (active-floor
+  // rooms in their live rects + the other floors unchanged) so they track the drag.
+  const displayGuides = React.useMemo(() => {
+    if (!interaction || (interaction.kind !== 'resize-room' && interaction.kind !== 'move-rooms')) {
+      return state.guides
+    }
+    const liveById = new Map(liveRooms.map((r) => [r.id, r]))
+    const liveAll = state.rooms.map((r) => liveById.get(r.id) || r)
+    return syncGuides(liveAll, { guides: state.guides, bays: state.bays }).guides
+  }, [interaction, liveRooms, state.rooms, state.guides, state.bays])
 
   const toCell = useCallback(
     (clientX, clientY) => {
@@ -520,9 +535,11 @@ export default function Canvas({ state, dispatch }) {
           <GridLines grid={grid} />
         )}
 
-        {/* First-class guides (the structural skeleton) + size-variable badges. */}
-        <GuidesLayer guides={state.guides} cell={cell} plot={plot} />
-        {!sheets && <SizeBadges rooms={rooms} bindings={state.bindings} variables={state.variables} cell={cell} />}
+        {/* First-class guides (the structural skeleton) + size-variable badges. During a
+            drag the doc guides are stale (they re-sync on commit), so derive them from the
+            live rooms so they track the room being resized/moved. Extend past the plot. */}
+        <GuidesLayer guides={displayGuides} cell={cell} plot={plot} ext={grid.cell * 1.2} />
+        {!sheets && <SizeBadges rooms={liveRooms} bindings={state.bindings} variables={state.variables} cell={cell} />}
 
         {/* ghosts: overlay superimposes every other floor (colour-coded); single
             shows just the floor below. Not shown in side-by-side. */}
