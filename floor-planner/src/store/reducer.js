@@ -114,6 +114,7 @@ export function reducer(state, action) {
         floor: state.activeFloor,
         x: r.x, y: r.y, w: r.w, h: r.h,
         color: r.color,
+        ...(r.roomType ? { roomType: r.roomType } : {}),
       }))
       const ids = newRooms.map((r) => r.id)
       const newEdges = (action.edges || [])
@@ -153,6 +154,7 @@ export function reducer(state, action) {
           floor: r.floor, // duplicate stays on the same floor
           w: r.w, h: r.h,
           color: r.color,
+          ...(r.roomType ? { roomType: r.roomType } : {}),
           x: cl(r.x + step, 0, g.cols * step - r.w),
           y: cl(r.y + step, 0, g.rows * step - r.h),
         }

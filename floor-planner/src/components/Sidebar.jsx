@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { analyze, roomById, floorView } from '../model/graph.js'
 import { PALETTE } from '../store/initialState.js'
 import { fmtLen, fmtArea, unitsOf } from '../utils/physical.js'
+import { ROOM_TYPES } from '../export/roomModules.js'
 
 // Input that only commits its value on Enter or blur (Esc cancels). It keeps a
 // local draft while typing so edits aren't applied on every keystroke, and
@@ -111,6 +112,13 @@ function RoomEditor({ state, dispatch, room }) {
           onCommit={(v) => update({ h: Math.min(Math.max(v, 1), maxH) })} />
       </div>
       <div className="area-note">{(() => { const u = unitsOf(state.build); return `${fmtLen(room.w, u.system, u.perUnit)} × ${fmtLen(room.h, u.system, u.perUnit)}` })()}</div>
+      <label className="field">
+        <span>Type</span>
+        <select value={room.roomType || ''} title="Furnish this room on export (a prebuilt module drops in furniture that reflows with the room)"
+          onChange={(e) => update({ roomType: e.target.value })}>
+          {ROOM_TYPES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+        </select>
+      </label>
       <div className="dim-configs">
         <DimConfig state={state} dispatch={dispatch} room={room} dim="w" />
         <DimConfig state={state} dispatch={dispatch} room={room} dim="h" />
