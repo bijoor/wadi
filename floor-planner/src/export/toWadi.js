@@ -95,44 +95,6 @@ function guidesFromModel(model, ctx) {
     return null
   }
 
-  // Percentage SHARES: a run's members split a fixed total. Emit n-1 percentage variables
-  // (the last member is the follower = total - the rest), so each member's span is
-  // `pct/100 * total` and the run's total stays constant (the plot doesn't move).
-  const usedNames = new Set()
-  const identOf = (label) => {
-    let base = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'pct'
-    if (!/^[a-z_]/.test(base)) base = 'p_' + base
-    let name = base, k = 1
-    while (usedNames.has(name)) { k += 1; name = `${base}_${k}` }
-    usedNames.add(name)
-    return name
-  }
-  const sharePct = {}
-  const shareInputs = []
-  const spanTermByKey = new Map() // `${axis}|${near}|${far}` -> span expression
-  const dimTermByRoom = new Map() // `${roomId}|${dim}` -> dimension expression
-  for (const sh of model.shares || []) {
-    const dim = sh.dim, axis = dim === 'w' ? 'x' : 'y'
-    const total = R(sh.total), n = sh.members.length
-    const pctVars = []
-    for (let i = 0; i < n - 1; i++) {
-      const rm = byId.get(sh.members[i])
-      const nm = identOf(`${rm?.name || ('room ' + (i + 1))}_pct`)
-      sharePct[nm] = R(sh.pcts[i])
-      pctVars.push(nm)
-      shareInputs.push({ target: nm, label: `${rm?.name || ('Room ' + (i + 1))} %`, control: 'slider', unit: '%', min: 1, max: 99, step: 1, group: 'split' })
-    }
-    const terms = pctVars.map((pv) => `${pv} / 100 * ${total}`)
-    const allTerms = [...terms, terms.length ? `${total} - (${terms.join(' + ')})` : String(total)]
-    sh.members.forEach((rid, k) => {
-      const r = byId.get(rid)
-      if (!r) return
-      const near = dim === 'w' ? r.x : r.y, far = dim === 'w' ? r.x + r.w : r.y + r.h
-      spanTermByKey.set(`${axis}|${R(near)}|${R(far)}`, allTerms[k])
-      dimTermByRoom.set(`${rid}|${dim}`, allTerms[k])
-    })
-  }
-
   const emitAxis = (lines0, axis, nameFor, origin, plotExtent) => {
     const lines = [...(lines0 || [])].sort((a, b) => a.at - b.at)
     const nameByAt = new Map()
@@ -144,10 +106,8 @@ function guidesFromModel(model, ctx) {
       nameByAt.set(R(lines[i].at), nm)
       if (i === 0) { out.push({ name: nm, at: R(origin) }); continue }
       const span = R(lines[i].at - lines[i - 1].at)
-      const shareTerm = spanTermByKey.get(`${axis}|${R(lines[i - 1].at)}|${R(lines[i].at)}`)
-      const v = shareTerm ? null : spanVar(axis, lines[i - 1].at, lines[i].at)
-      if (shareTerm) { terms.push(`(${shareTerm})`); hasVar = true }
-      else if (v) { usedVars.add(v); terms.push(v); hasVar = true } else terms.push(String(span))
+      const v = spanVar(axis, lines[i - 1].at, lines[i].at)
+      if (v) { usedVars.add(v); terms.push(v); hasVar = true } else terms.push(String(span))
       out.push({ name: nm, at: hasVar ? `= ${[String(R(origin)), ...terms].join(' + ')}` : R(lines[i].at) })
     }
     // Plot extent = origin + (trailing margin) + every span, so the plot fits the rooms and
@@ -188,20 +148,16 @@ function guidesFromModel(model, ctx) {
       group: axes.size > 1 ? 'shared' : [...axes][0],
     })
   }
-  // Fold in the share percentage variables + their sliders.
-  Object.assign(variables, sharePct)
-  inputs.push(...shareInputs)
   const groupDefs = {
     x: { id: 'x', label: 'Widths (east–west)' },
     y: { id: 'y', label: 'Depths (north–south)' },
     shared: { id: 'shared', label: 'Shared sizes' },
-    split: { id: 'split', label: 'Space allocation (%)' },
   }
   const usedGroups = new Set(inputs.map((i) => i.group))
   const configurator = inputs.length
     ? {
         title: 'Customize sizes',
-        groups: ['x', 'y', 'shared', 'split'].filter((g) => usedGroups.has(g)).map((g) => groupDefs[g]),
+        groups: ['x', 'y', 'shared'].filter((g) => usedGroups.has(g)).map((g) => groupDefs[g]),
         inputs,
       }
     : null
@@ -216,9 +172,7 @@ function guidesFromModel(model, ctx) {
     variables,
     configurator,
     plotFormulas: { width: X.plotFormula, length: Y.plotFormula },
-    // A share member's dimension expression (`pct/100 * total`) takes precedence over an
-    // absolute variable; else the bound variable name; else null (guide span).
-    dimVar: (id, dim) => dimTermByRoom.get(`${id}|${dim}`) || (dim === 'w' ? wVar(id) : hVar(id)) || null,
+    dimVar: (id, dim) => (dim === 'w' ? wVar(id) : hVar(id)),
   }
 }
 

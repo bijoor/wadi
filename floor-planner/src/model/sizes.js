@@ -87,56 +87,7 @@ export function buildAxisBindings(model) {
       if (lo && hi) push(by, lo, hi, b.var, value)
     }
   }
-  // Percentage SHARES: each member's span is pinned to pct/100 * total. The pcts sum to
-  // 100, so the run's total span stays fixed and only the interior lines move (reallocation
-  // without plot growth). A synthetic var name keeps each pin distinct.
-  for (const sh of model.shares || []) {
-    const total = Number(sh.total)
-    const arr = sh.dim === 'w' ? bx : by
-    const lines = sh.dim === 'w' ? gx : gy
-    ;(sh.members || []).forEach((roomId, k) => {
-      const r = byId.get(roomId)
-      if (!r) return
-      const val = (Number(sh.pcts?.[k]) / 100) * total
-      const lo = idAt(lines, sh.dim === 'w' ? r.x : r.y)
-      const hi = idAt(lines, sh.dim === 'w' ? r.x + r.w : r.y + r.h)
-      if (lo && hi) push(arr, lo, hi, `__share_${sh.id}_${k}`, val)
-    })
-  }
   return { bx, by }
-}
-
-// Build a percentage SHARE from a set of rooms along `dim` ('w' or 'h'): order them by
-// position, verify they tile a contiguous run (each far edge meets the next near edge),
-// and seed the split from their current sizes. Returns the share or null if not a run.
-export function makeShare(id, rooms, roomIds, dim) {
-  const chosen = (roomIds || []).map((rid) => rooms.find((r) => r.id === rid)).filter(Boolean)
-  if (chosen.length < 2) return null
-  const near = (r) => (dim === 'w' ? r.x : r.y)
-  const far = (r) => (dim === 'w' ? r.x + r.w : r.y + r.h)
-  const ordered = [...chosen].sort((a, b) => near(a) - near(b))
-  for (let i = 1; i < ordered.length; i++) {
-    if (Math.abs(near(ordered[i]) - far(ordered[i - 1])) > 1e-3) return null // not contiguous
-  }
-  const sizes = ordered.map((r) => dimSize(r, dim))
-  const total = sizes.reduce((a, b) => a + b, 0)
-  if (!(total > 0)) return null
-  const pcts = sizes.map((s) => (s / total) * 100)
-  return { id, dim, members: ordered.map((r) => r.id), total, pcts }
-}
-
-// Set member `index` to `pct` and redistribute the rest proportionally so the run still
-// sums to 100 (each kept at >= a small floor). Returns the new pcts array.
-export function adjustPcts(pcts, index, pct) {
-  const n = pcts.length
-  const floor = 1
-  const p = Math.max(floor, Math.min(100 - floor * (n - 1), pct))
-  const others = pcts.reduce((s, v, i) => (i === index ? s : s + v), 0)
-  const out = pcts.slice()
-  out[index] = p
-  if (others > 0) for (let i = 0; i < n; i++) if (i !== index) out[i] = Math.max(floor, pcts[i] - (p - pcts[index]) * (pcts[i] / others))
-  const sum = out.reduce((a, b) => a + b, 0)
-  return out.map((v) => (v * 100) / sum)
 }
 
 const R6 = (v) => Math.round(Number(v) * 1e6) / 1e6

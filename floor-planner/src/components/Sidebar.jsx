@@ -200,29 +200,6 @@ function MultiPanel({ state, dispatch }) {
         <NumberField label="Y" value={minY} onCommit={(v) => moveTo(minX, v)} />
       </div>
       <div className="area-note">{(() => { const u = unitsOf(state.build); return `Extent: ${fmtLen(maxX - minX, u.system, u.perUnit)} × ${fmtLen(maxY - minY, u.system, u.perUnit)}` })()}</div>
-      {(() => {
-        // Offer a percentage share when the selected rooms tile a contiguous run along an
-        // axis (side by side = width, stacked = depth). The share splits their fixed total.
-        const runOk = (dim) => {
-          const near = (r) => (dim === 'w' ? r.x : r.y), far = (r) => (dim === 'w' ? r.x + r.w : r.y + r.h)
-          const ord = [...rooms].sort((a, b) => near(a) - near(b))
-          for (let i = 1; i < ord.length; i++) if (Math.abs(near(ord[i]) - far(ord[i - 1])) > 1e-3) return false
-          return true
-        }
-        const btns = []
-        if (runOk('w')) btns.push(['w', 'Share width %'])
-        if (runOk('h')) btns.push(['h', 'Share depth %'])
-        return btns.length ? (
-          <div className="share-actions">
-            {btns.map(([dim, label]) => (
-              <button key={dim} className="secondary" title="Split their combined size by percentage; the total stays fixed"
-                onClick={() => dispatch({ type: 'CREATE_SHARE', roomIds: state.selectedIds, dim })}>
-                {label}
-              </button>
-            ))}
-          </div>
-        ) : null
-      })()}
       <button className="secondary" onClick={() => dispatch({ type: 'DUPLICATE_SELECTED' })}>
         Duplicate {rooms.length} rooms (⌘/Ctrl+D)
       </button>
@@ -492,26 +469,6 @@ function SizesPanel({ state, dispatch }) {
           </div>
         )
       })}
-      {(state.shares || []).map((sh) => (
-        <div className="share-row" key={sh.id}>
-          <div className="share-head">
-            <span className="knob-dot pct">%</span>
-            <span className="share-title">{sh.dim === 'w' ? 'Width split' : 'Depth split'} · {fmtLen(sh.total, system, perUnit)}</span>
-            <button className="icon" title="Remove share (rooms keep their current sizes)" onClick={() => dispatch({ type: 'DELETE_SHARE', id: sh.id })}>✕</button>
-          </div>
-          {sh.members.map((rid, i) => {
-            const rm = roomById(state.rooms, rid)
-            return (
-              <div className="share-member" key={rid}>
-                <span className="share-name">{rm ? rm.name : rid}</span>
-                <CommitInput type="number" value={Math.round(sh.pcts[i])} min={1} max={99} step={1}
-                  onCommit={(v) => dispatch({ type: 'SET_SHARE_PCT', id: sh.id, index: i, pct: v })} />
-                <span className="share-pct">%</span>
-              </div>
-            )
-          })}
-        </div>
-      ))}
     </div>
   )
 }
