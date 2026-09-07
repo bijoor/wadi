@@ -49,7 +49,12 @@ for (const floor of config.floors || []) {
     })
     // The authored room size is the layout's target: the smallest room it was designed to
     // fit without overlaps. The planner picks the largest layout of a type that fits the room.
-    layouts.push({ id: o.name, type, w: o.width, h: o.length, pieces })
+    const layout = { id: o.name, type, w: o.width, h: o.length, pieces }
+    // A layout may declare a room-level wall height (e.g. a balcony/terrace authored shorter
+    // than a full room). The planner copies it onto the room, so exterior walls come out low
+    // while the full-height neighbour still draws the shared wall full height.
+    if (o.height != null) layout.height = o.height
+    layouts.push(layout)
   }
 }
 

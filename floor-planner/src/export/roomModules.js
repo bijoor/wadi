@@ -51,13 +51,13 @@ function fits(layout, w, h) {
   return (layout.w || 0) <= w + FIT_TOL && (layout.h || 0) <= h + FIT_TOL
 }
 
-// The furniture items[] for a typed room: among the layouts of its type that FIT the room
-// (target size ≤ room), the one that conflicts least with the doors, preferring the fullest
-// that fits. Falls back to the most compact layout when the room is smaller than all of them.
-// `ctx.openSides` = the room's walls that carry a door/gap; `ctx.w`/`ctx.h` = the room size.
-export function roomItems(roomType, ctx = {}) {
+// Pick the layout for a typed room: among the layouts of its type that FIT the room (target
+// size ≤ room), the one that conflicts least with the doors, preferring the fullest that
+// fits. Falls back to the most compact layout when the room is smaller than all of them.
+// Returns the chosen layout object, or null for a plain/unknown type.
+function pickLayout(roomType, ctx = {}) {
   const options = BY_TYPE[roomType]
-  if (!options || !options.length) return []
+  if (!options || !options.length) return null
   const open = ctx.openSides instanceof Set ? ctx.openSides : new Set(ctx.openSides || [])
 
   let pool = options.filter((l) => fits(l, ctx.w, ctx.h))
@@ -72,11 +72,31 @@ export function roomItems(roomType, ctx = {}) {
     const s = conflictCount(pool[i], open)
     if (s < bestScore || (s === bestScore && area(pool[i]) > area(best))) { best = pool[i]; bestScore = s }
   }
-  return best.pieces.map((p, i) => {
+  return best
+}
+
+function layoutItems(layout) {
+  return layout.pieces.map((p, i) => {
     const it = { name: `${p.asset.name || p.asset.id}${i ? ' ' + (i + 1) : ''}`, asset: p.asset, anchor: p.anchor }
     if (p.gap_x != null) it.gap_x = p.gap_x
     if (p.gap_y != null) it.gap_y = p.gap_y
     if (p.rotation != null) it.rotation = p.rotation
     return it
   })
+}
+
+// The prebuilt module for a typed room: `{ items, height }`. `items` is the furniture (see
+// pickLayout); `height` is the layout's room-level wall height when the template declares one
+// (e.g. a balcony or terrace authored shorter than a full room), else undefined — the low
+// number lives in the WDL template, not here. `ctx.openSides` = walls that carry a door/gap;
+// `ctx.w`/`ctx.h` = the room size.
+export function roomModule(roomType, ctx = {}) {
+  const layout = pickLayout(roomType, ctx)
+  if (!layout) return { items: [], height: undefined }
+  return { items: layoutItems(layout), height: layout.height }
+}
+
+// Back-compat convenience: just the furniture items[] for a typed room.
+export function roomItems(roomType, ctx = {}) {
+  return roomModule(roomType, ctx).items
 }

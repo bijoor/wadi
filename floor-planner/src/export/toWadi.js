@@ -11,7 +11,7 @@
 
 import { emitWdl } from 'wadi-wdl-emitter'
 import { computeRoomWalls, edgeKindLookup, classifyOpenCorners, roomOpenSides } from './wallsFromGraph.js'
-import { roomItems } from './roomModules.js'
+import { roomModule } from './roomModules.js'
 
 const PER_UNIT = 10 // Wadi feet_inches default: 10 project units = 1 ft
 
@@ -275,9 +275,13 @@ export function modelToWadi(model, opts = {}) {
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
-      // A typed room gets prebuilt furniture, placed to avoid the walls a door lands on.
-      const items = roomItems(r.roomType, { openSides: roomOpenSides(r, floorRooms, edgeKind), w: r.w, h: r.h })
-      if (items.length) o.items = items
+      // A typed room gets its prebuilt module: furniture placed to avoid the walls a door
+      // lands on, plus an optional room-level wall height (a balcony/terrace is authored
+      // shorter, so its exterior walls come out low while the neighbour keeps the shared
+      // wall full height).
+      const mod = roomModule(r.roomType, { openSides: roomOpenSides(r, floorRooms, edgeKind), w: r.w, h: r.h })
+      if (mod.items.length) o.items = mod.items
+      if (mod.height != null) o.height = mod.height
       return o
     })
     // floor_number 1.. — floor 0 is the Plinth we prepend below.
