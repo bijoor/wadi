@@ -160,6 +160,28 @@ export default function Canvas({ state, dispatch }) {
   // 'h' -> height.
   const boundDim = (roomId, dim) => (state.bindings || []).some((b) => b.room === roomId && b.dim === dim)
 
+  // If a guide is an EDGE of a variable-bound dimension, it can be dragged to change that
+  // variable. Returns { varName, anchor } (anchor = the dimension's other edge position),
+  // else null. Used to place drag grips and to turn a drag into a new variable value.
+  const guideInfo = (axis, at) => {
+    for (const b of state.bindings || []) {
+      const onAxis = (b.dim === 'w' && axis === 'x') || (b.dim === 'h' && axis === 'y')
+      if (!onAxis) continue
+      const r = state.rooms.find((x) => x.id === b.room)
+      if (!r) continue
+      const lo = b.dim === 'w' ? r.x : r.y
+      const hi = b.dim === 'w' ? r.x + r.w : r.y + r.h
+      if (Math.abs(at - lo) < 0.01) return { varName: b.var, anchor: hi }
+      if (Math.abs(at - hi) < 0.01) return { varName: b.var, anchor: lo }
+    }
+    return null
+  }
+
+  function onGuideDown(e, axis, at, info) {
+    e.stopPropagation()
+    setInteraction({ kind: 'drag-guide', axis, info, startAt: at, live: at })
+  }
+
   const toCell = useCallback(
     (clientX, clientY) => {
       const rect = svgRef.current.getBoundingClientRect()
@@ -284,6 +306,10 @@ export default function Canvas({ state, dispatch }) {
         dx = snapDelta(dx, [g0.x0, g0.x0 + g0.w], gxPos)
         dy = snapDelta(dy, [g0.y0, g0.y0 + g0.h], gyPos)
       }
+      // A room dimension bound to a variable pins its edges to guide positions, so the
+      // room can't move on that axis (width bound -> no horizontal move; depth -> vertical).
+      if (interaction.group.some((g) => boundDim(g.id, 'w'))) dx = 0
+      if (interaction.group.some((g) => boundDim(g.id, 'h'))) dy = 0
       let lowX = -Infinity, highX = Infinity, lowY = -Infinity, highY = Infinity
       for (const g of interaction.group) {
         lowX = Math.max(lowX, -g.x0)
@@ -312,6 +338,13 @@ export default function Canvas({ state, dispatch }) {
       if (boundDim(interaction.id, 'w')) { cand.x = r0.x; cand.w = r0.w }
       if (boundDim(interaction.id, 'h')) { cand.y = r0.y; cand.h = r0.h }
       setInteraction({ ...interaction, live: cand })
+      return
+    }
+
+    if (interaction.kind === 'draw-guide' || interaction.kind === 'drag-guide') {
+      // Move the guide to the snapped cursor position on its axis (grid snap).
+      const p = interaction.axis === 'x' ? clamp(snap(fx), 0, GW) : clamp(snap(fy), 0, GH)
+      setInteraction({ ...interaction, live: p })
       return
     }
 
@@ -364,6 +397,13 @@ export default function Canvas({ state, dispatch }) {
       const l = it.live
       if (l.x !== r0.x || l.y !== r0.y || l.w !== r0.w || l.h !== r0.h) {
         dispatch({ type: 'UPDATE_ROOM', id: it.id, patch: { x: l.x, y: l.y, w: l.w, h: l.h } })
+      }
+    } else if (it.kind === 'drag-guide') {
+      // Dragging a guide sets the bound dimension's variable = distance to its anchor edge,
+      // which re-flows the whole plan (SET_VAR_VALUE).
+      const value = Math.abs(it.live - it.info.anchor)
+      if (value > 0 && it.live !== it.startAt) {
+        dispatch({ type: 'SET_VAR_VALUE', name: it.info.varName, value })
       }
     } else if (it.kind === 'draw-room') {
       const r = normRect(it.x0, it.y0, it.cur.x, it.cur.y)
@@ -696,6 +736,39 @@ export default function Canvas({ state, dispatch }) {
                 onPointerDown={(e) => onPlotHandleDown(e, h)} />
             )
           })}
+
+        {/* drag grips on guides that bound a variable-locked dimension — drag one to
+            change its size variable (re-flows the plan). Placed just outside the plot. */}
+        {!sheets && tool === 'select' && !interaction && ['x', 'y'].flatMap((axis) =>
+          (displayGuides[axis] || []).map((g) => {
+            const info = guideInfo(axis, g.at)
+            if (!info) return null
+            // Just inside the plot edge (top for vertical guides, left for horizontal), so
+            // the grips stay visible regardless of pan and read like a ruler.
+            const gx = axis === 'x' ? g.at * cell : plot.x * cell + 9
+            const gy = axis === 'x' ? plot.y * cell + 9 : g.at * cell
+            return (
+              <rect key={'grip' + axis + g.id} x={gx - 5} y={gy - 5} width={10} height={10}
+                className="guide-grip" style={{ cursor: axis === 'x' ? 'ew-resize' : 'ns-resize' }}
+                onPointerDown={(e) => onGuideDown(e, axis, g.at, info)} />
+            )
+          }))}
+
+        {/* preview of a guide being dragged + its live value */}
+        {!sheets && interaction && interaction.kind === 'drag-guide' && (() => {
+          const p = interaction.live * cell
+          const x0 = plot.x * cell - grid.cell * 1.2, y0 = plot.y * cell - grid.cell * 1.2
+          const x1 = (plot.x + plot.w) * cell + grid.cell * 1.2, y1 = (plot.y + plot.h) * cell + grid.cell * 1.2
+          const val = Math.round(Math.abs(interaction.live - interaction.info.anchor))
+          return (
+            <g className="guide-drag-layer" style={{ pointerEvents: 'none' }}>
+              {interaction.axis === 'x'
+                ? <line x1={p} y1={y0} x2={p} y2={y1} className="guide-drag" />
+                : <line x1={x0} y1={p} x2={x1} y2={p} className="guide-drag" />}
+              <text x={interaction.axis === 'x' ? p + 4 : x0 + 4} y={interaction.axis === 'x' ? y0 + 12 : p - 4} className="guide-drag-label">{val}</text>
+            </g>
+          )
+        })()}
 
         {/* rubber-band selection window */}
         {!sheets && interaction && interaction.kind === 'rubber' && (() => {

@@ -95,8 +95,12 @@ function RoomEditor({ state, dispatch, room }) {
         <CommitInput value={room.name} onCommit={(v) => update({ name: v })} />
       </label>
       <div className="row">
-        <NumberField label="X" value={room.x} min={plot.x} max={maxX} onCommit={(v) => update({ x: Math.min(Math.max(v, plot.x), maxX) })} />
-        <NumberField label="Y" value={room.y} min={plot.y} max={maxY} onCommit={(v) => update({ y: Math.min(Math.max(v, plot.y), maxY) })} />
+        <NumberField label="X" value={room.x} min={plot.x} max={maxX}
+          disabled={wBound} title={wBound ? 'Position is locked: width is set by a size variable' : undefined}
+          onCommit={(v) => update({ x: Math.min(Math.max(v, plot.x), maxX) })} />
+        <NumberField label="Y" value={room.y} min={plot.y} max={maxY}
+          disabled={hBound} title={hBound ? 'Position is locked: depth is set by a size variable' : undefined}
+          onCommit={(v) => update({ y: Math.min(Math.max(v, plot.y), maxY) })} />
       </div>
       <div className="row">
         <NumberField label="W" value={room.w} min={1} max={maxW}
@@ -442,6 +446,7 @@ function SizesPanel({ state, dispatch }) {
   const { system, perUnit } = unitsOf(state.build)
   const vars = state.variables || []
   const mode = state.build?.sizeMode || 'fixed'
+  const step = state.grid?.unitPerCell || 10
   return (
     <div className="panel">
       <h3>Sizes</h3>
@@ -471,7 +476,9 @@ function SizesPanel({ state, dispatch }) {
           <div className="size-row" key={v.name}>
             <span className="knob-dot">◆</span>
             <CommitInput value={v.label || v.name} onCommit={(val) => dispatch({ type: 'RENAME_VAR', name: v.name, newName: val })} />
-            <span className="size-val">{fmtLen(v.value, system, perUnit)}</span>
+            <CommitInput type="number" value={v.value} min={step} step={step} float
+              title={`Value in project units (${fmtLen(v.value, system, perUnit)}). Editing re-flows the plan.`}
+              onCommit={(val) => dispatch({ type: 'SET_VAR_VALUE', name: v.name, value: val })} />
             <span className="size-count" title="Rooms driven by this size">×{binds.length}</span>
             <button className="icon" title="Delete size (rooms keep their current dimensions)" onClick={() => dispatch({ type: 'DELETE_VAR', name: v.name })}>✕</button>
           </div>

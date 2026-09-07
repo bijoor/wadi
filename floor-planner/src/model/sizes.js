@@ -80,6 +80,31 @@ export function buildAxisBindings(model) {
   return { bx, by }
 }
 
+const R6 = (v) => Math.round(Number(v) * 1e6) / 1e6
+
+// Re-solve the model at its current variable values and WRITE the result back into room
+// geometry + guide positions (the live in-planner reflow). Each room edge sits on a guide,
+// so its new coordinate is that guide's solved position. Returns { rooms, guides } or null
+// when the solve is infeasible (over-constrained) so the caller can leave the sketch as is.
+export function reflowModel(model) {
+  const solved = solveModel(model)
+  if (!solved.feasible) return null
+  const gx = model.guides?.x || [], gy = model.guides?.y || []
+  const gidAt = (lines, at) => { const g = lines.find((l) => Math.abs(l.at - at) < 1e-3); return g && g.id }
+  const posX = (at) => { const id = gidAt(gx, at); const v = id && solved.X.at.get(id); return v == null ? at : v }
+  const posY = (at) => { const id = gidAt(gy, at); const v = id && solved.Y.at.get(id); return v == null ? at : v }
+  const rooms = (model.rooms || []).map((r) => {
+    const x0 = posX(r.x), x1 = posX(r.x + r.w)
+    const y0 = posY(r.y), y1 = posY(r.y + r.h)
+    return { ...r, x: R6(x0), y: R6(y0), w: R6(x1 - x0), h: R6(y1 - y0) }
+  })
+  const guides = {
+    x: gx.map((g) => ({ ...g, at: R6(solved.X.at.get(g.id) ?? g.at) })),
+    y: gy.map((g) => ({ ...g, at: R6(solved.Y.at.get(g.id) ?? g.at) })),
+  }
+  return { rooms, guides }
+}
+
 // Solve both axes for the model's current bindings. Returns the per-axis solve results
 // (each with .at and .formula keyed by guide id) plus overall feasibility. `sizeMode`
 // 'elastic' lets the plot resize to fit (far edge floats); 'fixed' pins the plot.

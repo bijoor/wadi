@@ -1,7 +1,7 @@
 import { makeId, edgeExists } from '../model/graph.js'
 import { clampRoomPosToPlot } from '../model/geometry.js'
 import { syncGuides, recomputeBays, promoteBayGuides } from '../model/guides.js'
-import { syncVarValues, cleanupVars, dropRoomBindings, varIdent, dimSize } from '../model/sizes.js'
+import { syncVarValues, cleanupVars, dropRoomBindings, varIdent, dimSize, reflowModel } from '../model/sizes.js'
 import { sampleModel, normalizeModel } from './initialState.js'
 
 const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays', 'variables', 'bindings']
@@ -316,6 +316,22 @@ export function reducer(state, action) {
     case 'SET_VAR_META': {
       const variables = (state.variables || []).map((v) => (v.name === action.name ? { ...v, ...action.patch } : v))
       return commit(state, { variables })
+    }
+    // Set a variable's value and RE-FLOW the plan live: the solver re-solves guide
+    // positions (fixed or fit-plot mode) and writes them back into every room + guide.
+    // Used by the Sizes-panel number field and by dragging a guide on the canvas.
+    case 'SET_VAR_VALUE': {
+      const value = Number(action.value)
+      if (!Number.isFinite(value) || value <= 0) return state
+      const variables0 = (state.variables || []).map((v) => (v.name === action.name ? { ...v, value } : v))
+      const model = {
+        plot: state.plot, rooms: state.rooms, guides: state.guides,
+        variables: variables0, bindings: state.bindings, build: state.build,
+      }
+      const rf = reflowModel(model)
+      if (!rf) return state // infeasible (over-constrained) — leave the sketch unchanged
+      const variables = syncVarValues(variables0, state.bindings, rf.rooms)
+      return commit(state, { rooms: rf.rooms, guides: rf.guides, variables, bindings: state.bindings })
     }
     case 'DELETE_VAR': {
       const variables = (state.variables || []).filter((v) => v.name !== action.name)
