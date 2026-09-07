@@ -311,6 +311,23 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
   return walls
 }
 
+/** The set of room SIDES ('north'|'south'|'east'|'west') that carry an opening (a door or
+ *  a gap) — i.e. a shared boundary with a connection. Furniture placement uses this to keep
+ *  pieces off the walls a door lands on. Includes openings the neighbour owns (both sides of
+ *  a shared wall are "open" for the purpose of not blocking the passage). */
+export function roomOpenSides(room, rooms, edgeKind) {
+  const open = new Set()
+  for (const side of SIDES) {
+    for (const n of rooms) {
+      if (n === room || n.floor !== room.floor) continue
+      if (!sharedInterval(room, side, n)) continue
+      const k = edgeKind(room.id, n.id)
+      if (k === 'door' || k === 'open') { open.add(side); break }
+    }
+  }
+  return open
+}
+
 /** Build an `edgeKind(aId,bId)` lookup from the graph edges. A connection with no
  *  explicit kind defaults to `door`; a pair with no edge returns null (partition).
  *  Undirected: geometry treats a connection the same either way (the arrow only
