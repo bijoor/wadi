@@ -1,10 +1,9 @@
 import { makeId, edgeExists } from '../model/graph.js'
 import { clampRoomPosToPlot } from '../model/geometry.js'
 import { syncGuides, recomputeBays, promoteBayGuides } from '../model/guides.js'
-import { syncVarValues, cleanupVars, dropRoomBindings, varIdent, dimSize, reflowModel } from '../model/sizes.js'
 import { sampleModel, normalizeModel } from './initialState.js'
 
-const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays', 'variables', 'bindings']
+const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays']
 const HISTORY_LIMIT = 60
 
 function docOf(state) {
@@ -16,8 +15,6 @@ function docOf(state) {
     edges: state.edges,
     guides: state.guides,
     bays: state.bays,
-    variables: state.variables,
-    bindings: state.bindings,
   }
 }
 
@@ -37,11 +34,6 @@ function commit(state, newDoc) {
   if (newDoc.rooms && !('guides' in newDoc)) {
     const s = syncGuides(newDoc.rooms, { guides: state.guides, bays: state.bays })
     doc = { ...newDoc, guides: s.guides, bays: s.bays }
-  }
-  // Keep each size variable's value live = its canonical bound dimension, so the export
-  // seed and the Sizes panel track the sketch. Skip when the action set variables itself.
-  if (doc.rooms && !('variables' in doc)) {
-    doc = { ...doc, variables: syncVarValues(state.variables || [], state.bindings || [], doc.rooms) }
   }
   return {
     ...state,
@@ -178,9 +170,8 @@ export function reducer(state, action) {
       const edges = state.edges.filter(
         (e) => e.a !== action.id && e.b !== action.id
       )
-      const sz = dropRoomBindings(state.variables, state.bindings, [action.id])
       return {
-        ...commit(state, { rooms, edges, variables: sz.variables, bindings: sz.bindings }),
+        ...commit(state, { rooms, edges }),
         selection: { type: null, id: null },
         selectedIds: [],
       }
@@ -189,9 +180,8 @@ export function reducer(state, action) {
       const idset = new Set(action.ids)
       const rooms = state.rooms.filter((r) => !idset.has(r.id))
       const edges = state.edges.filter((e) => !idset.has(e.a) && !idset.has(e.b))
-      const sz = dropRoomBindings(state.variables, state.bindings, action.ids)
       return {
-        ...commit(state, { rooms, edges, variables: sz.variables, bindings: sz.bindings }),
+        ...commit(state, { rooms, edges }),
         selection: { type: null, id: null },
         selectedIds: [],
       }
@@ -272,88 +262,6 @@ export function reducer(state, action) {
       const bays0 = { ...(state.bays || {}), [action.key]: { ...(state.bays?.[action.key] || {}), editable: !!action.editable } }
       const bays = recomputeBays(guides, bays0)
       return commit(state, { guides, bays })
-    }
-
-    // ---- room-size variables (the configurable layer) ----
-    // Bind a room dimension (w/h) to a named variable. A NEW name creates a variable
-    // seeded from the current size; an EXISTING name SHARES it (and snaps this dimension
-    // to the variable's canonical size so the sketch stays consistent).
-    case 'BIND_DIM': {
-      const { room, dim } = action
-      const r = state.rooms.find((x) => x.id === room)
-      if (!r || (dim !== 'w' && dim !== 'h')) return state
-      const existing = (state.variables || []).find((v) => v.name === action.varName)
-      let variables = state.variables || []
-      let rooms = state.rooms
-      let varName = action.varName
-      if (existing) {
-        const val = Number(existing.value)
-        if (Number.isFinite(val)) rooms = state.rooms.map((x) => (x.id === room ? { ...x, [dim]: val } : x))
-      } else {
-        const label = action.label || `${r.name} ${dim === 'w' ? 'width' : 'depth'}`
-        const used = new Set(variables.map((v) => v.name))
-        varName = varIdent(action.varName || label, used)
-        variables = [...variables, { name: varName, value: dimSize(r, dim), label }]
-      }
-      const bindings = [
-        ...(state.bindings || []).filter((b) => !(b.room === room && b.dim === dim)),
-        { var: varName, room, dim },
-      ]
-      const cleaned = cleanupVars(syncVarValues(variables, bindings, rooms), bindings)
-      return commit(state, { rooms, variables: cleaned, bindings })
-    }
-    case 'UNBIND_DIM': {
-      const bindings = (state.bindings || []).filter((b) => !(b.room === action.room && b.dim === action.dim))
-      const variables = cleanupVars(state.variables || [], bindings)
-      return commit(state, { variables, bindings })
-    }
-    case 'RENAME_VAR': {
-      const used = new Set((state.variables || []).map((v) => v.name).filter((n) => n !== action.name))
-      const newName = varIdent(action.newName, used)
-      const variables = (state.variables || []).map((v) =>
-        v.name === action.name ? { ...v, name: newName, label: action.newName || v.label } : v)
-      const bindings = (state.bindings || []).map((b) => (b.var === action.name ? { ...b, var: newName } : b))
-      return commit(state, { variables, bindings })
-    }
-    case 'SET_VAR_META': {
-      const variables = (state.variables || []).map((v) => (v.name === action.name ? { ...v, ...action.patch } : v))
-      return commit(state, { variables })
-    }
-    // Set a variable's value and RE-FLOW the plan live (elastic): the size pins its span,
-    // the lines after it shift, the plot grows/shrinks to fit, and the OTHER variables are
-    // left untouched (their spans stay pinned to their own values). Used by the Sizes panel.
-    case 'SET_VAR_VALUE': {
-      const target = Number(action.value)
-      if (!Number.isFinite(target) || target <= 0) return state
-      const mk = (val) => ({
-        plot: state.plot, rooms: state.rooms, guides: state.guides,
-        variables: (state.variables || []).map((v) => (v.name === action.name ? { ...v, value: val } : v)),
-        bindings: state.bindings, build: state.build,
-      })
-      let value = target
-      let rf = reflowModel(mk(value))
-      if (!rf) {
-        // Too small to fit (a dimension it crosses would collapse). Clamp to the smallest
-        // value that still fits so the edit always shows something.
-        const cur = Number((state.variables || []).find((v) => v.name === action.name)?.value)
-        if (!Number.isFinite(cur) || !reflowModel(mk(cur))) return state
-        let lo = Math.min(cur, target), hi = Math.max(cur, target)
-        for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (reflowModel(mk(mid))) hi = mid; else lo = mid }
-        value = Math.round(hi)
-        rf = reflowModel(mk(value)) || reflowModel(mk(cur))
-        if (!rf) return state
-      }
-      const variables = (state.variables || []).map((v) => (v.name === action.name ? { ...v, value } : v))
-      // Elastic: grow/shrink the plot to fit the re-flowed rooms.
-      const maxX = Math.max(state.plot.x, ...rf.rooms.map((r) => r.x + r.w))
-      const maxY = Math.max(state.plot.y, ...rf.rooms.map((r) => r.y + r.h))
-      const plot = { ...state.plot, w: Math.round((maxX - state.plot.x) * 1000) / 1000, h: Math.round((maxY - state.plot.y) * 1000) / 1000 }
-      return commit(state, { rooms: rf.rooms, guides: rf.guides, variables, plot, bindings: state.bindings })
-    }
-    case 'DELETE_VAR': {
-      const variables = (state.variables || []).filter((v) => v.name !== action.name)
-      const bindings = (state.bindings || []).filter((b) => b.var !== action.name)
-      return commit(state, { variables, bindings })
     }
 
     // ---- plot / grid ----
@@ -475,10 +383,9 @@ export function reducer(state, action) {
       const floors = state.floors.filter((f) => f.id !== gone)
       const rooms = state.rooms.filter((r) => r.floor !== gone)
       const edges = state.edges.filter((e) => !goneRooms.has(e.a) && !goneRooms.has(e.b))
-      const sz = dropRoomBindings(state.variables, state.bindings, [...goneRooms])
       const next = ensureActiveFloor({ ...state, floors, activeFloor: gone === state.activeFloor ? floors[0].id : state.activeFloor })
       return {
-        ...commit(state, { floors, rooms, edges, variables: sz.variables, bindings: sz.bindings }),
+        ...commit(state, { floors, rooms, edges }),
         activeFloor: next.activeFloor,
         selection: { type: null, id: null },
         selectedIds: [],

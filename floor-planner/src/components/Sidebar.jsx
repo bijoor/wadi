@@ -84,10 +84,6 @@ function RoomEditor({ state, dispatch, room }) {
   const maxY = plot.y + plot.h - room.h
   const maxW = plot.x + plot.w - room.x
   const maxH = plot.y + plot.h - room.y
-  // A dimension bound to a size variable is locked (the variable owns it).
-  const wBound = (state.bindings || []).some((b) => b.room === room.id && b.dim === 'w')
-  const hBound = (state.bindings || []).some((b) => b.room === room.id && b.dim === 'h')
-
   return (
     <div className="panel">
       <h3>Room</h3>
@@ -97,18 +93,14 @@ function RoomEditor({ state, dispatch, room }) {
       </label>
       <div className="row">
         <NumberField label="X" value={room.x} min={plot.x} max={maxX}
-          disabled={wBound} title={wBound ? 'Position is locked: width is set by a size variable' : undefined}
           onCommit={(v) => update({ x: Math.min(Math.max(v, plot.x), maxX) })} />
         <NumberField label="Y" value={room.y} min={plot.y} max={maxY}
-          disabled={hBound} title={hBound ? 'Position is locked: depth is set by a size variable' : undefined}
           onCommit={(v) => update({ y: Math.min(Math.max(v, plot.y), maxY) })} />
       </div>
       <div className="row">
         <NumberField label="W" value={room.w} min={1} max={maxW}
-          disabled={wBound} title={wBound ? 'Width is set by a size variable' : undefined}
           onCommit={(v) => update({ w: Math.min(Math.max(v, 1), maxW) })} />
         <NumberField label="H" value={room.h} min={1} max={maxH}
-          disabled={hBound} title={hBound ? 'Depth is set by a size variable' : undefined}
           onCommit={(v) => update({ h: Math.min(Math.max(v, 1), maxH) })} />
       </div>
       <div className="area-note">{(() => { const u = unitsOf(state.build); return `${fmtLen(room.w, u.system, u.perUnit)} × ${fmtLen(room.h, u.system, u.perUnit)}` })()}</div>
@@ -119,10 +111,6 @@ function RoomEditor({ state, dispatch, room }) {
           {ROOM_TYPES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
         </select>
       </label>
-      <div className="dim-configs">
-        <DimConfig state={state} dispatch={dispatch} room={room} dim="w" />
-        <DimConfig state={state} dispatch={dispatch} room={room} dim="h" />
-      </div>
       <div className="swatches">
         {PALETTE.map((c) => (
           <button
@@ -400,87 +388,6 @@ function FloorsPanel({ state, dispatch }) {
 // expose it as a configurator knob on export. Naming/flagging a bay locks (makes
 // permanent) its two bounding guide lines. Guides themselves are derived from the room
 // edges; a manual guide is added on the canvas.
-// Per-room control to make a dimension (width/depth) configurable: create a new size
-// variable, share ANY existing one (a size is a pure length, so a depth on one wall can
-// drive a width on another — e.g. a balcony band wrapping a corner), or make it fixed.
-function DimConfig({ state, dispatch, room, dim }) {
-  const bindings = state.bindings || []
-  const vars = state.variables || []
-  const binding = bindings.find((b) => b.room === room.id && b.dim === dim)
-  const label = dim === 'w' ? 'Width' : 'Depth'
-  if (binding) {
-    const v = vars.find((x) => x.name === binding.var)
-    const shareCount = bindings.filter((b) => b.var === binding.var).length
-    return (
-      <div className="dim-config bound">
-        <span className="dim-label">{label}</span>
-        <span className="knob-dot" title="Configurable — a homeowner knob">◆</span>
-        <CommitInput
-          value={v?.label || binding.var}
-          onCommit={(val) => dispatch({ type: 'RENAME_VAR', name: binding.var, newName: val })}
-        />
-        {shareCount > 1 && <span className="share-note" title={`Shared by ${shareCount} dimensions`}>×{shareCount}</span>}
-        <button className="icon" title="Make fixed again" onClick={() => dispatch({ type: 'UNBIND_DIM', room: room.id, dim })}>✕</button>
-      </div>
-    )
-  }
-  return (
-    <div className="dim-config">
-      <span className="dim-label">{label}</span>
-      <button
-        className="secondary sm"
-        title="Expose this size as a homeowner knob"
-        onClick={() => dispatch({ type: 'BIND_DIM', room: room.id, dim })}
-      >
-        Make configurable
-      </button>
-      {vars.length > 0 && (
-        <select
-          value=""
-          title="Reuse an existing size (resizes this room to match; they move together). Any size can drive a width or a depth."
-          onChange={(e) => { if (e.target.value) dispatch({ type: 'BIND_DIM', room: room.id, dim, varName: e.target.value }) }}
-        >
-          <option value="">share…</option>
-          {vars.map((v) => <option key={v.name} value={v.name}>{v.label || v.name}</option>)}
-        </select>
-      )}
-    </div>
-  )
-}
-
-// Global list of size variables: rename, see the live value + how many dimensions each
-// drives, and delete. A configurable house (with a configurator) exports from these.
-function SizesPanel({ state, dispatch }) {
-  const { system, perUnit } = unitsOf(state.build)
-  const vars = state.variables || []
-  const step = state.grid?.unitPerCell || 10
-  return (
-    <div className="panel">
-      <h3>Sizes</h3>
-      <p className="area-note">
-        Bind a room’s width or depth to a named size (select a room, “Make configurable”) to
-        expose it as a homeowner knob. Reuse one size across rooms to resize them together.
-        Changing a size grows or shrinks the plot to fit; the other sizes stay as set.
-      </p>
-      {vars.length === 0 && <p className="area-note dim">No configurable sizes yet.</p>}
-      {vars.map((v) => {
-        const binds = (state.bindings || []).filter((b) => b.var === v.name)
-        return (
-          <div className="size-row" key={v.name}>
-            <span className="knob-dot">◆</span>
-            <CommitInput value={v.label || v.name} onCommit={(val) => dispatch({ type: 'RENAME_VAR', name: v.name, newName: val })} />
-            <CommitInput type="number" value={v.value} min={step} step={step} float
-              title={`Value in project units (${fmtLen(v.value, system, perUnit)}). Editing re-flows the plan.`}
-              onCommit={(val) => dispatch({ type: 'SET_VAR_VALUE', name: v.name, value: val })} />
-            <span className="size-count" title="Rooms driven by this size">×{binds.length}</span>
-            <button className="icon" title="Delete size (rooms keep their current dimensions)" onClick={() => dispatch({ type: 'DELETE_VAR', name: v.name })}>✕</button>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 export default function Sidebar({ state, dispatch }) {
   const { selection } = state
   let selPanel = null
@@ -509,7 +416,6 @@ export default function Sidebar({ state, dispatch }) {
       )}
       <Health state={state} />
       <FloorsPanel state={state} dispatch={dispatch} />
-      <SizesPanel state={state} dispatch={dispatch} />
       <GridEditor state={state} dispatch={dispatch} />
       <DimensionsEditor state={state} dispatch={dispatch} />
       {selection.type !== 'plot' && <PlotEditor state={state} dispatch={dispatch} />}

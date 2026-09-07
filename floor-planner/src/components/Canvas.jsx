@@ -41,29 +41,6 @@ function GuidesLayer({ guides, cell, plot, ext = 0 }) {
   return <g className="guides-layer" style={{ pointerEvents: 'none' }}>{lines}</g>
 }
 
-// Badge each bound room dimension (a configurable size) with a bracket + the variable
-// name along the driven edge, so the configurable skeleton is visible while laying out.
-function SizeBadges({ rooms, bindings = [], variables = [], cell }) {
-  if (!bindings.length) return null
-  const byId = new Map((rooms || []).map((r) => [r.id, r]))
-  const labelOf = new Map(variables.map((v) => [v.name, v.label || v.name]))
-  const els = []
-  for (const b of bindings) {
-    const r = byId.get(b.room)
-    if (!r) continue
-    const txt = '◆ ' + (labelOf.get(b.var) || b.var)
-    if (b.dim === 'w') {
-      const y = (r.y) * cell + 12
-      const mx = (r.x + r.w / 2) * cell
-      els.push(<text key={'sw' + b.room} x={mx} y={y} textAnchor="middle" className="size-badge">{txt}</text>)
-    } else {
-      const x = (r.x) * cell + 6
-      const my = (r.y + r.h / 2) * cell
-      els.push(<text key={'sh' + b.room} x={x} y={my} textAnchor="start" dominantBaseline="middle" className="size-badge" transform={`rotate(-90 ${x} ${my})`}>{txt}</text>)
-    }
-  }
-  return <g className="size-badges" style={{ pointerEvents: 'none' }}>{els}</g>
-}
 
 export default function Canvas({ state, dispatch }) {
   const { grid, plot, tool, selection, view, floors, activeFloor, viewMode } = state
@@ -158,7 +135,7 @@ export default function Canvas({ state, dispatch }) {
   // A room dimension bound to a size variable is LOCKED: the variable owns it, so it can't
   // be resized by hand (that would let the sketch diverge from the variable). 'w' -> width,
   // 'h' -> height.
-  const boundDim = (roomId, dim) => (state.bindings || []).some((b) => b.room === roomId && b.dim === dim)
+  const boundDim = () => false // room-size constraints removed; every dimension is free
 
   const toCell = useCallback(
     (clientX, clientY) => {
@@ -553,7 +530,6 @@ export default function Canvas({ state, dispatch }) {
             drag the doc guides are stale (they re-sync on commit), so derive them from the
             live rooms so they track the room being resized/moved. Extend past the plot. */}
         <GuidesLayer guides={displayGuides} cell={cell} plot={plot} ext={grid.cell * 1.2} />
-        {!sheets && <SizeBadges rooms={liveRooms} bindings={state.bindings} variables={state.variables} cell={cell} />}
 
         {/* ghosts: overlay superimposes every other floor (colour-coded); single
             shows just the floor below. Not shown in side-by-side. */}

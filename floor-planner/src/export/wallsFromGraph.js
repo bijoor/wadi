@@ -282,13 +282,10 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
     // so the opening formulas reference the right lines.
     const isNSwall = side === 'north' || side === 'south'
     const ref = guides ? (isNSwall ? guides.xRef : guides.yRef) : null
-    // The wall's own start/end as EXPRESSIONS from the room: the near edge is a guide
-    // line; the far edge is `near + dimensionVar` when the room's dimension on this axis
-    // is variable-bound (so a wall that crosses a foreign guide still tracks the room's
-    // size), else the far guide line.
-    const dimVar = guides && guides.dimVar ? guides.dimVar(room.id, isNSwall ? 'w' : 'h') : null
+    // The wall's own start/end as EXPRESSIONS from the room: the near and far edges are the
+    // room's two guide lines on this axis.
     const edge = ref
-      ? { LO: coordExpr(g.lo, ref), HI: dimVar ? `${coordExpr(g.lo, ref)} + ${dimVar}` : coordExpr(g.hi, ref) }
+      ? { LO: coordExpr(g.lo, ref), HI: coordExpr(g.hi, ref) }
       : null
     const openings = []
     if (owns) {

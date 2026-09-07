@@ -60,7 +60,7 @@ export function sampleModel() {
   ]
 
   const { guides, bays } = syncGuides(rooms, null)
-  return { grid, plot, floors, rooms, edges, guides, bays, variables: [], bindings: [], build: { ...BUILD_DEFAULTS } }
+  return { grid, plot, floors, rooms, edges, guides, bays, build: { ...BUILD_DEFAULTS } }
 }
 
 // Bring any loaded/older document up to the multi-floor shape:
@@ -88,13 +88,7 @@ export function normalizeModel(doc) {
   // permanent flags from the retired bay feature are intentionally dropped here, so old
   // docs stop carrying pinned guides that no longer track the rooms.
   const { guides, bays } = syncGuides(rooms, { guides: doc.guides })
-  // Size variables + bindings (tolerant of older docs that lack them). Drop bindings whose
-  // room no longer exists, then GC orphaned variables.
-  const roomIds = new Set(rooms.map((r) => r.id))
-  const bindings = (Array.isArray(doc.bindings) ? doc.bindings : []).filter((b) => roomIds.has(b.room))
-  const variables = (Array.isArray(doc.variables) ? doc.variables : []).filter(
-    (v) => bindings.some((b) => b.var === v.name))
-  return { grid, plot, floors, rooms, edges, guides, bays, variables, bindings, build }
+  return { grid, plot, floors, rooms, edges, guides, bays, build }
 }
 
 export function initialState() {

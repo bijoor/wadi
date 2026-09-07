@@ -33,12 +33,11 @@ export default function App() {
         grid: state.grid, plot: state.plot, floors: state.floors,
         rooms: state.rooms, edges: state.edges, build: state.build,
         guides: state.guides, bays: state.bays,
-        variables: state.variables, bindings: state.bindings,
         activeFloor: state.activeFloor,
       })
     }, 400)
     return () => clearTimeout(saveTimer.current)
-  }, [state.grid, state.plot, state.floors, state.rooms, state.edges, state.build, state.guides, state.bays, state.variables, state.bindings, state.activeFloor])
+  }, [state.grid, state.plot, state.floors, state.rooms, state.edges, state.build, state.guides, state.bays, state.activeFloor])
 
   // Keyboard shortcuts.
   useEffect(() => {
