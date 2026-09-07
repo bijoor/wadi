@@ -186,10 +186,34 @@
       ]
     },
     {
+      "id": "bedroom_xs",
+      "type": "bedroom",
+      "w": 90,
+      "h": 95,
+      "pieces": [
+        {
+          "asset": {
+            "id": "bed_double",
+            "src": "https://templates.wadi.house/furniture/bed_double.glb",
+            "dimensions": [
+              1.5,
+              0.5,
+              2
+            ],
+            "name": "Double bed",
+            "category": "Bedroom"
+          },
+          "anchor": "top-center",
+          "gap_x": 0,
+          "gap_y": 4
+        }
+      ]
+    },
+    {
       "id": "dining_s",
       "type": "dining",
       "w": 100,
-      "h": 110,
+      "h": 100,
       "pieces": [
         {
           "asset": {
@@ -326,6 +350,47 @@
           "gap_x": 38,
           "gap_y": 0,
           "rotation": 270
+        }
+      ]
+    },
+    {
+      "id": "living_xs",
+      "type": "living",
+      "w": 100,
+      "h": 100,
+      "pieces": [
+        {
+          "asset": {
+            "id": "sofa",
+            "src": "https://templates.wadi.house/furniture/sofa.glb",
+            "dimensions": [
+              1.9,
+              0.8,
+              0.9
+            ],
+            "name": "Sofa",
+            "category": "Living"
+          },
+          "anchor": "bottom-center",
+          "gap_x": 0,
+          "gap_y": 6,
+          "rotation": 180
+        },
+        {
+          "asset": {
+            "id": "tv_unit",
+            "src": "https://templates.wadi.house/furniture/tv_unit.glb",
+            "dimensions": [
+              1.5,
+              0.5,
+              0.4
+            ],
+            "name": "TV unit",
+            "category": "Living"
+          },
+          "anchor": "top-center",
+          "gap_x": 0,
+          "gap_y": 6
         }
       ]
     },

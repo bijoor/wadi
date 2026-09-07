@@ -23,7 +23,7 @@ import "std-furniture" as f
 
 house RoomLayouts {
   units feet_inches per_unit 10
-  site { plot (1600, 320) }
+  site { plot (1800, 320) }
 
   floor 1 "Layouts" {
     // ===== Bedroom =====
@@ -47,9 +47,14 @@ house RoomLayouts {
       item f."wardrobe" anchor top-center gap (0, 4)
     }
 
+    // Extra-small: bed only, for a tight bedroom (a bed + wardrobe needs more room).
+    room bedroom_xs at (1340, 0) size (90, 95) {
+      item f."bed_double" anchor top-center gap (0, 4)
+    }
+
     // ===== Dining =====
-    // Small: table + two chairs, north/south (10 x 11 ft).
-    room dining_s at (290, 0) size (100, 110) {
+    // Small: table + two chairs, north/south (10 x 10 ft).
+    room dining_s at (290, 0) size (100, 100) {
       item f."dining_table" anchor center
       item f."chair" anchor center gap (0, -30)
       item f."chair" anchor center gap (0, 30) rotation 180
@@ -64,6 +69,11 @@ house RoomLayouts {
     }
 
     // ===== Living =====
+    // Extra-small: sofa + tv only (10 x 10 ft).
+    room living_xs at (1450, 0) size (100, 100) {
+      item f."sofa" anchor bottom-center gap (0, 6) rotation 180
+      item f."tv_unit" anchor top-center gap (0, 6)
+    }
     // Small: sofa + coffee table + tv unit (12 x 12 ft).
     room living_s at (430, 0) size (120, 120) {
       item f."sofa" anchor bottom-center gap (0, 6) rotation 180

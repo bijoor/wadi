@@ -60,11 +60,11 @@ function pickLayout(roomType, ctx = {}) {
   if (!options || !options.length) return null
   const open = ctx.openSides instanceof Set ? ctx.openSides : new Set(ctx.openSides || [])
 
-  let pool = options.filter((l) => fits(l, ctx.w, ctx.h))
-  if (!pool.length) {
-    // Room too small for any layout: use the most compact one (least likely to overlap).
-    pool = [options.slice().sort((a, b) => area(a) - area(b))[0]]
-  }
+  // Only layouts whose target size fits the room — a layout placed in a room smaller than it
+  // was designed for would push furniture through the walls. If none fits, the room stays
+  // unfurnished (better than furniture outside the room); author a smaller layout to cover it.
+  const pool = options.filter((l) => fits(l, ctx.w, ctx.h))
+  if (!pool.length) return null
   // Fewest door conflicts wins; tie-break on the largest target area (fullest arrangement
   // that fits the room), then file order for stability.
   let best = pool[0], bestScore = conflictCount(pool[0], open)
