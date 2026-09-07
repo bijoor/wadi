@@ -12,8 +12,22 @@
 import { emitWdl } from 'wadi-wdl-emitter'
 import { computeRoomWalls, edgeKindLookup, classifyOpenCorners, roomOpenSides } from './wallsFromGraph.js'
 import { roomModule } from './roomModules.js'
+import { buildAxisTree } from '../model/spans.js'
 
 const PER_UNIT = 10 // Wadi feet_inches default: 10 project units = 1 ft
+
+// A safe, unique config-variable identifier from a label: "Living width" -> "living_width".
+function slug(label, used) {
+  let base = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  if (!base) base = 'size'
+  if (!/^[a-z_]/.test(base)) base = 'v_' + base
+  let name = base, n = 1
+  while (used.has(name)) { n += 1; name = `${base}_${n}` }
+  used.add(name)
+  return name
+}
+const guideUnitLabel = (system) =>
+  system === 'meters' ? 'm' : (system === 'feet_inches' || system === 'feet') ? 'ft' : 'units'
 
 // Connections reference rooms BY NAME, so two rooms sharing a name would collapse
 // into one graph node. Give every room a unique, trimmed name (numeric suffix on
@@ -64,30 +78,100 @@ function guidesFromRooms(rooms) {
   }
 }
 
-// Build the `main` grid from the planner's guides: each guide line becomes a named line
-// (X numbered 1,2,3; Y lettered A,B,C) at its position, and rooms derive their coordinates
-// from those named lines (`main.x2`). Guide positions are plain numbers; the size model
-// (guide-to-guide spans with ratios) is being reworked, so no variables/configurator are
-// emitted here. Returns {grid, xRef, yRef}.
-function guidesFromModel(model) {
+// Build the `main` grid from the planner's guides AND its size model (guide-to-guide spans).
+// Each guide line is named (X numbered 1,2,3; Y lettered A,B,C). A FIXED span becomes a config
+// VARIABLE (a homeowner knob); a guide's position is then a cumulative FORMULA of the variables
+// and the constant (flex/auto) cells before it, so the resolver evaluates the sizes first and
+// draws from them — the same pipeline as the main app, and a knob pushes the later lines so the
+// plot grows/shrinks with it. A fixed GROUP span (crossing interior guides) drives its interior
+// cells as `var * fraction`. Rooms derive width/depth from the guide difference, so the variable
+// flows through with no per-room binding. Returns {grid, xRef, yRef, variables, configurator,
+// plotFormulas}.
+function guidesFromModel(model, ctx) {
   const R = (n) => Math.round(Number(n) * 1000) / 1000
-  const emitAxis = (lines0, nameFor) => {
-    const lines = [...(lines0 || [])].sort((a, b) => a.at - b.at)
-    const nameByAt = new Map()
-    const out = []
-    for (let i = 0; i < lines.length; i++) {
-      const nm = nameFor(i)
-      nameByAt.set(R(lines[i].at), nm)
-      out.push({ name: nm, at: R(lines[i].at) })
+  const usedNames = new Set()
+  const variables = {}
+  const inputs = []
+
+  const axisExport = (axisKey, rawGuides, nameFor, plotExtent) => {
+    const guides = [...(rawGuides || [])].sort((a, b) => a.at - b.at)
+    const n = guides.length
+    const nameByAt = new Map(guides.map((g, i) => [R(g.at), nameFor(i)]))
+    if (n < 2) return { lines: guides.map((g, i) => ({ name: nameFor(i), at: R(g.at) })), nameByAt, plotFormula: null }
+
+    const tree = buildAxisTree(guides, model.spans?.[axisKey] || [])
+    const cellSize = []
+    for (let i = 0; i < n - 1; i++) cellSize.push(R(guides[i + 1].at - guides[i].at))
+    const near = (a, b) => Math.abs(a - b) < 1e-3
+    const dim = axisKey === 'x' ? 'w' : 'h'
+    // Name a fixed span after a room whose dimension it is, else a generic axis name.
+    const nameForSpan = (loIdx, hiIdx) => {
+      for (const r of model.rooms || []) {
+        const lo = axisKey === 'x' ? r.x : r.y, hi = axisKey === 'x' ? r.x + r.w : r.y + r.h
+        if (near(lo, guides[loIdx].at) && near(hi, guides[hiIdx].at)) return slug(`${r.name} ${dim === 'w' ? 'width' : 'depth'}`, usedNames)
+      }
+      return slug(`${axisKey === 'x' ? 'width' : 'depth'} span`, usedNames)
     }
-    return { out, nameByAt }
+    const ensureVar = (node) => {
+      const name = nameForSpan(node.lo, node.hi)
+      const value = R(guides[node.hi].at - guides[node.lo].at)
+      variables[name] = value
+      const step = ctx.step
+      inputs.push({ target: name, label: name.replace(/_/g, ' '), control: 'slider', unit: ctx.unit,
+        min: Math.max(step, R(Math.round(value * 0.4))), max: R(Math.round(value * 2)), step, group: axisKey })
+      return name
+    }
+    // Per atomic cell -> an expression: a fixed atomic span is its variable; a cell inside a
+    // fixed group is `var * fraction`; everything else is its constant (resolved) size.
+    const cellExpr = new Array(n - 1).fill(null)
+    const assign = (node, encVar, encSize) => {
+      if (node.policy && node.policy.kind === 'fixed') {
+        const v = ensureVar(node)
+        if (!node.children || !node.children.length) { cellExpr[node.lo] = v; return }
+        const size = R(guides[node.hi].at - guides[node.lo].at)
+        for (const c of node.children) assign(c, v, size)
+        return
+      }
+      if (!node.children || !node.children.length) {
+        cellExpr[node.lo] = encVar ? `${encVar} * ${R(cellSize[node.lo] / encSize)}` : String(cellSize[node.lo])
+        return
+      }
+      for (const c of node.children) assign(c, encVar, encSize)
+    }
+    assign(tree.root, null, plotExtent)
+
+    // Cumulative guide positions: numeric until the first variable, a formula from there on.
+    const origin = R(guides[0].at)
+    const lines = [{ name: nameFor(0), at: origin }]
+    const terms = []
+    let hasVar = false
+    for (let i = 1; i < n; i++) {
+      const e = cellExpr[i - 1]
+      if (/[a-z]/i.test(e)) hasVar = true
+      terms.push(e)
+      lines.push({ name: nameFor(i), at: hasVar ? `= ${[String(origin), ...terms].join(' + ')}` : R(guides[i].at) })
+    }
+    const margin = R(plotExtent - (R(guides[n - 1].at) - origin))
+    const plotFormula = hasVar ? `= ${[String(margin), ...terms].join(' + ')}` : null
+    return { lines, nameByAt, plotFormula }
   }
-  const X = emitAxis(model.guides.x, (i) => String(i + 1))
-  const Y = emitAxis(model.guides.y, (i) => colLabel(i))
+
+  const X = axisExport('x', model.guides.x, (i) => String(i + 1), ctx.plotW)
+  const Y = axisExport('y', model.guides.y, (i) => colLabel(i), ctx.plotL)
+
+  const usedGroups = new Set(inputs.map((i) => i.group))
+  const groupDefs = { x: { id: 'x', label: 'Widths (east–west)' }, y: { id: 'y', label: 'Depths (north–south)' } }
+  const configurator = inputs.length
+    ? { title: 'Customize sizes', groups: ['x', 'y'].filter((g) => usedGroups.has(g)).map((g) => groupDefs[g]), inputs }
+    : null
+
   return {
-    grid: { x: X.out, y: Y.out },
+    grid: { x: X.lines, y: Y.lines },
     xRef: (v) => { const n = X.nameByAt.get(R(v)); return n && `main.x${n}` },
     yRef: (v) => { const n = Y.nameByAt.get(R(v)); return n && `main.y${n}` },
+    variables,
+    configurator,
+    plotFormulas: { width: X.plotFormula, length: Y.plotFormula },
   }
 }
 
@@ -139,7 +223,9 @@ export function modelToWadi(model, opts = {}) {
   const hasModelGuides = model.guides
     && Array.isArray(model.guides.x) && model.guides.x.length >= 2
     && Array.isArray(model.guides.y) && model.guides.y.length >= 2
-  const guides = hasModelGuides ? guidesFromModel(model) : guidesFromRooms(rooms)
+  const guides = hasModelGuides
+    ? guidesFromModel(model, { unit: guideUnitLabel(unitSystem), step: perUnit, plotW, plotL })
+    : { ...guidesFromRooms(rooms), variables: {}, configurator: null, plotFormulas: { width: null, length: null } }
 
   // Build dimensions from the Dimensions panel — already PROJECT UNITS, used as-is.
   const pu = (v, def) => (Number.isFinite(Number(v)) ? Number(v) : def)
@@ -194,15 +280,20 @@ export function modelToWadi(model, opts = {}) {
     return { floor_number: i + 1, name: f.name || `Floor ${i + 1}`, objects: [...slabs, ...roomObjs] }
   })
 
-  // Floor 0: the Plinth. A plot-sized ground plane + a plot-sized plinth the whole
-  // house rests on. Its floor `height` must equal the plinth height (Wadi convention).
+  // Floor 0: the Plinth. A plot-sized ground plane + a plot-sized plinth the whole house rests
+  // on. When a fixed span drives the plot, the ground/plinth footprint is formula-driven too
+  // (guides.plotFormulas), so they grow flush with the plot as the homeowner tunes a size.
+  const pf = guides.plotFormulas || {}
+  const plotSizeFormulas = pf.width || pf.length
+    ? { ...(pf.width ? { width: pf.width } : {}), ...(pf.length ? { length: pf.length } : {}) }
+    : null
   const plinthFloor = {
     floor_number: 0,
     name: 'Plinth',
     height: plinthHeight,
     objects: [
-      { type: 'ground', name: 'Ground', x: px, y: py, width: plotW, length: plotL },
-      { type: 'plinth', name: 'Plinth', x: px, y: py, width: plotW, length: plotL, height: plinthHeight },
+      { type: 'ground', name: 'Ground', x: px, y: py, width: plotW, length: plotL, ...(plotSizeFormulas ? { formulas: plotSizeFormulas } : {}) },
+      { type: 'plinth', name: 'Plinth', x: px, y: py, width: plotW, length: plotL, height: plinthHeight, ...(plotSizeFormulas ? { formulas: plotSizeFormulas } : {}) },
     ],
   }
 
@@ -224,10 +315,18 @@ export function modelToWadi(model, opts = {}) {
       plot_length: plotL,
       reference_x: px,
       reference_y: py,
+      // The plot dimensions follow the size variables (site.formulas), so it grows with them.
+      ...(plotSizeFormulas ? { formulas: {
+        ...(pf.width ? { plot_width: pf.width } : {}),
+        ...(pf.length ? { plot_length: pf.length } : {}),
+      } } : {}),
     },
     grids: { main: guides.grid },
     floors: [plinthFloor, ...roomFloors],
   }
+  // Fixed spans -> size variables + a configurator, so the exported house is homeowner-tunable.
+  if (guides.variables && Object.keys(guides.variables).length) config.variables = guides.variables
+  if (guides.configurator) config.configurator = guides.configurator
   return config
 }
 

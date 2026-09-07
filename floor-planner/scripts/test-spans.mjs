@@ -126,5 +126,14 @@ function assert(label, cond) { if (cond) { pass++; console.log('  ok  ', label) 
   eqPos('T8 axis still solves', r.positions, { g0: 0, g1: 100, g2: 200 })
 }
 
+// T9: an atomic defined span is a LEAF (not a group wrapping one default cell), so the export
+// emits `var` for it, not `var * 1`.
+{
+  const g = G(0, 100, 200)
+  const { root } = buildAxisTree(g, [{ lo: 'g0', hi: 'g1', policy: fixed(100) }])
+  const child = root.children.find((c) => c.lo === 0 && c.hi === 1)
+  assert('T9 atomic fixed span is a leaf', !!child && !child.children)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

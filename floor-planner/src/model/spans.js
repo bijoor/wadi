@@ -82,8 +82,12 @@ export function buildAxisTree(guides, spans = [], opts = {}) {
     }
     for (const s of direct) {
       fillCells(cursor, s.lo)
-      const sub = build(s.lo, s.hi, inside)
-      children.push({ lo: s.lo, hi: s.hi, policy: s.policy, ...(sub.children ? { children: sub.children } : {}) })
+      if (s.hi === s.lo + 1) {
+        children.push({ lo: s.lo, hi: s.hi, policy: s.policy }) // atomic defined span = a leaf
+      } else {
+        const sub = build(s.lo, s.hi, inside) // group: interior guides subdivide it
+        children.push({ lo: s.lo, hi: s.hi, policy: s.policy, ...(sub.children ? { children: sub.children } : {}) })
+      }
       cursor = s.hi
     }
     fillCells(cursor, hi)

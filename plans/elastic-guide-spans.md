@@ -207,5 +207,13 @@ are just produced by the tree walk instead of the solver.
    flex span and re-flows on weight change (live), and `SET_SPAN flex` 2:1 through the reducer
    gives an exact 2:1 with the plot held (test N7). Clean ratios scoped to a subset of an axis
    still want the group-range selection from phase 3.
-5. Export mapping: emit the guide positions from the tree (a fixed span as a config variable,
-   a flex span as its resolved position); wire the plot-grow into the site formulas.
+5. **DONE** — Export mapping. `guidesFromModel` now walks the span tree: a FIXED span becomes
+   a config variable (a homeowner knob, named after the room whose dimension it is), and each
+   guide position is a cumulative FORMULA of those variables plus the constant (flex/auto)
+   cells. A fixed GROUP span drives its interior cells as `var * fraction`. The plot dimensions
+   (site + ground/plinth formulas) follow the variables, so a knob grows the plot. Rooms keep
+   deriving width/depth from the guide difference, so the variable flows through with no
+   per-room binding. Verified: an atomic-span and a group-span export both validate through the
+   real schema + resolver + wall/roof pipeline, and emit `= 0 + living_width` / `hall_width *
+   0.5` guide formulas + a configurator. (Flex/ratio spans export as their resolved constant,
+   per the plan; ratios are a planner-side lever, not a Wadi primitive.)
