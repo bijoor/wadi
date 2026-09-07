@@ -86,7 +86,7 @@ function sideInfo(room, side, rooms, edgeKind) {
   for (const n of rooms) {
     if (n === room || n.floor !== room.floor) continue
     const iv = sharedInterval(room, side, n)
-    if (iv) shared.push({ iv, kind: edgeKind(room.id, n.id) })
+    if (iv) shared.push({ iv, kind: edgeKind(room.id, n.id), id: n.id })
   }
   const ext = subtract([g.lo, g.hi], shared.map((s) => s.iv))
   return { g, shared, ext }
@@ -248,13 +248,13 @@ export function classifyOpenCorners(rooms, edgeKind, t) {
  *  'open' | null (null = adjacent but no connection = a solid partition).
  *  `openCorners` (from classifyOpenCorners) is the set of fully-open corners whose
  *  gap returns are dissolved. */
-export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wallThickness = 8, openCorners = new Set(), guides = null) {
+export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wallThickness = 8, openCorners = new Set(), guides = null, heightById = null) {
+  const selfHeight = (heightById && heightById.get(room.id)) ?? wallHeight
   const walls = {}
   let doorN = 0 // per-room unique opening names
-  // An OPEN connection is a wall + a full-width, full-HEIGHT `gap` (a frameless
-  // passage), never a missing wall — so the room's rectangle stays closed and the
-  // corners join, with the open run carved out cleanly to the wall top.
-  const openH = Math.max(DOOR_H_UNITS, Number(wallHeight) || 100)
+  // An OPEN connection is a wall + a full-width, full-HEIGHT `gap` (a frameless passage),
+  // never a missing wall — so the room's rectangle stays closed and the corners join, with the
+  // open run carved out cleanly to the wall top (the gap height is the side's own height).
   const t = wallThickness
   for (const side of SIDES) {
     const { g, shared, ext } = sideInfo(room, side, rooms, edgeKind)
@@ -262,17 +262,21 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
     // its opening are declared once. The EAST / SOUTH room owns it; on WEST / NORTH
     // the neighbour owns them, so this room only walls the exterior remainder there.
     const owns = side === 'east' || side === 'south'
-    // Draw this side if it has exterior extent, if we own its shared boundary, or — as the
-    // non-owner — only when the shared boundary carries a SOLID part (a partition, or a door's
-    // wall) that wants full-height backing. That backing is what lets wall height stay a plain
-    // room-level property: the room a low balcony opens off draws the shared wall full height
-    // while the balcony draws it low, and the taller wins (coincident walls merge in render;
-    // the owner's door/gap auto-carves through the stack). A fully-OPEN shared side is left to
-    // the owner's gap, so the non-owner never drops a solid wall into a dissolved open corner
-    // (the corner-post pillar). Openings stay owner-declared.
-    const hasSolidShared = shared.some((s) => s.kind !== 'open')
-    const wallHere = ext.length > 0 || (owns && shared.length > 0) || (!owns && hasSolidShared)
+    // OWNERSHIP: a shared boundary is walled by exactly ONE room (the east/south room), so a
+    // shared wall + its opening are declared once — no coincident duplicate walls, so no extra
+    // corner returns to leave a pillar at a junction.
+    const wallHere = ext.length > 0 || (owns && shared.length > 0)
     if (!wallHere) continue
+    // Wall HEIGHT is per side: a shared wall takes the TALLER of the two rooms, so the wall a
+    // full-height room shares with a low balcony/terrace comes out full height (a room's own
+    // height only lowers its EXTERIOR walls — the parapet). This replaces "both rooms draw the
+    // shared wall and the taller wins" with one wall at the right height, keeping single
+    // ownership (and its clean corners).
+    let sideHeight = selfHeight
+    if (owns) for (const s of shared) {
+      const nH = (heightById && heightById.get(s.id)) ?? wallHeight
+      if (nH > sideHeight) sideHeight = nH
+    }
 
     // The wall runs along X for N/S sides, Y for E/W — pick the matching guide axis
     // so the opening formulas reference the right lines.
@@ -307,12 +311,15 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
           const mergeHi = shared.some((o) => o.kind === 'open' && o !== s && Math.abs(o.iv[0] - b) < EPS)
           const extendLo = isNS && !mergeLo && openCorners.has(ptKey(...sidePoint(side, g, a)))
           const extendHi = isNS && !mergeHi && openCorners.has(ptKey(...sidePoint(side, g, b)))
-          openings.push(placeGap(g, a, b, S, `Open${++doorN}`, openH, t, { mergeLo, mergeHi, extendLo, extendHi }, ref, edge))
+          openings.push(placeGap(g, a, b, S, `Open${++doorN}`, Math.max(DOOR_H_UNITS, sideHeight), t, { mergeLo, mergeHi, extendLo, extendHi }, ref, edge))
         }
         // kind === null (partition) -> solid, no opening
       }
     }
-    walls[side] = openings.length ? { openings } : {}
+    // Carry a per-side height only when it differs from the room's own height (a shared wall
+    // that borrows a taller neighbour's height); otherwise the wall uses the room height.
+    const hProp = sideHeight !== selfHeight ? { height: r0(sideHeight) } : {}
+    walls[side] = { ...(openings.length ? { openings } : {}), ...hProp }
   }
   return walls
 }

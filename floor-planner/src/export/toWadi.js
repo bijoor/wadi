@@ -262,6 +262,14 @@ export function modelToWadi(model, opts = {}) {
       if (sf) s.formulas = sf
       return s
     })
+    // Each typed room's prebuilt module: furniture (placed to avoid the walls a door lands on)
+    // plus an optional room-level wall height (a balcony/terrace is authored shorter). Resolve
+    // it up front so a room's height is known while walling its NEIGHBOURS — a shared wall
+    // takes the taller of the two rooms, so a low balcony only lowers its own exterior walls.
+    const modById = new Map(
+      floorRooms.map((r) => [r.id, roomModule(r.roomType, { openSides: roomOpenSides(r, floorRooms, edgeKind), w: r.w, h: r.h })]),
+    )
+    const heightById = new Map(floorRooms.map((r) => [r.id, modById.get(r.id).height ?? wallHeight]))
     const roomObjs = floorRooms.map((r) => {
       const o = {
         type: 'room',
@@ -271,15 +279,11 @@ export function modelToWadi(model, opts = {}) {
       // Derive x/y/width/length from the guide lines (falls back to the numbers).
       const f = roomGridFormulas(r, guides)
       if (f) o.formulas = f
-      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness, openCorners, guides)
+      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness, openCorners, guides, heightById)
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
-      // A typed room gets its prebuilt module: furniture placed to avoid the walls a door
-      // lands on, plus an optional room-level wall height (a balcony/terrace is authored
-      // shorter, so its exterior walls come out low while the neighbour keeps the shared
-      // wall full height).
-      const mod = roomModule(r.roomType, { openSides: roomOpenSides(r, floorRooms, edgeKind), w: r.w, h: r.h })
+      const mod = modById.get(r.id)
       if (mod.items.length) o.items = mod.items
       if (mod.height != null) o.height = mod.height
       return o
