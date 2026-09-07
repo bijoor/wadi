@@ -1,10 +1,10 @@
 import { makeId, edgeExists } from '../model/graph.js'
 import { clampRoomPosToPlot } from '../model/geometry.js'
 import { syncGuides, recomputeBays, promoteBayGuides } from '../model/guides.js'
-import { syncVarValues, cleanupVars, dropRoomBindings, varIdent, dimSize, reflowModel } from '../model/sizes.js'
+import { syncVarValues, cleanupVars, dropRoomBindings, varIdent, dimSize, reflowModel, makeShare, adjustPcts } from '../model/sizes.js'
 import { sampleModel, normalizeModel } from './initialState.js'
 
-const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays', 'variables', 'bindings']
+const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays', 'variables', 'bindings', 'shares']
 const HISTORY_LIMIT = 60
 
 function docOf(state) {
@@ -18,6 +18,7 @@ function docOf(state) {
     bays: state.bays,
     variables: state.variables,
     bindings: state.bindings,
+    shares: state.shares,
   }
 }
 
@@ -42,6 +43,12 @@ function commit(state, newDoc) {
   // seed and the Sizes panel track the sketch. Skip when the action set variables itself.
   if (doc.rooms && !('variables' in doc)) {
     doc = { ...doc, variables: syncVarValues(state.variables || [], state.bindings || [], doc.rooms) }
+  }
+  // Drop shares whose members no longer all exist (a member room was deleted).
+  if (doc.rooms && !('shares' in doc) && (state.shares || []).length) {
+    const ids = new Set(doc.rooms.map((r) => r.id))
+    const shares = state.shares.filter((s) => s.members.every((m) => ids.has(m)))
+    if (shares.length !== state.shares.length) doc = { ...doc, shares }
   }
   return {
     ...state,
@@ -352,6 +359,33 @@ export function reducer(state, action) {
       const variables = (state.variables || []).filter((v) => v.name !== action.name)
       const bindings = (state.bindings || []).filter((b) => b.var !== action.name)
       return commit(state, { variables, bindings })
+    }
+
+    // ---- percentage shares (reallocate a fixed span between adjacent rooms) ----
+    case 'CREATE_SHARE': {
+      const id = makeId('sh')
+      const sh = makeShare(id, state.rooms, action.roomIds, action.dim)
+      if (!sh) return state // not a contiguous run
+      // A dimension in a share is percentage-driven, so drop any absolute binding on it.
+      const memberSet = new Set(sh.members)
+      const bindings = (state.bindings || []).filter((b) => !(memberSet.has(b.room) && b.dim === action.dim))
+      const variables = cleanupVars(state.variables || [], bindings)
+      const shares = [...(state.shares || []), sh]
+      return commit(state, { shares, variables, bindings })
+    }
+    case 'SET_SHARE_PCT': {
+      const shares0 = (state.shares || [])
+      const sh = shares0.find((s) => s.id === action.id)
+      if (!sh) return state
+      const pcts = adjustPcts(sh.pcts, action.index, Number(action.pct))
+      const shares = shares0.map((s) => (s.id === action.id ? { ...s, pcts } : s))
+      const rf = reflowModel({ plot: state.plot, rooms: state.rooms, guides: state.guides, variables: state.variables, bindings: state.bindings, shares, build: state.build })
+      if (!rf) return commit(state, { shares })
+      return commit(state, { rooms: rf.rooms, guides: rf.guides, shares })
+    }
+    case 'DELETE_SHARE': {
+      const shares = (state.shares || []).filter((s) => s.id !== action.id)
+      return commit(state, { shares })
     }
 
     // ---- plot / grid ----

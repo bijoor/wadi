@@ -60,7 +60,7 @@ export function sampleModel() {
   ]
 
   const { guides, bays } = syncGuides(rooms, null)
-  return { grid, plot, floors, rooms, edges, guides, bays, variables: [], bindings: [], build: { ...BUILD_DEFAULTS } }
+  return { grid, plot, floors, rooms, edges, guides, bays, variables: [], bindings: [], shares: [], build: { ...BUILD_DEFAULTS } }
 }
 
 // Bring any loaded/older document up to the multi-floor shape:
@@ -94,7 +94,9 @@ export function normalizeModel(doc) {
   const bindings = (Array.isArray(doc.bindings) ? doc.bindings : []).filter((b) => roomIds.has(b.room))
   const variables = (Array.isArray(doc.variables) ? doc.variables : []).filter(
     (v) => bindings.some((b) => b.var === v.name))
-  return { grid, plot, floors, rooms, edges, guides, bays, variables, bindings, build }
+  const shares = (Array.isArray(doc.shares) ? doc.shares : []).filter(
+    (s) => Array.isArray(s.members) && s.members.every((m) => roomIds.has(m)))
+  return { grid, plot, floors, rooms, edges, guides, bays, variables, bindings, shares, build }
 }
 
 export function initialState() {
