@@ -136,12 +136,26 @@ it sits on, emitted as guide-referenced formulas. A room that spans a group is e
 the group's endpoints. A room that only partly covers a group is emitted as its own guide
 pair (a sum of that group's cells). Furniture stays anchored, so it reflows for free.
 
-## Cross-axis sharing
+## Cross-axis sharing — DONE
 
 Spans are per-axis, so an x-span and a y-span are different objects. To share a value
 across axes (the balcony where a width equals a depth), both spans reference the same
-named **variable**. So variables do not go away; they bind to spans instead of rooms, and
-a ratio is the elastic alternative when you do not want a fixed value.
+named **variable**. Variables do not go away; they bind to spans instead of rooms, and a
+ratio is the elastic alternative when you do not want a fixed value.
+
+Built: a fixed span's policy can be `{ kind: 'fixed', var: 'balcony' }`. The doc holds a
+`variables` registry (`{ name: { value, label? } }`); `reflowSpans` resolves a var-span to
+its value before distributing, so one variable drives spans on both axes in one reflow.
+`SET_SPAN` with a `var` policy creates the variable (seeded from the span size) or shares
+an existing one (snapping the dimension to its value); `SET_VAR` sets the value and
+re-flows every bound room; `commit` GCs a variable once no span uses it. The Room editor's
+Fix control has a link picker (This room only / share an existing variable / New shared
+size…), the value field of a linked dimension edits the variable, and the canvas badge
+reads `◆<name>`. Export emits one config variable per shared name (deduped across axes, in
+a "Shared sizes" configurator group) with the guide formulas on both axes referencing it.
+Verified: reducer test N8 (create, share across axes, `SET_VAR` drives both, GC on unbind)
+and a shared-variable export that validates through the real pipeline (`= 0 + balcony` on
+both x and y).
 
 ## No migration; clean slate
 

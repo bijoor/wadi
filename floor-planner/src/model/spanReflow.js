@@ -10,12 +10,26 @@ import { solveAxisSpans } from './spans.js'
 
 const R6 = (v) => Math.round(Number(v) * 1e6) / 1e6
 
+// Resolve a fixed span that references a NAMED variable to a concrete size (its variable's
+// value), so spans.js only ever sees plain fixed sizes / flex weights. Both axes resolve
+// against the same registry, which is how one variable can drive a width on one room and a
+// depth on another (the balcony pattern).
+function resolveSpans(spans, variables) {
+  return (spans || []).map((s) => {
+    if (s.policy && s.policy.kind === 'fixed' && s.policy.var) {
+      const v = variables && variables[s.policy.var]
+      return { ...s, policy: { kind: 'fixed', size: v ? Number(v.value) : 0 } }
+    }
+    return s
+  })
+}
+
 // Reflow ONE axis. Returns { guides, rooms } with new positions, or null if the axis has
 // fewer than two guides (nothing to distribute).
 function reflowAxis(model, axis) {
   const guides = (model.guides && model.guides[axis]) || []
   if (guides.length < 2) return null
-  const spans = (model.spans && model.spans[axis]) || []
+  const spans = resolveSpans((model.spans && model.spans[axis]) || [], model.variables)
   const ats = guides.map((g) => Number(g.at))
   const origin = Math.min(...ats)
   // The axis length is the current span of the guides (their extent), so a fully flexible
@@ -60,4 +74,18 @@ export function pruneSpans(spans, guides) {
     x: keep(spans && spans.x, guides && guides.x),
     y: keep(spans && spans.y, guides && guides.y),
   }
+}
+
+// The variable names any span currently references.
+export function usedVarNames(spans) {
+  const all = [...((spans && spans.x) || []), ...((spans && spans.y) || [])]
+  return new Set(all.map((s) => s.policy && s.policy.var).filter(Boolean))
+}
+
+// Drop variables no span references any more (a variable lives only while a span uses it).
+export function gcVariables(variables, spans) {
+  const used = usedVarNames(spans)
+  const out = {}
+  for (const name of Object.keys(variables || {})) if (used.has(name)) out[name] = variables[name]
+  return out
 }

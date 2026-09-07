@@ -107,5 +107,28 @@ const roomBy = (rooms, id) => rooms.find((r) => r.id === id)
   assert('N7 plot width unchanged (all flex absorb)', near(s.plot.w, state.plot.w))
 }
 
+// N8: shared variable across axes (the balcony pattern) through the reducer. Bind room A's
+// WIDTH and room B's DEPTH to one variable, then SET_VAR drives both.
+{
+  const st = {
+    plot: { x: 0, y: 0, w: 200, h: 160 }, floors: [{ id: 'f1', name: 'G' }], edges: [],
+    rooms: [{ id: 'A', name: 'A', floor: 'f1', x: 0, y: 0, w: 100, h: 80 }, { id: 'B', name: 'B', floor: 'f1', x: 100, y: 0, w: 100, h: 80 }],
+    guides: { x: [{ id: 'gx0', at: 0 }, { id: 'gx1', at: 100 }, { id: 'gx2', at: 200 }], y: [{ id: 'gy0', at: 0 }, { id: 'gy1', at: 80 }, { id: 'gy2', at: 160 }] },
+    spans: { x: [], y: [] }, variables: {}, grid: { unitPerCell: 10 }, build: {},
+    tool: 'select', selection: { type: null, id: null }, selectedIds: [], activeFloor: 'f1', history: { past: [], future: [] },
+  }
+  let s = reducer(st, { type: 'SET_SPAN', axis: 'x', lo: 'gx0', hi: 'gx1', policy: { kind: 'fixed', var: 'balcony' } })
+  assert('N8 variable created from span size', !!s.variables.balcony && near(s.variables.balcony.value, 100))
+  s = reducer(s, { type: 'SET_SPAN', axis: 'y', lo: 'gy0', hi: 'gy1', policy: { kind: 'fixed', var: 'balcony' } })
+  assert('N8 y span snaps to the shared value', near(s.guides.y[1].at, 100))
+  s = reducer(s, { type: 'SET_VAR', name: 'balcony', value: 130 })
+  assert('N8 SET_VAR drives the x width', near(s.guides.x[1].at, 130))
+  assert('N8 SET_VAR drives the y depth', near(s.guides.y[1].at, 130))
+  // Unbinding both frees the variable (GC).
+  s = reducer(s, { type: 'SET_SPAN', axis: 'x', lo: 'gx0', hi: 'gx1', policy: null })
+  s = reducer(s, { type: 'SET_SPAN', axis: 'y', lo: 'gy0', hi: 'gy1', policy: null })
+  assert('N8 variable GCd when no span uses it', !('balcony' in s.variables))
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

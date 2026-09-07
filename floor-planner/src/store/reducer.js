@@ -1,10 +1,10 @@
 import { makeId, edgeExists } from '../model/graph.js'
 import { clampRoomPosToPlot } from '../model/geometry.js'
 import { syncGuides, recomputeBays, promoteBayGuides } from '../model/guides.js'
-import { reflowSpans, pruneSpans } from '../model/spanReflow.js'
+import { reflowSpans, pruneSpans, gcVariables } from '../model/spanReflow.js'
 import { sampleModel, normalizeModel } from './initialState.js'
 
-const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays', 'spans']
+const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays', 'spans', 'variables']
 const HISTORY_LIMIT = 60
 
 function docOf(state) {
@@ -17,6 +17,7 @@ function docOf(state) {
     guides: state.guides,
     bays: state.bays,
     spans: state.spans,
+    variables: state.variables,
   }
 }
 
@@ -37,12 +38,12 @@ function commit(state, newDoc) {
     const s = syncGuides(newDoc.rooms, { guides: state.guides, bays: state.bays })
     doc = { ...newDoc, guides: s.guides, bays: s.bays }
   }
-  // Keep spans well-formed: drop any whose endpoint guides no longer exist (a room that
-  // carried them was moved or deleted). Skip when the action set spans itself.
-  if (!('spans' in doc)) {
-    const guidesNow = doc.guides || state.guides
-    doc = { ...doc, spans: pruneSpans(state.spans, guidesNow) }
-  }
+  // Keep spans + variables well-formed: drop spans whose endpoint guides no longer exist (a
+  // room that carried them moved or was deleted), then GC variables no surviving span uses.
+  const guidesNow = doc.guides || state.guides
+  const spansNow = pruneSpans('spans' in doc ? doc.spans : state.spans, guidesNow)
+  const varsNow = gcVariables('variables' in doc ? doc.variables : state.variables, spansNow)
+  doc = { ...doc, spans: spansNow, variables: varsNow }
   return {
     ...state,
     ...doc,
@@ -283,8 +284,28 @@ export function reducer(state, action) {
       const rest = cur.filter((s) => !(s.lo === lo && s.hi === hi))
       const next = policy ? [...rest, { id: `sp_${axis}_${lo}_${hi}`, lo, hi, policy }] : rest
       const spans = { x: (state.spans && state.spans.x) || [], y: (state.spans && state.spans.y) || [], [axis]: next }
-      const rf = reflowSpans({ ...state, spans })
-      return commit(state, { spans, guides: rf.guides, rooms: rf.rooms, plot: rf.plot })
+      // Binding to a NAMED variable that doesn't exist yet creates it, seeded from this span's
+      // current size (guide gap); binding to an existing one snaps this dimension to its value.
+      let variables = state.variables || {}
+      if (policy && policy.kind === 'fixed' && policy.var && !(policy.var in variables)) {
+        const lines = (state.guides && state.guides[axis]) || []
+        const at = (id) => { const g = lines.find((l) => l.id === id); return g ? Number(g.at) : 0 }
+        variables = { ...variables, [policy.var]: { value: Math.abs(at(hi) - at(lo)) } }
+      }
+      const rf = reflowSpans({ ...state, spans, variables })
+      return commit(state, { spans, variables, guides: rf.guides, rooms: rf.rooms, plot: rf.plot })
+    }
+    // Set a shared size variable's value (and optionally its label), re-flowing every room
+    // whose width or depth is bound to it, on either axis.
+    case 'SET_VAR': {
+      const { name } = action
+      if (!name || !(state.variables && name in state.variables)) return state
+      const cur = state.variables[name]
+      const value = action.value != null ? Number(action.value) : cur.value
+      if (action.value != null && (!Number.isFinite(value) || value <= 0)) return state
+      const variables = { ...state.variables, [name]: { ...cur, value, ...(action.label != null ? { label: action.label } : {}) } }
+      const rf = reflowSpans({ ...state, variables })
+      return commit(state, { variables, guides: rf.guides, rooms: rf.rooms, plot: rf.plot })
     }
 
     // ---- plot / grid ----

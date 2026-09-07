@@ -92,6 +92,10 @@ function guidesFromModel(model, ctx) {
   const usedNames = new Set()
   const variables = {}
   const inputs = []
+  // A named variable referenced on BOTH axes (a width sharing a depth) is a "shared" size.
+  const varAxes = {}
+  for (const ax of ['x', 'y']) for (const s of model.spans?.[ax] || []) if (s.policy && s.policy.var) (varAxes[s.policy.var] || (varAxes[s.policy.var] = new Set())).add(ax)
+  const isShared = (name) => varAxes[name] && varAxes[name].size > 1
 
   const axisExport = (axisKey, rawGuides, nameFor, plotExtent) => {
     const guides = [...(rawGuides || [])].sort((a, b) => a.at - b.at)
@@ -113,12 +117,20 @@ function guidesFromModel(model, ctx) {
       return slug(`${axisKey === 'x' ? 'width' : 'depth'} span`, usedNames)
     }
     const ensureVar = (node) => {
-      const name = nameForSpan(node.lo, node.hi)
-      const value = R(guides[node.hi].at - guides[node.lo].at)
+      // A span bound to a NAMED variable uses that name (so it can be shared across rooms and
+      // axes); an anonymous fixed span is auto-named after its room. A shared variable is
+      // emitted once, even when it drives spans on both axes.
+      const shared = node.policy && node.policy.var
+      const name = shared || nameForSpan(node.lo, node.hi)
+      if (name in variables) return name
+      const value = shared
+        ? R(Number(model.variables?.[shared]?.value) || (guides[node.hi].at - guides[node.lo].at))
+        : R(guides[node.hi].at - guides[node.lo].at)
       variables[name] = value
       const step = ctx.step
-      inputs.push({ target: name, label: name.replace(/_/g, ' '), control: 'slider', unit: ctx.unit,
-        min: Math.max(step, R(Math.round(value * 0.4))), max: R(Math.round(value * 2)), step, group: axisKey })
+      const label = (shared && model.variables?.[shared]?.label) || name.replace(/_/g, ' ')
+      inputs.push({ target: name, label, control: 'slider', unit: ctx.unit,
+        min: Math.max(step, R(Math.round(value * 0.4))), max: R(Math.round(value * 2)), step, group: isShared(name) ? 'shared' : axisKey })
       return name
     }
     // Per atomic cell -> an expression: a fixed atomic span is its variable; a cell inside a
@@ -160,9 +172,9 @@ function guidesFromModel(model, ctx) {
   const Y = axisExport('y', model.guides.y, (i) => colLabel(i), ctx.plotL)
 
   const usedGroups = new Set(inputs.map((i) => i.group))
-  const groupDefs = { x: { id: 'x', label: 'Widths (east–west)' }, y: { id: 'y', label: 'Depths (north–south)' } }
+  const groupDefs = { x: { id: 'x', label: 'Widths (east–west)' }, y: { id: 'y', label: 'Depths (north–south)' }, shared: { id: 'shared', label: 'Shared sizes' } }
   const configurator = inputs.length
-    ? { title: 'Customize sizes', groups: ['x', 'y'].filter((g) => usedGroups.has(g)).map((g) => groupDefs[g]), inputs }
+    ? { title: 'Customize sizes', groups: ['x', 'y', 'shared'].filter((g) => usedGroups.has(g)).map((g) => groupDefs[g]), inputs }
     : null
 
   return {

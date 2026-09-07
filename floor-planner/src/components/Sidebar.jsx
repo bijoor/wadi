@@ -9,6 +9,14 @@ import { fixed, flex } from '../model/spans.js'
 // guide, since guides are derived from room edges).
 const guideIdAt = (lines, at) => { const g = (lines || []).find((l) => Math.abs(l.at - at) < 1e-3); return g && g.id }
 
+// A safe variable identifier from a free-text name: "Balcony band" -> "balcony_band".
+const slug = (label) => {
+  let s = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  if (!s) s = 'size'
+  if (!/^[a-z_]/.test(s)) s = 'v_' + s
+  return s
+}
+
 // Input that only commits its value on Enter or blur (Esc cancels). It keeps a
 // local draft while typing so edits aren't applied on every keystroke, and
 // re-syncs when the underlying value changes (e.g. from dragging on the canvas).
@@ -103,30 +111,54 @@ function RoomEditor({ state, dispatch, room }) {
   }
   const spanOf = (axis, lo, hi) => (lo && hi && (state.spans?.[axis] || []).find((s) => s.lo === lo && s.hi === hi)) || null
   const setSpan = (axis, lo, hi, policy) => dispatch({ type: 'SET_SPAN', axis, lo, hi, policy })
+  const varNames = Object.keys(state.variables || {})
 
   const SizingRow = ({ label, dim }) => {
     const { axis, lo, hi, size } = dims[dim]
     const can = !!(lo && hi && lo !== hi)
     const span = spanOf(axis, lo, hi)
     const mode = span ? span.policy.kind : 'auto' // 'auto' | 'fixed' | 'flex'
+    const linkedVar = span?.policy?.kind === 'fixed' ? span.policy.var : null
     const weight = span?.policy?.kind === 'flex' ? span.policy.weight : size
     const setMode = (m) => setSpan(axis, lo, hi, m === 'auto' ? null : m === 'fixed' ? fixed(size) : flex(size))
     const Seg = ({ m, children }) => (
       <button type="button" className={mode === m ? 'on' : ''} disabled={!can && m !== 'auto'} onClick={() => setMode(m)}>{children}</button>
     )
+    // The variable-link picker for a Fixed dimension: keep it this-room-only, share an existing
+    // variable, or create a new one (so one knob can drive a width here and a depth elsewhere).
+    const onLink = (v) => {
+      if (v === '__new__') { const n = window.prompt('New shared size name (e.g. balcony):'); if (n && n.trim()) setSpan(axis, lo, hi, { kind: 'fixed', var: slug(n) }) }
+      else if (v) setSpan(axis, lo, hi, { kind: 'fixed', var: v })
+      else setSpan(axis, lo, hi, fixed(size)) // unlink -> anonymous fixed
+    }
     return (
-      <div className="sizing-row">
-        <span className="dim-label">{label}</span>
-        <div className="seg">
-          <Seg m="auto">Auto</Seg><Seg m="fixed">Fix</Seg><Seg m="flex">Ratio</Seg>
+      <>
+        <div className="sizing-row">
+          <span className="dim-label">{label}</span>
+          <div className="seg">
+            <Seg m="auto">Auto</Seg><Seg m="fixed">Fix</Seg><Seg m="flex">Ratio</Seg>
+          </div>
+          {mode === 'flex'
+            ? <><CommitInput type="number" value={weight} min={0.1} step={0.5} float title="Ratio weight (relative share vs the other flexible spans on this axis)"
+                onCommit={(v) => setSpan(axis, lo, hi, flex(Math.max(v, 0.1)))} />
+                <span className="dim-sub" title="Current resolved size">{fmtLen(size, u.system, u.perUnit)}</span></>
+            : <CommitInput type="number" value={linkedVar ? (state.variables[linkedVar]?.value ?? size) : size} min={1}
+                onCommit={(v) => mode === 'fixed'
+                  ? (linkedVar ? dispatch({ type: 'SET_VAR', name: linkedVar, value: Math.max(v, 1) }) : setSpan(axis, lo, hi, fixed(Math.max(v, 1))))
+                  : update({ [dim]: Math.max(v, 1) })} />}
         </div>
-        {mode === 'flex'
-          ? <><CommitInput type="number" value={weight} min={0.1} step={0.5} float title="Ratio weight (relative share vs the other flexible spans on this axis)"
-              onCommit={(v) => setSpan(axis, lo, hi, flex(Math.max(v, 0.1)))} />
-              <span className="dim-sub" title="Current resolved size">{fmtLen(size, u.system, u.perUnit)}</span></>
-          : <CommitInput type="number" value={size} min={1}
-              onCommit={(v) => mode === 'fixed' ? setSpan(axis, lo, hi, fixed(Math.max(v, 1))) : update({ [dim]: Math.max(v, 1) })} />}
-      </div>
+        {mode === 'fixed' && (
+          <div className="sizing-row link">
+            <span className="dim-label" />
+            <select className="varlink" value={linkedVar || ''} title="Share this size with other rooms via a named variable"
+              onChange={(e) => onLink(e.target.value)}>
+              <option value="">This room only</option>
+              {varNames.map((nm) => <option key={nm} value={nm}>◆ {nm}</option>)}
+              <option value="__new__">New shared size…</option>
+            </select>
+          </div>
+        )}
+      </>
     )
   }
 
