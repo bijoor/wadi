@@ -98,8 +98,20 @@ function emitRoomItem(w: W, indent: number, it: Obj): void {
   const head = it.name ? `item name ${str(it.name)} ` : "item ";
   w.line(indent, head + assetText(it) + roomItemTail(it));
 }
+// Set while emitting when a furniture item resolves to the built-in `std-furniture` pack,
+// so emitWdl adds the `import "std-furniture" as f` line. Single-threaded: emitWdl resets it.
+let usedStdFurniture = false;
+// A std-furniture asset is one hosted at a `…/furniture/<id>.glb` path — the pack convention
+// (remote templates host or the bundled /furniture/ dir). Such an asset is emitted as a
+// reference `f."<id>"` instead of an inline `asset { … }`, so the WDL uses the module.
+function stdFurnitureRef(a: { id?: unknown; src?: unknown }): string | null {
+  if (typeof a?.id !== "string" || typeof a?.src !== "string") return null;
+  return a.src.endsWith(`/furniture/${a.id}.glb`) ? `f.${str(a.id)}` : null;
+}
 function assetText(it: Obj): string {
   const a = it.asset ?? {};
+  const ref = stdFurnitureRef(a as { id?: unknown; src?: unknown });
+  if (ref) { usedStdFurniture = true; return ref; }
   const d = a.dimensions ?? [0, 0, 0];
   let s = `asset { id ${str(a.id)} src ${str(a.src)} dims (${num(d[0])}, ${num(d[1])}, ${num(d[2])})`;
   if (a.name !== undefined) s += ` name ${str(a.name)}`;
@@ -679,6 +691,7 @@ export function emitWdl(config: Obj, houseName = "House", opts: EmitWdlOptions =
   // rewrites points), and callers pass their own object.
   config = structuredClone(config);
   hoistConfiguratorTargets(config);
+  usedStdFurniture = false;
   const w = new W();
   const name = (typeof config.name === "string" && /^[A-Za-z_]\w*$/.test(config.name)) ? config.name : houseName;
 
@@ -730,5 +743,6 @@ export function emitWdl(config: Obj, houseName = "House", opts: EmitWdlOptions =
   }
 
   w.line(0, "}");
-  return w.toString();
+  // Furniture referenced from the built-in pack needs its import at the very top.
+  return (usedStdFurniture ? `import "std-furniture" as f\n\n` : "") + w.toString();
 }
