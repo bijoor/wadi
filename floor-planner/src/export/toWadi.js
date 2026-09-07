@@ -11,7 +11,6 @@
 
 import { emitWdl } from 'wadi-wdl-emitter'
 import { computeRoomWalls, edgeKindLookup, classifyOpenCorners } from './wallsFromGraph.js'
-import { solveModel } from '../model/sizes.js'
 
 const PER_UNIT = 10 // Wadi feet_inches default: 10 project units = 1 ft
 
@@ -67,120 +66,84 @@ function guidesFromRooms(rooms) {
 const guideUnitLabel = (system) =>
   system === 'meters' ? 'm' : (system === 'feet_inches' || system === 'feet') ? 'ft' : 'units'
 
-// A guide position as a resolver formula string `= const + Σ coef*var`, or null when the
-// line has no variable terms (a fixed line, emitted as a plain number instead).
-function atFormula(f) {
-  if (!f) return null
-  const r = (n) => Math.round(Number(n) * 1e6) / 1e6
-  const names = Object.keys(f.coef || {})
-  if (!names.length) return null
-  const terms = [String(r(f.const))]
-  for (const name of names) {
-    const c = r(f.coef[name])
-    if (c === 1) terms.push(`+ ${name}`)
-    else if (c === -1) terms.push(`- ${name}`)
-    else if (c < 0) terms.push(`- ${Math.abs(c)}*${name}`)
-    else terms.push(`+ ${c}*${name}`)
-  }
-  return '= ' + terms.join(' ')
-}
-
-// The feasible range for a variable: how far it can move before any span on its axis
-// (including the free spans to the pinned plot edges) collapses below a small margin. The
-// solve is linear, so this keeps the knob inside the region where the formulas stay valid
-// (no room spilling past the plot / no zero-width span).
-function varRange(solvedAxis, lines0, origin, length, name, cur, pinFar = true) {
-  const MARGIN = 1
-  const nodes = [{ at: origin, s: 0 }]
-  for (const l of lines0 || []) {
-    const f = solvedAxis.formula.get(l.id)
-    nodes.push({ at: l.at, s: f ? (f.coef[name] || 0) : 0 })
-  }
-  // In elastic mode the far plot edge floats, so it does not bound the range.
-  if (pinFar) nodes.push({ at: origin + length, s: 0 })
-  nodes.sort((a, b) => a.at - b.at)
-  // dedupe coincident nodes (a guide sitting on a plot edge)
-  const nd = nodes.filter((n, i) => i === 0 || Math.abs(n.at - nodes[i - 1].at) > 1e-6)
-  let lo = -Infinity, hi = Infinity
-  for (let k = 0; k + 1 < nd.length; k++) {
-    const span = nd[k + 1].at - nd[k].at
-    const ss = nd[k + 1].s - nd[k].s // d(span)/d(var)
-    if (Math.abs(ss) < 1e-9) continue
-    const bound = cur + (MARGIN - span) / ss // value where this span hits MARGIN
-    if (ss < 0) hi = Math.min(hi, bound)
-    else lo = Math.max(lo, bound)
-  }
-  return {
-    min: Number.isFinite(lo) ? lo : Math.max(MARGIN, cur * 0.3),
-    max: Number.isFinite(hi) ? hi : cur * 2,
-  }
-}
-
-// Build the `main` grid from the planner's guides, with positions driven by the room-size
-// SOLVER (model/sizes.js). Every bound room dimension pins its two lines; the plot stays
-// fixed while the rest re-flows proportionally. The solve is linear in the variables, so
-// each line's `at` becomes a linear formula and each variable a configurator slider.
-// Degrades to a static numeric grid when nothing is bound. Returns the same
-// {grid, xRef, yRef} shape as guidesFromRooms plus {variables, configurator}.
+// Build the `main` grid from the planner's guides. Guide positions are CUMULATIVE
+// formulas of the size variables: each span between adjacent lines is either a variable
+// (when a bound room dimension exactly matches that span) or a constant, and a line's
+// position is the origin plus the sum of the spans before it. The resolver evaluates the
+// variables and formulas FIRST, then draws — the same pipeline as the main app — so the
+// exported file always renders and every configurable dimension flows from its variable.
+// (Because a variable pushes the lines after it, the plot grows/shrinks with the sizes.)
+// Returns the {grid, xRef, yRef} shape guidesFromRooms uses plus {variables, configurator,
+// plotFormulas}, and `dimVar(roomId, 'w'|'h')` so rooms emit `= <variable>` for bound dims.
 function guidesFromModel(model, ctx) {
   const R = (n) => Math.round(Number(n) * 1000) / 1000
-  const solved = solveModel(model)
-  const pinFar = (model.build?.sizeMode || 'fixed') !== 'elastic'
+  const bindings = model.bindings || []
+  const byId = new Map((model.rooms || []).map((r) => [r.id, r]))
   const usedVars = new Set()
 
-  const emitAxis = (lines0, solvedAxis, nameFor) => {
-    const lines = [...(lines0 || [])].sort((a, b) => a.at - b.at)
-    const nameByAt = new Map()
-    const out = lines.map((l, i) => {
-      const nm = nameFor(i)
-      nameByAt.set(R(l.at), nm)
-      const f = solved.feasible ? solvedAxis.formula.get(l.id) : null
-      const fs = atFormula(f)
-      if (fs) for (const n of Object.keys(f.coef)) usedVars.add(n)
-      return { name: nm, at: fs || R(l.at) }
-    })
-    return { out, nameByAt }
+  // The variable whose bound dimension exactly matches the span [aLo,aHi] on `axis`, or null.
+  const spanVar = (axis, aLo, aHi) => {
+    for (const b of bindings) {
+      const onAxis = (b.dim === 'w' && axis === 'x') || (b.dim === 'h' && axis === 'y')
+      if (!onAxis) continue
+      const r = byId.get(b.room)
+      if (!r) continue
+      const lo = b.dim === 'w' ? r.x : r.y
+      const hi = b.dim === 'w' ? r.x + r.w : r.y + r.h
+      if (Math.abs(lo - aLo) < 1e-3 && Math.abs(hi - aHi) < 1e-3) return b.var
+    }
+    return null
   }
 
-  const X = emitAxis(model.guides.x, solved.X, (i) => String(i + 1))
-  const Y = emitAxis(model.guides.y, solved.Y, (i) => colLabel(i))
+  const emitAxis = (lines0, axis, nameFor, origin, plotExtent) => {
+    const lines = [...(lines0 || [])].sort((a, b) => a.at - b.at)
+    const nameByAt = new Map()
+    const out = []
+    const terms = [] // running list of span expressions (variable names or constants)
+    let hasVar = false
+    for (let i = 0; i < lines.length; i++) {
+      const nm = nameFor(i)
+      nameByAt.set(R(lines[i].at), nm)
+      if (i === 0) { out.push({ name: nm, at: R(origin) }); continue }
+      const span = R(lines[i].at - lines[i - 1].at)
+      const v = spanVar(axis, lines[i - 1].at, lines[i].at)
+      if (v) { usedVars.add(v); terms.push(v); hasVar = true } else terms.push(String(span))
+      out.push({ name: nm, at: hasVar ? `= ${[String(R(origin)), ...terms].join(' + ')}` : R(lines[i].at) })
+    }
+    // Plot extent = origin + (trailing margin) + every span, so the plot fits the rooms and
+    // grows with the variables. Null (a plain number) when no span on this axis is a variable.
+    const lastPos = lines.length ? R(lines[lines.length - 1].at) : R(origin)
+    const margin = R(plotExtent - (lastPos - origin))
+    const plotFormula = hasVar ? `= ${[String(margin), ...terms].join(' + ')}` : null
+    return { out, nameByAt, plotFormula }
+  }
 
-  // Emit only the variables that actually drive a line, seeded with their current value,
-  // each with a configurator slider grouped by the axis of its first binding.
-  const byName = new Map((model.variables || []).map((v) => [v.name, v]))
+  const X = emitAxis(model.guides.x, 'x', (i) => String(i + 1), ctx.originX, ctx.plotW)
+  const Y = emitAxis(model.guides.y, 'y', (i) => colLabel(i), ctx.originY, ctx.plotL)
+
+  // Emit EVERY bound variable (not only the ones that matched a single cumulative span):
+  // a dimension that crosses a foreign guide still references its variable, so the variable
+  // must be defined or the file won't resolve. Span-matched vars (usedVars) also drive the
+  // guide formulas; a crossing var tunes its room but not the crossing line it shares.
+  const byNameV = new Map((model.variables || []).map((v) => [v.name, v]))
+  const emittedVars = new Set(bindings.map((b) => b.var).filter((n) => byNameV.has(n)))
   const variables = {}
   const inputs = []
-  for (const name of usedVars) {
-    const v = byName.get(name)
+  for (const name of emittedVars) {
+    const v = byNameV.get(name)
     const value = R(Number(v?.value) || 0)
     variables[name] = value
-    // A size is a pure length: it may drive widths (x) AND depths (y). Collect every axis
-    // it touches so the knob range stays feasible on all of them and it groups correctly.
-    const axes = new Set((model.bindings || []).filter((b) => b.var === name).map((b) => (b.dim === 'h' ? 'y' : 'x')))
+    const axes = new Set(bindings.filter((b) => b.var === name).map((b) => (b.dim === 'h' ? 'y' : 'x')))
     if (!axes.size) axes.add('x')
     const step = Number.isFinite(Number(v?.step)) ? Number(v.step) : ctx.step
-    // Feasible range = the INTERSECTION of the per-axis ranges (the value must keep every
-    // axis it drives feasible), snapped inward to whole steps so the slider can never push
-    // a span past the plot. A user-set min/max is honoured but clamped into it.
-    let lo = -Infinity, hi = Infinity
-    for (const ax of axes) {
-      const rr = ax === 'x'
-        ? varRange(solved.X, model.guides.x, ctx.originX, ctx.plotW, name, value, pinFar)
-        : varRange(solved.Y, model.guides.y, ctx.originY, ctx.plotL, name, value, pinFar)
-      lo = Math.max(lo, rr.min); hi = Math.min(hi, rr.max)
-    }
-    let min = Math.ceil(lo / step) * step
-    let max = Math.floor(hi / step) * step
-    if (Number.isFinite(Number(v?.min))) min = Math.max(min, Number(v.min))
-    if (Number.isFinite(Number(v?.max))) max = Math.min(max, Number(v.max))
-    if (!(min < max)) { min = R(Math.max(step, lo)); max = R(hi) } // degenerate guard
+    const num = (x, d) => (Number.isFinite(Number(x)) ? Number(x) : d)
     inputs.push({
       target: name,
       label: v?.label || name,
       control: 'slider',
       unit: ctx.unit,
-      min: R(min),
-      max: R(max),
+      min: num(v?.min, Math.max(step, R(Math.round(value * 0.4)))),
+      max: num(v?.max, R(Math.round(value * 2))),
       step,
       group: axes.size > 1 ? 'shared' : [...axes][0],
     })
@@ -199,23 +162,8 @@ function guidesFromModel(model, ctx) {
       }
     : null
 
-  // Elastic mode: the plot resizes to fit. Emit a formula for each plot dimension that a
-  // variable drives = original extent + how far the last guide on that axis moves, so the
-  // trailing margin is preserved. Null when nothing on that axis varies (stays a number).
-  const plotEdgeFormula = (lines0, solvedAxis, plotExtent) => {
-    if (pinFar) return null
-    const lines = [...(lines0 || [])].sort((a, b) => a.at - b.at)
-    const last = lines[lines.length - 1]
-    if (!last) return null
-    const f = solvedAxis.formula.get(last.id)
-    if (!f || !Object.keys(f.coef).length) return null
-    const margin = plotExtent - (solvedAxis.at.get(last.id) ?? last.at) // trailing free space
-    return atFormula({ const: f.const + margin, coef: f.coef })
-  }
-  const plotFormulas = pinFar ? null : {
-    width: plotEdgeFormula(model.guides.x, solved.X, ctx.plotW),
-    length: plotEdgeFormula(model.guides.y, solved.Y, ctx.plotL),
-  }
+  const wVar = (id) => (bindings.find((b) => b.room === id && b.dim === 'w') || {}).var
+  const hVar = (id) => (bindings.find((b) => b.room === id && b.dim === 'h') || {}).var
 
   return {
     grid: { x: X.out, y: Y.out },
@@ -223,22 +171,25 @@ function guidesFromModel(model, ctx) {
     yRef: (v) => { const n = Y.nameByAt.get(R(v)); return n && `main.y${n}` },
     variables,
     configurator,
-    plotFormulas,
+    plotFormulas: { width: X.plotFormula, length: Y.plotFormula },
+    dimVar: (id, dim) => (dim === 'w' ? wVar(id) : hVar(id)),
   }
 }
 
-// Room coordinates as formulas off the guides: x/y are the near lines, width/length
-// the span between the near and far lines. Returns undefined if any edge doesn't
-// land on a line (then the caller keeps the hard-coded numbers).
+// Room coordinates as formulas: x/y are the near guide lines; a CONSTRAINED width/depth is
+// its size variable (`= living_width`), an unconstrained one the span between the near and
+// far lines. Returns undefined if any edge doesn't land on a line (caller keeps the numbers).
 function roomGridFormulas(r, guides) {
   const x0 = guides.xRef(r.x), x1 = guides.xRef(r.x + r.w)
   const y0 = guides.yRef(r.y), y1 = guides.yRef(r.y + r.h)
   if (!x0 || !x1 || !y0 || !y1) return undefined
+  const wv = guides.dimVar ? guides.dimVar(r.id, 'w') : null
+  const hv = guides.dimVar ? guides.dimVar(r.id, 'h') : null
   return {
     x: `= ${x0}`,
     y: `= ${y0}`,
-    width: `= ${x1} - ${x0}`,
-    length: `= ${y1} - ${y0}`,
+    width: wv ? `= ${wv}` : `= ${x1} - ${x0}`,
+    length: hv ? `= ${hv}` : `= ${y1} - ${y0}`,
   }
 }
 
