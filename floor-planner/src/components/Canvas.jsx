@@ -120,14 +120,16 @@ export default function Canvas({ state, dispatch }) {
   })
   const report = analyze({ plot, rooms: liveRooms, edges })
 
-  // Which committed rooms have a PINNED (fixed-span) width/depth, for the ◆ canvas marker.
+  // Each committed room's width/depth span policy, for the canvas badge (◆ = fixed size,
+  // ×n = a ratio weight). A span is keyed by its two guide ids.
   const gxL = state.guides?.x || [], gyL = state.guides?.y || []
   const gidAt = (lines, at) => { const g = lines.find((l) => Math.abs(l.at - at) < 1e-3); return g && g.id }
-  const fixedKeys = (axis) => new Set((state.spans?.[axis] || []).filter((s) => s.policy?.kind === 'fixed').map((s) => `${s.lo}|${s.hi}`))
-  const fxKeys = fixedKeys('x'), fyKeys = fixedKeys('y')
+  const policyMap = (axis) => new Map((state.spans?.[axis] || []).map((s) => [`${s.lo}|${s.hi}`, s.policy]))
+  const pxMap = policyMap('x'), pyMap = policyMap('y')
+  const tagFor = (p, letter) => !p ? '' : p.kind === 'fixed' ? `◆${letter}` : `${letter}×${p.weight}`
   const pinnedById = new Map((state.rooms || []).map((r) => [r.id, {
-    w: fxKeys.has(`${gidAt(gxL, r.x)}|${gidAt(gxL, r.x + r.w)}`),
-    h: fyKeys.has(`${gidAt(gyL, r.y)}|${gidAt(gyL, r.y + r.h)}`),
+    w: tagFor(pxMap.get(`${gidAt(gxL, r.x)}|${gidAt(gxL, r.x + r.w)}`), 'W'),
+    h: tagFor(pyMap.get(`${gidAt(gyL, r.y)}|${gidAt(gyL, r.y + r.h)}`), 'H'),
   }]))
 
   // Guides to draw: the committed doc guides normally, but during a drag they are stale
@@ -617,8 +619,8 @@ export default function Canvas({ state, dispatch }) {
               </text>
               {(() => {
                 const pin = pinnedById.get(r.id) || {}
-                const tag = [pin.w && 'W', pin.h && 'H'].filter(Boolean).join('')
-                return tag ? <text x={r.x * cell + 6} y={r.y * cell + 15} className="pin-badge" style={{ pointerEvents: 'none' }}>◆{tag}</text> : null
+                const tag = [pin.w, pin.h].filter(Boolean).join(' ')
+                return tag ? <text x={r.x * cell + 6} y={r.y * cell + 15} className="pin-badge" style={{ pointerEvents: 'none' }}>{tag}</text> : null
               })()}
             </g>
           )

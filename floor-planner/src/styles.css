@@ -239,16 +239,17 @@ body {
 .row { display: flex; gap: 8px; }
 .row .field { flex: 1; }
 
-/* A dimension field with its pin (fixed-span) toggle. */
-.row .dim-field { flex: 1; display: flex; align-items: flex-end; gap: 4px; }
-.row .dim-field .field { flex: 1; margin-bottom: 8px; }
-.pin {
-  flex: none; width: 30px; height: 32px; margin-bottom: 8px;
-  border: 1px solid var(--border); border-radius: 6px;
-  background: #fff; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1;
-}
-.pin.on { color: #b45309; border-color: #f59e0b; background: #fffbeb; }
-.pin:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Per-dimension sizing: [Auto|Fix|Ratio] segmented control + a size/weight field. */
+.sizing { margin-bottom: 10px; }
+.sizing-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.sizing-row .dim-label { width: 42px; flex: none; font-size: 12px; color: var(--muted); }
+.sizing-row input { flex: 1; min-width: 0; font: inherit; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+.sizing-row .dim-sub { flex: none; font-size: 11px; color: var(--muted); min-width: 40px; }
+.seg { display: inline-flex; flex: none; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: #fff; color: var(--muted); font: inherit; font-size: 11px; padding: 4px 7px; cursor: pointer; border-left: 1px solid var(--border); }
+.seg button:first-child { border-left: 0; }
+.seg button.on { background: #fffbeb; color: #b45309; font-weight: 600; }
+.seg button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pin-badge { fill: #b45309; font-size: 11px; font-weight: 600; text-anchor: start; }
 
 .area-note { font-size: 13px; color: var(--ink); margin: 6px 0 10px; }

@@ -3,6 +3,7 @@
 
 import { reflowSpans, pruneSpans } from '../src/model/spanReflow.js'
 import { fixed, flex } from '../src/model/spans.js'
+const near2 = (a, b) => Math.abs(a - b) < 1e-2
 import { reducer } from '../src/store/reducer.js'
 import { sampleModel, normalizeModel } from '../src/store/initialState.js'
 
@@ -91,6 +92,19 @@ const roomBy = (rooms, id) => rooms.find((r) => r.id === id)
   // Removing it (policy null) leaves the (already reflowed) layout in place, span gone.
   const cleared = reducer(next, { type: 'SET_SPAN', axis: 'x', lo: gx[0].id, hi: gx[1].id, policy: null })
   assert('N6 span removed', !(cleared.spans.x || []).some((s) => s.lo === gx[0].id && s.hi === gx[1].id))
+}
+
+// N7: SET_SPAN with flex weights through the reducer -> a clean ratio between cells. Set the
+// first x-cell to weight 2 and the rest to weight 1; the first cell ends up twice the second.
+{
+  const doc = normalizeModel(sampleModel())
+  const state = { ...doc, tool: 'select', selection: { type: null, id: null }, selectedIds: [], activeFloor: doc.floors[0].id, history: { past: [], future: [] } }
+  const gx = state.guides.x
+  let s = state
+  for (let i = 0; i < gx.length - 1; i++) s = reducer(s, { type: 'SET_SPAN', axis: 'x', lo: gx[i].id, hi: gx[i + 1].id, policy: flex(i === 0 ? 2 : 1) })
+  const at = s.guides.x.map((g) => g.at)
+  assert('N7 flex 2:1 -> first cell twice the second', near2((at[1] - at[0]) / (at[2] - at[1]), 2))
+  assert('N7 plot width unchanged (all flex absorb)', near(s.plot.w, state.plot.w))
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

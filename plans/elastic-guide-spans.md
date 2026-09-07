@@ -199,6 +199,13 @@ are just produced by the tree walk instead of the solver.
    live: pinning Living's width and setting 160 reflowed the aligned rooms and held the plot.
    Still to add here: defining a group from an arbitrary guide RANGE (not just a room's own
    edges) via a canvas selection.
-4. Ratios in the UI: mark a span flex with a weight; the 2:1 case.
+4. **DONE** — Ratios in the UI. The per-dimension control is now a 3-mode segmented toggle:
+   Auto (no span, flexes proportionally), Fix (a fixed size), Ratio (an explicit flex weight).
+   Ratio shows a weight field and the resolved size; the canvas badge reads `W×n`/`H×n` for a
+   ratio vs `◆W`/`◆H` for a fixed size. Switching to Ratio seeds the weight from the current
+   size (a no-op start), then editing it re-flows live. Verified: the Ratio mode creates a
+   flex span and re-flows on weight change (live), and `SET_SPAN flex` 2:1 through the reducer
+   gives an exact 2:1 with the plot held (test N7). Clean ratios scoped to a subset of an axis
+   still want the group-range selection from phase 3.
 5. Export mapping: emit the guide positions from the tree (a fixed span as a config variable,
    a flex span as its resolved position); wire the plot-grow into the site formulas.
