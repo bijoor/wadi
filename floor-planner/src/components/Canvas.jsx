@@ -155,6 +155,11 @@ export default function Canvas({ state, dispatch }) {
     return syncGuides(liveAll, { guides: state.guides, bays: state.bays }).guides
   }, [interaction, liveRooms, state.rooms, state.guides, state.bays])
 
+  // A room dimension bound to a size variable is LOCKED: the variable owns it, so it can't
+  // be resized by hand (that would let the sketch diverge from the variable). 'w' -> width,
+  // 'h' -> height.
+  const boundDim = (roomId, dim) => (state.bindings || []).some((b) => b.room === roomId && b.dim === dim)
+
   const toCell = useCallback(
     (clientX, clientY) => {
       const rect = svgRef.current.getBoundingClientRect()
@@ -301,6 +306,11 @@ export default function Canvas({ state, dispatch }) {
       const cand = resizeRect(interaction.r0, interaction.handle, snapX(fx), snapY(fy), {
         x: 0, y: 0, w: GW, h: GH,
       }, step)
+      // A dimension bound to a variable is locked: hold it (and its origin) at the start
+      // value so only the free dimension of a corner drag changes.
+      const r0 = interaction.r0
+      if (boundDim(interaction.id, 'w')) { cand.x = r0.x; cand.w = r0.w }
+      if (boundDim(interaction.id, 'h')) { cand.y = r0.y; cand.h = r0.h }
       setInteraction({ ...interaction, live: cand })
       return
     }
@@ -648,9 +658,17 @@ export default function Canvas({ state, dispatch }) {
           )
         })}
 
-        {/* selected room resize handles (above edges so they stay usable) */}
+        {/* selected room resize handles (above edges so they stay usable). Handles that
+            would resize a variable-locked dimension are hidden: the E/W handles when the
+            width is bound, N/S when the depth is bound, and a corner only when BOTH are. */}
         {selectedRoom && tool === 'select' &&
-          HANDLES.map((h) => {
+          HANDLES.filter((h) => {
+            const wLock = boundDim(selectedRoom.id, 'w')
+            const hLock = boundDim(selectedRoom.id, 'h')
+            if (h === 'e' || h === 'w') return !wLock
+            if (h === 'n' || h === 's') return !hLock
+            return !(wLock && hLock) // corner: usable while either dimension is free
+          }).map((h) => {
             const pos = handlePos(selectedRoom, h, cell)
             return (
               <rect

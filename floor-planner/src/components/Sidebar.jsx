@@ -6,7 +6,7 @@ import { fmtLen, fmtArea, unitsOf } from '../utils/physical.js'
 // Input that only commits its value on Enter or blur (Esc cancels). It keeps a
 // local draft while typing so edits aren't applied on every keystroke, and
 // re-syncs when the underlying value changes (e.g. from dragging on the canvas).
-function CommitInput({ value, type = 'text', min, max, step, float = false, placeholder, onCommit }) {
+function CommitInput({ value, type = 'text', min, max, step, float = false, placeholder, disabled = false, title, onCommit }) {
   const [draft, setDraft] = useState(String(value))
   useEffect(() => {
     setDraft(String(value))
@@ -31,6 +31,8 @@ function CommitInput({ value, type = 'text', min, max, step, float = false, plac
       max={max}
       step={step}
       placeholder={placeholder}
+      disabled={disabled}
+      title={title}
       onChange={(e) => setDraft(e.target.value)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') { commit(); e.currentTarget.blur() }
@@ -41,11 +43,11 @@ function CommitInput({ value, type = 'text', min, max, step, float = false, plac
   )
 }
 
-function NumberField({ label, value, min, max, step, float, onCommit }) {
+function NumberField({ label, value, min, max, step, float, disabled, title, onCommit }) {
   return (
     <label className="field">
       <span>{label}</span>
-      <CommitInput type="number" value={value} min={min} max={max} step={step} float={float} onCommit={onCommit} />
+      <CommitInput type="number" value={value} min={min} max={max} step={step} float={float} disabled={disabled} title={title} onCommit={onCommit} />
     </label>
   )
 }
@@ -81,6 +83,9 @@ function RoomEditor({ state, dispatch, room }) {
   const maxY = plot.y + plot.h - room.h
   const maxW = plot.x + plot.w - room.x
   const maxH = plot.y + plot.h - room.y
+  // A dimension bound to a size variable is locked (the variable owns it).
+  const wBound = (state.bindings || []).some((b) => b.room === room.id && b.dim === 'w')
+  const hBound = (state.bindings || []).some((b) => b.room === room.id && b.dim === 'h')
 
   return (
     <div className="panel">
@@ -94,8 +99,12 @@ function RoomEditor({ state, dispatch, room }) {
         <NumberField label="Y" value={room.y} min={plot.y} max={maxY} onCommit={(v) => update({ y: Math.min(Math.max(v, plot.y), maxY) })} />
       </div>
       <div className="row">
-        <NumberField label="W" value={room.w} min={1} max={maxW} onCommit={(v) => update({ w: Math.min(Math.max(v, 1), maxW) })} />
-        <NumberField label="H" value={room.h} min={1} max={maxH} onCommit={(v) => update({ h: Math.min(Math.max(v, 1), maxH) })} />
+        <NumberField label="W" value={room.w} min={1} max={maxW}
+          disabled={wBound} title={wBound ? 'Width is set by a size variable' : undefined}
+          onCommit={(v) => update({ w: Math.min(Math.max(v, 1), maxW) })} />
+        <NumberField label="H" value={room.h} min={1} max={maxH}
+          disabled={hBound} title={hBound ? 'Depth is set by a size variable' : undefined}
+          onCommit={(v) => update({ h: Math.min(Math.max(v, 1), maxH) })} />
       </div>
       <div className="area-note">{(() => { const u = unitsOf(state.build); return `${fmtLen(room.w, u.system, u.perUnit)} × ${fmtLen(room.h, u.system, u.perUnit)}` })()}</div>
       <div className="dim-configs">

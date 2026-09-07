@@ -516,4 +516,5 @@ button.icon:hover { color: #ef4444; }
 .size-mode label { flex: 1; display: flex; align-items: center; gap: 4px; justify-content: center; padding: 4px 6px; font-size: 12px; border: 1px solid #d7dbe0; border-radius: 6px; cursor: pointer; }
 .size-mode label.active { border-color: #7c3aed; background: #f5f2fe; color: #6d28d9; }
 .size-mode input { margin: 0; }
+.field input:disabled { opacity: 0.55; cursor: not-allowed; background: #f1f5f9; }
 .bay-label.editable { font-weight: 700; fill: #7c3aed; }
