@@ -152,19 +152,26 @@ function guidesFromModel(model, ctx) {
     const v = byName.get(name)
     const value = R(Number(v?.value) || 0)
     variables[name] = value
-    const bind = (model.bindings || []).find((b) => b.var === name)
-    const ax = bind && bind.dim === 'h' ? 'y' : 'x'
+    // A size is a pure length: it may drive widths (x) AND depths (y). Collect every axis
+    // it touches so the knob range stays feasible on all of them and it groups correctly.
+    const axes = new Set((model.bindings || []).filter((b) => b.var === name).map((b) => (b.dim === 'h' ? 'y' : 'x')))
+    if (!axes.size) axes.add('x')
     const step = Number.isFinite(Number(v?.step)) ? Number(v.step) : ctx.step
-    // Feasible range from the solve, snapped inward to whole steps so the slider can never
-    // drive a span past the plot. A user-set min/max is honoured but clamped into it.
-    const range = ax === 'x'
-      ? varRange(solved.X, model.guides.x, ctx.originX, ctx.plotW, name, value)
-      : varRange(solved.Y, model.guides.y, ctx.originY, ctx.plotL, name, value)
-    let min = Math.ceil(range.min / step) * step
-    let max = Math.floor(range.max / step) * step
+    // Feasible range = the INTERSECTION of the per-axis ranges (the value must keep every
+    // axis it drives feasible), snapped inward to whole steps so the slider can never push
+    // a span past the plot. A user-set min/max is honoured but clamped into it.
+    let lo = -Infinity, hi = Infinity
+    for (const ax of axes) {
+      const rr = ax === 'x'
+        ? varRange(solved.X, model.guides.x, ctx.originX, ctx.plotW, name, value)
+        : varRange(solved.Y, model.guides.y, ctx.originY, ctx.plotL, name, value)
+      lo = Math.max(lo, rr.min); hi = Math.min(hi, rr.max)
+    }
+    let min = Math.ceil(lo / step) * step
+    let max = Math.floor(hi / step) * step
     if (Number.isFinite(Number(v?.min))) min = Math.max(min, Number(v.min))
     if (Number.isFinite(Number(v?.max))) max = Math.min(max, Number(v.max))
-    if (!(min < max)) { min = R(Math.max(step, range.min)); max = R(range.max) } // degenerate guard
+    if (!(min < max)) { min = R(Math.max(step, lo)); max = R(hi) } // degenerate guard
     inputs.push({
       target: name,
       label: v?.label || name,
@@ -173,16 +180,19 @@ function guidesFromModel(model, ctx) {
       min: R(min),
       max: R(max),
       step,
-      group: ax,
+      group: axes.size > 1 ? 'shared' : [...axes][0],
     })
   }
+  const groupDefs = {
+    x: { id: 'x', label: 'Widths (east–west)' },
+    y: { id: 'y', label: 'Depths (north–south)' },
+    shared: { id: 'shared', label: 'Shared sizes' },
+  }
+  const usedGroups = new Set(inputs.map((i) => i.group))
   const configurator = inputs.length
     ? {
         title: 'Customize sizes',
-        groups: [
-          { id: 'x', label: 'Widths (east–west)' },
-          { id: 'y', label: 'Depths (north–south)' },
-        ],
+        groups: ['x', 'y', 'shared'].filter((g) => usedGroups.has(g)).map((g) => groupDefs[g]),
         inputs,
       }
     : null

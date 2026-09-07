@@ -379,14 +379,9 @@ function FloorsPanel({ state, dispatch }) {
 // expose it as a configurator knob on export. Naming/flagging a bay locks (makes
 // permanent) its two bounding guide lines. Guides themselves are derived from the room
 // edges; a manual guide is added on the canvas.
-// The axis a variable lives on = the axis of its first binding ('w' -> x, 'h' -> y).
-function varAxis(varName, bindings) {
-  const b = (bindings || []).find((x) => x.var === varName)
-  return b && b.dim === 'h' ? 'h' : 'w'
-}
-
 // Per-room control to make a dimension (width/depth) configurable: create a new size
-// variable, share an existing one (same axis), or make it fixed again.
+// variable, share ANY existing one (a size is a pure length, so a depth on one wall can
+// drive a width on another — e.g. a balcony band wrapping a corner), or make it fixed.
 function DimConfig({ state, dispatch, room, dim }) {
   const bindings = state.bindings || []
   const vars = state.variables || []
@@ -408,7 +403,6 @@ function DimConfig({ state, dispatch, room, dim }) {
       </div>
     )
   }
-  const sameAxis = vars.filter((v) => varAxis(v.name, bindings) === dim)
   return (
     <div className="dim-config">
       <span className="dim-label">{label}</span>
@@ -419,14 +413,14 @@ function DimConfig({ state, dispatch, room, dim }) {
       >
         Make configurable
       </button>
-      {sameAxis.length > 0 && (
+      {vars.length > 0 && (
         <select
           value=""
-          title="Reuse an existing size (resizes this room to match; they move together)"
+          title="Reuse an existing size (resizes this room to match; they move together). Any size can drive a width or a depth."
           onChange={(e) => { if (e.target.value) dispatch({ type: 'BIND_DIM', room: room.id, dim, varName: e.target.value }) }}
         >
           <option value="">share…</option>
-          {sameAxis.map((v) => <option key={v.name} value={v.name}>{v.label || v.name}</option>)}
+          {vars.map((v) => <option key={v.name} value={v.name}>{v.label || v.name}</option>)}
         </select>
       )}
     </div>
