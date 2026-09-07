@@ -8,6 +8,7 @@
 // editable spans between guides) are derived from the rooms — see model/guides.js.
 
 import { syncGuides } from '../model/guides.js'
+import { pruneSpans } from '../model/spanReflow.js'
 
 export const PALETTE = [
   '#7cb5ec', '#90ed7d', '#f7a35c', '#e4d354',
@@ -60,7 +61,7 @@ export function sampleModel() {
   ]
 
   const { guides, bays } = syncGuides(rooms, null)
-  return { grid, plot, floors, rooms, edges, guides, bays, build: { ...BUILD_DEFAULTS } }
+  return { grid, plot, floors, rooms, edges, guides, bays, spans: { x: [], y: [] }, build: { ...BUILD_DEFAULTS } }
 }
 
 // Bring any loaded/older document up to the multi-floor shape:
@@ -88,7 +89,10 @@ export function normalizeModel(doc) {
   // permanent flags from the retired bay feature are intentionally dropped here, so old
   // docs stop carrying pinned guides that no longer track the rooms.
   const { guides, bays } = syncGuides(rooms, { guides: doc.guides })
-  return { grid, plot, floors, rooms, edges, guides, bays, build }
+  // Elastic guide spans (tolerant of older docs); drop any whose endpoint guides are gone.
+  const s = doc.spans && typeof doc.spans === 'object' ? doc.spans : { x: [], y: [] }
+  const spans = pruneSpans({ x: Array.isArray(s.x) ? s.x : [], y: Array.isArray(s.y) ? s.y : [] }, guides)
+  return { grid, plot, floors, rooms, edges, guides, bays, spans, build }
 }
 
 export function initialState() {

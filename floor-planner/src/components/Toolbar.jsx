@@ -9,7 +9,7 @@ function docFrom(state) {
   return {
     grid: state.grid, plot: state.plot, floors: state.floors,
     rooms: state.rooms, edges: state.edges, build: state.build,
-    guides: state.guides, bays: state.bays,
+    guides: state.guides, bays: state.bays, spans: state.spans,
   }
 }
 

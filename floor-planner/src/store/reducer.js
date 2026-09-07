@@ -1,9 +1,10 @@
 import { makeId, edgeExists } from '../model/graph.js'
 import { clampRoomPosToPlot } from '../model/geometry.js'
 import { syncGuides, recomputeBays, promoteBayGuides } from '../model/guides.js'
+import { reflowSpans, pruneSpans } from '../model/spanReflow.js'
 import { sampleModel, normalizeModel } from './initialState.js'
 
-const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays']
+const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays', 'spans']
 const HISTORY_LIMIT = 60
 
 function docOf(state) {
@@ -15,6 +16,7 @@ function docOf(state) {
     edges: state.edges,
     guides: state.guides,
     bays: state.bays,
+    spans: state.spans,
   }
 }
 
@@ -34,6 +36,12 @@ function commit(state, newDoc) {
   if (newDoc.rooms && !('guides' in newDoc)) {
     const s = syncGuides(newDoc.rooms, { guides: state.guides, bays: state.bays })
     doc = { ...newDoc, guides: s.guides, bays: s.bays }
+  }
+  // Keep spans well-formed: drop any whose endpoint guides no longer exist (a room that
+  // carried them was moved or deleted). Skip when the action set spans itself.
+  if (!('spans' in doc)) {
+    const guidesNow = doc.guides || state.guides
+    doc = { ...doc, spans: pruneSpans(state.spans, guidesNow) }
   }
   return {
     ...state,
@@ -262,6 +270,21 @@ export function reducer(state, action) {
       const bays0 = { ...(state.bays || {}), [action.key]: { ...(state.bays?.[action.key] || {}), editable: !!action.editable } }
       const bays = recomputeBays(guides, bays0)
       return commit(state, { guides, bays })
+    }
+
+    // ---- guide spans (elastic sizing; see plans/elastic-guide-spans.md) ----
+    // Define/replace/remove a span between two guides on an axis, then re-flow: distribution
+    // rewrites the guide positions, the rooms follow their guides, and the plot refits.
+    // action = { axis:'x'|'y', lo, hi, policy }  (policy null/omitted removes the span).
+    case 'SET_SPAN': {
+      const { axis, lo, hi, policy } = action
+      if (axis !== 'x' && axis !== 'y') return state
+      const cur = (state.spans && state.spans[axis]) || []
+      const rest = cur.filter((s) => !(s.lo === lo && s.hi === hi))
+      const next = policy ? [...rest, { id: `sp_${axis}_${lo}_${hi}`, lo, hi, policy }] : rest
+      const spans = { x: (state.spans && state.spans.x) || [], y: (state.spans && state.spans.y) || [], [axis]: next }
+      const rf = reflowSpans({ ...state, spans })
+      return commit(state, { spans, guides: rf.guides, rooms: rf.rooms, plot: rf.plot })
     }
 
     // ---- plot / grid ----

@@ -185,10 +185,12 @@ are just produced by the tree walk instead of the solver.
    `distribute` tree walk, `naturalSize` (rigid axis grows the plot), and `solveAxisSpans`
    returning guide positions. No-spans reproduces the current layout; the worked examples
    (skip-guide group, mixed fixed+flex, 2:1) are covered.
-2. Wire distribution into the store: hold per-axis spans in the doc, run `solveAxisSpans` on
-   an edit to rewrite guide positions + rooms (this is where the removed `sizeSolve.js` sat),
-   and grow the plot for a rigid axis. Verify the no-span case is a no-op on the current
-   layout.
+2. **DONE** — Store wiring. The doc carries `spans: { x, y }`; `reflowSpans`
+   (`src/model/spanReflow.js`) runs `solveAxisSpans` per axis, moves the guides, pulls each
+   room's edges onto their guides, and refits the plot. The `SET_SPAN` action upserts/removes
+   a span and reflows; `commit` prunes spans whose guides are gone. No-spans reflow is a
+   verified no-op, so free-room editing is unchanged. Tests: `scripts/test-span-reflow.mjs`
+   (pin-one/flex-absorb, rigid plot-grow, 2:1, prune, SET_SPAN end-to-end). No UI yet.
 3. Skip-guide groups: define a group from a selected guide range or a room; nested
    distribution; verify the worked example in the live planner.
 4. Ratios in the UI: mark a span flex with a weight; the 2:1 case.
