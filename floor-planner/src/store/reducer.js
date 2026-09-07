@@ -328,18 +328,19 @@ export function reducer(state, action) {
         variables: (state.variables || []).map((v) => (v.name === action.name ? { ...v, value: val } : v)),
         bindings: state.bindings, build: state.build,
       })
+      const ev = action.name
       let value = target
-      let rf = reflowModel(mk(value))
+      let rf = reflowModel(mk(value), ev)
       if (!rf) {
-        // The target doesn't fit (fixed plot can't absorb it). Instead of silently doing
-        // nothing, clamp to the largest value that still fits (binary search from the
-        // current, known-feasible value toward the target) so the edit always shows.
+        // The target doesn't fit even after flexing the other variables. Clamp to the
+        // largest value that still fits (binary search from the current, known-feasible
+        // value toward the target) so the edit always shows.
         const cur = Number((state.variables || []).find((v) => v.name === action.name)?.value)
-        if (!Number.isFinite(cur) || !reflowModel(mk(cur))) return state
+        if (!Number.isFinite(cur) || !reflowModel(mk(cur), ev)) return state
         let lo = cur, hi = target
-        for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (reflowModel(mk(mid))) lo = mid; else hi = mid }
+        for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (reflowModel(mk(mid), ev)) lo = mid; else hi = mid }
         value = Math.round(lo)
-        rf = reflowModel(mk(value)) || reflowModel(mk(cur))
+        rf = reflowModel(mk(value), ev) || reflowModel(mk(cur), ev)
         if (!rf) return state
         if (Math.abs(value - cur) < 1e-6) return state // nothing more fits
       }

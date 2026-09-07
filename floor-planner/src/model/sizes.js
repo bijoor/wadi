@@ -64,17 +64,27 @@ export function buildAxisBindings(model) {
   const gx = model.guides?.x || [], gy = model.guides?.y || []
   const idAt = (lines, at) => { const l = lines.find((l) => Math.abs(l.at - at) < 1e-3); return l && l.id }
   const varVal = new Map((model.variables || []).map((v) => [v.name, Number(v.value)]))
+  // Collapse bindings that resolve to the SAME (variable, guide-span): several aligned
+  // rooms (e.g. Living + Kitchen both spanning the same two lines) share one span, and
+  // emitting a constraint per room would create duplicate rows and a singular solve.
   const bx = [], by = []
+  const seen = new Set()
+  const push = (arr, lo, hi, varName, value) => {
+    const key = `${varName}|${lo}|${hi}`
+    if (seen.has(key)) return
+    seen.add(key)
+    arr.push({ lo, hi, varName, value })
+  }
   for (const b of model.bindings || []) {
     const r = byId.get(b.room)
     if (!r) continue
     const value = varVal.has(b.var) ? varVal.get(b.var) : dimSize(r, b.dim)
     if (b.dim === 'w') {
       const lo = idAt(gx, r.x), hi = idAt(gx, r.x + r.w)
-      if (lo && hi) bx.push({ lo, hi, varName: b.var, value })
+      if (lo && hi) push(bx, lo, hi, b.var, value)
     } else {
       const lo = idAt(gy, r.y), hi = idAt(gy, r.y + r.h)
-      if (lo && hi) by.push({ lo, hi, varName: b.var, value })
+      if (lo && hi) push(by, lo, hi, b.var, value)
     }
   }
   return { bx, by }
@@ -86,8 +96,8 @@ const R6 = (v) => Math.round(Number(v) * 1e6) / 1e6
 // geometry + guide positions (the live in-planner reflow). Each room edge sits on a guide,
 // so its new coordinate is that guide's solved position. Returns { rooms, guides } or null
 // when the solve is infeasible (over-constrained) so the caller can leave the sketch as is.
-export function reflowModel(model) {
-  const solved = solveModel(model)
+export function reflowModel(model, editVar) {
+  const solved = solveModel(model, editVar)
   if (!solved.feasible) return null
   const gx = model.guides?.x || [], gy = model.guides?.y || []
   const gidAt = (lines, at) => { const g = lines.find((l) => Math.abs(l.at - at) < 1e-3); return g && g.id }
@@ -108,7 +118,7 @@ export function reflowModel(model) {
 // Solve both axes for the model's current bindings. Returns the per-axis solve results
 // (each with .at and .formula keyed by guide id) plus overall feasibility. `sizeMode`
 // 'elastic' lets the plot resize to fit (far edge floats); 'fixed' pins the plot.
-export function solveModel(model) {
+export function solveModel(model, editVar) {
   const plot = model.plot || {}
   const ox = Number(plot.x) || 0, oy = Number(plot.y) || 0
   const W = Number(plot.w) || 300, L = Number(plot.h) || 200
@@ -117,7 +127,15 @@ export function solveModel(model) {
   const rsX = rooms.map((r) => [r.x, r.x + r.w])
   const rsY = rooms.map((r) => [r.y, r.y + r.h])
   const pinFar = (model.build?.sizeMode || 'fixed') !== 'elastic'
-  const X = solveAxis(W, model.guides?.x || [], bx, rsX, ox, { pinFar })
-  const Y = solveAxis(L, model.guides?.y || [], by, rsY, oy, { pinFar })
+  // Which axes each variable drives (to spot cross-axis vars during a live edit).
+  const varAxes = new Map()
+  for (const b of model.bindings || []) {
+    const ax = b.dim === 'h' ? 'y' : 'x'
+    if (!varAxes.has(b.var)) varAxes.set(b.var, new Set())
+    varAxes.get(b.var).add(ax)
+  }
+  const opts = { pinFar, editVar, varAxes }
+  const X = solveAxis(W, model.guides?.x || [], bx, rsX, ox, opts)
+  const Y = solveAxis(L, model.guides?.y || [], by, rsY, oy, opts)
   return { X, Y, feasible: X.feasible && Y.feasible, message: X.message || Y.message }
 }

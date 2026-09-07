@@ -99,21 +99,50 @@ export function solveAxis(length, guides, bindings = [], roomSpans = [], origin 
   const rhs0 = new Array(N).fill(0)
   for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) rhs0[r] += H[r][c] * g0[c]
 
-  // 4) constraints A·g = b : two boundary rows + one row per binding
+  // 4) constraints A·g = b : boundary row(s) + the binding constraints
   const rows = [] // { coef:number[], rhsConst:number, rhsVar:{[name]:1} }
   const eRow = (map, rhsConst, rhsVar) => {
     const coef = new Array(N).fill(0)
-    for (const [i, v] of map) coef[i] = v
+    for (const [i, v] of map) coef[i] += v // accumulate: a link may touch a node twice
     rows.push({ coef, rhsConst, rhsVar })
   }
   eRow([[idx.get(loId), 1]], lo, {})
   if (pinFar) eRow([[idx.get(hiId), 1]], hi, {})
+
+  const editVar = opts.editVar // set = PLANNER live edit; undefined = EXPORT (formulas)
+  const varAxes = opts.varAxes || new Map() // varName -> Set('x'|'y'), to spot cross-axis vars
   const vars = new Set()
-  for (const bd of bindings) {
-    const i = idx.get(bd.lo), j = idx.get(bd.hi)
-    if (i == null || j == null) continue
-    vars.add(bd.varName)
-    eRow([[j, 1], [i, -1]], 0, { [bd.varName]: 1 })
+  if (!editVar) {
+    // EXPORT: every bound dimension is an independent knob -> hard pin (with a var term so
+    // we can read out ∂g/∂var as a formula).
+    for (const bd of bindings) {
+      const i = idx.get(bd.lo), j = idx.get(bd.hi)
+      if (i == null || j == null) continue
+      vars.add(bd.varName)
+      eRow([[j, 1], [i, -1]], 0, { [bd.varName]: 1 })
+    }
+  } else {
+    // PLANNER edit of `editVar`: pin ONLY editVar (to its new value); let other variables
+    // flex so they absorb the change and their values update. A single-axis variable's
+    // dimensions are LINKED equal (float together). A cross-axis variable (drives both a
+    // width and a depth) is held RIGID at its current value, since a per-axis solve can't
+    // keep its two axes in step. Unbound spans + free space flex via the objective.
+    const byVar = new Map()
+    for (const bd of bindings) {
+      if (idx.get(bd.lo) == null || idx.get(bd.hi) == null) continue
+      if (!byVar.has(bd.varName)) byVar.set(bd.varName, [])
+      byVar.get(bd.varName).push([idx.get(bd.lo), idx.get(bd.hi), Number(bd.value)])
+    }
+    for (const [name, arr] of byVar) {
+      if (name === editVar) {
+        for (const [i, j, val] of arr) eRow([[j, 1], [i, -1]], val, {}) // pin to new value
+      } else if ((varAxes.get(name)?.size || 1) > 1) {
+        for (const [i, j, val] of arr) eRow([[j, 1], [i, -1]], val, {}) // rigid at current value
+      } else {
+        const [i0, j0] = arr[0]
+        for (let k = 1; k < arr.length; k++) { const [ik, jk] = arr[k]; eRow([[j0, 1], [i0, -1], [jk, -1], [ik, 1]], 0, {}) } // link equal
+      }
+    }
   }
   const C = rows.length
 
