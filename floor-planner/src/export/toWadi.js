@@ -89,14 +89,15 @@ function atFormula(f) {
 // (including the free spans to the pinned plot edges) collapses below a small margin. The
 // solve is linear, so this keeps the knob inside the region where the formulas stay valid
 // (no room spilling past the plot / no zero-width span).
-function varRange(solvedAxis, lines0, origin, length, name, cur) {
+function varRange(solvedAxis, lines0, origin, length, name, cur, pinFar = true) {
   const MARGIN = 1
   const nodes = [{ at: origin, s: 0 }]
   for (const l of lines0 || []) {
     const f = solvedAxis.formula.get(l.id)
     nodes.push({ at: l.at, s: f ? (f.coef[name] || 0) : 0 })
   }
-  nodes.push({ at: origin + length, s: 0 })
+  // In elastic mode the far plot edge floats, so it does not bound the range.
+  if (pinFar) nodes.push({ at: origin + length, s: 0 })
   nodes.sort((a, b) => a.at - b.at)
   // dedupe coincident nodes (a guide sitting on a plot edge)
   const nd = nodes.filter((n, i) => i === 0 || Math.abs(n.at - nodes[i - 1].at) > 1e-6)
@@ -124,6 +125,7 @@ function varRange(solvedAxis, lines0, origin, length, name, cur) {
 function guidesFromModel(model, ctx) {
   const R = (n) => Math.round(Number(n) * 1000) / 1000
   const solved = solveModel(model)
+  const pinFar = (model.build?.sizeMode || 'fixed') !== 'elastic'
   const usedVars = new Set()
 
   const emitAxis = (lines0, solvedAxis, nameFor) => {
@@ -163,8 +165,8 @@ function guidesFromModel(model, ctx) {
     let lo = -Infinity, hi = Infinity
     for (const ax of axes) {
       const rr = ax === 'x'
-        ? varRange(solved.X, model.guides.x, ctx.originX, ctx.plotW, name, value)
-        : varRange(solved.Y, model.guides.y, ctx.originY, ctx.plotL, name, value)
+        ? varRange(solved.X, model.guides.x, ctx.originX, ctx.plotW, name, value, pinFar)
+        : varRange(solved.Y, model.guides.y, ctx.originY, ctx.plotL, name, value, pinFar)
       lo = Math.max(lo, rr.min); hi = Math.min(hi, rr.max)
     }
     let min = Math.ceil(lo / step) * step
@@ -196,12 +198,32 @@ function guidesFromModel(model, ctx) {
         inputs,
       }
     : null
+
+  // Elastic mode: the plot resizes to fit. Emit a formula for each plot dimension that a
+  // variable drives = original extent + how far the last guide on that axis moves, so the
+  // trailing margin is preserved. Null when nothing on that axis varies (stays a number).
+  const plotEdgeFormula = (lines0, solvedAxis, plotExtent) => {
+    if (pinFar) return null
+    const lines = [...(lines0 || [])].sort((a, b) => a.at - b.at)
+    const last = lines[lines.length - 1]
+    if (!last) return null
+    const f = solvedAxis.formula.get(last.id)
+    if (!f || !Object.keys(f.coef).length) return null
+    const margin = plotExtent - (solvedAxis.at.get(last.id) ?? last.at) // trailing free space
+    return atFormula({ const: f.const + margin, coef: f.coef })
+  }
+  const plotFormulas = pinFar ? null : {
+    width: plotEdgeFormula(model.guides.x, solved.X, ctx.plotW),
+    length: plotEdgeFormula(model.guides.y, solved.Y, ctx.plotL),
+  }
+
   return {
     grid: { x: X.out, y: Y.out },
     xRef: (v) => { const n = X.nameByAt.get(R(v)); return n && `main.x${n}` },
     yRef: (v) => { const n = Y.nameByAt.get(R(v)); return n && `main.y${n}` },
     variables,
     configurator,
+    plotFormulas,
   }
 }
 
@@ -309,13 +331,19 @@ export function modelToWadi(model, opts = {}) {
 
   // Floor 0: the Plinth. A plot-sized ground plane + a plot-sized plinth the whole
   // house rests on. Its floor `height` must equal the plinth height (Wadi convention).
+  // In elastic mode the plot resizes with the variables, so the ground/plinth footprint
+  // is formula-driven too (guides.plotFormulas), keeping them flush with the plot.
+  const pf = guides.plotFormulas
+  const plotSizeFormulas = pf && (pf.width || pf.length)
+    ? { ...(pf.width ? { width: pf.width } : {}), ...(pf.length ? { length: pf.length } : {}) }
+    : null
   const plinthFloor = {
     floor_number: 0,
     name: 'Plinth',
     height: plinthHeight,
     objects: [
-      { type: 'ground', name: 'Ground', x: px, y: py, width: plotW, length: plotL },
-      { type: 'plinth', name: 'Plinth', x: px, y: py, width: plotW, length: plotL, height: plinthHeight },
+      { type: 'ground', name: 'Ground', x: px, y: py, width: plotW, length: plotL, ...(plotSizeFormulas ? { formulas: plotSizeFormulas } : {}) },
+      { type: 'plinth', name: 'Plinth', x: px, y: py, width: plotW, length: plotL, height: plinthHeight, ...(plotSizeFormulas ? { formulas: plotSizeFormulas } : {}) },
     ],
   }
 
@@ -337,6 +365,11 @@ export function modelToWadi(model, opts = {}) {
       plot_length: plotL,
       reference_x: px,
       reference_y: py,
+      // Elastic mode: the plot dimensions follow the variables (site.formulas).
+      ...(plotSizeFormulas ? { formulas: {
+        ...(pf.width ? { plot_width: pf.width } : {}),
+        ...(pf.length ? { plot_length: pf.length } : {}),
+      } } : {}),
     },
     grids: { main: guides.grid },
     floors: [plinthFloor, ...roomFloors],

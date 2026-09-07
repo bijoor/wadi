@@ -81,7 +81,8 @@ export function buildAxisBindings(model) {
 }
 
 // Solve both axes for the model's current bindings. Returns the per-axis solve results
-// (each with .at and .formula keyed by guide id) plus overall feasibility.
+// (each with .at and .formula keyed by guide id) plus overall feasibility. `sizeMode`
+// 'elastic' lets the plot resize to fit (far edge floats); 'fixed' pins the plot.
 export function solveModel(model) {
   const plot = model.plot || {}
   const ox = Number(plot.x) || 0, oy = Number(plot.y) || 0
@@ -90,7 +91,8 @@ export function solveModel(model) {
   const { bx, by } = buildAxisBindings(model)
   const rsX = rooms.map((r) => [r.x, r.x + r.w])
   const rsY = rooms.map((r) => [r.y, r.y + r.h])
-  const X = solveAxis(W, model.guides?.x || [], bx, rsX, ox)
-  const Y = solveAxis(L, model.guides?.y || [], by, rsY, oy)
+  const pinFar = (model.build?.sizeMode || 'fixed') !== 'elastic'
+  const X = solveAxis(W, model.guides?.x || [], bx, rsX, ox, { pinFar })
+  const Y = solveAxis(L, model.guides?.y || [], by, rsY, oy, { pinFar })
   return { X, Y, feasible: X.feasible && Y.feasible, message: X.message || Y.message }
 }

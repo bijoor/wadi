@@ -51,24 +51,29 @@ function linSolve(A, b) {
  *        each binding pins gj-gi to a variable's current value; lo/hi are guide ids
  * @param {[number,number][]} [roomSpans]  room extents on this axis (for free-space detection)
  * @param {number} [origin]       plot origin on this axis (default 0)
+ * @param {{pinFar?: boolean}} [opts]  pinFar (default true) pins BOTH plot edges (fixed
+ *        plot). false pins only the origin, letting the far edge float — the plot resizes
+ *        to fit the rooms (elastic mode) while unbound spans keep their size.
  * @returns {{
  *   at: Map<string,number>,                         // solved position per guide id
  *   formula: Map<string,{const:number, coef:Record<string,number>}>,
  *   feasible: boolean, message?: string,
  * }}
  */
-export function solveAxis(length, guides, bindings = [], roomSpans = [], origin = 0) {
+export function solveAxis(length, guides, bindings = [], roomSpans = [], origin = 0, opts = {}) {
+  const pinFar = opts.pinFar !== false
   const lo = origin
   const hi = origin + length
 
-  // 1) nodes = guides + the two pinned plot-boundary nodes (reuse a guide sitting on an end)
+  // 1) nodes = guides + the pinned plot-boundary node(s). pinFar also pins the far edge
+  // (reusing a guide sitting on an end); otherwise only the origin is pinned.
   const nodes = (guides || []).map((g) => ({ id: g.id, at: Number(g.at) }))
   const at0 = nodes.find((n) => Math.abs(n.at - lo) < EPS)
-  const at1 = nodes.find((n) => Math.abs(n.at - hi) < EPS)
+  const at1 = pinFar ? nodes.find((n) => Math.abs(n.at - hi) < EPS) : null
   const loId = at0 ? at0.id : '__lo__'
   const hiId = at1 ? at1.id : '__hi__'
   if (!at0) nodes.push({ id: loId, at: lo })
-  if (!at1) nodes.push({ id: hiId, at: hi })
+  if (pinFar && !at1) nodes.push({ id: hiId, at: hi })
   nodes.sort((a, b) => a.at - b.at)
 
   const N = nodes.length
@@ -102,7 +107,7 @@ export function solveAxis(length, guides, bindings = [], roomSpans = [], origin 
     rows.push({ coef, rhsConst, rhsVar })
   }
   eRow([[idx.get(loId), 1]], lo, {})
-  eRow([[idx.get(hiId), 1]], hi, {})
+  if (pinFar) eRow([[idx.get(hiId), 1]], hi, {})
   const vars = new Set()
   for (const bd of bindings) {
     const i = idx.get(bd.lo), j = idx.get(bd.hi)

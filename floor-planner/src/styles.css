@@ -513,4 +513,8 @@ button.icon:hover { color: #ef4444; }
 .guide.prov { stroke: #94a3b8; stroke-width: 1; opacity: 0.35; stroke-dasharray: 4 4; }
 .bay-label { font-size: 10px; fill: #2563eb; }
 .size-badge { font-size: 10px; fill: #7c3aed; font-weight: 600; }
+.size-mode { display: flex; gap: 6px; margin: 6px 0; }
+.size-mode label { flex: 1; display: flex; align-items: center; gap: 4px; justify-content: center; padding: 4px 6px; font-size: 12px; border: 1px solid #d7dbe0; border-radius: 6px; cursor: pointer; }
+.size-mode label.active { border-color: #7c3aed; background: #f5f2fe; color: #6d28d9; }
+.size-mode input { margin: 0; }
 .bay-label.editable { font-weight: 700; fill: #7c3aed; }
