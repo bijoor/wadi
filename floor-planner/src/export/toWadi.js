@@ -276,7 +276,7 @@ export function modelToWadi(model, opts = {}) {
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
       // A typed room gets prebuilt furniture, placed to avoid the walls a door lands on.
-      const items = roomItems(r.roomType, { openSides: roomOpenSides(r, floorRooms, edgeKind) })
+      const items = roomItems(r.roomType, { openSides: roomOpenSides(r, floorRooms, edgeKind), w: r.w, h: r.h })
       if (items.length) o.items = items
       return o
     })
