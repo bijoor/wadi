@@ -239,6 +239,18 @@ body {
 .row { display: flex; gap: 8px; }
 .row .field { flex: 1; }
 
+/* A dimension field with its pin (fixed-span) toggle. */
+.row .dim-field { flex: 1; display: flex; align-items: flex-end; gap: 4px; }
+.row .dim-field .field { flex: 1; margin-bottom: 8px; }
+.pin {
+  flex: none; width: 30px; height: 32px; margin-bottom: 8px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: #fff; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1;
+}
+.pin.on { color: #b45309; border-color: #f59e0b; background: #fffbeb; }
+.pin:disabled { opacity: 0.4; cursor: not-allowed; }
+.pin-badge { fill: #b45309; font-size: 11px; font-weight: 600; text-anchor: start; }
+
 .area-note { font-size: 13px; color: var(--ink); margin: 6px 0 10px; }
 
 .swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }

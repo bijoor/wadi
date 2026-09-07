@@ -3,6 +3,11 @@ import { analyze, roomById, floorView } from '../model/graph.js'
 import { PALETTE } from '../store/initialState.js'
 import { fmtLen, fmtArea, unitsOf } from '../utils/physical.js'
 import { ROOM_TYPES } from '../export/roomModules.js'
+import { fixed } from '../model/spans.js'
+
+// The id of the guide line sitting at position `at` on an axis (room edges always land on a
+// guide, since guides are derived from room edges).
+const guideIdAt = (lines, at) => { const g = (lines || []).find((l) => Math.abs(l.at - at) < 1e-3); return g && g.id }
 
 // Input that only commits its value on Enter or blur (Esc cancels). It keeps a
 // local draft while typing so edits aren't applied on every keystroke, and
@@ -84,6 +89,27 @@ function RoomEditor({ state, dispatch, room }) {
   const maxY = plot.y + plot.h - room.h
   const maxW = plot.x + plot.w - room.x
   const maxH = plot.y + plot.h - room.y
+
+  // A room's width/depth is the SPAN between its two edge guides on that axis. PINNING a
+  // dimension defines a fixed span there (a group span, if the room crosses interior guides),
+  // so editing it re-flows the plan: the pinned size holds and the other rooms on that axis
+  // absorb it (or the plot grows). Unpinned dimensions stay free.
+  const gx = state.guides?.x || [], gy = state.guides?.y || []
+  const xlo = guideIdAt(gx, room.x), xhi = guideIdAt(gx, room.x + room.w)
+  const ylo = guideIdAt(gy, room.y), yhi = guideIdAt(gy, room.y + room.h)
+  const spanOf = (axis, lo, hi) => (lo && hi && (state.spans?.[axis] || []).find((s) => s.lo === lo && s.hi === hi)) || null
+  const wPinned = spanOf('x', xlo, xhi)?.policy?.kind === 'fixed'
+  const hPinned = spanOf('y', ylo, yhi)?.policy?.kind === 'fixed'
+  const canPinW = !!(xlo && xhi && xlo !== xhi)
+  const canPinH = !!(ylo && yhi && ylo !== yhi)
+  const setSpan = (axis, lo, hi, policy) => dispatch({ type: 'SET_SPAN', axis, lo, hi, policy })
+  const PinBtn = ({ on, can, onClick }) => (
+    <button type="button" className={`pin ${on ? 'on' : ''}`} disabled={!can} onClick={onClick}
+      title={on ? 'Pinned to a fixed size (re-flows the plan). Click to unpin.' : (can ? 'Pin this size (others re-flow to fit)' : 'Edge is not on a guide')}>
+      {on ? '◆' : '◇'}
+    </button>
+  )
+
   return (
     <div className="panel">
       <h3>Room</h3>
@@ -98,12 +124,18 @@ function RoomEditor({ state, dispatch, room }) {
           onCommit={(v) => update({ y: Math.min(Math.max(v, plot.y), maxY) })} />
       </div>
       <div className="row">
-        <NumberField label="W" value={room.w} min={1} max={maxW}
-          onCommit={(v) => update({ w: Math.min(Math.max(v, 1), maxW) })} />
-        <NumberField label="H" value={room.h} min={1} max={maxH}
-          onCommit={(v) => update({ h: Math.min(Math.max(v, 1), maxH) })} />
+        <div className="dim-field">
+          <NumberField label="W" value={room.w} min={1} max={wPinned ? undefined : maxW}
+            onCommit={(v) => wPinned ? setSpan('x', xlo, xhi, fixed(Math.max(v, 1))) : update({ w: Math.min(Math.max(v, 1), maxW) })} />
+          <PinBtn on={wPinned} can={canPinW} onClick={() => setSpan('x', xlo, xhi, wPinned ? null : fixed(room.w))} />
+        </div>
+        <div className="dim-field">
+          <NumberField label="H" value={room.h} min={1} max={hPinned ? undefined : maxH}
+            onCommit={(v) => hPinned ? setSpan('y', ylo, yhi, fixed(Math.max(v, 1))) : update({ h: Math.min(Math.max(v, 1), maxH) })} />
+          <PinBtn on={hPinned} can={canPinH} onClick={() => setSpan('y', ylo, yhi, hPinned ? null : fixed(room.h))} />
+        </div>
       </div>
-      <div className="area-note">{(() => { const u = unitsOf(state.build); return `${fmtLen(room.w, u.system, u.perUnit)} × ${fmtLen(room.h, u.system, u.perUnit)}` })()}</div>
+      <div className="area-note">{(() => { const u = unitsOf(state.build); return `${fmtLen(room.w, u.system, u.perUnit)} × ${fmtLen(room.h, u.system, u.perUnit)}${wPinned || hPinned ? ` · ${[wPinned && 'W', hPinned && 'H'].filter(Boolean).join(' + ')} pinned` : ''}` })()}</div>
       <label className="field">
         <span>Type</span>
         <select value={room.roomType || ''} title="Furnish this room on export (a prebuilt module drops in furniture that reflows with the room)"

@@ -191,8 +191,14 @@ are just produced by the tree walk instead of the solver.
    a span and reflows; `commit` prunes spans whose guides are gone. No-spans reflow is a
    verified no-op, so free-room editing is unchanged. Tests: `scripts/test-span-reflow.mjs`
    (pin-one/flex-absorb, rigid plot-grow, 2:1, prune, SET_SPAN end-to-end). No UI yet.
-3. Skip-guide groups: define a group from a selected guide range or a room; nested
-   distribution; verify the worked example in the live planner.
+3. **DONE (pin)** — Room-editor pin control. Each room dimension has a ◆/◇ pin: pinning
+   defines a fixed span between the room's edge guides (a GROUP span automatically when the
+   room crosses interior guides), and editing the pinned W/H reflows live (others absorb, or
+   the plot grows). A ◆W/◆H canvas badge marks pinned rooms, and it shows on every room that
+   shares the span, so the "one knob drives aligned rooms" behaviour is visible. Verified
+   live: pinning Living's width and setting 160 reflowed the aligned rooms and held the plot.
+   Still to add here: defining a group from an arbitrary guide RANGE (not just a room's own
+   edges) via a canvas selection.
 4. Ratios in the UI: mark a span flex with a weight; the 2:1 case.
 5. Export mapping: emit the guide positions from the tree (a fixed span as a config variable,
    a flex span as its resolved position); wire the plot-grow into the site formulas.

@@ -120,6 +120,16 @@ export default function Canvas({ state, dispatch }) {
   })
   const report = analyze({ plot, rooms: liveRooms, edges })
 
+  // Which committed rooms have a PINNED (fixed-span) width/depth, for the ◆ canvas marker.
+  const gxL = state.guides?.x || [], gyL = state.guides?.y || []
+  const gidAt = (lines, at) => { const g = lines.find((l) => Math.abs(l.at - at) < 1e-3); return g && g.id }
+  const fixedKeys = (axis) => new Set((state.spans?.[axis] || []).filter((s) => s.policy?.kind === 'fixed').map((s) => `${s.lo}|${s.hi}`))
+  const fxKeys = fixedKeys('x'), fyKeys = fixedKeys('y')
+  const pinnedById = new Map((state.rooms || []).map((r) => [r.id, {
+    w: fxKeys.has(`${gidAt(gxL, r.x)}|${gidAt(gxL, r.x + r.w)}`),
+    h: fyKeys.has(`${gidAt(gyL, r.y)}|${gidAt(gyL, r.y + r.h)}`),
+  }]))
+
   // Guides to draw: the committed doc guides normally, but during a drag they are stale
   // (they re-sync only on commit), so re-derive them from the live layout (active-floor
   // rooms in their live rects + the other floors unchanged) so they track the drag.
@@ -605,6 +615,11 @@ export default function Canvas({ state, dispatch }) {
               >
                 {fmtLen(r.w, U.system, U.perUnit)}×{fmtLen(r.h, U.system, U.perUnit)}
               </text>
+              {(() => {
+                const pin = pinnedById.get(r.id) || {}
+                const tag = [pin.w && 'W', pin.h && 'H'].filter(Boolean).join('')
+                return tag ? <text x={r.x * cell + 6} y={r.y * cell + 15} className="pin-badge" style={{ pointerEvents: 'none' }}>◆{tag}</text> : null
+              })()}
             </g>
           )
         })}
