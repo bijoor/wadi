@@ -262,14 +262,16 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
     // its opening are declared once. The EAST / SOUTH room owns it; on WEST / NORTH
     // the neighbour owns them, so this room only walls the exterior remainder there.
     const owns = side === 'east' || side === 'south'
-    // Every room walls every side that has extent — exterior OR shared. A shared boundary is
-    // therefore drawn by BOTH rooms; coincident walls merge in render, the taller room's
-    // full-height wall winning over a shorter neighbour (a balcony/terrace drawn at its own
-    // low room height). OPENINGS are still declared once, by the owner (east/south), and are
-    // auto-carved through the whole coincident stack, so the non-owner's solid side never
-    // walls a door over. This is what lets a room's wall height stay a plain room-level
-    // property with no per-wall or exterior-facing special case.
-    const wallHere = ext.length > 0 || shared.length > 0
+    // Draw this side if it has exterior extent, if we own its shared boundary, or — as the
+    // non-owner — only when the shared boundary carries a SOLID part (a partition, or a door's
+    // wall) that wants full-height backing. That backing is what lets wall height stay a plain
+    // room-level property: the room a low balcony opens off draws the shared wall full height
+    // while the balcony draws it low, and the taller wins (coincident walls merge in render;
+    // the owner's door/gap auto-carves through the stack). A fully-OPEN shared side is left to
+    // the owner's gap, so the non-owner never drops a solid wall into a dissolved open corner
+    // (the corner-post pillar). Openings stay owner-declared.
+    const hasSolidShared = shared.some((s) => s.kind !== 'open')
+    const wallHere = ext.length > 0 || (owns && shared.length > 0) || (!owns && hasSolidShared)
     if (!wallHere) continue
 
     // The wall runs along X for N/S sides, Y for E/W — pick the matching guide axis

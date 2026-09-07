@@ -880,7 +880,7 @@
     {
       "id": "balcony_a",
       "type": "balcony",
-      "w": 140,
+      "w": 40,
       "h": 70,
       "pieces": [],
       "height": 35
@@ -888,8 +888,8 @@
     {
       "id": "terrace_a",
       "type": "terrace",
-      "w": 200,
-      "h": 200,
+      "w": 20,
+      "h": 20,
       "pieces": [],
       "height": 30
     }

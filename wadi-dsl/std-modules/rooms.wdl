@@ -131,7 +131,7 @@ house RoomLayouts {
     // walls all its sides at its own height, so the balcony's outward walls come out at this
     // parapet height while the room it opens off keeps the shared wall full height. Change the
     // height, or add more open-room types, right here — no code, no keyword.
-    room balcony_a at (960, 0) size (140, 70) height 35
-    room terrace_a at (1120, 0) size (200, 200) height 30
+    room balcony_a at (960, 0) size (40, 70) height 35
+    room terrace_a at (1120, 0) size (20, 20) height 30
   }
 }
