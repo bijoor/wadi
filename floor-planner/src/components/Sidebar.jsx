@@ -3,7 +3,6 @@ import { analyze, roomById, floorView } from '../model/graph.js'
 import { PALETTE } from '../store/initialState.js'
 import { fmtLen, fmtArea, unitsOf } from '../utils/physical.js'
 import { ROOM_TYPES } from '../export/roomModules.js'
-import { flex } from '../model/spans.js'
 
 // The id of the guide line sitting at position `at` on an axis (room edges always land on a
 // guide, since guides are derived from room edges).
@@ -125,13 +124,12 @@ function RoomEditor({ state, dispatch, room }) {
     const { axis, lo, hi, size } = dims[dim]
     const can = !!(lo && hi && lo !== hi)
     const span = spanOf(axis, lo, hi)
-    const mode = span ? span.policy.kind : 'auto' // 'auto' | 'fixed' | 'flex'
-    // Fix ALWAYS binds to a named variable (its own auto-named one to start). So every fixed
-    // size is a visible, shareable variable, and any other fixed dimension can adopt it.
-    const linkedVar = span?.policy?.kind === 'fixed' ? span.policy.var : null
-    const weight = span?.policy?.kind === 'flex' ? span.policy.weight : size
+    // Two modes: Auto (no span — flexes proportionally with the rest) or Fix (a named
+    // variable that holds while the others re-flow, sharable across rooms).
+    const mode = span && span.policy.kind === 'fixed' ? 'fixed' : 'auto'
+    const linkedVar = mode === 'fixed' ? span.policy.var : null
     const mkAuto = () => autoName(dim)
-    const setMode = (m) => setSpan(axis, lo, hi, m === 'auto' ? null : m === 'fixed' ? { kind: 'fixed', var: mkAuto() } : flex(size))
+    const setMode = (m) => setSpan(axis, lo, hi, m === 'fixed' ? { kind: 'fixed', var: mkAuto() } : null)
     const Seg = ({ m, children }) => (
       <button type="button" className={mode === m ? 'on' : ''} disabled={!can && m !== 'auto'} onClick={() => setMode(m)}>{children}</button>
     )
@@ -147,14 +145,10 @@ function RoomEditor({ state, dispatch, room }) {
         <div className="sizing-row">
           <span className="dim-label">{label}</span>
           <div className="seg">
-            <Seg m="auto">Auto</Seg><Seg m="fixed">Fix</Seg><Seg m="flex">Ratio</Seg>
+            <Seg m="auto">Auto</Seg><Seg m="fixed">Fix</Seg>
           </div>
-          {mode === 'flex'
-            ? <><CommitInput type="number" value={weight} min={0.1} step={0.5} float title="Ratio weight (relative share vs the other flexible spans on this axis)"
-                onCommit={(v) => setSpan(axis, lo, hi, flex(Math.max(v, 0.1)))} />
-                <span className="dim-sub" title="Current resolved size">{fmtLen(size, u.system, u.perUnit)}</span></>
-            : <CommitInput type="number" value={linkedVar ? (state.variables[linkedVar]?.value ?? size) : size} min={1}
-                onCommit={(v) => mode === 'fixed' && linkedVar ? dispatch({ type: 'SET_VAR', name: linkedVar, value: Math.max(v, 1) }) : update({ [dim]: Math.max(v, 1) })} />}
+          <CommitInput type="number" value={linkedVar ? (state.variables[linkedVar]?.value ?? size) : size} min={1}
+            onCommit={(v) => mode === 'fixed' && linkedVar ? dispatch({ type: 'SET_VAR', name: linkedVar, value: Math.max(v, 1) }) : update({ [dim]: Math.max(v, 1) })} />
         </div>
         {mode === 'fixed' && (
           <div className="sizing-row link">

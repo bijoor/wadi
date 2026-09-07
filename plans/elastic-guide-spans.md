@@ -222,7 +222,16 @@ are just produced by the tree walk instead of the solver.
    live: pinning Living's width and setting 160 reflowed the aligned rooms and held the plot.
    Still to add here: defining a group from an arbitrary guide RANGE (not just a room's own
    edges) via a canvas selection.
-4. **DONE** — Ratios in the UI. The per-dimension control is now a 3-mode segmented toggle:
+4. **RETIRED from the UI** — Ratios. The per-dimension control was Auto/Fix/Ratio, but the
+   explicit flex-weight mode only reads cleanly when scoped to a group and is confusing mixed
+   with Auto (size-weighted) cells; with Auto (proportional flow), Fix (a shared variable) and
+   same-span auto-sharing, it was redundant. The control is now just **Auto | Fix**. The model
+   and reducer still support `flex(weight)` (Auto's proportional default is a flex distribution),
+   so a scoped-ratio UI can return later via the group-range selection. The canvas badge now
+   always shows the size variable's name (`◆living_width`) instead of `◆W`/`◆H`, since every
+   fixed dimension is a named variable. Original note below.
+
+   Ratios in the UI (superseded). The per-dimension control is now a 3-mode segmented toggle:
    Auto (no span, flexes proportionally), Fix (a fixed size), Ratio (an explicit flex weight).
    Ratio shows a weight field and the resolved size; the canvas badge reads `W×n`/`H×n` for a
    ratio vs `◆W`/`◆H` for a fixed size. Switching to Ratio seeds the weight from the current
