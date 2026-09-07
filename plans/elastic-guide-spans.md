@@ -147,7 +147,10 @@ Every fixed dimension is a named variable (no anonymous fixed spans in the UI): 
 Fix auto-creates `<room>_<width|depth>` and binds to it, so the size is immediately visible
 and shareable, and any other fixed dimension can adopt any existing variable (auto or named)
 from its dropdown. The canvas only spells out a variable name when it is actually shared
-(more than one span uses it); a solo pin stays `◆W`/`◆H`.
+(more than one span uses it); a solo pin stays `◆W`/`◆H`. A **Sizes panel** in the sidebar
+lists every variable with its name, value, and how many dimensions it drives: renaming there
+(`RENAME_VAR`) relabels it everywhere, editing the value (`SET_VAR`) re-flows every bound
+room, and deleting (`DELETE_VAR`) reverts its dimensions to Auto.
 
 Built: a fixed span's policy can be `{ kind: 'fixed', var: 'balcony' }`. The doc holds a
 `variables` registry (`{ name: { value, label? } }`); `reflowSpans` resolves a var-span to

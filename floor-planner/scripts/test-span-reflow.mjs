@@ -130,5 +130,23 @@ const roomBy = (rooms, id) => rooms.find((r) => r.id === id)
   assert('N8 variable GCd when no span uses it', !('balcony' in s.variables))
 }
 
+// N9: RENAME_VAR + DELETE_VAR through the reducer.
+{
+  const st = {
+    plot: { x: 0, y: 0, w: 200, h: 100 }, floors: [{ id: 'f1', name: 'G' }], edges: [],
+    rooms: [{ id: 'A', name: 'A', floor: 'f1', x: 0, y: 0, w: 100, h: 100 }, { id: 'B', name: 'B', floor: 'f1', x: 100, y: 0, w: 100, h: 100 }],
+    guides: { x: [{ id: 'gx0', at: 0 }, { id: 'gx1', at: 100 }, { id: 'gx2', at: 200 }], y: [{ id: 'gy0', at: 0 }, { id: 'gy1', at: 100 }] },
+    spans: { x: [], y: [] }, variables: {}, grid: { unitPerCell: 10 }, build: {},
+    tool: 'select', selection: { type: null, id: null }, selectedIds: [], activeFloor: 'f1', history: { past: [], future: [] },
+  }
+  let s = reducer(st, { type: 'SET_SPAN', axis: 'x', lo: 'gx0', hi: 'gx1', policy: { kind: 'fixed', var: 'w1' } })
+  s = reducer(s, { type: 'RENAME_VAR', name: 'w1', newName: 'Bay A' })
+  assert('N9 rename: new key exists, old gone', 'bay_a' in s.variables && !('w1' in s.variables))
+  assert('N9 rename: span rebound', s.spans.x[0].policy.var === 'bay_a')
+  s = reducer(s, { type: 'DELETE_VAR', name: 'bay_a' })
+  assert('N9 delete: span dropped (back to Auto)', s.spans.x.length === 0)
+  assert('N9 delete: variable removed', !('bay_a' in s.variables))
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -5,6 +5,14 @@ import { reflowSpans, pruneSpans, gcVariables } from '../model/spanReflow.js'
 import { sampleModel, normalizeModel } from './initialState.js'
 
 const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays', 'spans', 'variables']
+
+// A safe variable identifier from a free-text name: "Balcony band" -> "balcony_band".
+function varSlug(label) {
+  let s = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  if (!s) return ''
+  if (!/^[a-z_]/.test(s)) s = 'v_' + s
+  return s
+}
 const HISTORY_LIMIT = 60
 
 function docOf(state) {
@@ -292,6 +300,35 @@ export function reducer(state, action) {
         const at = (id) => { const g = lines.find((l) => l.id === id); return g ? Number(g.at) : 0 }
         variables = { ...variables, [policy.var]: { value: Math.abs(at(hi) - at(lo)) } }
       }
+      const rf = reflowSpans({ ...state, spans, variables })
+      return commit(state, { spans, variables, guides: rf.guides, rooms: rf.rooms, plot: rf.plot })
+    }
+    // Rename a size variable everywhere it is used (the registry key + every span bound to
+    // it). Pure relabel, no geometry change. New name is slugified and de-duplicated.
+    case 'RENAME_VAR': {
+      const { name } = action
+      if (!name || !(state.variables && name in state.variables)) return state
+      const used = new Set(Object.keys(state.variables).filter((k) => k !== name))
+      const base = varSlug(action.newName)
+      if (!base) return state
+      let nn = base, k = 1
+      while (used.has(nn)) { k += 1; nn = `${base}_${k}` }
+      if (nn === name) return state
+      const variables = {}
+      for (const key of Object.keys(state.variables)) variables[key === name ? nn : key] = state.variables[key]
+      const remap = (arr) => (arr || []).map((s) => (s.policy && s.policy.var === name ? { ...s, policy: { ...s.policy, var: nn } } : s))
+      const spans = { x: remap(state.spans && state.spans.x), y: remap(state.spans && state.spans.y) }
+      return commit(state, { variables, spans })
+    }
+    // Delete a size variable: every dimension bound to it reverts to Auto (its span is
+    // dropped), then re-flow.
+    case 'DELETE_VAR': {
+      const { name } = action
+      if (!name) return state
+      const variables = { ...(state.variables || {}) }
+      delete variables[name]
+      const drop = (arr) => (arr || []).filter((s) => !(s.policy && s.policy.var === name))
+      const spans = { x: drop(state.spans && state.spans.x), y: drop(state.spans && state.spans.y) }
       const rf = reflowSpans({ ...state, spans, variables })
       return commit(state, { spans, variables, guides: rf.guides, rooms: rf.rooms, plot: rf.plot })
     }

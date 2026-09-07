@@ -468,6 +468,34 @@ function FloorsPanel({ state, dispatch }) {
   )
 }
 
+// All shared size variables: name (rename), value (edits + re-flows every bound room), how
+// many dimensions each drives, and delete (bound dimensions revert to Auto). These are the
+// homeowner knobs the export ships as a configurator.
+function VariablesPanel({ state, dispatch }) {
+  const vars = state.variables || {}
+  const names = Object.keys(vars)
+  if (!names.length) return null
+  const { system, perUnit } = unitsOf(state.build)
+  const count = {}
+  for (const ax of ['x', 'y']) for (const s of state.spans?.[ax] || []) if (s.policy?.var) count[s.policy.var] = (count[s.policy.var] || 0) + 1
+  return (
+    <div className="panel">
+      <h3>Sizes</h3>
+      <p className="area-note dim">Named sizes you’ve pinned. Reuse one across rooms (Fix a dimension, pick it) to move them together; editing a value re-flows the plan.</p>
+      {names.map((name) => (
+        <div className="size-row" key={name}>
+          <span className="knob-dot">◆</span>
+          <CommitInput value={name} title="Rename this size" onCommit={(v) => dispatch({ type: 'RENAME_VAR', name, newName: v })} />
+          <CommitInput type="number" value={vars[name].value} min={1} title={`Value (${fmtLen(vars[name].value, system, perUnit)}). Editing re-flows every room bound to it.`}
+            onCommit={(v) => dispatch({ type: 'SET_VAR', name, value: Math.max(v, 1) })} />
+          <span className="size-count" title="Dimensions driven by this size">×{count[name] || 0}</span>
+          <button className="icon" title="Delete (bound dimensions revert to Auto)" onClick={() => dispatch({ type: 'DELETE_VAR', name })}>✕</button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Guides & bays: name a bay (the span between two guide lines) and tick it editable to
 // expose it as a configurator knob on export. Naming/flagging a bay locks (makes
 // permanent) its two bounding guide lines. Guides themselves are derived from the room
@@ -499,6 +527,7 @@ export default function Sidebar({ state, dispatch }) {
         </div>
       )}
       <Health state={state} />
+      <VariablesPanel state={state} dispatch={dispatch} />
       <FloorsPanel state={state} dispatch={dispatch} />
       <GridEditor state={state} dispatch={dispatch} />
       <DimensionsEditor state={state} dispatch={dispatch} />
