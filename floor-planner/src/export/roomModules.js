@@ -1,132 +1,59 @@
-// Prebuilt room modules for the planner: give a graph room a TYPE and the export drops a
-// set of furniture pieces into it (room.items[]). Walls stay graph-owned; a module only
-// supplies CONTENTS. Items have no x/y — the 9-point anchor + gap places them off the room's
-// inner footprint, so they reflow when the room resizes.
+// Prebuilt room modules for the planner. A graph room gets a TYPE, and on export we pick a
+// furniture LAYOUT for it and drop the pieces into room.items[] (walls stay graph-owned;
+// items are anchored, so they reflow with the room).
 //
-// Placement is OPENING-AWARE. Doors/gaps are inserted from the graph's connections, so a
-// piece must not sit on a wall a door lands on. Each template piece carries a placement RULE
-// (`at` + preference order), and `roomItems(type, { openSides })` resolves it to a concrete
-// anchor that avoids the open walls/corners. Large pieces claim a wall so two don't stack.
-//
-// The templates below are plain data (a catalog + per-type rule lists), meant to be edited
-// and extended. Furniture dimensions are metres (the renderer scales to units).
+// Layouts are authored in wadi-dsl/std-modules/rooms.wdl (several per type) and compiled to
+// roomLayouts.json by scripts/build-room-layouts.mjs. There are NO placement rules: for a
+// room we try every layout of its type and keep the one whose furniture CONFLICTS LEAST with
+// the doors on that room (a conflict = a piece sits on a wall that has a door). To add or
+// change an arrangement, edit rooms.wdl and re-run the build script.
 
-const FURN = 'https://templates.wadi.house/furniture'
-// id -> { name, dims:[w,h,d] metres, category } for the pieces the templates use.
-const CATALOG = {
-  bed_double: { name: 'Double bed', dims: [1.5, 0.5, 2], category: 'Bedroom' },
-  wardrobe: { name: 'Wardrobe', dims: [1, 1.8, 0.55], category: 'Bedroom' },
-  bedside_table: { name: 'Bedside table', dims: [0.5, 0.55, 0.4], category: 'Bedroom' },
-  sofa: { name: 'Sofa', dims: [1.9, 0.8, 0.9], category: 'Living' },
-  coffee_table: { name: 'Coffee table', dims: [1.1, 0.4, 0.6], category: 'Living' },
-  tv_unit: { name: 'TV unit', dims: [1.5, 0.5, 0.4], category: 'Living' },
-  dining_table: { name: 'Dining table', dims: [1.5, 0.75, 0.9], category: 'Dining' },
-  kitchen_cabinet: { name: 'Base cabinet', dims: [0.6, 0.9, 0.6], category: 'Kitchen' },
-  stove: { name: 'Stove', dims: [0.6, 0.9, 0.65], category: 'Kitchen' },
-  kitchen_sink: { name: 'Kitchen sink', dims: [0.6, 0.9, 0.6], category: 'Kitchen' },
-  fridge: { name: 'Fridge', dims: [0.7, 1.8, 0.7], category: 'Kitchen' },
-  toilet: { name: 'Toilet', dims: [0.5, 0.8, 0.7], category: 'Bathroom' },
-  bathroom_sink: { name: 'Washbasin', dims: [0.6, 0.85, 0.5], category: 'Bathroom' },
-  shower: { name: 'Shower', dims: [0.9, 2.1, 0.9], category: 'Bathroom' },
-  desk: { name: 'Desk', dims: [1.2, 0.75, 0.6], category: 'Study' },
+import MANIFEST from './roomLayouts.json'
+
+// Layouts grouped by room type, in file order (order breaks ties).
+const BY_TYPE = {}
+for (const l of MANIFEST.layouts || []) (BY_TYPE[l.type] ||= []).push(l)
+
+const TYPE_LABEL = { bedroom: 'Bedroom', living: 'Living', dining: 'Dining', kitchen: 'Kitchen', bath: 'Bathroom', study: 'Study' }
+const label = (t) => TYPE_LABEL[t] || (t.charAt(0).toUpperCase() + t.slice(1))
+
+// The room-type options for the picker: plain room + one per type the pack defines.
+export const ROOM_TYPES = [['', 'Plain room'], ...Object.keys(BY_TYPE).map((t) => [t, label(t)])]
+
+// The wall(s) a piece touches, from its anchor: top=north, bottom=south, left=west,
+// right=east; a `center` anchor touches none (freestanding, never conflicts).
+function occupiedWalls(anchor) {
+  const w = []
+  if (anchor.startsWith('top')) w.push('north')
+  if (anchor.startsWith('bottom')) w.push('south')
+  if (anchor.endsWith('left')) w.push('west')
+  if (anchor.endsWith('right')) w.push('east')
+  return w
 }
 
-const asset = (id) => ({ id, name: CATALOG[id].name, src: `${FURN}/${id}.glb`, dimensions: CATALOG[id].dims, category: CATALOG[id].category })
-
-const GAP = 6 // clearance kept from the wall (project units)
-const SIDES = ['north', 'south', 'east', 'west']
-const SIDE_ANCHOR = { north: 'top-center', south: 'bottom-center', east: 'center-right', west: 'center-left' }
-const SIDE_ROT = { north: 0, east: 90, south: 180, west: 270 } // back to the wall
-const CORNERS = ['north-west', 'north-east', 'south-east', 'south-west']
-const CORNER_ANCHOR = { 'north-west': 'top-left', 'north-east': 'top-right', 'south-west': 'bottom-left', 'south-east': 'bottom-right' }
-// A run of pieces along a wall: their positions from one end to the other.
-const RUN_ANCHOR = {
-  north: ['top-left', 'top-center', 'top-right'],
-  south: ['bottom-left', 'bottom-center', 'bottom-right'],
-  east: ['top-right', 'center-right', 'bottom-right'],
-  west: ['top-left', 'center-left', 'bottom-left'],
-}
-const sideGap = (s) => (s === 'north' || s === 'south' ? { gap_y: GAP } : { gap_x: GAP })
-
-// Per-type placement rules. `at`: 'wall' (against a wall, `claim` reserves it), 'corner',
-// 'center', or a `run` group (a counter along one wall). `prefer` orders the candidates; the
-// resolver picks the first that is free of openings (and unclaimed).
-const TEMPLATES = {
-  bedroom: {
-    pieces: [
-      { id: 'bed_double', at: 'wall', claim: true, prefer: ['north', 'south', 'west', 'east'] },
-      { id: 'wardrobe', at: 'wall', claim: true, prefer: ['west', 'east', 'south', 'north'] },
-      { id: 'bedside_table', at: 'corner', prefer: ['north-west', 'north-east', 'south-west', 'south-east'] },
-    ],
-  },
-  living: {
-    pieces: [
-      { id: 'sofa', at: 'wall', claim: true, prefer: ['south', 'west', 'east', 'north'] },
-      { id: 'tv_unit', at: 'wall', claim: true, prefer: ['north', 'east', 'west', 'south'] },
-      { id: 'coffee_table', at: 'center' },
-    ],
-  },
-  dining: { pieces: [{ id: 'dining_table', at: 'center' }] },
-  kitchen: {
-    run: { ids: ['kitchen_cabinet', 'stove', 'kitchen_sink'], prefer: ['north', 'east', 'west', 'south'] },
-    pieces: [{ id: 'fridge', at: 'corner', prefer: ['north-east', 'north-west', 'south-east', 'south-west'] }],
-  },
-  bath: {
-    pieces: [
-      { id: 'toilet', at: 'corner', prefer: ['south-west', 'south-east', 'north-west', 'north-east'] },
-      { id: 'bathroom_sink', at: 'corner', prefer: ['north-west', 'north-east', 'south-west', 'south-east'] },
-      { id: 'shower', at: 'corner', prefer: ['south-east', 'north-east', 'south-west', 'north-west'] },
-    ],
-  },
-  study: { pieces: [{ id: 'desk', at: 'wall', claim: true, prefer: ['north', 'east', 'west', 'south'] }] },
+// How many of a layout's pieces sit on a wall that carries a door.
+function conflictCount(layout, openSides) {
+  let n = 0
+  for (const p of layout.pieces) for (const wall of occupiedWalls(p.anchor)) if (openSides.has(wall)) n++
+  return n
 }
 
-export const ROOM_TYPES = [
-  ['', 'Plain room'],
-  ['bedroom', 'Bedroom'],
-  ['living', 'Living'],
-  ['dining', 'Dining'],
-  ['kitchen', 'Kitchen'],
-  ['bath', 'Bathroom'],
-  ['study', 'Study'],
-]
-
-// Resolve a typed room's furniture against its open sides. `ctx.openSides` is a Set of
-// side names carrying a door/gap. Returns room.items[] (empty for a plain/unknown type).
+// The furniture items[] for a typed room: the least-conflicting layout of its type, or []
+// for a plain/unknown type. `ctx.openSides` = the room's walls that carry a door/gap.
 export function roomItems(roomType, ctx = {}) {
-  const T = TEMPLATES[roomType]
-  if (!T) return []
+  const options = BY_TYPE[roomType]
+  if (!options || !options.length) return []
   const open = ctx.openSides instanceof Set ? ctx.openSides : new Set(ctx.openSides || [])
-  const claimed = new Set()
-  const items = []
-  const add = (id, anchor, gap, rot, name) => {
-    const it = { name: name || CATALOG[id].name, asset: asset(id), anchor, ...gap }
-    if (rot) it.rotation = rot
-    items.push(it)
+  let best = options[0], bestScore = conflictCount(options[0], open)
+  for (let i = 1; i < options.length && bestScore > 0; i++) {
+    const s = conflictCount(options[i], open)
+    if (s < bestScore) { best = options[i]; bestScore = s }
   }
-  // Best wall from `prefer`: free of openings and unclaimed, else free, else unclaimed, else first.
-  const pickWall = (prefer) =>
-    prefer.find((s) => !open.has(s) && !claimed.has(s)) || prefer.find((s) => !open.has(s)) ||
-    prefer.find((s) => !claimed.has(s)) || prefer[0]
-  // Best corner: both sides free of openings, else one side free, else first.
-  const pickCorner = (prefer) =>
-    prefer.find((c) => { const [a, b] = c.split('-'); return !open.has(a) && !open.has(b) }) ||
-    prefer.find((c) => { const [a, b] = c.split('-'); return !open.has(a) || !open.has(b) }) || prefer[0]
-
-  for (const p of T.pieces || []) {
-    if (p.at === 'center') { add(p.id, 'center', {}); continue }
-    if (p.at === 'corner') { add(p.id, CORNER_ANCHOR[pickCorner(p.prefer)], { gap_x: 4, gap_y: 4 }); continue }
-    // 'wall'
-    const side = pickWall(p.prefer)
-    if (p.claim) claimed.add(side)
-    add(p.id, SIDE_ANCHOR[side], sideGap(side), SIDE_ROT[side])
-  }
-  if (T.run) {
-    const side = pickWall(T.run.prefer)
-    claimed.add(side)
-    const spots = RUN_ANCHOR[side]
-    const g = sideGap(side)
-    T.run.ids.forEach((id, i) => add(id, spots[Math.min(i, spots.length - 1)], { ...g, gap_x: g.gap_x ?? 4, gap_y: g.gap_y ?? 4 }, SIDE_ROT[side]))
-  }
-  return items
+  return best.pieces.map((p, i) => {
+    const it = { name: `${p.asset.name || p.asset.id}${i ? ' ' + (i + 1) : ''}`, asset: p.asset, anchor: p.anchor }
+    if (p.gap_x != null) it.gap_x = p.gap_x
+    if (p.gap_y != null) it.gap_y = p.gap_y
+    if (p.rotation != null) it.rotation = p.rotation
+    return it
+  })
 }
