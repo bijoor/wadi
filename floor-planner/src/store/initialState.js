@@ -26,10 +26,6 @@ export const BUILD_DEFAULTS = {
   wallHeight: 100,
   slabThickness: 6,
   plinthHeight: 30,
-  // How the plan responds when a size variable changes:
-  //   'fixed'   — keep the plot size, re-flow other rooms (constrained solve)
-  //   'elastic' — keep other rooms, resize the plot to fit
-  sizeMode: 'fixed',
 }
 
 export function sampleModel() {

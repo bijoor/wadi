@@ -109,40 +109,14 @@ export function solveAxis(length, guides, bindings = [], roomSpans = [], origin 
   eRow([[idx.get(loId), 1]], lo, {})
   if (pinFar) eRow([[idx.get(hiId), 1]], hi, {})
 
-  const editVar = opts.editVar // set = PLANNER live edit; undefined = EXPORT (formulas)
-  const varAxes = opts.varAxes || new Map() // varName -> Set('x'|'y'), to spot cross-axis vars
-  const vars = new Set()
-  if (!editVar) {
-    // EXPORT: every bound dimension is an independent knob -> hard pin (with a var term so
-    // we can read out ∂g/∂var as a formula).
-    for (const bd of bindings) {
-      const i = idx.get(bd.lo), j = idx.get(bd.hi)
-      if (i == null || j == null) continue
-      vars.add(bd.varName)
-      eRow([[j, 1], [i, -1]], 0, { [bd.varName]: 1 })
-    }
-  } else {
-    // PLANNER edit of `editVar`: pin ONLY editVar (to its new value); let other variables
-    // flex so they absorb the change and their values update. A single-axis variable's
-    // dimensions are LINKED equal (float together). A cross-axis variable (drives both a
-    // width and a depth) is held RIGID at its current value, since a per-axis solve can't
-    // keep its two axes in step. Unbound spans + free space flex via the objective.
-    const byVar = new Map()
-    for (const bd of bindings) {
-      if (idx.get(bd.lo) == null || idx.get(bd.hi) == null) continue
-      if (!byVar.has(bd.varName)) byVar.set(bd.varName, [])
-      byVar.get(bd.varName).push([idx.get(bd.lo), idx.get(bd.hi), Number(bd.value)])
-    }
-    for (const [name, arr] of byVar) {
-      if (name === editVar) {
-        for (const [i, j, val] of arr) eRow([[j, 1], [i, -1]], val, {}) // pin to new value
-      } else if ((varAxes.get(name)?.size || 1) > 1) {
-        for (const [i, j, val] of arr) eRow([[j, 1], [i, -1]], val, {}) // rigid at current value
-      } else {
-        const [i0, j0] = arr[0]
-        for (let k = 1; k < arr.length; k++) { const [ik, jk] = arr[k]; eRow([[j0, 1], [i0, -1], [jk, -1], [ik, 1]], 0, {}) } // link equal
-      }
-    }
+  // Every bound dimension pins its span to the variable's value. With the far plot edge
+  // floating (elastic), this is exactly cumulative evaluation: the plot is the sum of the
+  // spans and grows with the variables. Interior lines a dimension crosses are placed
+  // proportionally by the objective.
+  for (const bd of bindings) {
+    const i = idx.get(bd.lo), j = idx.get(bd.hi)
+    if (i == null || j == null) continue
+    eRow([[j, 1], [i, -1]], Number(bd.value), {})
   }
   const C = rows.length
 
@@ -162,36 +136,18 @@ export function solveAxis(length, guides, bindings = [], roomSpans = [], origin 
     return x ? x.slice(0, N) : null
   }
 
-  // current positions (b uses each binding's current value)
-  const bCur = rows.map((row) => row.rhsConst + Object.entries(row.rhsVar)
-    .reduce((s, [name, c]) => s + c * (curVal(bindings, name)), 0))
+  // solved positions (each pin's value is baked into rhsConst)
+  const bCur = rows.map((row) => row.rhsConst)
   const gCur = solveWith(bCur)
   if (!gCur) return fail('over-constrained: guide constraints are inconsistent')
 
-  // sensitivities ∂g/∂value_v : re-solve with objective RHS 0 and a unit bump in v's rows
-  const sens = new Map() // varName -> number[]  (per node)
-  for (const name of vars) {
-    const bd = rows.map((row) => (row.rhsVar[name] || 0))
-    const rhs = [...new Array(N).fill(0), ...bd]
-    const x = linSolve(KKT, rhs)
-    if (!x) return fail('over-constrained: cannot resolve variable ' + name)
-    sens.set(name, x.slice(0, N))
-  }
-
-  // 6) assemble outputs: positions + linear formula per guide id; feasibility = no negative span
+  // 6) assemble output positions per guide id; feasibility = no negative span
   const at = new Map()
   const formula = new Map()
   for (let i = 0; i < N; i++) {
     const id = nodes[i].id
     if (id === '__lo__' || id === '__hi__') continue
     at.set(id, round(gCur[i]))
-    const coef = {}
-    let cst = gCur[i]
-    for (const name of vars) {
-      const c = sens.get(name)[i]
-      if (Math.abs(c) > 1e-9) { coef[name] = round(c); cst -= c * curVal(bindings, name) }
-    }
-    formula.set(id, { const: round(cst), coef })
   }
   let feasible = true, message
   for (let k = 0; k < N - 1; k++) {
@@ -202,8 +158,4 @@ export function solveAxis(length, guides, bindings = [], roomSpans = [], origin 
   function fail(msg) { return { at: new Map(), formula: new Map(), feasible: false, message: msg } }
 }
 
-function curVal(bindings, name) {
-  const bd = bindings.find((b) => b.varName === name)
-  return bd ? Number(bd.value) : 0
-}
 const round = (v) => Math.round(Number(v) * 1e6) / 1e6

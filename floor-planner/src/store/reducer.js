@@ -317,9 +317,9 @@ export function reducer(state, action) {
       const variables = (state.variables || []).map((v) => (v.name === action.name ? { ...v, ...action.patch } : v))
       return commit(state, { variables })
     }
-    // Set a variable's value and RE-FLOW the plan live: the solver re-solves guide
-    // positions (fixed or fit-plot mode) and writes them back into every room + guide.
-    // Used by the Sizes-panel number field and by dragging a guide on the canvas.
+    // Set a variable's value and RE-FLOW the plan live (elastic): the size pins its span,
+    // the lines after it shift, the plot grows/shrinks to fit, and the OTHER variables are
+    // left untouched (their spans stay pinned to their own values). Used by the Sizes panel.
     case 'SET_VAR_VALUE': {
       const target = Number(action.value)
       if (!Number.isFinite(target) || target <= 0) return state
@@ -328,25 +328,25 @@ export function reducer(state, action) {
         variables: (state.variables || []).map((v) => (v.name === action.name ? { ...v, value: val } : v)),
         bindings: state.bindings, build: state.build,
       })
-      const ev = action.name
       let value = target
-      let rf = reflowModel(mk(value), ev)
+      let rf = reflowModel(mk(value))
       if (!rf) {
-        // The target doesn't fit even after flexing the other variables. Clamp to the
-        // largest value that still fits (binary search from the current, known-feasible
-        // value toward the target) so the edit always shows.
+        // Too small to fit (a dimension it crosses would collapse). Clamp to the smallest
+        // value that still fits so the edit always shows something.
         const cur = Number((state.variables || []).find((v) => v.name === action.name)?.value)
-        if (!Number.isFinite(cur) || !reflowModel(mk(cur), ev)) return state
-        let lo = cur, hi = target
-        for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (reflowModel(mk(mid), ev)) lo = mid; else hi = mid }
-        value = Math.round(lo)
-        rf = reflowModel(mk(value), ev) || reflowModel(mk(cur), ev)
+        if (!Number.isFinite(cur) || !reflowModel(mk(cur))) return state
+        let lo = Math.min(cur, target), hi = Math.max(cur, target)
+        for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (reflowModel(mk(mid))) hi = mid; else lo = mid }
+        value = Math.round(hi)
+        rf = reflowModel(mk(value)) || reflowModel(mk(cur))
         if (!rf) return state
-        if (Math.abs(value - cur) < 1e-6) return state // nothing more fits
       }
-      const variables0 = (state.variables || []).map((v) => (v.name === action.name ? { ...v, value } : v))
-      const variables = syncVarValues(variables0, state.bindings, rf.rooms)
-      return commit(state, { rooms: rf.rooms, guides: rf.guides, variables, bindings: state.bindings })
+      const variables = (state.variables || []).map((v) => (v.name === action.name ? { ...v, value } : v))
+      // Elastic: grow/shrink the plot to fit the re-flowed rooms.
+      const maxX = Math.max(state.plot.x, ...rf.rooms.map((r) => r.x + r.w))
+      const maxY = Math.max(state.plot.y, ...rf.rooms.map((r) => r.y + r.h))
+      const plot = { ...state.plot, w: Math.round((maxX - state.plot.x) * 1000) / 1000, h: Math.round((maxY - state.plot.y) * 1000) / 1000 }
+      return commit(state, { rooms: rf.rooms, guides: rf.guides, variables, plot, bindings: state.bindings })
     }
     case 'DELETE_VAR': {
       const variables = (state.variables || []).filter((v) => v.name !== action.name)

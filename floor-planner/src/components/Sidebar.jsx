@@ -445,7 +445,6 @@ function DimConfig({ state, dispatch, room, dim }) {
 function SizesPanel({ state, dispatch }) {
   const { system, perUnit } = unitsOf(state.build)
   const vars = state.variables || []
-  const mode = state.build?.sizeMode || 'fixed'
   const step = state.grid?.unitPerCell || 10
   return (
     <div className="panel">
@@ -453,21 +452,7 @@ function SizesPanel({ state, dispatch }) {
       <p className="area-note">
         Bind a room’s width or depth to a named size (select a room, “Make configurable”) to
         expose it as a homeowner knob. Reuse one size across rooms to resize them together.
-      </p>
-      <div className="size-mode" role="radiogroup" aria-label="How a size change reflows the plan">
-        <label className={mode === 'fixed' ? 'active' : ''} title="Keep the plot size; re-flow the other rooms to fit">
-          <input type="radio" name="sizeMode" checked={mode === 'fixed'} onChange={() => dispatch({ type: 'UPDATE_BUILD', patch: { sizeMode: 'fixed' } })} />
-          Fixed plot
-        </label>
-        <label className={mode === 'elastic' ? 'active' : ''} title="Keep the other rooms; resize the plot to fit">
-          <input type="radio" name="sizeMode" checked={mode === 'elastic'} onChange={() => dispatch({ type: 'UPDATE_BUILD', patch: { sizeMode: 'elastic' } })} />
-          Fit plot
-        </label>
-      </div>
-      <p className="area-note dim">
-        {mode === 'fixed'
-          ? 'Changing a size keeps the plot and re-flows the other rooms.'
-          : 'Changing a size keeps the other rooms and resizes the plot to fit.'}
+        Changing a size grows or shrinks the plot to fit; the other sizes stay as set.
       </p>
       {vars.length === 0 && <p className="area-note dim">No configurable sizes yet.</p>}
       {vars.map((v) => {
