@@ -33,6 +33,26 @@ This per-room decomposition manufactures the artifacts:
 2. **Ownership bookkeeping.** Who declares a shared wall/door is a manual concern
    in the planner exporter and a source of "double wall" / "coincident door"
    bugs.
+   - **A shared wall is drawn by exactly ONE room** (the east/south room), even
+     when the two rooms differ in size or the boundary is only partially shared.
+     The single owner's geometry then dictates the shared wall + any opening in
+     it; the neighbour omits its side entirely. This is wrong: the wall belongs
+     to neither room, and a partial or size-mismatched boundary has no correct
+     single owner. The per-side model is binary (own the whole side or omit it),
+     so it can't represent one side that is partly this room's and partly a
+     neighbour's — a multi-neighbour side would double-wall or fill an opening.
+   - **Opening placement is coupled to ownership**, so an opening can only live on
+     the owner's wall. This is why the connection's DIRECTION (the flow arrow, "from"
+     room) cannot decide which room carries the opening today — placement is fixed
+     by position, not intent. Under composition the opening attaches to the composed
+     wall section and the direction is free to be pure graph metadata (attribution /
+     flow), decoupled from geometry.
+   - **Openings on a crossing wall drift** because they are written against the
+     shared guide lines rather than the wall's own extent. (Interim fix committed
+     on `feat/wadi-bundle-format`: an opening's far edge is emitted as
+     `nearGuide + <dimensionVar>` and a whole-wall opening anchors to the wall
+     start, so it tracks the room's size. Composition supersedes this by owning the
+     wall section directly.)
 3. **The external/internal call is per whole wall**, so it has nowhere correct to
    land where an external and an internal wall meet.
 
