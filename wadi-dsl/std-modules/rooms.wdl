@@ -23,7 +23,7 @@ import "std-furniture" as f
 
 house RoomLayouts {
   units feet_inches per_unit 10
-  site { plot (1800, 320) }
+  site { plot (2100, 320) }
 
   floor 1 "Layouts" {
     // ===== Bedroom =====
@@ -48,11 +48,15 @@ house RoomLayouts {
     }
 
     // Extra-small: bed only, for a tight bedroom (a bed + wardrobe needs more room).
-    room bedroom_xs at (1340, 0) size (90, 95) {
+    room bedroom_xs at (1340, 0) size (68, 88) {
       item f."bed_double" anchor top-center gap (0, 4)
     }
 
     // ===== Dining =====
+    // Extra-small: just the table, for a small dining nook (chairs need more room).
+    room dining_xs at (1560, 0) size (66, 48) {
+      item f."dining_table" anchor center
+    }
     // Small: table + two chairs, north/south (10 x 10 ft).
     room dining_s at (290, 0) size (100, 100) {
       item f."dining_table" anchor center
@@ -69,8 +73,8 @@ house RoomLayouts {
     }
 
     // ===== Living =====
-    // Extra-small: sofa + tv only (10 x 10 ft).
-    room living_xs at (1450, 0) size (100, 100) {
+    // Extra-small: sofa + tv only.
+    room living_xs at (1450, 0) size (82, 78) {
       item f."sofa" anchor bottom-center gap (0, 6) rotation 180
       item f."tv_unit" anchor top-center gap (0, 6)
     }
@@ -101,6 +105,12 @@ house RoomLayouts {
     }
 
     // ===== Kitchen: counter run + fridge (10 x 10 ft) =====
+    // Extra-small: a single counter run (cabinet + stove + sink), no fridge.
+    room kitchen_xs at (1660, 0) size (78, 46) {
+      item f."kitchen_cabinet" anchor top-left gap (2, 4)
+      item f."stove" anchor top-center gap (0, 4)
+      item f."kitchen_sink" anchor top-right gap (2, 4)
+    }
     room kitchen_a at (720, 0) size (100, 100) {
       item f."kitchen_cabinet" anchor top-left gap (4, 4)
       item f."stove" anchor top-center gap (0, 4)
@@ -115,6 +125,11 @@ house RoomLayouts {
     }
 
     // ===== Bathroom: basin, toilet, shower (10 x 10 ft) =====
+    // Extra-small: sink + toilet only, for a small WC (a shower needs more depth).
+    room bath_xs at (1760, 0) size (66, 40) {
+      item f."bathroom_sink" anchor top-left gap (4, 4)
+      item f."toilet" anchor top-right gap (4, 0)
+    }
     room bath_a at (840, 0) size (100, 100) {
       item f."bathroom_sink" anchor top-left gap (4, 4)
       item f."toilet" anchor bottom-left gap (4, 4)

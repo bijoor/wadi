@@ -188,8 +188,8 @@
     {
       "id": "bedroom_xs",
       "type": "bedroom",
-      "w": 90,
-      "h": 95,
+      "w": 68,
+      "h": 88,
       "pieces": [
         {
           "asset": {
@@ -206,6 +206,28 @@
           "anchor": "top-center",
           "gap_x": 0,
           "gap_y": 4
+        }
+      ]
+    },
+    {
+      "id": "dining_xs",
+      "type": "dining",
+      "w": 66,
+      "h": 48,
+      "pieces": [
+        {
+          "asset": {
+            "id": "dining_table",
+            "src": "https://templates.wadi.house/furniture/dining_table.glb",
+            "dimensions": [
+              1.5,
+              0.75,
+              0.9
+            ],
+            "name": "Dining table",
+            "category": "Dining"
+          },
+          "anchor": "center"
         }
       ]
     },
@@ -356,8 +378,8 @@
     {
       "id": "living_xs",
       "type": "living",
-      "w": 100,
-      "h": 100,
+      "w": 82,
+      "h": 78,
       "pieces": [
         {
           "asset": {
@@ -622,6 +644,62 @@
       ]
     },
     {
+      "id": "kitchen_xs",
+      "type": "kitchen",
+      "w": 78,
+      "h": 46,
+      "pieces": [
+        {
+          "asset": {
+            "id": "kitchen_cabinet",
+            "src": "https://templates.wadi.house/furniture/kitchen_cabinet.glb",
+            "dimensions": [
+              0.6,
+              0.9,
+              0.6
+            ],
+            "name": "Base cabinet",
+            "category": "Kitchen"
+          },
+          "anchor": "top-left",
+          "gap_x": 2,
+          "gap_y": 4
+        },
+        {
+          "asset": {
+            "id": "stove",
+            "src": "https://templates.wadi.house/furniture/stove.glb",
+            "dimensions": [
+              0.6,
+              0.9,
+              0.65
+            ],
+            "name": "Stove",
+            "category": "Kitchen"
+          },
+          "anchor": "top-center",
+          "gap_x": 0,
+          "gap_y": 4
+        },
+        {
+          "asset": {
+            "id": "kitchen_sink",
+            "src": "https://templates.wadi.house/furniture/kitchen_sink.glb",
+            "dimensions": [
+              0.6,
+              0.9,
+              0.6
+            ],
+            "name": "Kitchen sink",
+            "category": "Kitchen"
+          },
+          "anchor": "top-right",
+          "gap_x": 2,
+          "gap_y": 4
+        }
+      ]
+    },
+    {
       "id": "kitchen_a",
       "type": "kitchen",
       "w": 100,
@@ -762,6 +840,46 @@
           "anchor": "bottom-left",
           "gap_x": 4,
           "gap_y": 4
+        }
+      ]
+    },
+    {
+      "id": "bath_xs",
+      "type": "bath",
+      "w": 66,
+      "h": 40,
+      "pieces": [
+        {
+          "asset": {
+            "id": "bathroom_sink",
+            "src": "https://templates.wadi.house/furniture/bathroom_sink.glb",
+            "dimensions": [
+              0.6,
+              0.85,
+              0.5
+            ],
+            "name": "Washbasin",
+            "category": "Bathroom"
+          },
+          "anchor": "top-left",
+          "gap_x": 4,
+          "gap_y": 4
+        },
+        {
+          "asset": {
+            "id": "toilet",
+            "src": "https://templates.wadi.house/furniture/toilet.glb",
+            "dimensions": [
+              0.5,
+              0.8,
+              0.7
+            ],
+            "name": "Toilet",
+            "category": "Bathroom"
+          },
+          "anchor": "top-right",
+          "gap_x": 4,
+          "gap_y": 0
         }
       ]
     },

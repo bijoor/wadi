@@ -44,9 +44,12 @@ function conflictCount(layout, openSides) {
 const area = (l) => (l.w || 0) * (l.h || 0)
 
 // Does a layout's target size fit inside a room of w x h? A small tolerance absorbs rounding
-// so a layout authored at 100 still counts as fitting a 100-unit room.
+// so a layout authored at 100 still counts as fitting a 100-unit room. A layout with no
+// furniture (a balcony/terrace that only carries a wall height) has no footprint to overflow,
+// so it always fits — its height applies whatever the room's size or shape.
 const FIT_TOL = 1
 function fits(layout, w, h) {
+  if (!layout.pieces || layout.pieces.length === 0) return true
   if (!w || !h) return true // unknown room size: don't filter by size
   return (layout.w || 0) <= w + FIT_TOL && (layout.h || 0) <= h + FIT_TOL
 }
