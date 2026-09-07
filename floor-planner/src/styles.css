@@ -511,11 +511,6 @@ button.icon:hover { color: #ef4444; }
 
 /* Guides on the canvas — derived from room edges, so they track the rooms. */
 .guide { stroke: #2563eb; stroke-width: 1.25; opacity: 0.6; stroke-dasharray: 6 4; }
-/* A grip on a guide that drives a size variable — drag it to change that size. */
-.guide-grip { fill: #7c3aed; stroke: #fff; stroke-width: 1; rx: 2; }
-.guide-grip:hover { fill: #6d28d9; }
-.guide-drag { stroke: #7c3aed; stroke-width: 1.5; opacity: 0.9; }
-.guide-drag-label { fill: #6d28d9; font-size: 11px; font-weight: 600; }
 .bay-label { font-size: 10px; fill: #2563eb; }
 .size-badge { font-size: 10px; fill: #7c3aed; font-weight: 600; }
 .size-mode { display: flex; gap: 6px; margin: 6px 0; }
