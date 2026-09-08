@@ -1,0 +1,1324 @@
+{
+  "assets": [
+    {
+      "id": "bed_double",
+      "src": "https://templates.wadi.house/furniture/bed_double.glb",
+      "dimensions": [
+        1.5,
+        0.5,
+        2
+      ],
+      "name": "Double bed",
+      "category": "Bedroom"
+    },
+    {
+      "id": "bed_single",
+      "src": "https://templates.wadi.house/furniture/bed_single.glb",
+      "dimensions": [
+        0.9,
+        0.5,
+        1.9
+      ],
+      "name": "Single bed",
+      "category": "Bedroom"
+    },
+    {
+      "id": "bed_bunk",
+      "src": "https://templates.wadi.house/furniture/bed_bunk.glb",
+      "dimensions": [
+        1,
+        1.7,
+        2
+      ],
+      "name": "Bunk bed",
+      "category": "Bedroom"
+    },
+    {
+      "id": "wardrobe",
+      "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+      "dimensions": [
+        1,
+        1.8,
+        0.55
+      ],
+      "name": "Wardrobe",
+      "category": "Bedroom"
+    },
+    {
+      "id": "bedside_table",
+      "src": "https://templates.wadi.house/furniture/bedside_table.glb",
+      "dimensions": [
+        0.5,
+        0.55,
+        0.4
+      ],
+      "name": "Bedside table",
+      "category": "Bedroom"
+    },
+    {
+      "id": "sofa",
+      "src": "https://templates.wadi.house/furniture/sofa.glb",
+      "dimensions": [
+        1.9,
+        0.8,
+        0.9
+      ],
+      "name": "Sofa",
+      "category": "Living"
+    },
+    {
+      "id": "sofa_long",
+      "src": "https://templates.wadi.house/furniture/sofa_long.glb",
+      "dimensions": [
+        2.5,
+        0.8,
+        0.9
+      ],
+      "name": "Large sofa",
+      "category": "Living"
+    },
+    {
+      "id": "sofa_corner",
+      "src": "https://templates.wadi.house/furniture/sofa_corner.glb",
+      "dimensions": [
+        2.4,
+        0.8,
+        2.4
+      ],
+      "name": "Corner sofa",
+      "category": "Living"
+    },
+    {
+      "id": "armchair",
+      "src": "https://templates.wadi.house/furniture/armchair.glb",
+      "dimensions": [
+        0.85,
+        0.8,
+        0.85
+      ],
+      "name": "Armchair",
+      "category": "Living"
+    },
+    {
+      "id": "recliner",
+      "src": "https://templates.wadi.house/furniture/recliner.glb",
+      "dimensions": [
+        0.9,
+        1,
+        0.95
+      ],
+      "name": "Recliner",
+      "category": "Living"
+    },
+    {
+      "id": "ottoman",
+      "src": "https://templates.wadi.house/furniture/ottoman.glb",
+      "dimensions": [
+        0.8,
+        0.45,
+        0.8
+      ],
+      "name": "Ottoman",
+      "category": "Living"
+    },
+    {
+      "id": "coffee_table",
+      "src": "https://templates.wadi.house/furniture/coffee_table.glb",
+      "dimensions": [
+        1.1,
+        0.4,
+        0.6
+      ],
+      "name": "Coffee table",
+      "category": "Living"
+    },
+    {
+      "id": "side_table",
+      "src": "https://templates.wadi.house/furniture/side_table.glb",
+      "dimensions": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "name": "Side table",
+      "category": "Living"
+    },
+    {
+      "id": "tv_unit",
+      "src": "https://templates.wadi.house/furniture/tv_unit.glb",
+      "dimensions": [
+        1.5,
+        0.5,
+        0.4
+      ],
+      "name": "TV unit",
+      "category": "Living"
+    },
+    {
+      "id": "tv",
+      "src": "https://templates.wadi.house/furniture/tv.glb",
+      "dimensions": [
+        1.2,
+        0.7,
+        0.1
+      ],
+      "name": "Television",
+      "category": "Living"
+    },
+    {
+      "id": "cabinet_wide",
+      "src": "https://templates.wadi.house/furniture/cabinet_wide.glb",
+      "dimensions": [
+        1.6,
+        1,
+        0.4
+      ],
+      "name": "Cabinet",
+      "category": "Living"
+    },
+    {
+      "id": "ceiling_fan",
+      "src": "https://templates.wadi.house/furniture/ceiling_fan.glb",
+      "dimensions": [
+        1.2,
+        0.35,
+        1.2
+      ],
+      "name": "Ceiling fan",
+      "category": "Living"
+    },
+    {
+      "id": "dining_table",
+      "src": "https://templates.wadi.house/furniture/dining_table.glb",
+      "dimensions": [
+        1.5,
+        0.75,
+        0.9
+      ],
+      "name": "Dining table",
+      "category": "Dining"
+    },
+    {
+      "id": "round_table",
+      "src": "https://templates.wadi.house/furniture/round_table.glb",
+      "dimensions": [
+        1.1,
+        0.75,
+        1.1
+      ],
+      "name": "Round table",
+      "category": "Dining"
+    },
+    {
+      "id": "chair",
+      "src": "https://templates.wadi.house/furniture/chair.glb",
+      "dimensions": [
+        0.5,
+        0.9,
+        0.5
+      ],
+      "name": "Chair",
+      "category": "Dining"
+    },
+    {
+      "id": "bench",
+      "src": "https://templates.wadi.house/furniture/bench.glb",
+      "dimensions": [
+        1.4,
+        0.45,
+        0.4
+      ],
+      "name": "Bench",
+      "category": "Dining"
+    },
+    {
+      "id": "bar_stool",
+      "src": "https://templates.wadi.house/furniture/bar_stool.glb",
+      "dimensions": [
+        0.4,
+        1.05,
+        0.4
+      ],
+      "name": "Bar stool",
+      "category": "Dining"
+    },
+    {
+      "id": "kitchen_cabinet",
+      "src": "https://templates.wadi.house/furniture/kitchen_cabinet.glb",
+      "dimensions": [
+        0.6,
+        0.9,
+        0.6
+      ],
+      "name": "Base cabinet",
+      "category": "Kitchen"
+    },
+    {
+      "id": "kitchen_cabinet_upper",
+      "src": "https://templates.wadi.house/furniture/kitchen_cabinet_upper.glb",
+      "dimensions": [
+        0.6,
+        0.7,
+        0.35
+      ],
+      "name": "Wall cabinet",
+      "category": "Kitchen"
+    },
+    {
+      "id": "kitchen_sink",
+      "src": "https://templates.wadi.house/furniture/kitchen_sink.glb",
+      "dimensions": [
+        0.6,
+        0.9,
+        0.6
+      ],
+      "name": "Kitchen sink",
+      "category": "Kitchen"
+    },
+    {
+      "id": "stove",
+      "src": "https://templates.wadi.house/furniture/stove.glb",
+      "dimensions": [
+        0.6,
+        0.9,
+        0.65
+      ],
+      "name": "Stove",
+      "category": "Kitchen"
+    },
+    {
+      "id": "range_hood",
+      "src": "https://templates.wadi.house/furniture/range_hood.glb",
+      "dimensions": [
+        0.6,
+        0.45,
+        0.5
+      ],
+      "name": "Range hood",
+      "category": "Kitchen"
+    },
+    {
+      "id": "fridge",
+      "src": "https://templates.wadi.house/furniture/fridge.glb",
+      "dimensions": [
+        0.7,
+        1.8,
+        0.7
+      ],
+      "name": "Fridge",
+      "category": "Kitchen"
+    },
+    {
+      "id": "microwave",
+      "src": "https://templates.wadi.house/furniture/microwave.glb",
+      "dimensions": [
+        0.5,
+        0.3,
+        0.4
+      ],
+      "name": "Microwave",
+      "category": "Kitchen"
+    },
+    {
+      "id": "coffee_machine",
+      "src": "https://templates.wadi.house/furniture/coffee_machine.glb",
+      "dimensions": [
+        0.25,
+        0.35,
+        0.3
+      ],
+      "name": "Coffee machine",
+      "category": "Kitchen"
+    },
+    {
+      "id": "toilet",
+      "src": "https://templates.wadi.house/furniture/toilet.glb",
+      "dimensions": [
+        0.5,
+        0.8,
+        0.7
+      ],
+      "name": "Toilet",
+      "category": "Bathroom"
+    },
+    {
+      "id": "bathtub",
+      "src": "https://templates.wadi.house/furniture/bathtub.glb",
+      "dimensions": [
+        0.75,
+        0.6,
+        1.6
+      ],
+      "name": "Bathtub",
+      "category": "Bathroom"
+    },
+    {
+      "id": "shower",
+      "src": "https://templates.wadi.house/furniture/shower.glb",
+      "dimensions": [
+        0.9,
+        2.1,
+        0.9
+      ],
+      "name": "Shower",
+      "category": "Bathroom"
+    },
+    {
+      "id": "bathroom_sink",
+      "src": "https://templates.wadi.house/furniture/bathroom_sink.glb",
+      "dimensions": [
+        0.6,
+        0.85,
+        0.5
+      ],
+      "name": "Washbasin",
+      "category": "Bathroom"
+    },
+    {
+      "id": "bathroom_mirror",
+      "src": "https://templates.wadi.house/furniture/bathroom_mirror.glb",
+      "dimensions": [
+        0.6,
+        0.8,
+        0.05
+      ],
+      "name": "Mirror",
+      "category": "Bathroom"
+    },
+    {
+      "id": "bathroom_cabinet",
+      "src": "https://templates.wadi.house/furniture/bathroom_cabinet.glb",
+      "dimensions": [
+        0.6,
+        0.7,
+        0.3
+      ],
+      "name": "Bathroom cabinet",
+      "category": "Bathroom"
+    },
+    {
+      "id": "washing_machine",
+      "src": "https://templates.wadi.house/furniture/washing_machine.glb",
+      "dimensions": [
+        0.6,
+        0.85,
+        0.6
+      ],
+      "name": "Washing machine",
+      "category": "Bathroom"
+    },
+    {
+      "id": "desk",
+      "src": "https://templates.wadi.house/furniture/desk.glb",
+      "dimensions": [
+        1.2,
+        0.75,
+        0.6
+      ],
+      "name": "Desk",
+      "category": "Study"
+    },
+    {
+      "id": "desk_corner",
+      "src": "https://templates.wadi.house/furniture/desk_corner.glb",
+      "dimensions": [
+        1.4,
+        0.75,
+        1.4
+      ],
+      "name": "Corner desk",
+      "category": "Study"
+    },
+    {
+      "id": "desk_chair",
+      "src": "https://templates.wadi.house/furniture/desk_chair.glb",
+      "dimensions": [
+        0.6,
+        1,
+        0.6
+      ],
+      "name": "Desk chair",
+      "category": "Study"
+    },
+    {
+      "id": "bookcase",
+      "src": "https://templates.wadi.house/furniture/bookcase.glb",
+      "dimensions": [
+        0.9,
+        1.8,
+        0.3
+      ],
+      "name": "Bookcase",
+      "category": "Study"
+    },
+    {
+      "id": "monitor",
+      "src": "https://templates.wadi.house/furniture/monitor.glb",
+      "dimensions": [
+        0.55,
+        0.4,
+        0.2
+      ],
+      "name": "Monitor",
+      "category": "Study"
+    },
+    {
+      "id": "laptop",
+      "src": "https://templates.wadi.house/furniture/laptop.glb",
+      "dimensions": [
+        0.35,
+        0.03,
+        0.25
+      ],
+      "name": "Laptop",
+      "category": "Study"
+    },
+    {
+      "id": "floor_lamp",
+      "src": "https://templates.wadi.house/furniture/floor_lamp.glb",
+      "dimensions": [
+        0.4,
+        1.6,
+        0.4
+      ],
+      "name": "Floor lamp",
+      "category": "Lighting"
+    },
+    {
+      "id": "table_lamp",
+      "src": "https://templates.wadi.house/furniture/table_lamp.glb",
+      "dimensions": [
+        0.3,
+        0.5,
+        0.3
+      ],
+      "name": "Table lamp",
+      "category": "Lighting"
+    },
+    {
+      "id": "wall_light",
+      "src": "https://templates.wadi.house/furniture/wall_light.glb",
+      "dimensions": [
+        0.2,
+        0.3,
+        0.15
+      ],
+      "name": "Wall light",
+      "category": "Lighting"
+    },
+    {
+      "id": "plant",
+      "src": "https://templates.wadi.house/furniture/plant.glb",
+      "dimensions": [
+        0.5,
+        1,
+        0.5
+      ],
+      "name": "Potted plant",
+      "category": "Decor"
+    },
+    {
+      "id": "small_plant",
+      "src": "https://templates.wadi.house/furniture/small_plant.glb",
+      "dimensions": [
+        0.3,
+        0.45,
+        0.3
+      ],
+      "name": "Small plant",
+      "category": "Decor"
+    },
+    {
+      "id": "coat_rack",
+      "src": "https://templates.wadi.house/furniture/coat_rack.glb",
+      "dimensions": [
+        0.5,
+        1.8,
+        0.5
+      ],
+      "name": "Coat rack",
+      "category": "Decor"
+    },
+    {
+      "id": "rug",
+      "src": "https://templates.wadi.house/furniture/rug.glb",
+      "dimensions": [
+        1.6,
+        0.02,
+        2.3
+      ],
+      "name": "Rug",
+      "category": "Decor"
+    },
+    {
+      "id": "bedside_cabinet",
+      "src": "https://templates.wadi.house/furniture/bedside_cabinet.glb",
+      "dimensions": [
+        0.51,
+        0.44,
+        0.41
+      ],
+      "name": "Bedside cabinet",
+      "category": "Bedroom"
+    },
+    {
+      "id": "bedside_table_drawers",
+      "src": "https://templates.wadi.house/furniture/bedside_table_drawers.glb",
+      "dimensions": [
+        0.51,
+        0.5,
+        0.41
+      ],
+      "name": "Bedside table (drawers)",
+      "category": "Bedroom"
+    },
+    {
+      "id": "pillow",
+      "src": "https://templates.wadi.house/furniture/pillow.glb",
+      "dimensions": [
+        0.44,
+        0.42,
+        0.17
+      ],
+      "name": "Pillow",
+      "category": "Bedroom"
+    },
+    {
+      "id": "pillow_blue",
+      "src": "https://templates.wadi.house/furniture/pillow_blue.glb",
+      "dimensions": [
+        0.44,
+        0.24,
+        0.12
+      ],
+      "name": "Pillow (blue)",
+      "category": "Bedroom"
+    },
+    {
+      "id": "bolster",
+      "src": "https://templates.wadi.house/furniture/bolster.glb",
+      "dimensions": [
+        0.73,
+        0.42,
+        0.17
+      ],
+      "name": "Bolster pillow",
+      "category": "Bedroom"
+    },
+    {
+      "id": "bolster_blue",
+      "src": "https://templates.wadi.house/furniture/bolster_blue.glb",
+      "dimensions": [
+        0.98,
+        0.42,
+        0.17
+      ],
+      "name": "Bolster (blue)",
+      "category": "Bedroom"
+    },
+    {
+      "id": "sofa_design",
+      "src": "https://templates.wadi.house/furniture/sofa_design.glb",
+      "dimensions": [
+        2.13,
+        0.76,
+        0.78
+      ],
+      "name": "Design sofa",
+      "category": "Living"
+    },
+    {
+      "id": "sofa_design_corner",
+      "src": "https://templates.wadi.house/furniture/sofa_design_corner.glb",
+      "dimensions": [
+        2.56,
+        0.76,
+        2.56
+      ],
+      "name": "Design corner sofa",
+      "category": "Living"
+    },
+    {
+      "id": "armchair_design",
+      "src": "https://templates.wadi.house/furniture/armchair_design.glb",
+      "dimensions": [
+        1.39,
+        0.76,
+        0.78
+      ],
+      "name": "Design armchair",
+      "category": "Living"
+    },
+    {
+      "id": "bench_cushion",
+      "src": "https://templates.wadi.house/furniture/bench_cushion.glb",
+      "dimensions": [
+        0.76,
+        0.87,
+        0.38
+      ],
+      "name": "Cushioned bench",
+      "category": "Living"
+    },
+    {
+      "id": "bench_cushion_low",
+      "src": "https://templates.wadi.house/furniture/bench_cushion_low.glb",
+      "dimensions": [
+        0.8,
+        0.38,
+        0.42
+      ],
+      "name": "Low cushioned bench",
+      "category": "Living"
+    },
+    {
+      "id": "tv_unit_doors",
+      "src": "https://templates.wadi.house/furniture/tv_unit_doors.glb",
+      "dimensions": [
+        1.52,
+        0.59,
+        0.49
+      ],
+      "name": "TV unit (doors)",
+      "category": "Living"
+    },
+    {
+      "id": "tv_antenna",
+      "src": "https://templates.wadi.house/furniture/tv_antenna.glb",
+      "dimensions": [
+        0.5,
+        0.2,
+        0.15
+      ],
+      "name": "TV (antenna)",
+      "category": "Living"
+    },
+    {
+      "id": "tv_vintage",
+      "src": "https://templates.wadi.house/furniture/tv_vintage.glb",
+      "dimensions": [
+        0.78,
+        0.51,
+        0.51
+      ],
+      "name": "Vintage TV",
+      "category": "Living"
+    },
+    {
+      "id": "speaker",
+      "src": "https://templates.wadi.house/furniture/speaker.glb",
+      "dimensions": [
+        0.28,
+        1.21,
+        0.28
+      ],
+      "name": "Speaker",
+      "category": "Living"
+    },
+    {
+      "id": "speaker_small",
+      "src": "https://templates.wadi.house/furniture/speaker_small.glb",
+      "dimensions": [
+        0.28,
+        0.57,
+        0.25
+      ],
+      "name": "Small speaker",
+      "category": "Living"
+    },
+    {
+      "id": "radio",
+      "src": "https://templates.wadi.house/furniture/radio.glb",
+      "dimensions": [
+        0.6,
+        0.43,
+        0.19
+      ],
+      "name": "Radio",
+      "category": "Living"
+    },
+    {
+      "id": "coffee_table_glass",
+      "src": "https://templates.wadi.house/furniture/coffee_table_glass.glb",
+      "dimensions": [
+        1.26,
+        0.44,
+        0.76
+      ],
+      "name": "Glass coffee table",
+      "category": "Living"
+    },
+    {
+      "id": "coffee_table_glass_sq",
+      "src": "https://templates.wadi.house/furniture/coffee_table_glass_sq.glb",
+      "dimensions": [
+        0.76,
+        0.44,
+        0.76
+      ],
+      "name": "Glass coffee table (square)",
+      "category": "Living"
+    },
+    {
+      "id": "coffee_table_square",
+      "src": "https://templates.wadi.house/furniture/coffee_table_square.glb",
+      "dimensions": [
+        0.76,
+        0.44,
+        0.76
+      ],
+      "name": "Coffee table (square)",
+      "category": "Living"
+    },
+    {
+      "id": "side_table_cross",
+      "src": "https://templates.wadi.house/furniture/side_table_cross.glb",
+      "dimensions": [
+        1.62,
+        0.66,
+        0.85
+      ],
+      "name": "Cross-leg side table",
+      "category": "Living"
+    },
+    {
+      "id": "side_table_cross_cloth",
+      "src": "https://templates.wadi.house/furniture/side_table_cross_cloth.glb",
+      "dimensions": [
+        1.62,
+        0.66,
+        0.85
+      ],
+      "name": "Cross-leg table (cloth)",
+      "category": "Living"
+    },
+    {
+      "id": "side_table_drawers",
+      "src": "https://templates.wadi.house/furniture/side_table_drawers.glb",
+      "dimensions": [
+        1.02,
+        0.73,
+        0.42
+      ],
+      "name": "Side table (drawers)",
+      "category": "Living"
+    },
+    {
+      "id": "chair_cushion",
+      "src": "https://templates.wadi.house/furniture/chair_cushion.glb",
+      "dimensions": [
+        0.38,
+        0.87,
+        0.38
+      ],
+      "name": "Cushioned chair",
+      "category": "Dining"
+    },
+    {
+      "id": "chair_modern",
+      "src": "https://templates.wadi.house/furniture/chair_modern.glb",
+      "dimensions": [
+        0.38,
+        0.87,
+        0.38
+      ],
+      "name": "Modern chair",
+      "category": "Dining"
+    },
+    {
+      "id": "chair_modern_frame",
+      "src": "https://templates.wadi.house/furniture/chair_modern_frame.glb",
+      "dimensions": [
+        0.38,
+        0.87,
+        0.38
+      ],
+      "name": "Modern frame chair",
+      "category": "Dining"
+    },
+    {
+      "id": "chair_rounded",
+      "src": "https://templates.wadi.house/furniture/chair_rounded.glb",
+      "dimensions": [
+        0.38,
+        0.86,
+        0.38
+      ],
+      "name": "Rounded chair",
+      "category": "Dining"
+    },
+    {
+      "id": "dining_table_glass",
+      "src": "https://templates.wadi.house/furniture/dining_table_glass.glb",
+      "dimensions": [
+        1.6,
+        0.62,
+        0.85
+      ],
+      "name": "Glass dining table",
+      "category": "Dining"
+    },
+    {
+      "id": "dining_table_cloth",
+      "src": "https://templates.wadi.house/furniture/dining_table_cloth.glb",
+      "dimensions": [
+        1.6,
+        0.62,
+        0.85
+      ],
+      "name": "Dining table (cloth)",
+      "category": "Dining"
+    },
+    {
+      "id": "bar_stool_square",
+      "src": "https://templates.wadi.house/furniture/bar_stool_square.glb",
+      "dimensions": [
+        0.29,
+        0.77,
+        0.28
+      ],
+      "name": "Bar stool (square)",
+      "category": "Dining"
+    },
+    {
+      "id": "kitchen_island",
+      "src": "https://templates.wadi.house/furniture/kitchen_island.glb",
+      "dimensions": [
+        0.82,
+        0.8,
+        0.4
+      ],
+      "name": "Kitchen island",
+      "category": "Kitchen"
+    },
+    {
+      "id": "kitchen_island_end",
+      "src": "https://templates.wadi.house/furniture/kitchen_island_end.glb",
+      "dimensions": [
+        0.19,
+        0.8,
+        0.4
+      ],
+      "name": "Island end",
+      "category": "Kitchen"
+    },
+    {
+      "id": "blender",
+      "src": "https://templates.wadi.house/furniture/blender.glb",
+      "dimensions": [
+        0.26,
+        0.43,
+        0.21
+      ],
+      "name": "Blender",
+      "category": "Kitchen"
+    },
+    {
+      "id": "kitchen_cabinet_corner",
+      "src": "https://templates.wadi.house/furniture/kitchen_cabinet_corner.glb",
+      "dimensions": [
+        0.87,
+        0.85,
+        0.87
+      ],
+      "name": "Corner base cabinet",
+      "category": "Kitchen"
+    },
+    {
+      "id": "kitchen_cabinet_corner_round",
+      "src": "https://templates.wadi.house/furniture/kitchen_cabinet_corner_round.glb",
+      "dimensions": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "name": "Corner base cabinet (round)",
+      "category": "Kitchen"
+    },
+    {
+      "id": "kitchen_cabinet_drawer",
+      "src": "https://templates.wadi.house/furniture/kitchen_cabinet_drawer.glb",
+      "dimensions": [
+        0.82,
+        0.85,
+        0.85
+      ],
+      "name": "Base cabinet (drawers)",
+      "category": "Kitchen"
+    },
+    {
+      "id": "kitchen_cabinet_upper_corner",
+      "src": "https://templates.wadi.house/furniture/kitchen_cabinet_upper_corner.glb",
+      "dimensions": [
+        0.41,
+        0.74,
+        0.4
+      ],
+      "name": "Wall cabinet (corner)",
+      "category": "Kitchen"
+    },
+    {
+      "id": "kitchen_cabinet_upper_double",
+      "src": "https://templates.wadi.house/furniture/kitchen_cabinet_upper_double.glb",
+      "dimensions": [
+        0.82,
+        0.74,
+        0.42
+      ],
+      "name": "Wall cabinet (double)",
+      "category": "Kitchen"
+    },
+    {
+      "id": "kitchen_cabinet_upper_low",
+      "src": "https://templates.wadi.house/furniture/kitchen_cabinet_upper_low.glb",
+      "dimensions": [
+        0.82,
+        0.37,
+        0.42
+      ],
+      "name": "Wall cabinet (low)",
+      "category": "Kitchen"
+    },
+    {
+      "id": "fridge_builtin",
+      "src": "https://templates.wadi.house/furniture/fridge_builtin.glb",
+      "dimensions": [
+        0.82,
+        1.65,
+        0.85
+      ],
+      "name": "Built-in fridge",
+      "category": "Kitchen"
+    },
+    {
+      "id": "fridge_large",
+      "src": "https://templates.wadi.house/furniture/fridge_large.glb",
+      "dimensions": [
+        0.99,
+        1.75,
+        0.77
+      ],
+      "name": "Large fridge",
+      "category": "Kitchen"
+    },
+    {
+      "id": "fridge_small",
+      "src": "https://templates.wadi.house/furniture/fridge_small.glb",
+      "dimensions": [
+        0.82,
+        1.14,
+        0.55
+      ],
+      "name": "Mini fridge",
+      "category": "Kitchen"
+    },
+    {
+      "id": "stove_electric",
+      "src": "https://templates.wadi.house/furniture/stove_electric.glb",
+      "dimensions": [
+        0.82,
+        0.85,
+        0.85
+      ],
+      "name": "Electric stove",
+      "category": "Kitchen"
+    },
+    {
+      "id": "range_hood_large",
+      "src": "https://templates.wadi.house/furniture/range_hood_large.glb",
+      "dimensions": [
+        0.82,
+        0.7,
+        0.54
+      ],
+      "name": "Range hood (large)",
+      "category": "Kitchen"
+    },
+    {
+      "id": "toaster",
+      "src": "https://templates.wadi.house/furniture/toaster.glb",
+      "dimensions": [
+        0.36,
+        0.25,
+        0.19
+      ],
+      "name": "Toaster",
+      "category": "Kitchen"
+    },
+    {
+      "id": "trashcan",
+      "src": "https://templates.wadi.house/furniture/trashcan.glb",
+      "dimensions": [
+        0.39,
+        0.81,
+        0.44
+      ],
+      "name": "Trash can",
+      "category": "Kitchen"
+    },
+    {
+      "id": "bathroom_cabinet_drawer",
+      "src": "https://templates.wadi.house/furniture/bathroom_cabinet_drawer.glb",
+      "dimensions": [
+        0.82,
+        0.9,
+        0.61
+      ],
+      "name": "Bathroom cabinet (drawers)",
+      "category": "Bathroom"
+    },
+    {
+      "id": "bathroom_sink_square",
+      "src": "https://templates.wadi.house/furniture/bathroom_sink_square.glb",
+      "dimensions": [
+        0.82,
+        1.1,
+        0.57
+      ],
+      "name": "Washbasin (square)",
+      "category": "Bathroom"
+    },
+    {
+      "id": "shower_square",
+      "src": "https://templates.wadi.house/furniture/shower_square.glb",
+      "dimensions": [
+        1.07,
+        2.08,
+        1.11
+      ],
+      "name": "Shower (square)",
+      "category": "Bathroom"
+    },
+    {
+      "id": "toilet_square",
+      "src": "https://templates.wadi.house/furniture/toilet_square.glb",
+      "dimensions": [
+        0.58,
+        0.86,
+        0.74
+      ],
+      "name": "Toilet (square)",
+      "category": "Bathroom"
+    },
+    {
+      "id": "dryer",
+      "src": "https://templates.wadi.house/furniture/dryer.glb",
+      "dimensions": [
+        0.74,
+        0.89,
+        0.72
+      ],
+      "name": "Dryer",
+      "category": "Bathroom"
+    },
+    {
+      "id": "washer_dryer_stacked",
+      "src": "https://templates.wadi.house/furniture/washer_dryer_stacked.glb",
+      "dimensions": [
+        0.74,
+        1.79,
+        0.74
+      ],
+      "name": "Washer-dryer (stacked)",
+      "category": "Bathroom"
+    },
+    {
+      "id": "bookcase_closed",
+      "src": "https://templates.wadi.house/furniture/bookcase_closed.glb",
+      "dimensions": [
+        0.76,
+        1.61,
+        0.47
+      ],
+      "name": "Bookcase (closed)",
+      "category": "Study"
+    },
+    {
+      "id": "bookcase_low",
+      "src": "https://templates.wadi.house/furniture/bookcase_low.glb",
+      "dimensions": [
+        0.76,
+        0.76,
+        0.47
+      ],
+      "name": "Bookcase (low)",
+      "category": "Study"
+    },
+    {
+      "id": "keyboard",
+      "src": "https://templates.wadi.house/furniture/keyboard.glb",
+      "dimensions": [
+        0.54,
+        0.05,
+        0.22
+      ],
+      "name": "Keyboard",
+      "category": "Study"
+    },
+    {
+      "id": "mouse",
+      "src": "https://templates.wadi.house/furniture/mouse.glb",
+      "dimensions": [
+        0.09,
+        0.04,
+        0.16
+      ],
+      "name": "Mouse",
+      "category": "Study"
+    },
+    {
+      "id": "books",
+      "src": "https://templates.wadi.house/furniture/books.glb",
+      "dimensions": [
+        0.29,
+        0.2,
+        0.18
+      ],
+      "name": "Books",
+      "category": "Study"
+    },
+    {
+      "id": "ceiling_lamp_square",
+      "src": "https://templates.wadi.house/furniture/ceiling_lamp_square.glb",
+      "dimensions": [
+        0.23,
+        0.44,
+        0.23
+      ],
+      "name": "Ceiling lamp (square)",
+      "category": "Lighting"
+    },
+    {
+      "id": "floor_lamp_square",
+      "src": "https://templates.wadi.house/furniture/floor_lamp_square.glb",
+      "dimensions": [
+        0.23,
+        1.63,
+        0.23
+      ],
+      "name": "Floor lamp (square)",
+      "category": "Lighting"
+    },
+    {
+      "id": "table_lamp_square",
+      "src": "https://templates.wadi.house/furniture/table_lamp_square.glb",
+      "dimensions": [
+        0.23,
+        0.55,
+        0.23
+      ],
+      "name": "Table lamp (square)",
+      "category": "Lighting"
+    },
+    {
+      "id": "small_plant_2",
+      "src": "https://templates.wadi.house/furniture/small_plant_2.glb",
+      "dimensions": [
+        0.18,
+        0.27,
+        0.18
+      ],
+      "name": "Small plant (fern)",
+      "category": "Decor"
+    },
+    {
+      "id": "small_plant_3",
+      "src": "https://templates.wadi.house/furniture/small_plant_3.glb",
+      "dimensions": [
+        0.19,
+        0.28,
+        0.16
+      ],
+      "name": "Small plant (cactus)",
+      "category": "Decor"
+    },
+    {
+      "id": "coat_hooks",
+      "src": "https://templates.wadi.house/furniture/coat_hooks.glb",
+      "dimensions": [
+        0.85,
+        0.53,
+        0.26
+      ],
+      "name": "Coat hooks (wall)",
+      "category": "Decor"
+    },
+    {
+      "id": "doormat",
+      "src": "https://templates.wadi.house/furniture/doormat.glb",
+      "dimensions": [
+        0.82,
+        0.02,
+        0.45
+      ],
+      "name": "Doormat",
+      "category": "Decor"
+    },
+    {
+      "id": "rug_round",
+      "src": "https://templates.wadi.house/furniture/rug_round.glb",
+      "dimensions": [
+        1.75,
+        0.02,
+        1.75
+      ],
+      "name": "Round rug",
+      "category": "Decor"
+    },
+    {
+      "id": "rug_rounded",
+      "src": "https://templates.wadi.house/furniture/rug_rounded.glb",
+      "dimensions": [
+        2.98,
+        0.02,
+        1.75
+      ],
+      "name": "Rounded rug",
+      "category": "Decor"
+    },
+    {
+      "id": "rug_square",
+      "src": "https://templates.wadi.house/furniture/rug_square.glb",
+      "dimensions": [
+        1.72,
+        0.02,
+        1.75
+      ],
+      "name": "Square rug",
+      "category": "Decor"
+    },
+    {
+      "id": "teddy_bear",
+      "src": "https://templates.wadi.house/furniture/teddy_bear.glb",
+      "dimensions": [
+        0.74,
+        0.85,
+        0.47
+      ],
+      "name": "Teddy bear",
+      "category": "Decor"
+    },
+    {
+      "id": "box_closed",
+      "src": "https://templates.wadi.house/furniture/box_closed.glb",
+      "dimensions": [
+        0.4,
+        0.53,
+        0.4
+      ],
+      "name": "Box (closed)",
+      "category": "Decor"
+    },
+    {
+      "id": "box_open",
+      "src": "https://templates.wadi.house/furniture/box_open.glb",
+      "dimensions": [
+        0.71,
+        0.53,
+        0.4
+      ],
+      "name": "Box (open)",
+      "category": "Decor"
+    }
+  ]
+}

@@ -13,7 +13,7 @@ function docFrom(state) {
   }
 }
 
-export default function Toolbar({ state, dispatch }) {
+export default function Toolbar({ state, dispatch, onAuthor }) {
   const { tool, history, floors, activeFloor, viewMode } = state
   const [sessCode, setSessCode] = React.useState(getSessionCode())
   const [pushMsg, setPushMsg] = React.useState('')
@@ -117,6 +117,10 @@ export default function Toolbar({ state, dispatch }) {
             {icon} {label}
           </button>
         ))}
+      </div>
+
+      <div className="group">
+        <button onClick={onAuthor} title="Author furniture layouts for the room templates">🪑 Layouts</button>
       </div>
 
       <div className="group">

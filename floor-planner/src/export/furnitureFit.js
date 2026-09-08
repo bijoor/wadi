@@ -133,6 +133,63 @@ function pieceBox(piece, room, wallT, units) {
   return { x, y, halfX, halfY }
 }
 
+// The plan rect a piece occupies (its axis-aligned footprint), in project units. Used by the
+// layout editor to draw and validate pieces.
+export function pieceRect(piece, room, wallT, units) {
+  const b = pieceBox(piece, room, wallT, units)
+  return { x0: b.x - b.halfX, y0: b.y - b.halfY, x1: b.x + b.halfX, y1: b.y + b.halfY, cx: b.x, cy: b.y, halfX: b.halfX, halfY: b.halfY }
+}
+
+// The nine anchor reference points on a room's inner wall face (where a piece attaches before
+// its gap offsets it), in project units.
+export function anchorPoints(room, wallT) {
+  const ix0 = room.x + wallT, iy0 = room.y + wallT, ix1 = room.x + room.w - wallT, iy1 = room.y + room.h - wallT
+  const mx = (ix0 + ix1) / 2, my = (iy0 + iy1) / 2
+  const xs = { left: ix0, center: mx, right: ix1 }
+  const ys = { top: iy0, center: my, bottom: iy1 }
+  const out = {}
+  for (const [va, vy] of Object.entries(ys)) for (const [ha, vx] of Object.entries(xs)) {
+    const name = va === 'center' && ha === 'center' ? 'center' : `${va}-${ha}`
+    out[name] = { x: vx, y: vy }
+  }
+  return out
+}
+
+// The gap that places a piece (at `anchor`, with half-extents halfX/halfY) so its footprint
+// centre lands at (cx, cy). Inverse of pieceBox; used when a piece is dragged.
+export function gapForCenter(anchor, cx, cy, halfX, halfY, room, wallT) {
+  const { h, v } = parseAnchor(anchor)
+  const ix0 = room.x + wallT, iy0 = room.y + wallT, ix1 = room.x + room.w - wallT, iy1 = room.y + room.h - wallT
+  const gx = h === 'left' ? cx - ix0 - halfX : h === 'right' ? ix1 - halfX - cx : cx - (ix0 + ix1) / 2
+  const gy = v === 'top' ? cy - iy0 - halfY : v === 'bottom' ? iy1 - halfY - cy : cy - (iy0 + iy1) / 2
+  return { gap_x: gx, gap_y: gy }
+}
+
+// Validate a layout the way check-room-layouts does: pairwise overlaps + pieces poking past the
+// inner wall face, with a small margin. Returns per-piece flags keyed by index.
+export function validateLayout(pieces, room, wallT, units, margin = 2) {
+  const rects = (pieces || []).map((p) => pieceRect(p, room, wallT, units))
+  const ix0 = room.x + wallT, iy0 = room.y + wallT, ix1 = room.x + room.w - wallT, iy1 = room.y + room.h - wallT
+  const flags = rects.map(() => ({ overlap: false, oob: [] }))
+  for (let a = 0; a < rects.length; a++) {
+    for (let b = a + 1; b < rects.length; b++) {
+      const A = rects[a], B = rects[b]
+      const ox = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0)
+      const oy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0)
+      if (ox > margin && oy > margin) { flags[a].overlap = true; flags[b].overlap = true }
+    }
+  }
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i], out = []
+    if (r.x0 < ix0 - margin) out.push('W')
+    if (r.x1 > ix1 + margin) out.push('E')
+    if (r.y0 < iy0 - margin) out.push('N')
+    if (r.y1 > iy1 + margin) out.push('S')
+    flags[i].oob = out
+  }
+  return { rects, flags }
+}
+
 // Does `piece` overlap a door opening on a wall it sits on? `doorsBySide[side]` is a list of
 // [lo,hi] opening intervals along that wall (X for north/south, Y for east/west).
 function pieceHitsDoor(piece, room, wallT, units, doorsBySide) {

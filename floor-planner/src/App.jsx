@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useRef } from 'react'
+import React, { useReducer, useEffect, useRef, useState } from 'react'
 import { reducer } from './store/reducer.js'
 import { initialState, normalizeModel } from './store/initialState.js'
 import { roomById } from './model/graph.js'
@@ -6,6 +6,7 @@ import { loadLocal, saveLocal } from './utils/storage.js'
 import Toolbar from './components/Toolbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Canvas from './components/Canvas.jsx'
+import LayoutEditor from './components/LayoutEditor.jsx'
 
 function init() {
   const base = initialState()
@@ -22,6 +23,9 @@ function init() {
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, undefined, init)
+  // Author mode: the room-layout editor (a separate tool over the furniture pack), URL-openable
+  // with ?layouts. Kept out of the doc reducer since it's a UI mode, not part of the house.
+  const [authoring, setAuthoring] = useState(() => new URLSearchParams(location.search).has('layouts'))
   const saveTimer = useRef(null)
   const clipboard = useRef({ rooms: [], edges: [] }) // rooms + internal edges (index pairs)
 
@@ -122,9 +126,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [state.selection, state.selectedIds, state.rooms, state.grid, state.edges, state.floors, state.activeFloor])
 
+  if (authoring) return <LayoutEditor onClose={() => setAuthoring(false)} />
+
   return (
     <div className="app">
-      <Toolbar state={state} dispatch={dispatch} />
+      <Toolbar state={state} dispatch={dispatch} onAuthor={() => setAuthoring(true)} />
       <div className="body">
         <Canvas state={state} dispatch={dispatch} />
         <Sidebar state={state} dispatch={dispatch} />
