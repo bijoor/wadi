@@ -169,10 +169,15 @@ function Editor({ s, dispatch, goLibrary, valid }) {
   const ox = (VW - room.w * sc) / 2, oy = (VH - room.h * sc) / 2
   const X = (u) => ox + u * sc, Y = (u) => oy + u * sc, L = (u) => u * sc
   const upm = unitsPerMeter(UNITS) // project units per metre, for the true footprint dims
-  const { rects, flags } = validateLayout(d.pieces, room, WALLT, UNITS)
+  const { rects, flags, overlaps, oob } = validateLayout(d.pieces, room, WALLT, UNITS)
   const anchors = anchorPoints(room, WALLT)
-  const nOverlap = flags.filter((f) => f.overlap).length
-  const nOob = flags.filter((f) => f.oob.length).length
+  const nameOf = (i) => d.pieces[i]?.asset?.name || `piece ${i + 1}`
+  const SIDEWORD = { W: 'left', E: 'right', N: 'top', S: 'bottom' }
+  // Human-readable issue lines: which pieces overlap (and by how much), which stick out of a wall.
+  const issues = [
+    ...overlaps.map((o) => `${nameOf(o.a)} overlaps ${nameOf(o.b)} (by ${o.ox}×${o.oy})`),
+    ...oob.map((e) => `${nameOf(e.i)} sticks out past the ${e.sides.map((s) => `${SIDEWORD[s.side]} wall (${s.by})`).join(', ')}`),
+  ]
   const drag = useRef(null)
 
   const onDown = (e, i) => {
@@ -228,10 +233,13 @@ function Editor({ s, dispatch, goLibrary, valid }) {
             )
           })}
         </svg>
-        <div className={`le-status ${nOverlap || nOob ? 'bad' : 'ok'}`}>
-          {nOverlap || nOob
-            ? `${nOverlap ? nOverlap + ' overlap' : ''}${nOverlap && nOob ? ', ' : ''}${nOob ? nOob + ' out of bounds' : ''}`
-            : `✓ ${d.pieces.length} piece${d.pieces.length === 1 ? '' : 's'}, all clear`}
+        <div className={`le-status ${issues.length ? 'bad' : 'ok'}`}>
+          {issues.length ? (
+            <>
+              <div className="le-status-head">{issues.length} issue{issues.length === 1 ? '' : 's'} — fix to save</div>
+              <ul>{issues.map((msg, i) => <li key={i}>{msg}</li>)}</ul>
+            </>
+          ) : `✓ ${d.pieces.length} piece${d.pieces.length === 1 ? '' : 's'}, all clear`}
         </div>
       </div>
       <EditorSidebar s={s} dispatch={dispatch} goLibrary={goLibrary} valid={valid} />

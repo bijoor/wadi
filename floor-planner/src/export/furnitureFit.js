@@ -166,28 +166,36 @@ export function gapForCenter(anchor, cx, cy, halfX, halfY, room, wallT) {
 }
 
 // Validate a layout the way check-room-layouts does: pairwise overlaps + pieces poking past the
-// inner wall face, with a small margin. Returns per-piece flags keyed by index.
+// inner wall face, with a small margin. Returns per-piece `flags` (for colouring) plus detailed
+// `overlaps` ([a,b] indices + the overlap extent) and `oob` (index + which sides + how far), so
+// the editor can spell out exactly what is wrong.
 export function validateLayout(pieces, room, wallT, units, margin = 2) {
   const rects = (pieces || []).map((p) => pieceRect(p, room, wallT, units))
   const ix0 = room.x + wallT, iy0 = room.y + wallT, ix1 = room.x + room.w - wallT, iy1 = room.y + room.h - wallT
   const flags = rects.map(() => ({ overlap: false, oob: [] }))
+  const overlaps = []
   for (let a = 0; a < rects.length; a++) {
     for (let b = a + 1; b < rects.length; b++) {
       const A = rects[a], B = rects[b]
       const ox = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0)
       const oy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0)
-      if (ox > margin && oy > margin) { flags[a].overlap = true; flags[b].overlap = true }
+      if (ox > margin && oy > margin) {
+        flags[a].overlap = true; flags[b].overlap = true
+        overlaps.push({ a, b, ox: Math.round(ox), oy: Math.round(oy) })
+      }
     }
   }
+  const oob = []
   for (let i = 0; i < rects.length; i++) {
-    const r = rects[i], out = []
-    if (r.x0 < ix0 - margin) out.push('W')
-    if (r.x1 > ix1 + margin) out.push('E')
-    if (r.y0 < iy0 - margin) out.push('N')
-    if (r.y1 > iy1 + margin) out.push('S')
-    flags[i].oob = out
+    const r = rects[i], sides = []
+    if (r.x0 < ix0 - margin) sides.push({ side: 'W', by: Math.round(ix0 - r.x0) })
+    if (r.x1 > ix1 + margin) sides.push({ side: 'E', by: Math.round(r.x1 - ix1) })
+    if (r.y0 < iy0 - margin) sides.push({ side: 'N', by: Math.round(iy0 - r.y0) })
+    if (r.y1 > iy1 + margin) sides.push({ side: 'S', by: Math.round(r.y1 - iy1) })
+    flags[i].oob = sides
+    if (sides.length) oob.push({ i, sides })
   }
-  return { rects, flags }
+  return { rects, flags, overlaps, oob }
 }
 
 // Does `piece` overlap a door opening on a wall it sits on? `doorsBySide[side]` is a list of
