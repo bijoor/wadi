@@ -1,7 +1,7 @@
 // Tests for furnitureFit.js — orientation (A) and door-position-aware placement (C).
 import {
   parseAnchor, occupiedWalls, anchorFacing, rotatePieceCW, rotateLayoutCW,
-  unitsPerMeter, doorOverlapCount, carveDoors,
+  unitsPerMeter, doorOverlapCount, placePieces,
 } from '../src/export/furnitureFit.js'
 
 let fail = 0
@@ -58,14 +58,24 @@ const units = { system: 'feet_inches', per_unit: 10 }
 const doors = { north: [[35, 60]], south: [], east: [], west: [] }
 
 eq('overlap count = 1 (stove only)', doorOverlapCount(pieces, room, wallT, units, doors), 1)
-const kept = carveDoors(pieces, room, wallT, units, doors)
-eq('carve keeps cabinet + sink, drops stove', kept.map((p) => p.anchor), ['top-left', 'top-right'])
+// The counter is packed (cabinet | stove | sink), so the stove has nowhere to slide -> dropped.
+const kept = placePieces(pieces, room, wallT, units, doors)
+eq('packed: keep cabinet + sink, stove has no room -> dropped', kept.map((p) => p.anchor), ['top-left', 'top-right'])
+eq('placed pieces clear the door', doorOverlapCount(kept, room, wallT, units, doors), 0)
 
-// No door on north -> nothing carved.
-eq('no north door -> keep all', carveDoors(pieces, room, wallT, units, { north: [], south: [], east: [], west: [] }).length, 3)
+// No door on north -> nothing moved or dropped.
+eq('no north door -> keep all', placePieces(pieces, room, wallT, units, { north: [], south: [], east: [], west: [] }).length, 3)
 
-// Door far to the east end of the north wall [78,95] -> only the sink (right) overlaps.
-eq('east-end door drops sink only', carveDoors(pieces, room, wallT, units, { north: [[78, 95]], south: [], east: [], west: [] }).map((p) => p.anchor), ['top-left', 'top-center'])
+// SHIFT case: a lone cabinet on the north wall of a wide room, small centred door -> the piece
+// slides sideways off the door instead of being dropped.
+const wide = { x: 0, y: 0, w: 150, h: 60 }
+const lone = [{ asset: { dimensions: [0.6, 0.9, 0.6] }, anchor: 'top-center', gap_x: 0, gap_y: 4 }]
+const wideDoor = { north: [[65, 90]], south: [], east: [], west: [] }
+eq('lone piece overlaps centred door', doorOverlapCount(lone, wide, wallT, units, wideDoor), 1)
+const shifted = placePieces(lone, wide, wallT, units, wideDoor)
+eq('shift keeps the piece (not dropped)', shifted.length, 1)
+eq('shift moves it off-centre (gap_x < 0)', shifted[0].gap_x < 0, true)
+eq('shifted piece now clears the door', doorOverlapCount(shifted, wide, wallT, units, wideDoor), 0)
 
 // occupiedWalls / parseAnchor sanity for the rotated names.
 eq('occupiedWalls center-right', occupiedWalls('center-right'), ['east'])

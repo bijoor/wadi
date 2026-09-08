@@ -6,10 +6,10 @@
 //      (anchor, gaps, and facing) so the whole arrangement turns as one.
 //   C. Door-position-aware placement — a piece counts as conflicting only when its actual
 //      footprint overlaps a door OPENING on its wall (not merely "that wall has a door").
-//      doorOverlapCount scores candidates precisely; carveDoors drops the pieces that still
-//      land on an opening. Geometry mirrors editor/src/svg2d/furnitureAnchor.ts (anchorItem)
-//      and the door centring in wallsFromGraph.js placeDoor, so what we test here matches
-//      what the pipeline draws.
+//      doorOverlapCount scores candidates precisely; placePieces then SLIDES a piece along its
+//      wall to the nearest clear spot, dropping it only when none exists. Geometry mirrors
+//      editor/src/svg2d/furnitureAnchor.ts (anchorItem) and the door centring in
+//      wallsFromGraph.js placeDoor, so what we test here matches what the pipeline draws.
 
 const CLEAR = 2 // units of slack: a piece within CLEAR of an opening counts as overlapping
 
@@ -155,9 +155,102 @@ export function doorOverlapCount(pieces, room, wallT, units, doorsBySide) {
   return n
 }
 
-// Drop the pieces that still overlap a door opening in the chosen layout.
-export function carveDoors(pieces, room, wallT, units, doorsBySide) {
-  return (pieces || []).filter((p) => !pieceHitsDoor(p, room, wallT, units, doorsBySide))
+// Free sub-ranges of [lo,hi] not covered by any obstacle interval (interval subtraction).
+function subtractIntervals(lo, hi, obstacles) {
+  const obs = obstacles
+    .map(([a, b]) => [Math.max(a, lo), Math.min(b, hi)])
+    .filter(([a, b]) => b > a)
+    .sort((p, q) => p[0] - q[0])
+  const free = []
+  let cur = lo
+  for (const [a, b] of obs) {
+    if (a > cur) free.push([cur, a])
+    cur = Math.max(cur, b)
+  }
+  if (cur < hi) free.push([cur, hi])
+  return free
+}
+
+const round1 = (n) => Math.round(n * 10) / 10
+
+// Return `piece` with its gap set so its along-wall centre lands at `center` (the other axis
+// is untouched). Inverts the anchor math in pieceBox for the moved axis.
+function withAlongCenter(piece, side, center, aHalf, room, wallT) {
+  const { h, v } = parseAnchor(piece.anchor)
+  const out = { ...piece }
+  if (side === 'north' || side === 'south') {
+    const ix0 = room.x + wallT, ix1 = room.x + room.w - wallT
+    const gx = h === 'left' ? center - ix0 - aHalf : h === 'right' ? ix1 - aHalf - center : center - (ix0 + ix1) / 2
+    out.gap_x = round1(gx)
+  } else {
+    const iy0 = room.y + wallT, iy1 = room.y + room.h - wallT
+    const gy = v === 'top' ? center - iy0 - aHalf : v === 'bottom' ? iy1 - aHalf - center : center - (iy0 + iy1) / 2
+    out.gap_y = round1(gy)
+  }
+  return out
+}
+
+// Try to slide one piece along each door-carrying wall it sits on so its footprint clears the
+// opening, staying inside the room and off the other openings and the `others` pieces. Returns
+// the moved piece, or null if no clear spot exists on some blocked wall (then it's dropped).
+function shiftClear(piece, others, room, wallT, units, doorsBySide) {
+  let p = piece
+  for (const side of occupiedWalls(piece.anchor)) {
+    const doors = doorsBySide && doorsBySide[side]
+    if (!doors || !doors.length) continue
+    const horiz = side === 'north' || side === 'south'
+    const box = pieceBox(p, room, wallT, units)
+    const aCenter = horiz ? box.x : box.y
+    const aHalf = horiz ? box.halfX : box.halfY
+    const cLo = horiz ? box.y - box.halfY : box.x - box.halfX
+    const cHi = horiz ? box.y + box.halfY : box.x + box.halfX
+    const innerLo = horiz ? room.x + wallT : room.y + wallT
+    const innerHi = horiz ? room.x + room.w - wallT : room.y + room.h - wallT
+    const lo = innerLo + aHalf, hi = innerHi - aHalf
+    if (lo > hi) return null // the piece can't sit on this wall at all
+    // Center-exclusion zones: each door, and each other piece sharing this lane (its footprint
+    // overlaps ours on the cross axis), grown by our half-extent + clearance. PAD keeps a little
+    // extra so that landing on a zone edge (and rounding the gap) still clears the CLEAR test.
+    const PAD = CLEAR + 1
+    const obstacles = doors.map(([d0, d1]) => [d0 - aHalf - PAD, d1 + aHalf + PAD])
+    for (const o of others) {
+      const ob = pieceBox(o, room, wallT, units)
+      const oc0 = horiz ? ob.y - ob.halfY : ob.x - ob.halfX
+      const oc1 = horiz ? ob.y + ob.halfY : ob.x + ob.halfX
+      if (Math.min(cHi, oc1) - Math.max(cLo, oc0) <= CLEAR) continue // not in our lane
+      const oa0 = horiz ? ob.x - ob.halfX : ob.y - ob.halfY
+      const oa1 = horiz ? ob.x + ob.halfX : ob.y + ob.halfY
+      obstacles.push([oa0 - aHalf - PAD, oa1 + aHalf + PAD])
+    }
+    const blocked = (c) => obstacles.some(([o0, o1]) => c > o0 + 1e-6 && c < o1 - 1e-6)
+    if (aCenter >= lo - 1e-6 && aCenter <= hi + 1e-6 && !blocked(aCenter)) continue // already clear
+    const free = subtractIntervals(lo, hi, obstacles)
+    if (!free.length) return null
+    let bestC = null, bestD = Infinity
+    for (const [f0, f1] of free) {
+      const c = Math.max(f0, Math.min(aCenter, f1))
+      const d = Math.abs(c - aCenter)
+      if (d < bestD) { bestD = d; bestC = c }
+    }
+    if (bestC == null) return null
+    p = withAlongCenter(p, side, bestC, aHalf, room, wallT)
+  }
+  return p
+}
+
+// Place a layout's pieces clear of the door openings: a piece on an opening is SLID along its
+// wall to the nearest clear spot (in-bounds, off the other openings and already-placed pieces);
+// only if it can't clear is it dropped. Pieces are handled in order, each seeing the ones
+// already placed (at their new spots) plus the rest (at their authored spots) as obstacles.
+export function placePieces(pieces, room, wallT, units, doorsBySide) {
+  const result = []
+  const all = pieces || []
+  for (let i = 0; i < all.length; i++) {
+    const others = result.concat(all.slice(i + 1))
+    const placed = shiftClear(all[i], others, room, wallT, units, doorsBySide)
+    if (placed) result.push(placed)
+  }
+  return result
 }
 
 // True when we have enough context to score/carve by real geometry (else fall back to the

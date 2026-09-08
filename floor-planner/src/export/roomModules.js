@@ -13,7 +13,7 @@
 
 import MANIFEST from './roomLayouts.json'
 import {
-  occupiedWalls, rotateLayoutCW, doorOverlapCount, carveDoors, canPlaceByGeometry,
+  occupiedWalls, rotateLayoutCW, doorOverlapCount, placePieces, canPlaceByGeometry,
 } from './furnitureFit.js'
 
 // Layouts grouped by room type, in file order (order breaks ties).
@@ -101,12 +101,13 @@ function piecesToItems(pieces) {
 // number lives in the WDL template, not here.
 // `ctx.openSides` = walls that carry a door/gap (coarse fallback). When `ctx.room`, `ctx.wallT`,
 // `ctx.units` and `ctx.doorIntervals` are supplied, placement is door-position aware (C): the
-// chosen arrangement avoids the openings, and any piece that still lands on one is dropped.
+// chosen arrangement avoids the openings, and a piece that still lands on one is SLID along its
+// wall to clear it (dropped only when it can't).
 export function roomModule(roomType, ctx = {}) {
   const layout = pickLayout(roomType, ctx)
   if (!layout) return { items: [], height: undefined }
   let pieces = layout.pieces
-  if (canPlaceByGeometry(ctx)) pieces = carveDoors(pieces, ctx.room, ctx.wallT, ctx.units, ctx.doorIntervals)
+  if (canPlaceByGeometry(ctx)) pieces = placePieces(pieces, ctx.room, ctx.wallT, ctx.units, ctx.doorIntervals)
   return { items: piecesToItems(pieces), height: layout.height }
 }
 
