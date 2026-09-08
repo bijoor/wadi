@@ -332,23 +332,24 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
  *  a gap) — i.e. a shared boundary with a connection. Furniture placement uses this to keep
  *  pieces off the walls a door lands on. Includes openings the neighbour owns (both sides of
  *  a shared wall are "open" for the purpose of not blocking the passage). */
-export function roomOpenSides(room, rooms, edgeKind) {
-  const open = new Set()
+// Sides that carry a DOOR (the coarse furniture-conflict fallback). Gaps ('open') are open
+// passages, not obstacles — furniture may sit across them — so they are NOT counted.
+export function roomDoorSides(room, rooms, edgeKind) {
+  const sides = new Set()
   for (const side of SIDES) {
     for (const n of rooms) {
       if (n === room || n.floor !== room.floor) continue
       if (!sharedInterval(room, side, n)) continue
-      const k = edgeKind(room.id, n.id)
-      if (k === 'door' || k === 'open') { open.add(side); break }
+      if (edgeKind(room.id, n.id) === 'door') { sides.add(side); break }
     }
   }
-  return open
+  return sides
 }
 
-/** Per side, the opening INTERVALS along that wall (X for north/south, Y for east/west),
- *  in absolute coords. A `door` is centred on the shared segment at `doorWidth` (matching
- *  placeDoor); an `open` (gap) spans the whole shared segment less the corner margins.
- *  Lets furniture placement carve out exactly where an opening is, not just which wall. */
+/** Per side, the DOOR intervals along that wall (X for north/south, Y for east/west), in
+ *  absolute coords — each door centred on the shared segment at `doorWidth` (matching placeDoor).
+ *  Only doors count as conflicts: a gap ('open') is an open passage that adds space, not an
+ *  obstacle, so furniture may sit across it and it is intentionally excluded. */
 export function roomDoorIntervals(room, rooms, edgeKind, doorWidth = DOOR_W) {
   const bySide = { north: [], south: [], east: [], west: [] }
   for (const side of SIDES) {
@@ -356,17 +357,11 @@ export function roomDoorIntervals(room, rooms, edgeKind, doorWidth = DOOR_W) {
       if (n === room || n.floor !== room.floor) continue
       const seg = sharedInterval(room, side, n)
       if (!seg) continue
-      const k = edgeKind(room.id, n.id)
-      if (k !== 'door' && k !== 'open') continue
+      if (edgeKind(room.id, n.id) !== 'door') continue // gaps are passages, not conflicts
       const [a, b] = seg
-      if (k === 'open') {
-        const lo = a + DOOR_MARGIN, hi = b - DOOR_MARGIN
-        if (hi > lo) bySide[side].push([lo, hi])
-      } else {
-        const w = Math.max(6, Math.min(doorWidth, b - a - DOOR_MARGIN * 2))
-        const mid = (a + b) / 2
-        bySide[side].push([mid - w / 2, mid + w / 2])
-      }
+      const w = Math.max(6, Math.min(doorWidth, b - a - DOOR_MARGIN * 2))
+      const mid = (a + b) / 2
+      bySide[side].push([mid - w / 2, mid + w / 2])
     }
   }
   return bySide

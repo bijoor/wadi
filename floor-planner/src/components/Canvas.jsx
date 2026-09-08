@@ -6,7 +6,7 @@ import { fmtLen, unitsOf } from '../utils/physical.js'
 import { syncGuides } from '../model/guides.js'
 import { roomModule } from '../export/roomModules.js'
 import { pieceRect } from '../export/furnitureFit.js'
-import { edgeKindLookup, roomOpenSides, roomDoorIntervals } from '../export/wallsFromGraph.js'
+import { edgeKindLookup, roomDoorSides, roomDoorIntervals } from '../export/wallsFromGraph.js'
 
 // The fitted furniture for every typed room on this floor: the SAME pick the exporter makes
 // (orientation A + door-aware placement C), with the chosen template name. Rects are in project
@@ -22,7 +22,7 @@ function fittedFurniture(rooms, edges, build) {
     if (!r.roomType) continue
     const room = { x: r.x, y: r.y, w: r.w, h: r.h }
     const mod = roomModule(r.roomType, {
-      openSides: roomOpenSides(r, rooms, edgeKind), w: r.w, h: r.h,
+      openSides: roomDoorSides(r, rooms, edgeKind), w: r.w, h: r.h,
       room, wallT, units, doorIntervals: roomDoorIntervals(r, rooms, edgeKind, doorWidth),
     })
     if (!mod.template) continue
