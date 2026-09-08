@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run gen-layouts && vite build",
     "preview": "vite preview",
     "test-spans": "node scripts/test-spans.mjs && node scripts/test-span-reflow.mjs && node scripts/test-span-export.mjs",
     "test-furniture": "node scripts/test-furniture-fit.mjs",
@@ -13,7 +13,8 @@
     "build-catalog": "node scripts/build-furniture-catalog.mjs",
     "test-layout-wdl": "cd ../editor && npx tsx ../floor-planner/scripts/test-layout-wdl.mjs",
     "check-layouts": "cd ../editor && npx tsx ../floor-planner/scripts/check-room-layouts.mjs",
-    "build-layouts": "npm run check-layouts && cd ../editor && npx tsx ../floor-planner/scripts/build-room-layouts.mjs"
+    "gen-layouts": "cd ../editor && npx tsx ../floor-planner/scripts/build-room-layouts.mjs",
+    "build-layouts": "npm run check-layouts && npm run gen-layouts"
   },
   "dependencies": {
     "react": "^18.3.1",

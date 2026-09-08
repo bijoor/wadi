@@ -83,12 +83,22 @@ function reducer(s, a) {
   }
 }
 
+// A draft is valid when no piece overlaps another or pokes outside the inner wall face — the same
+// check as check-room-layouts. Invalid layouts are never persisted (see flush).
+function draftValid(d) {
+  const room = { x: 0, y: 0, w: Math.max(d.w, 1), h: Math.max(d.h, 1) }
+  const { flags } = validateLayout(d.pieces, room, WALLT, UNITS)
+  return !flags.some((f) => f.overlap || f.oob.length)
+}
+
 export default function LayoutEditor({ onClose }) {
   const [s, dispatch] = useReducer(reducer, undefined, () => ({ view: 'library', draft: emptyDraft(), selected: null, picker: false, dirty: false }))
+  const valid = s.view !== 'editor' || draftValid(s.draft)
 
-  // Persist the current draft to the library (called on leaving a room and before an export).
+  // Persist the current draft to the library — only when VALID, so an overlapping / out-of-bounds
+  // layout is never saved to the library or exported.
   const flush = () => {
-    if (s.view === 'editor' && s.dirty && s.draft.type && s.draft.variant) upsertLayout(layoutFromDraft(s.draft))
+    if (s.view === 'editor' && s.dirty && s.draft.type && s.draft.variant && valid) upsertLayout(layoutFromDraft(s.draft))
   }
   const doSave = () => { flush(); download('rooms.wdl', applyLayoutEdits(ROOMS_SOURCE, libraryEdits())) }
   const goLibrary = () => { flush(); dispatch({ type: 'LIBRARY' }) }
@@ -103,7 +113,7 @@ export default function LayoutEditor({ onClose }) {
   }) // re-registered each render so it closes over the current draft
 
   if (s.view === 'library') return <Library dispatch={dispatch} onClose={onClose} doSave={doSave} />
-  return <Editor s={s} dispatch={dispatch} goLibrary={goLibrary} />
+  return <Editor s={s} dispatch={dispatch} goLibrary={goLibrary} valid={valid} />
 }
 
 function Library({ dispatch, onClose, doSave }) {
@@ -152,7 +162,7 @@ function Library({ dispatch, onClose, doSave }) {
 
 const VW = 620, VH = 470, PAD = 40
 
-function Editor({ s, dispatch, goLibrary }) {
+function Editor({ s, dispatch, goLibrary, valid }) {
   const d = s.draft
   const room = { x: 0, y: 0, w: Math.max(d.w, 1), h: Math.max(d.h, 1) }
   const sc = Math.min((VW - 2 * PAD) / room.w, (VH - 2 * PAD) / room.h)
@@ -224,12 +234,12 @@ function Editor({ s, dispatch, goLibrary }) {
             : `✓ ${d.pieces.length} piece${d.pieces.length === 1 ? '' : 's'}, all clear`}
         </div>
       </div>
-      <EditorSidebar s={s} dispatch={dispatch} goLibrary={goLibrary} />
+      <EditorSidebar s={s} dispatch={dispatch} goLibrary={goLibrary} valid={valid} />
     </div>
   )
 }
 
-function EditorSidebar({ s, dispatch, goLibrary }) {
+function EditorSidebar({ s, dispatch, goLibrary, valid }) {
   const d = s.draft
   const sel = s.selected != null ? d.pieces[s.selected] : null
   const setMeta = (patch) => dispatch({ type: 'META', patch })
@@ -238,9 +248,17 @@ function EditorSidebar({ s, dispatch, goLibrary }) {
   return (
     <aside className="le-side">
       <div className="le-row">
-        <button onClick={goLibrary}>← Library {s.dirty ? '(save)' : ''}</button>
+        {s.dirty && !valid ? (
+          <>
+            <button disabled title="Fix the red pieces (overlap / out of bounds) to save">← Library</button>
+            <button className="danger-link" onClick={goLibrary} title="Leave without saving these changes">Discard</button>
+          </>
+        ) : (
+          <button onClick={goLibrary}>← Library {s.dirty ? '(save)' : ''}</button>
+        )}
         <b className="mono">{layoutName(d)}</b>
       </div>
+      {s.dirty && !valid && <p className="le-warn small">⚠ Overlap / out-of-bounds — fix the red pieces to save. Leaving discards these edits.</p>}
 
       <div className="panel">
         <h3>Room</h3>
