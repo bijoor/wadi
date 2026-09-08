@@ -23,7 +23,7 @@ import "std-furniture" as f
 
 house RoomLayouts {
   units feet_inches per_unit 10
-  site { plot (2100, 320) }
+  site { plot (2100, 520) }
 
   floor 1 "Layouts" {
     // ===== Bedroom =====
@@ -139,6 +139,74 @@ house RoomLayouts {
       item f."bathroom_sink" anchor top-right gap (4, 4)
       item f."toilet" anchor bottom-right gap (4, 4)
       item f."shower" anchor bottom-left gap (4, 4)
+    }
+
+    // ===== Compact + extra layouts (B: cover the small end + add variety) =====
+    // Orientation is handled by the planner (a portrait layout rotates to fill a landscape
+    // room), so each of these is authored in ONE orientation only.
+
+    // Bedroom, narrow: a single bed for a tight/narrow room a double bed can't fit.
+    room bedroom_single at (300, 290) size (48, 82) {
+      item f."bed_single" anchor top-center gap (0, 4)
+    }
+    // Bedroom, mid: bed + a bedside table each side, no wardrobe (between xs and s).
+    room bedroom_m at (380, 290) size (108, 90) {
+      item f."bed_double" anchor top-center gap (0, 4)
+      item f."bedside_table" anchor top-left gap (2, 4)
+      item f."bedside_table" anchor top-right gap (2, 4)
+    }
+
+    // Study, extra-small: desk + chair (desk_a/b are 10x10; this fits a ~6.5 ft nook).
+    room study_xs at (0, 290) size (66, 66) {
+      item f."desk" anchor top-center gap (0, 6)
+      item f."desk_chair" anchor top-center gap (0, 30)
+    }
+    // Study, large: corner desk + chair + bookcase.
+    room study_l at (520, 290) size (120, 120) {
+      item f."desk_corner" anchor top-left gap (6, 6)
+      item f."desk_chair" anchor center gap (14, 14)
+      item f."bookcase" anchor bottom-center gap (0, 4)
+    }
+
+    // Kitchen, compact: cabinet + sink only (no stove), a narrower counter than kitchen_xs.
+    room kitchen_compact at (100, 290) size (66, 46) {
+      item f."kitchen_cabinet" anchor top-left gap (4, 4)
+      item f."kitchen_sink" anchor top-right gap (4, 4)
+    }
+    // Kitchen, large L: counter run on the north + fridge and a cabinet down the east wall.
+    room kitchen_l at (680, 290) size (120, 112) {
+      item f."kitchen_cabinet" anchor top-left gap (6, 4)
+      item f."stove" anchor top-center gap (0, 4)
+      item f."kitchen_sink" anchor top-right gap (6, 4)
+      item f."fridge" anchor center-right gap (4, 8)
+      item f."kitchen_cabinet" anchor bottom-right gap (6, 6)
+    }
+
+    // Bath, minimal WC: washbasin + toilet, no shower (a 2-piece for a small bathroom).
+    room bath_wc at (200, 290) size (60, 46) {
+      item f."bathroom_sink" anchor top-left gap (4, 4)
+      item f."toilet" anchor top-right gap (4, 4)
+    }
+
+    // Dining, nook: a round table only, for a small square dining a rectangular table can't fit.
+    room dining_nook at (1120, 290) size (54, 54) {
+      item f."round_table" anchor center
+    }
+    // Dining, round: a round table with four chairs (a compact square dining).
+    room dining_round at (840, 290) size (92, 92) {
+      item f."round_table" anchor center
+      item f."chair" anchor center gap (0, -28)
+      item f."chair" anchor center gap (0, 28) rotation 180
+      item f."chair" anchor center gap (-28, 0) rotation 90
+      item f."chair" anchor center gap (28, 0) rotation 270
+    }
+
+    // Living, mid: sofa + coffee table + one armchair + tv (between small and large).
+    room living_m at (980, 290) size (134, 128) {
+      item f."sofa" anchor bottom-center gap (0, 6) rotation 180
+      item f."coffee_table" anchor center gap (0, 6)
+      item f."armchair" anchor center gap (-38, 0) rotation 30
+      item f."tv_unit" anchor top-center gap (0, 6)
     }
 
     // ===== Balcony / terrace =====

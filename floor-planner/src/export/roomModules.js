@@ -5,11 +5,11 @@
 // Layouts are authored in wadi-dsl/std-modules/rooms.wdl (several per type, at several sizes)
 // and compiled to roomLayouts.json by scripts/build-room-layouts.mjs. Each layout carries its
 // TARGET SIZE (w,h) — the smallest room it was designed to fill without furniture overlapping.
-// There are NO placement rules: for a room we take the layouts of its type that FIT the room
-// (target ≤ room), then keep the one that conflicts LEAST with the room's doors (a conflict =
-// a piece on a wall that carries a door), preferring the fullest arrangement that fits. If the
-// room is smaller than every layout, we fall back to the most compact layout as a best effort.
-// To add or change an arrangement, edit rooms.wdl and re-run the build script.
+// For a room we take the layouts of its type that FIT the room (target ≤ room, in either
+// orientation — see furnitureFit), then keep the one whose furniture overlaps the doors LEAST,
+// preferring the fullest arrangement that fits. If the room is smaller than every layout it
+// stays UNFURNISHED (an out-of-bounds arrangement is worse than none) — author a smaller layout
+// to cover it. To add or change an arrangement, edit rooms.wdl and re-run the build script.
 
 import MANIFEST from './roomLayouts.json'
 import {
