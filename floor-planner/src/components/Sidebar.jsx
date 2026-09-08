@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { analyze, roomById, floorView } from '../model/graph.js'
 import { PALETTE } from '../store/initialState.js'
 import { fmtLen, fmtArea, unitsOf } from '../utils/physical.js'
-import { ROOM_TYPES } from '../export/roomModules.js'
+import { roomTypes } from '../export/roomModules.js'
 import { wouldFullyFixGroup } from '../model/spanReflow.js'
 
 // The id of the guide line sitting at position `at` on an axis (room edges always land on a
@@ -192,7 +192,7 @@ function RoomEditor({ state, dispatch, room }) {
         <span>Type</span>
         <select value={room.roomType || ''} title="Furnish this room on export (a prebuilt module drops in furniture that reflows with the room)"
           onChange={(e) => update({ roomType: e.target.value })}>
-          {ROOM_TYPES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+          {roomTypes().map(([v, label]) => <option key={v} value={v}>{label}</option>)}
         </select>
       </label>
       <div className="swatches">

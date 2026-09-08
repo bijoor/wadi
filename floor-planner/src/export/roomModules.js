@@ -11,20 +11,28 @@
 // stays UNFURNISHED (an out-of-bounds arrangement is worse than none) — author a smaller layout
 // to cover it. To add or change an arrangement, edit rooms.wdl and re-run the build script.
 
-import MANIFEST from './roomLayouts.json'
+import { libraryLayouts } from '../store/layoutLibrary.js'
 import {
   occupiedWalls, rotateLayoutCW, doorOverlapCount, placePieces, canPlaceByGeometry,
 } from './furnitureFit.js'
 
-// Layouts grouped by room type, in file order (order breaks ties).
-const BY_TYPE = {}
-for (const l of MANIFEST.layouts || []) (BY_TYPE[l.type] ||= []).push(l)
+// Layouts grouped by room type, read from the live library (built-in pack + the author's local
+// edits) each call, so edits made in the layout editor take effect here immediately.
+function byType() {
+  const m = {}
+  for (const l of libraryLayouts()) (m[l.type] ||= []).push(l)
+  return m
+}
 
 const TYPE_LABEL = { bedroom: 'Bedroom', living: 'Living', dining: 'Dining', kitchen: 'Kitchen', bath: 'Bathroom', study: 'Study' }
 const label = (t) => TYPE_LABEL[t] || (t.charAt(0).toUpperCase() + t.slice(1))
 
-// The room-type options for the picker: plain room + one per type the pack defines.
-export const ROOM_TYPES = [['', 'Plain room'], ...Object.keys(BY_TYPE).map((t) => [t, label(t)])]
+// The room-type options for the picker: plain room + one per type the library defines (dynamic,
+// so a new type authored in the editor shows up here).
+export function roomTypes() {
+  const types = [...new Set(libraryLayouts().map((l) => l.type))]
+  return [['', 'Plain room'], ...types.map((t) => [t, label(t)])]
+}
 
 // Coarse fallback score (no room geometry available): how many pieces sit on a wall that
 // carries a door, whether or not their footprint actually reaches the opening.
@@ -61,7 +69,7 @@ function orientationsOf(layout) {
 // the coarse wall-level count. Tie-break: fullest arrangement, then authored orientation, then
 // file order. Returns the chosen (possibly rotated) layout, or null for a plain/too-small room.
 function pickLayout(roomType, ctx = {}) {
-  const options = BY_TYPE[roomType]
+  const options = byType()[roomType]
   if (!options || !options.length) return null
   const open = ctx.openSides instanceof Set ? ctx.openSides : new Set(ctx.openSides || [])
   const useGeom = canPlaceByGeometry(ctx)

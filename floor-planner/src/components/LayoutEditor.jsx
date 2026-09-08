@@ -1,13 +1,16 @@
-// Room-layout authoring tool: a library over the furniture pack + a 2D anchor editor. Edits are
-// staged across the session and SAVED by splicing them into the real rooms.wdl (preserving its
-// header, comments, and untouched rooms), which downloads for the author to drop in and
-// `npm run build-layouts`. Placement/validation reuse furnitureFit so it matches the pipeline.
-import React, { useReducer, useRef } from 'react'
+// Room-layout authoring tool. It reads and writes the LIBRARY (src/store/layoutLibrary.js) — the
+// live source the planner also reads — so an edit here shows up in the planner's furniture preview
+// and .wadi export immediately, no rebuild. Leaving a room (or deleting one) persists to the
+// library automatically; "Save rooms.wdl" (⌘S) exports the library's diff back to the pack file.
+import React, { useReducer, useRef, useEffect } from 'react'
 import CATALOG from '../export/furnitureCatalog.json'
-import MANIFEST from '../export/roomLayouts.json'
 import ROOMS_SOURCE from '../export/roomsSource.js'
 import { pieceRect, anchorPoints, gapForCenter, validateLayout } from '../export/furnitureFit.js'
 import { emitRoomBlock, applyLayoutEdits, layoutName } from '../export/layoutWdl.js'
+import {
+  libraryLayouts, libraryState, isLibraryDirty, libraryEdits,
+  upsertLayout, removeLayout, resetLibrary, layoutFromDraft, draftFromLayout,
+} from '../store/layoutLibrary.js'
 
 const UNITS = { system: 'feet_inches', per_unit: 10 }
 const WALLT = 8
@@ -17,24 +20,8 @@ const ANCHORS = [
   'center-left', 'center', 'center-right',
   'bottom-left', 'bottom-center', 'bottom-right',
 ]
-const KNOWN_TYPES = [...new Set(MANIFEST.layouts.map((l) => l.type))]
-const MANIFEST_NAMES = new Set(MANIFEST.layouts.map((l) => l.id))
 const r0 = (n) => Math.round(Number(n) || 0)
-
-const draftFromLayout = (l) => ({
-  type: l.type,
-  variant: l.id.startsWith(l.type + '_') ? l.id.slice(l.type.length + 1) : l.id,
-  w: l.w, h: l.h, height: l.height ?? '',
-  pieces: l.pieces.map((p) => ({ asset: p.asset, anchor: p.anchor || 'center', gap_x: p.gap_x ?? 0, gap_y: p.gap_y ?? 0, rotation: p.rotation ?? 0 })),
-})
 const emptyDraft = () => ({ type: '', variant: '', w: 100, h: 100, height: '', pieces: [] })
-
-// Fold the current draft into the staged edits (called on leaving the editor when dirty).
-function stage(edits, draft) {
-  if (!draft.type || !draft.variant) return edits // no valid name yet
-  const name = layoutName(draft)
-  return { ...edits, [name]: { op: MANIFEST_NAMES.has(name) ? 'replace' : 'insert', draft } }
-}
 
 function download(name, text) {
   const blob = new Blob([text], { type: 'text/plain' })
@@ -46,19 +33,10 @@ function download(name, text) {
 
 function reducer(s, a) {
   switch (a.type) {
-    case 'LIBRARY': {
-      const edits = s.view === 'editor' && s.dirty ? stage(s.edits, s.draft) : s.edits
-      return { ...s, view: 'library', selected: null, picker: false, dirty: false, edits }
-    }
+    case 'LIBRARY': return { ...s, view: 'library', selected: null, picker: false, dirty: false }
     case 'NEW': return { ...s, view: 'editor', draft: emptyDraft(), selected: null, picker: false, dirty: false }
     case 'EDIT': return { ...s, view: 'editor', draft: a.draft, selected: null, picker: false, dirty: false }
-    case 'DELETE_LIB': {
-      const edits = { ...s.edits }
-      if (edits[a.name] && edits[a.name].op === 'insert') delete edits[a.name] // drop a not-yet-saved new room
-      else edits[a.name] = { op: 'delete' }
-      return { ...s, edits }
-    }
-    case 'DISCARD': return { ...s, edits: {} }
+    case 'REFRESH': return { ...s }
     case 'META': return { ...s, draft: { ...s.draft, ...a.patch }, dirty: true }
     case 'ADD_PIECE': {
       const pieces = [...s.draft.pieces, { asset: a.asset, anchor: 'center', gap_x: 0, gap_y: 0, rotation: 0 }]
@@ -76,37 +54,42 @@ function reducer(s, a) {
 }
 
 export default function LayoutEditor({ onClose }) {
-  const [s, dispatch] = useReducer(reducer, undefined, () => ({ view: 'library', draft: emptyDraft(), selected: null, picker: false, edits: {}, dirty: false }))
-  if (s.view === 'library') return <Library s={s} dispatch={dispatch} onClose={onClose} />
-  return <Editor s={s} dispatch={dispatch} />
+  const [s, dispatch] = useReducer(reducer, undefined, () => ({ view: 'library', draft: emptyDraft(), selected: null, picker: false, dirty: false }))
+
+  // Persist the current draft to the library (called on leaving a room and before an export).
+  const flush = () => {
+    if (s.view === 'editor' && s.dirty && s.draft.type && s.draft.variant) upsertLayout(layoutFromDraft(s.draft))
+  }
+  const doSave = () => { flush(); download('rooms.wdl', applyLayoutEdits(ROOMS_SOURCE, libraryEdits())) }
+  const goLibrary = () => { flush(); dispatch({ type: 'LIBRARY' }) }
+
+  // ⌘S / Ctrl+S exports rooms.wdl (flushing the open room first).
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); doSave() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }) // re-registered each render so it closes over the current draft
+
+  if (s.view === 'library') return <Library dispatch={dispatch} onClose={onClose} doSave={doSave} />
+  return <Editor s={s} dispatch={dispatch} goLibrary={goLibrary} />
 }
 
-function Library({ s, dispatch, onClose }) {
-  const edits = s.edits
-  const deleted = new Set(Object.keys(edits).filter((n) => edits[n].op === 'delete'))
-  const rows = MANIFEST.layouts.filter((l) => !deleted.has(l.id)).map((l) => {
-    const d = edits[l.id]?.draft // a staged edit shows its new size/count
-    return {
-      id: l.id, type: d?.type || l.type, w: d ? r0(d.w) : l.w, h: d ? r0(d.h) : l.h,
-      n: d ? d.pieces.length : l.pieces.length, badge: edits[l.id] ? 'edited' : null,
-      open: () => dispatch({ type: 'EDIT', draft: edits[l.id]?.draft || draftFromLayout(l) }),
-    }
-  })
-  const newRows = Object.entries(edits).filter(([, v]) => v.op === 'insert').map(([id, v]) => ({
-    id, type: v.draft.type, w: r0(v.draft.w), h: r0(v.draft.h), n: v.draft.pieces.length, badge: 'new',
-    open: () => dispatch({ type: 'EDIT', draft: v.draft }),
-  }))
-  const all = [...rows, ...newRows]
-  const pending = Object.keys(edits).length
-  const doSave = () => download('rooms.wdl', applyLayoutEdits(ROOMS_SOURCE, Object.entries(edits).map(([name, v]) => ({ op: v.op, name, draft: v.draft }))))
+function Library({ dispatch, onClose, doSave }) {
+  const layouts = libraryLayouts()
+  const { overrideIds, builtinIds } = libraryState()
+  const dirty = isLibraryDirty()
+  const pending = libraryEdits().length
+  const badgeOf = (l) => (builtinIds.has(l.id) ? (overrideIds.has(l.id) ? 'edited' : null) : 'new')
 
   return (
     <div className="layout-lib">
       <div className="lib-head">
-        <h2>Room layouts <span className="dim">({all.length})</span></h2>
+        <h2>Room layouts <span className="dim">({layouts.length})</span></h2>
         <div>
-          {pending > 0 && <button onClick={() => dispatch({ type: 'DISCARD' })} title="Drop all staged changes">Discard ({pending})</button>}
-          <button className="primary" disabled={!pending} onClick={doSave} title="Save the whole rooms.wdl with your changes">💾 Save rooms.wdl</button>
+          {dirty && <button onClick={() => { resetLibrary(); dispatch({ type: 'REFRESH' }) }} title="Revert the library to the built-in pack">Reset</button>}
+          <button className="primary" disabled={!dirty} onClick={doSave} title="Export the whole rooms.wdl with your changes (⌘S)">💾 Save rooms.wdl</button>
           <button className="primary" onClick={() => dispatch({ type: 'NEW' })}>+ New room</button>
           <button onClick={onClose} title="Back to the floor planner">← Planner</button>
         </div>
@@ -114,29 +97,32 @@ function Library({ s, dispatch, onClose }) {
       <table className="lib-table">
         <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Items</th><th></th><th></th></tr></thead>
         <tbody>
-          {all.map((r) => (
-            <tr key={r.id} className={r.badge === 'new' ? 'is-new' : ''}>
-              <td className="mono" onClick={r.open} title="Edit">{r.id}</td>
-              <td onClick={r.open}>{r.type}</td>
-              <td onClick={r.open}>{r.w}×{r.h}</td>
-              <td onClick={r.open}>{r.n}</td>
-              <td>{r.badge && <span className={`badge ${r.badge}`}>{r.badge}</span>}</td>
-              <td><button className="icon" title="Delete this layout" onClick={() => dispatch({ type: 'DELETE_LIB', name: r.id })}>✕</button></td>
-            </tr>
-          ))}
+          {layouts.map((l) => {
+            const badge = badgeOf(l)
+            const open = () => dispatch({ type: 'EDIT', draft: draftFromLayout(l) })
+            return (
+              <tr key={l.id} className={badge === 'new' ? 'is-new' : ''}>
+                <td className="mono" onClick={open} title="Edit">{l.id}</td>
+                <td onClick={open}>{l.type}</td>
+                <td onClick={open}>{l.w}×{l.h}</td>
+                <td onClick={open}>{l.pieces.length}</td>
+                <td>{badge && <span className={`badge ${badge}`}>{badge}</span>}</td>
+                <td><button className="icon" title="Delete this layout" onClick={() => { removeLayout(l.id); dispatch({ type: 'REFRESH' }) }}>✕</button></td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
-      {deleted.size > 0 && <p className="dim small">Deleting on save: {[...deleted].join(', ')}</p>}
-      <p className="dim small">Edit a layout or create a new room, then <b>Save rooms.wdl</b> — it splices your changes into
-        the full pack (keeping the header, comments, and untouched rooms). Drop the file into
-        wadi-dsl/std-modules/rooms.wdl and run <code>npm run build-layouts</code>.</p>
+      <p className="dim small">Edits are live: they take effect in the planner's furniture preview and export right away.
+        {pending > 0 && <> {pending} pending in the library.</>} <b>Save rooms.wdl</b> (⌘S) writes them back to the pack —
+        drop the file into wadi-dsl/std-modules/rooms.wdl and run <code>npm run build-layouts</code> to make them the new built-in default.</p>
     </div>
   )
 }
 
 const VW = 620, VH = 470, PAD = 40
 
-function Editor({ s, dispatch }) {
+function Editor({ s, dispatch, goLibrary }) {
   const d = s.draft
   const room = { x: 0, y: 0, w: Math.max(d.w, 1), h: Math.max(d.h, 1) }
   const sc = Math.min((VW - 2 * PAD) / room.w, (VH - 2 * PAD) / room.h)
@@ -200,29 +186,29 @@ function Editor({ s, dispatch }) {
             : `✓ ${d.pieces.length} piece${d.pieces.length === 1 ? '' : 's'}, all clear`}
         </div>
       </div>
-      <EditorSidebar s={s} dispatch={dispatch} />
+      <EditorSidebar s={s} dispatch={dispatch} goLibrary={goLibrary} />
     </div>
   )
 }
 
-function EditorSidebar({ s, dispatch }) {
+function EditorSidebar({ s, dispatch, goLibrary }) {
   const d = s.draft
   const sel = s.selected != null ? d.pieces[s.selected] : null
   const setMeta = (patch) => dispatch({ type: 'META', patch })
-  const name = layoutName(d)
+  const knownTypes = [...new Set(libraryLayouts().map((l) => l.type))]
   const wdl = emitRoomBlock(d)
   return (
     <aside className="le-side">
       <div className="le-row">
-        <button onClick={() => dispatch({ type: 'LIBRARY' })}>← Library {s.dirty ? '(stage)' : ''}</button>
-        <b className="mono">{name}</b>
+        <button onClick={goLibrary}>← Library {s.dirty ? '(save)' : ''}</button>
+        <b className="mono">{layoutName(d)}</b>
       </div>
 
       <div className="panel">
         <h3>Room</h3>
         <label>Type
           <input list="le-types" value={d.type} onChange={(e) => setMeta({ type: e.target.value })} placeholder="bedroom" />
-          <datalist id="le-types">{KNOWN_TYPES.map((t) => <option key={t} value={t} />)}</datalist>
+          <datalist id="le-types">{knownTypes.map((t) => <option key={t} value={t} />)}</datalist>
         </label>
         <label>Variant<input value={d.variant} onChange={(e) => setMeta({ variant: e.target.value })} placeholder="xs" /></label>
         <div className="le-row">
@@ -270,7 +256,7 @@ function EditorSidebar({ s, dispatch }) {
       <div className="panel">
         <div className="le-row"><h3>WDL</h3><button onClick={() => navigator.clipboard?.writeText(wdl)}>Copy</button></div>
         <pre className="le-wdl">{wdl}</pre>
-        <p className="dim small">← Library stages this; then <b>Save rooms.wdl</b> writes the whole file.</p>
+        <p className="dim small">← Library saves this to the live library; ⌘S exports the whole rooms.wdl.</p>
       </div>
 
       {s.picker && <Picker dispatch={dispatch} />}
