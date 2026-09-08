@@ -58,3 +58,49 @@ export function pointInRect(px, py, r) {
 export function roomCenter(r) {
   return { cx: r.x + r.w / 2, cy: r.y + r.h / 2 }
 }
+
+// Right-angled route between two adjacent rooms that crosses the shared wall at
+// the point where the door is placed (centre of the shared interval, matching
+// placeDoor). Returns { points: [[x,y]...], door: {x,y} } in cell coords, or
+// null when the rooms don't share a wall. Falls back to a straight center line
+// only when the geometry is degenerate.
+export function connectionRoute(a, b) {
+  if (!a || !b) return null
+  const ca = roomCenter(a)
+  const cb = roomCenter(b)
+  const ax1 = a.x + a.w
+  const ay1 = a.y + a.h
+  const bx1 = b.x + b.w
+  const by1 = b.y + b.h
+
+  // Vertical shared wall (left/right adjacency): door sits on the shared x edge,
+  // centred in the overlapping y range. Route A -> (ax,ymid) -> (bx,ymid) -> B.
+  if (ax1 === b.x || bx1 === a.x) {
+    const y0 = Math.max(a.y, b.y)
+    const y1 = Math.min(ay1, by1)
+    if (y1 > y0) {
+      const edge = ax1 === b.x ? ax1 : a.x
+      const ymid = (y0 + y1) / 2
+      return {
+        door: { x: edge, y: ymid },
+        points: [[ca.cx, ca.cy], [ca.cx, ymid], [cb.cx, ymid], [cb.cx, cb.cy]],
+      }
+    }
+  }
+  // Horizontal shared wall (top/bottom adjacency): door on the shared y edge,
+  // centred in the overlapping x range. Route A -> (xmid,ay) -> (xmid,by) -> B.
+  if (ay1 === b.y || by1 === a.y) {
+    const x0 = Math.max(a.x, b.x)
+    const x1 = Math.min(ax1, bx1)
+    if (x1 > x0) {
+      const edge = ay1 === b.y ? ay1 : a.y
+      const xmid = (x0 + x1) / 2
+      return {
+        door: { x: xmid, y: edge },
+        points: [[ca.cx, ca.cy], [xmid, ca.cy], [xmid, cb.cy], [cb.cx, cb.cy]],
+      }
+    }
+  }
+  // No shared wall (violation edge): straight center-to-center line.
+  return { door: null, points: [[ca.cx, ca.cy], [cb.cx, cb.cy]] }
+}

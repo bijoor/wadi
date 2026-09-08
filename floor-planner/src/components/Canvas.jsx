@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
 import { analyze, roomById, floorColor } from '../model/graph.js'
-import { roomCenter, sharesWall, rectsOverlap } from '../model/geometry.js'
+import { roomCenter, sharesWall, rectsOverlap, connectionRoute } from '../model/geometry.js'
 import { PALETTE } from '../store/initialState.js'
 import { fmtLen, unitsOf } from '../utils/physical.js'
 import { syncGuides } from '../model/guides.js'
@@ -635,24 +635,23 @@ export default function Canvas({ state, dispatch }) {
           const a = roomById(liveRooms, e.a)
           const b = roomById(liveRooms, e.b)
           if (!a || !b) return null
-          const ca = roomCenter(a)
-          const cb = roomCenter(b)
           const sel = selection.type === 'edge' && selection.id === e.id
           const ok = sharesWall(a, b)
           const cls = `edge dashed ${ok ? 'satisfied' : 'violation'} ${sel ? 'selected' : ''}`
-          const x1 = ca.cx * cell, y1 = ca.cy * cell, x2 = cb.cx * cell, y2 = cb.cy * cell
+          const pts = connectionRoute(a, b).points.map(([px, py]) => `${px * cell},${py * cell}`).join(' ')
           return (
             <g key={e.id}>
-              <line
-                x1={x1} y1={y1} x2={x2} y2={y2}
+              <polyline
+                points={pts}
                 className="edge-hit"
                 strokeWidth={hitW}
+                fill="none"
                 onPointerDown={(ev) => {
                   ev.stopPropagation()
                   dispatch({ type: 'SELECT', itemType: 'edge', id: e.id })
                 }}
               />
-              <line x1={x1} y1={y1} x2={x2} y2={y2} className={cls} markerEnd="url(#edge-arrow)" />
+              <polyline points={pts} className={cls} fill="none" markerEnd="url(#edge-arrow)" />
             </g>
           )
         })}
@@ -870,14 +869,14 @@ function SheetsLayers({ floors, allRooms, allEdges, grid, plot, build, activeFlo
               const a = roomById(rooms, e.a)
               const b = roomById(rooms, e.b)
               if (!a || !b) return null
-              const ca = roomCenter(a)
-              const cb = roomCenter(b)
               const ok = sharesWall(a, b)
+              const pts = connectionRoute(a, b).points.map(([px, py]) => `${px * cell},${py * cell}`).join(' ')
               return (
-                <line
+                <polyline
                   key={e.id}
-                  x1={ca.cx * cell} y1={ca.cy * cell} x2={cb.cx * cell} y2={cb.cy * cell}
+                  points={pts}
                   className={`edge dashed ${ok ? 'satisfied' : 'violation'}`}
+                  fill="none"
                   pointerEvents="none"
                 />
               )
