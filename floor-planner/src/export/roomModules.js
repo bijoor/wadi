@@ -105,10 +105,10 @@ function piecesToItems(pieces) {
 // wall to clear it (dropped only when it can't).
 export function roomModule(roomType, ctx = {}) {
   const layout = pickLayout(roomType, ctx)
-  if (!layout) return { items: [], height: undefined }
+  if (!layout) return { items: [], height: undefined, template: null, rotated: false }
   let pieces = layout.pieces
   if (canPlaceByGeometry(ctx)) pieces = placePieces(pieces, ctx.room, ctx.wallT, ctx.units, ctx.doorIntervals)
-  return { items: piecesToItems(pieces), height: layout.height }
+  return { items: piecesToItems(pieces), height: layout.height, template: layout.id, rotated: !!layout.rotated }
 }
 
 // Back-compat convenience: just the furniture items[] for a typed room.

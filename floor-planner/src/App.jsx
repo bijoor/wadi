@@ -26,6 +26,8 @@ export default function App() {
   // Author mode: the room-layout editor (a separate tool over the furniture pack), URL-openable
   // with ?layouts. Kept out of the doc reducer since it's a UI mode, not part of the house.
   const [authoring, setAuthoring] = useState(() => new URLSearchParams(location.search).has('layouts'))
+  // Preview the furniture template fitted into each typed room, on the main canvas.
+  const [showFurniture, setShowFurniture] = useState(false)
   const saveTimer = useRef(null)
   const clipboard = useRef({ rooms: [], edges: [] }) // rooms + internal edges (index pairs)
 
@@ -130,9 +132,10 @@ export default function App() {
 
   return (
     <div className="app">
-      <Toolbar state={state} dispatch={dispatch} onAuthor={() => setAuthoring(true)} />
+      <Toolbar state={state} dispatch={dispatch} onAuthor={() => setAuthoring(true)}
+        showFurniture={showFurniture} onToggleFurniture={() => setShowFurniture((v) => !v)} />
       <div className="body">
-        <Canvas state={state} dispatch={dispatch} />
+        <Canvas state={state} dispatch={dispatch} showFurniture={showFurniture} />
         <Sidebar state={state} dispatch={dispatch} />
       </div>
       <div className="statusbar">
