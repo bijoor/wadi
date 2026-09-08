@@ -154,6 +154,13 @@ export function guidesFromModel(model, ctx) {
   const X = axisExport('x', model.guides.x, (i) => String(i + 1), ctx.plotW)
   const Y = axisExport('y', model.guides.y, (i) => colLabel(i), ctx.plotL)
 
+  // Order the configurator knobs by the author's variable order (the Sizes panel /
+  // MOVE_VAR), not by span-traversal order. A stable sort keeps same-ranked inputs in
+  // traversal order; any input whose target isn't a named variable sorts to the end.
+  const varOrder = Object.keys(model.variables || {})
+  const rank = (t) => { const i = varOrder.indexOf(t); return i < 0 ? Number.MAX_SAFE_INTEGER : i }
+  inputs.sort((a, b) => rank(a.target) - rank(b.target))
+
   const usedGroups = new Set(inputs.map((i) => i.group))
   const groupDefs = { x: { id: 'x', label: 'Widths (east–west)' }, y: { id: 'y', label: 'Depths (north–south)' }, shared: { id: 'shared', label: 'Shared sizes' } }
   const configurator = inputs.length

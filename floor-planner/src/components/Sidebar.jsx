@@ -488,9 +488,13 @@ function VariablesPanel({ state, dispatch }) {
   return (
     <div className="panel">
       <h3>Sizes</h3>
-      <p className="area-note dim">Named sizes you’ve pinned. Reuse one across rooms (Fix a dimension, pick it) to move them together; editing a value re-flows the plan.</p>
-      {names.map((name) => (
+      <p className="area-note dim">Named sizes you’ve pinned. Reuse one across rooms (Fix a dimension, pick it) to move them together; editing a value re-flows the plan. Reorder with the arrows to set how they list in the exported configurator.</p>
+      {names.map((name, i) => (
         <div className="size-row" key={name}>
+          <span className="reorder">
+            <button className="icon" title="Move up" disabled={i === 0} onClick={() => dispatch({ type: 'MOVE_VAR', name, dir: -1 })}>▲</button>
+            <button className="icon" title="Move down" disabled={i === names.length - 1} onClick={() => dispatch({ type: 'MOVE_VAR', name, dir: 1 })}>▼</button>
+          </span>
           <span className="knob-dot">◆</span>
           <CommitInput value={name} title="Rename this size" onCommit={(v) => dispatch({ type: 'RENAME_VAR', name, newName: v })} />
           <CommitInput type="number" value={vars[name].value} min={step} step={step} float title={`Value (${fmtLen(vars[name].value, system, perUnit)}). Editing re-flows every room bound to it.`}

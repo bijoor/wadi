@@ -356,6 +356,22 @@ export function reducer(state, action) {
       const rf = reflowSpans({ ...state, variables })
       return commit(state, { variables, guides: rf.guides, rooms: rf.rooms, plot: rf.plot })
     }
+    // Reorder a size variable in the list (dir -1 = up, +1 = down). Object key order is
+    // the order the Sizes panel and the exported configurator list variables, so this is
+    // purely cosmetic: rebuild the variables object with the two keys swapped. No re-flow.
+    case 'MOVE_VAR': {
+      const { name, dir } = action
+      if (!name || !(state.variables && name in state.variables)) return state
+      const keys = Object.keys(state.variables)
+      const i = keys.indexOf(name)
+      const j = i + (dir < 0 ? -1 : 1)
+      if (j < 0 || j >= keys.length) return state
+      const reordered = keys.slice()
+      ;[reordered[i], reordered[j]] = [reordered[j], reordered[i]]
+      const variables = {}
+      for (const k of reordered) variables[k] = state.variables[k]
+      return commit(state, { variables })
+    }
 
     // ---- plot / grid ----
     case 'UPDATE_PLOT': {

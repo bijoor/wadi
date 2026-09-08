@@ -520,9 +520,14 @@ button.seg.on {
 .size-row .knob-dot { flex: none; color: #7c3aed; font-size: 11px; }
 .size-row .size-val { flex: none; min-width: 54px; text-align: right; font-size: 11px; color: #94a3b8; }
 .size-row .size-count { flex: none; font-size: 11px; color: #7c3aed; }
+.size-row .reorder { flex: none; display: flex; flex-direction: column; line-height: 0.7; }
+.size-row .reorder .icon { padding: 0 2px; font-size: 8px; color: #94a3b8; }
+.size-row .reorder .icon:hover:not(:disabled) { color: #7c3aed; }
+.size-row .reorder .icon:disabled { opacity: 0.25; cursor: default; }
 .area-note.dim { opacity: 0.6; }
 button.icon { flex: none; background: none; border: none; color: #94a3b8; cursor: pointer; padding: 2px 4px; font-size: 12px; }
 button.icon:hover { color: #ef4444; }
+button.icon:disabled { cursor: default; }
 
 /* Guides on the canvas — derived from room edges, so they track the rooms. */
 .guide { stroke: #2563eb; stroke-width: 1.25; opacity: 0.6; stroke-dasharray: 6 4; }
