@@ -239,6 +239,16 @@ are just produced by the tree walk instead of the solver.
    flex span and re-flows on weight change (live), and `SET_SPAN flex` 2:1 through the reducer
    gives an exact 2:1 with the plot held (test N7). Clean ratios scoped to a subset of an axis
    still want the group-range selection from phase 3.
+Export correctness (post-ship fixes): a flex/Auto cell inside a FIXED group must ABSORB
+`(groupVar - sum(fixed siblings))`, not take a fixed `var * fraction` share — otherwise the
+group total grows when a fixed child changes and pushes the whole plot (shipped bug, seen on
+the atale plan: changing bath_depth moved Kitchen/Dining and the plot). The whole-axis fixed
+span (policy on the tree root) is handled too. The guide builder was extracted to
+`src/export/spanGrid.js` (no WDL-emitter dependency) with a regression test
+(`scripts/test-span-export.mjs`). And a fixed group must keep at least one Auto segment
+(`wouldFullyFixGroup`): the Fix control is disabled and the reducer rejects a fix that would
+fully-constrain a group, so it can never be over-determined.
+
 5. **DONE** — Export mapping. `guidesFromModel` now walks the span tree: a FIXED span becomes
    a config variable (a homeowner knob, named after the room whose dimension it is), and each
    guide position is a cumulative FORMULA of those variables plus the constant (flex/auto)

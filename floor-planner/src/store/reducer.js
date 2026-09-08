@@ -1,7 +1,7 @@
 import { makeId, edgeExists } from '../model/graph.js'
 import { clampRoomPosToPlot } from '../model/geometry.js'
 import { syncGuides, recomputeBays, promoteBayGuides } from '../model/guides.js'
-import { reflowSpans, pruneSpans, gcVariables } from '../model/spanReflow.js'
+import { reflowSpans, pruneSpans, gcVariables, wouldFullyFixGroup } from '../model/spanReflow.js'
 import { sampleModel, normalizeModel } from './initialState.js'
 
 const DOC_KEYS = ['grid', 'plot', 'floors', 'rooms', 'edges', 'build', 'guides', 'bays', 'spans', 'variables']
@@ -288,6 +288,9 @@ export function reducer(state, action) {
     case 'SET_SPAN': {
       const { axis, lo, hi, policy } = action
       if (axis !== 'x' && axis !== 'y') return state
+      // A fixed group must keep at least one Auto segment to absorb changes; reject a fix that
+      // would fully-constrain a group (the UI also disables the button, this is the safety net).
+      if (policy && policy.kind === 'fixed' && wouldFullyFixGroup((state.guides && state.guides[axis]) || [], (state.spans && state.spans[axis]) || [], lo, hi)) return state
       const cur = (state.spans && state.spans[axis]) || []
       const rest = cur.filter((s) => !(s.lo === lo && s.hi === hi))
       const next = policy ? [...rest, { id: `sp_${axis}_${lo}_${hi}`, lo, hi, policy }] : rest

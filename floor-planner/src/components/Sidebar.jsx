@@ -3,6 +3,7 @@ import { analyze, roomById, floorView } from '../model/graph.js'
 import { PALETTE } from '../store/initialState.js'
 import { fmtLen, fmtArea, unitsOf } from '../utils/physical.js'
 import { ROOM_TYPES } from '../export/roomModules.js'
+import { wouldFullyFixGroup } from '../model/spanReflow.js'
 
 // The id of the guide line sitting at position `at` on an axis (room edges always land on a
 // guide, since guides are derived from room edges).
@@ -130,8 +131,13 @@ function RoomEditor({ state, dispatch, room }) {
     const linkedVar = mode === 'fixed' ? span.policy.var : null
     const mkAuto = () => autoName(dim)
     const setMode = (m) => setSpan(axis, lo, hi, m === 'fixed' ? { kind: 'fixed', var: mkAuto() } : null)
+    // A fixed group must keep an Auto segment; block Fix if it would fully-constrain a group.
+    const blockFix = mode !== 'fixed' && can && wouldFullyFixGroup(state.guides?.[axis] || [], state.spans?.[axis] || [], lo, hi)
     const Seg = ({ m, children }) => (
-      <button type="button" className={mode === m ? 'on' : ''} disabled={!can && m !== 'auto'} onClick={() => setMode(m)}>{children}</button>
+      <button type="button" className={mode === m ? 'on' : ''}
+        disabled={(!can && m !== 'auto') || (m === 'fixed' && blockFix)}
+        title={m === 'fixed' && blockFix ? 'A fixed group needs at least one Auto segment to absorb changes — leave one of the segments Auto' : undefined}
+        onClick={() => setMode(m)}>{children}</button>
     )
     // Pick which variable drives this fixed size: an existing one (share it), a fresh own one,
     // or a newly named shared one. So one knob can drive a width here and a depth elsewhere.

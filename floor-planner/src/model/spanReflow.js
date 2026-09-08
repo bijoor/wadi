@@ -6,7 +6,7 @@
 // reflowSpans is then a no-op, which is what keeps free-room editing unchanged until a span
 // is actually set.
 
-import { solveAxisSpans } from './spans.js'
+import { solveAxisSpans, buildAxisTree } from './spans.js'
 
 const R6 = (v) => Math.round(Number(v) * 1e6) / 1e6
 
@@ -80,6 +80,23 @@ export function pruneSpans(spans, guides) {
 export function usedVarNames(spans) {
   const all = [...((spans && spans.x) || []), ...((spans && spans.y) || [])]
   return new Set(all.map((s) => s.policy && s.policy.var).filter(Boolean))
+}
+
+// Would adding a FIXED span [loId, hiId] leave some fixed GROUP with every one of its direct
+// segments fixed? A fixed group needs at least one Auto (flex) segment to absorb changes;
+// otherwise it is over-constrained (its total would be the sum of the fixed children, not its
+// own variable, and nothing could reflow). Used to block that fix in the UI and reducer.
+export function wouldFullyFixGroup(guidesAxis, spansAxis, loId, hiId) {
+  const proposed = [...(spansAxis || []).filter((s) => !(s.lo === loId && s.hi === hiId)), { lo: loId, hi: hiId, policy: { kind: 'fixed' } }]
+  const { root } = buildAxisTree(guidesAxis || [], proposed)
+  const isFix = (n) => n.policy && n.policy.kind === 'fixed'
+  let bad = false
+  const walk = (node) => {
+    if (isFix(node) && node.children && node.children.length && node.children.every(isFix)) bad = true
+    if (node.children) node.children.forEach(walk)
+  }
+  walk(root)
+  return bad
 }
 
 // Drop variables no span references any more (a variable lives only while a span uses it).

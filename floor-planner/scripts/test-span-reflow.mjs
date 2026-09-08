@@ -1,7 +1,7 @@
 // Tests for span reflow + the SET_SPAN reducer wiring. Run with:
 //   node floor-planner/scripts/test-span-reflow.mjs
 
-import { reflowSpans, pruneSpans } from '../src/model/spanReflow.js'
+import { reflowSpans, pruneSpans, wouldFullyFixGroup } from '../src/model/spanReflow.js'
 import { fixed, flex } from '../src/model/spans.js'
 const near2 = (a, b) => Math.abs(a - b) < 1e-2
 import { reducer } from '../src/store/reducer.js'
@@ -146,6 +146,28 @@ const roomBy = (rooms, id) => rooms.find((r) => r.id === id)
   s = reducer(s, { type: 'DELETE_VAR', name: 'bay_a' })
   assert('N9 delete: span dropped (back to Auto)', s.spans.x.length === 0)
   assert('N9 delete: variable removed', !('bay_a' in s.variables))
+}
+
+// N10: a fixed group must keep an Auto segment. Group [g0,g2] fixed + Bath [g1,g2] fixed,
+// Balcony-NE [g0,g1] Auto. Fixing Balcony-NE would fully-constrain the group -> blocked.
+{
+  const gy = [{ id: 'g0', at: 0 }, { id: 'g1', at: 35 }, { id: 'g2', at: 65 }, { id: 'g3', at: 140 }]
+  const spansY = [
+    { lo: 'g0', hi: 'g2', policy: { kind: 'fixed', var: 'dining' } },
+    { lo: 'g1', hi: 'g2', policy: { kind: 'fixed', var: 'bath' } },
+  ]
+  assert('N10 fixing the last Auto segment is blocked', wouldFullyFixGroup(gy, spansY, 'g0', 'g1') === true)
+  assert('N10 fixing a non-group segment is allowed', wouldFullyFixGroup(gy, spansY, 'g2', 'g3') === false)
+  // The reducer rejects the over-constraining fix (span not added).
+  const st = {
+    plot: { x: 0, y: 0, w: 100, h: 140 }, floors: [{ id: 'f1', name: 'G' }], edges: [],
+    rooms: [{ id: 'A', name: 'A', floor: 'f1', x: 0, y: 0, w: 100, h: 35 }],
+    guides: { x: [{ id: 'x0', at: 0 }, { id: 'x1', at: 100 }], y: gy },
+    spans: { x: [], y: spansY }, variables: { dining: { value: 65 }, bath: { value: 30 } }, grid: { unitPerCell: 10 }, build: {},
+    tool: 'select', selection: { type: null, id: null }, selectedIds: [], activeFloor: 'f1', history: { past: [], future: [] },
+  }
+  const s = reducer(st, { type: 'SET_SPAN', axis: 'y', lo: 'g0', hi: 'g1', policy: { kind: 'fixed', var: 'ne' } })
+  assert('N10 reducer rejects the over-constraining fix', s.spans.y.length === 2 && !s.spans.y.some((sp) => sp.lo === 'g0' && sp.hi === 'g1'))
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
