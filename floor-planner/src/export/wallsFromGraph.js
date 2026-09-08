@@ -185,11 +185,14 @@ function placeGap(g, a, b, S, name, height, t, ends, ref, edge) {
   return op
 }
 
-// A door leaf centred on the shared segment [a,b]. The leaf WIDTH is a fixed physical
-// size (not guide-scaled); only its position (offset) tracks the guides.
-function placeDoor(g, a, b, S, name, ref, edge) {
+// A door leaf centred on the shared segment [a,b]. The leaf WIDTH is a fixed physical size
+// (not guide-scaled); only its position (offset) tracks the guides. Its width/height come from
+// the `door_width`/`door_height` config variables (so a homeowner can tune the door size),
+// except a door on a wall too short for the full width keeps its fitted numeric width.
+function placeDoor(g, a, b, S, name, ref, edge, doorW, doorH) {
   const seg = b - a
-  const w = Math.max(6, Math.min(DOOR_W, seg - DOOR_MARGIN * 2))
+  const w = Math.max(6, Math.min(doorW, seg - DOOR_MARGIN * 2))
+  const clamped = w < doorW - 1e-6
   const u0 = (a + b) / 2 - w / 2
   const u1 = u0 + w
   const loEnd = Math.abs(a - g.lo) < EPS, hiEnd = Math.abs(b - g.hi) < EPS
@@ -200,14 +203,18 @@ function placeDoor(g, a, b, S, name, ref, edge) {
     anchor,
     offset: anchoredOffset(anchor, u0, u1, g, S),
     width: r0(w * S),
-    height: r0(DOOR_H_UNITS),
+    height: r0(doorH),
   }
   if (ref) {
-    const LO = edge.LO, HI = edge.HI, h = r0(w / 2)
+    const LO = edge.LO, HI = edge.HI
+    const h = clamped ? String(r0(w / 2)) : 'door_width / 2' // half-width tracks the variable
     const Ae = loEnd ? LO : coordExpr(a, ref)
     const Be = hiEnd ? HI : coordExpr(b, ref)
     const mid = `(${Ae} + ${Be}) / 2`
-    op.formulas = openingFormulas(anchor, `${mid} - ${h}`, `${mid} + ${h}`, LO, HI, false)
+    const f = openingFormulas(anchor, `${mid} - ${h}`, `${mid} + ${h}`, LO, HI, false)
+    if (!clamped) f.width = '= door_width'
+    f.height = '= door_height'
+    op.formulas = f
   }
   return op
 }
@@ -248,7 +255,7 @@ export function classifyOpenCorners(rooms, edgeKind, t) {
  *  'open' | null (null = adjacent but no connection = a solid partition).
  *  `openCorners` (from classifyOpenCorners) is the set of fully-open corners whose
  *  gap returns are dissolved. */
-export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wallThickness = 8, openCorners = new Set(), guides = null, heightById = null) {
+export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wallThickness = 8, openCorners = new Set(), guides = null, heightById = null, doorW = DOOR_W, doorH = DOOR_H_UNITS) {
   const selfHeight = (heightById && heightById.get(room.id)) ?? wallHeight
   const walls = {}
   let doorN = 0 // per-room unique opening names
@@ -292,7 +299,7 @@ export function computeRoomWalls(room, rooms, edgeKind, S, wallHeight = 100, wal
       for (const s of shared) {
         const [a, b] = s.iv
         if (s.kind === 'door') {
-          openings.push(placeDoor(g, a, b, S, `Door${++doorN}`, ref, edge))
+          openings.push(placeDoor(g, a, b, S, `Door${++doorN}`, ref, edge, doorW, doorH))
         } else if (s.kind === 'open') {
           // Treat EACH end of the shared span as its own corner (a junction with a
           // perpendicular wall), not just the owner wall's ends — otherwise a segment

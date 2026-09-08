@@ -27,6 +27,8 @@ export const BUILD_DEFAULTS = {
   wallHeight: 100,
   slabThickness: 6,
   plinthHeight: 30,
+  doorWidth: 25, // door leaf width (project units); exported as the `door_width` variable
+  doorHeight: 70, // door height; exported as `door_height`
 }
 
 export function sampleModel() {

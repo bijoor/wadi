@@ -368,6 +368,12 @@ function DimensionsEditor({ state, dispatch }) {
         <NumberField label="Plinth height" value={b.plinthHeight ?? 30} min={2} max={300} step={5} float
           onCommit={(v) => set({ plinthHeight: Math.max(2, v) })} />
       </div>
+      <div className="row">
+        <NumberField label="Door width" value={b.doorWidth ?? 25} min={6} max={120} step={1} float
+          onCommit={(v) => set({ doorWidth: Math.max(6, v) })} />
+        <NumberField label="Door height" value={b.doorHeight ?? 70} min={20} max={300} step={5} float
+          onCommit={(v) => set({ doorHeight: Math.max(20, v) })} />
+      </div>
     </div>
   )
 }

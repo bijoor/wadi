@@ -76,6 +76,8 @@ export function modelToWadi(model, opts = {}) {
   const slabThickness = pu(b.slabThickness, 6)
   const wallHeight = pu(b.wallHeight, 100)
   const plinthHeight = pu(b.plinthHeight, 30)
+  const doorWidth = pu(b.doorWidth, 25)
+  const doorHeight = pu(b.doorHeight, 70)
   const floorHeight = wallHeight + slabThickness // wall sits on the slab
 
   // The room floors: each room becomes a `room` (walls + doors from the graph) sitting
@@ -110,7 +112,7 @@ export function modelToWadi(model, opts = {}) {
       // Derive x/y/width/length from the guide lines (falls back to the numbers).
       const f = roomGridFormulas(r, guides)
       if (f) o.formulas = f
-      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness, openCorners, guides, heightById)
+      const walls = computeRoomWalls(r, floorRooms, edgeKind, 1, wallHeight, wallThickness, openCorners, guides, heightById, doorWidth, doorHeight)
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
@@ -168,8 +170,24 @@ export function modelToWadi(model, opts = {}) {
     floors: [plinthFloor, ...roomFloors],
   }
   // Fixed spans -> size variables + a configurator, so the exported house is homeowner-tunable.
-  if (guides.variables && Object.keys(guides.variables).length) config.variables = guides.variables
-  if (guides.configurator) config.configurator = guides.configurator
+  // Doors reference door_width / door_height, so emit those variables (+ a configurator group)
+  // whenever the plan has any door.
+  const variables = { ...(guides.variables || {}) }
+  const hasDoors = edges.some((e) => (e.kind || 'door') === 'door')
+  if (hasDoors) { variables.door_width = doorWidth; variables.door_height = doorHeight }
+  if (Object.keys(variables).length) config.variables = variables
+  let configurator = guides.configurator
+  if (hasDoors) {
+    const step = perUnit
+    const dInputs = [
+      { target: 'door_width', label: 'door width', control: 'slider', unit: guideUnitLabel(unitSystem), min: step, max: Math.max(step * 2, doorWidth * 2), step },
+      { target: 'door_height', label: 'door height', control: 'slider', unit: guideUnitLabel(unitSystem), min: step, max: Math.max(step * 2, doorHeight * 2), step },
+    ]
+    configurator = configurator
+      ? { ...configurator, groups: [...configurator.groups, { id: 'doors', label: 'Doors' }], inputs: [...configurator.inputs, ...dInputs] }
+      : { title: 'Customize sizes', groups: [{ id: 'doors', label: 'Doors' }], inputs: dInputs }
+  }
+  if (configurator) config.configurator = configurator
   return config
 }
 
