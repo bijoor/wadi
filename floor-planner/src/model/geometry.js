@@ -74,7 +74,10 @@ export function connectionRoute(a, b) {
   const by1 = b.y + b.h
 
   // Vertical shared wall (left/right adjacency): door sits on the shared x edge,
-  // centred in the overlapping y range. Route A -> (ax,ymid) -> (bx,ymid) -> B.
+  // centred in the overlapping y range. The door (edge,ymid) is an explicit corner
+  // so the line provably crosses there, and the FINAL leg runs horizontally into B
+  // (along the connection's main east-west axis) so the arrow head points the right
+  // way: A -> (ax,ymid) -> door -> (edge,by) -> B.
   if (ax1 === b.x || bx1 === a.x) {
     const y0 = Math.max(a.y, b.y)
     const y1 = Math.min(ay1, by1)
@@ -83,12 +86,13 @@ export function connectionRoute(a, b) {
       const ymid = (y0 + y1) / 2
       return {
         door: { x: edge, y: ymid },
-        points: [[ca.cx, ca.cy], [ca.cx, ymid], [cb.cx, ymid], [cb.cx, cb.cy]],
+        points: [[ca.cx, ca.cy], [ca.cx, ymid], [edge, ymid], [edge, cb.cy], [cb.cx, cb.cy]],
       }
     }
   }
   // Horizontal shared wall (top/bottom adjacency): door on the shared y edge,
-  // centred in the overlapping x range. Route A -> (xmid,ay) -> (xmid,by) -> B.
+  // centred in the overlapping x range. Final leg runs vertically into B (the main
+  // north-south axis): A -> (xmid,ay) -> door -> (bx,edge) -> B.
   if (ay1 === b.y || by1 === a.y) {
     const x0 = Math.max(a.x, b.x)
     const x1 = Math.min(ax1, bx1)
@@ -97,7 +101,7 @@ export function connectionRoute(a, b) {
       const xmid = (x0 + x1) / 2
       return {
         door: { x: xmid, y: edge },
-        points: [[ca.cx, ca.cy], [xmid, ca.cy], [xmid, cb.cy], [cb.cx, cb.cy]],
+        points: [[ca.cx, ca.cy], [xmid, ca.cy], [xmid, edge], [cb.cx, edge], [cb.cx, cb.cy]],
       }
     }
   }
