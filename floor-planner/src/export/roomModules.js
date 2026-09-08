@@ -12,6 +12,9 @@
 // To add or change an arrangement, edit rooms.wdl and re-run the build script.
 
 import MANIFEST from './roomLayouts.json'
+import {
+  occupiedWalls, rotateLayoutCW, doorOverlapCount, carveDoors, canPlaceByGeometry,
+} from './furnitureFit.js'
 
 // Layouts grouped by room type, in file order (order breaks ties).
 const BY_TYPE = {}
@@ -23,18 +26,8 @@ const label = (t) => TYPE_LABEL[t] || (t.charAt(0).toUpperCase() + t.slice(1))
 // The room-type options for the picker: plain room + one per type the pack defines.
 export const ROOM_TYPES = [['', 'Plain room'], ...Object.keys(BY_TYPE).map((t) => [t, label(t)])]
 
-// The wall(s) a piece touches, from its anchor: top=north, bottom=south, left=west,
-// right=east; a `center` anchor touches none (freestanding, never conflicts).
-function occupiedWalls(anchor) {
-  const w = []
-  if (anchor.startsWith('top')) w.push('north')
-  if (anchor.startsWith('bottom')) w.push('south')
-  if (anchor.endsWith('left')) w.push('west')
-  if (anchor.endsWith('right')) w.push('east')
-  return w
-}
-
-// How many of a layout's pieces sit on a wall that carries a door.
+// Coarse fallback score (no room geometry available): how many pieces sit on a wall that
+// carries a door, whether or not their footprint actually reaches the opening.
 function conflictCount(layout, openSides) {
   let n = 0
   for (const p of layout.pieces) for (const wall of occupiedWalls(p.anchor)) if (openSides.has(wall)) n++
@@ -54,32 +47,46 @@ function fits(layout, w, h) {
   return (layout.w || 0) <= w + FIT_TOL && (layout.h || 0) <= h + FIT_TOL
 }
 
-// Pick the layout for a typed room: among the layouts of its type that FIT the room (target
-// size ≤ room), the one that conflicts least with the doors, preferring the fullest that
-// fits. Falls back to the most compact layout when the room is smaller than all of them.
-// Returns the chosen layout object, or null for a plain/unknown type.
+// Candidate arrangements for a layout: as authored, plus rotated 90° (A). The rotation lets a
+// portrait layout fill a landscape room, and gives door-avoidance (C) a second wall to try.
+// A furniture-free layout (balcony/terrace) has nothing to rotate.
+function orientationsOf(layout) {
+  if (!layout.pieces || !layout.pieces.length) return [layout]
+  return [layout, rotateLayoutCW(layout)]
+}
+
+// Pick the arrangement for a typed room: among the layouts of its type (each in its authored
+// and 90°-rotated orientation) that FIT the room, the one whose furniture overlaps the doors
+// LEAST — measured against the real door openings when we have the room geometry (C), else by
+// the coarse wall-level count. Tie-break: fullest arrangement, then authored orientation, then
+// file order. Returns the chosen (possibly rotated) layout, or null for a plain/too-small room.
 function pickLayout(roomType, ctx = {}) {
   const options = BY_TYPE[roomType]
   if (!options || !options.length) return null
   const open = ctx.openSides instanceof Set ? ctx.openSides : new Set(ctx.openSides || [])
+  const useGeom = canPlaceByGeometry(ctx)
 
-  // Only layouts whose target size fits the room — a layout placed in a room smaller than it
-  // was designed for would push furniture through the walls. If none fits, the room stays
-  // unfurnished (better than furniture outside the room); author a smaller layout to cover it.
-  const pool = options.filter((l) => fits(l, ctx.w, ctx.h))
+  // Candidates in a stable order: authored before rotated, layouts in file order. Only those
+  // whose (oriented) target fits the room — a layout in a room smaller than it was designed
+  // for would push furniture through the walls. If none fits, the room stays unfurnished.
+  const pool = []
+  for (const l of options) for (const c of orientationsOf(l)) if (fits(c, ctx.w, ctx.h)) pool.push(c)
   if (!pool.length) return null
-  // Fewest door conflicts wins; tie-break on the largest target area (fullest arrangement
-  // that fits the room), then file order for stability.
-  let best = pool[0], bestScore = conflictCount(pool[0], open)
+
+  const score = (c) => (useGeom
+    ? doorOverlapCount(c.pieces, ctx.room, ctx.wallT, ctx.units, ctx.doorIntervals)
+    : conflictCount(c, open))
+  let best = pool[0], bestScore = score(pool[0])
   for (let i = 1; i < pool.length; i++) {
-    const s = conflictCount(pool[i], open)
+    const s = score(pool[i])
+    // fewer door hits, then fuller, then (implicitly, via stable order) authored-before-rotated
     if (s < bestScore || (s === bestScore && area(pool[i]) > area(best))) { best = pool[i]; bestScore = s }
   }
   return best
 }
 
-function layoutItems(layout) {
-  return layout.pieces.map((p, i) => {
+function piecesToItems(pieces) {
+  return pieces.map((p, i) => {
     const it = { name: `${p.asset.name || p.asset.id}${i ? ' ' + (i + 1) : ''}`, asset: p.asset, anchor: p.anchor }
     if (p.gap_x != null) it.gap_x = p.gap_x
     if (p.gap_y != null) it.gap_y = p.gap_y
@@ -91,12 +98,16 @@ function layoutItems(layout) {
 // The prebuilt module for a typed room: `{ items, height }`. `items` is the furniture (see
 // pickLayout); `height` is the layout's room-level wall height when the template declares one
 // (e.g. a balcony or terrace authored shorter than a full room), else undefined — the low
-// number lives in the WDL template, not here. `ctx.openSides` = walls that carry a door/gap;
-// `ctx.w`/`ctx.h` = the room size.
+// number lives in the WDL template, not here.
+// `ctx.openSides` = walls that carry a door/gap (coarse fallback). When `ctx.room`, `ctx.wallT`,
+// `ctx.units` and `ctx.doorIntervals` are supplied, placement is door-position aware (C): the
+// chosen arrangement avoids the openings, and any piece that still lands on one is dropped.
 export function roomModule(roomType, ctx = {}) {
   const layout = pickLayout(roomType, ctx)
   if (!layout) return { items: [], height: undefined }
-  return { items: layoutItems(layout), height: layout.height }
+  let pieces = layout.pieces
+  if (canPlaceByGeometry(ctx)) pieces = carveDoors(pieces, ctx.room, ctx.wallT, ctx.units, ctx.doorIntervals)
+  return { items: piecesToItems(pieces), height: layout.height }
 }
 
 // Back-compat convenience: just the furniture items[] for a typed room.

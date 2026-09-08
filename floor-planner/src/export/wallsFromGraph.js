@@ -345,6 +345,33 @@ export function roomOpenSides(room, rooms, edgeKind) {
   return open
 }
 
+/** Per side, the opening INTERVALS along that wall (X for north/south, Y for east/west),
+ *  in absolute coords. A `door` is centred on the shared segment at `doorWidth` (matching
+ *  placeDoor); an `open` (gap) spans the whole shared segment less the corner margins.
+ *  Lets furniture placement carve out exactly where an opening is, not just which wall. */
+export function roomDoorIntervals(room, rooms, edgeKind, doorWidth = DOOR_W) {
+  const bySide = { north: [], south: [], east: [], west: [] }
+  for (const side of SIDES) {
+    for (const n of rooms) {
+      if (n === room || n.floor !== room.floor) continue
+      const seg = sharedInterval(room, side, n)
+      if (!seg) continue
+      const k = edgeKind(room.id, n.id)
+      if (k !== 'door' && k !== 'open') continue
+      const [a, b] = seg
+      if (k === 'open') {
+        const lo = a + DOOR_MARGIN, hi = b - DOOR_MARGIN
+        if (hi > lo) bySide[side].push([lo, hi])
+      } else {
+        const w = Math.max(6, Math.min(doorWidth, b - a - DOOR_MARGIN * 2))
+        const mid = (a + b) / 2
+        bySide[side].push([mid - w / 2, mid + w / 2])
+      }
+    }
+  }
+  return bySide
+}
+
 /** Build an `edgeKind(aId,bId)` lookup from the graph edges. A connection with no
  *  explicit kind defaults to `door`; a pair with no edge returns null (partition).
  *  Undirected: geometry treats a connection the same either way (the arrow only

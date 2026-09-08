@@ -10,7 +10,7 @@
 // with no door is C11's cue to add one (or leave the wall off for an opening).
 
 import { emitWdl } from 'wadi-wdl-emitter'
-import { computeRoomWalls, edgeKindLookup, classifyOpenCorners, roomOpenSides } from './wallsFromGraph.js'
+import { computeRoomWalls, edgeKindLookup, classifyOpenCorners, roomOpenSides, roomDoorIntervals } from './wallsFromGraph.js'
 import { roomModule } from './roomModules.js'
 import { guideUnitLabel, guidesFromRooms, guidesFromModel, roomGridFormulas } from './spanGrid.js'
 
@@ -99,8 +99,16 @@ export function modelToWadi(model, opts = {}) {
     // plus an optional room-level wall height (a balcony/terrace is authored shorter). Resolve
     // it up front so a room's height is known while walling its NEIGHBOURS — a shared wall
     // takes the taller of the two rooms, so a low balcony only lowers its own exterior walls.
+    const furnUnits = { system: unitSystem, per_unit: perUnit }
     const modById = new Map(
-      floorRooms.map((r) => [r.id, roomModule(r.roomType, { openSides: roomOpenSides(r, floorRooms, edgeKind), w: r.w, h: r.h })]),
+      floorRooms.map((r) => [r.id, roomModule(r.roomType, {
+        openSides: roomOpenSides(r, floorRooms, edgeKind),
+        w: r.w, h: r.h,
+        // door-position-aware placement (C): the room rect, wall thickness, units, and the
+        // opening intervals per side, so furniture avoids / is carved off the actual doors.
+        room: r, wallT: wallThickness, units: furnUnits,
+        doorIntervals: roomDoorIntervals(r, floorRooms, edgeKind, doorWidth),
+      })]),
     )
     const heightById = new Map(floorRooms.map((r) => [r.id, modById.get(r.id).height ?? wallHeight]))
     const roomObjs = floorRooms.map((r) => {
