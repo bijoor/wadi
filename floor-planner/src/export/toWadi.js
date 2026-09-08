@@ -133,24 +133,41 @@ function guidesFromModel(model, ctx) {
         min: Math.max(step, R(Math.round(value * 0.4))), max: R(Math.round(value * 2)), step, group: isShared(name) ? 'shared' : axisKey })
       return name
     }
-    // Per atomic cell -> an expression: a fixed atomic span is its variable; a cell inside a
-    // fixed group is `var * fraction`; everything else is its constant (resolved) size.
+    // Per atomic cell -> an expression, mirroring how the planner distributes:
+    //  - a fixed span is its variable;
+    //  - inside a FIXED group, the fixed children take their variables and the flex/Auto
+    //    children ABSORB the leftover, `(groupVar - sum(fixed siblings)) * weightShare`, so the
+    //    group total stays the group's variable no matter what the fixed children do (this is
+    //    the bug fix: a `var * fraction` share made the group grow when a fixed child changed);
+    //  - at the top level (elastic plot), a flex/Auto cell is just its constant size.
     const cellExpr = new Array(n - 1).fill(null)
-    const assign = (node, encVar, encSize) => {
-      if (node.policy && node.policy.kind === 'fixed') {
-        const v = ensureVar(node)
-        if (!node.children || !node.children.length) { cellExpr[node.lo] = v; return }
-        const size = R(guides[node.hi].at - guides[node.lo].at)
-        for (const c of node.children) assign(c, v, size)
-        return
+    const isFix = (c) => c.policy && c.policy.kind === 'fixed'
+    const varCache = new Map()
+    const varOf = (node) => { const k = `${node.lo}:${node.hi}`; if (varCache.has(k)) return varCache.get(k); const nm = ensureVar(node); varCache.set(k, nm); return nm }
+    const span = (c) => guides[c.hi].at - guides[c.lo].at
+    // Distribute a container's total `expr` among its children. `fixedContainer` = the parent
+    // is a fixed span (so flex children absorb its leftover); false at the elastic root.
+    const distribute = (node, expr, fixedContainer) => {
+      const kids = node.children
+      if (!kids || !kids.length) { cellExpr[node.lo] = expr; return }
+      const flexKids = kids.filter((c) => !isFix(c))
+      let leftover = expr, flexTotal = 0
+      if (fixedContainer && flexKids.length) {
+        const fixedSum = kids.filter(isFix).map(varOf).join(' + ')
+        leftover = fixedSum ? `${expr} - ${fixedSum}` : expr
+        flexTotal = flexKids.reduce((t, c) => t + span(c), 0) || 1
       }
-      if (!node.children || !node.children.length) {
-        cellExpr[node.lo] = encVar ? `${encVar} * ${R(cellSize[node.lo] / encSize)}` : String(cellSize[node.lo])
-        return
+      for (const c of kids) {
+        if (isFix(c)) { const v = varOf(c); c.children?.length ? distribute(c, v, true) : (cellExpr[c.lo] = v) }
+        else {
+          const e = !fixedContainer ? String(R(span(c)))
+            : flexKids.length === 1 ? `(${leftover})`
+            : `(${leftover}) * ${R(span(c) / flexTotal)}`
+          c.children?.length ? distribute(c, e, false) : (cellExpr[c.lo] = e)
+        }
       }
-      for (const c of node.children) assign(c, encVar, encSize)
     }
-    assign(tree.root, null, plotExtent)
+    distribute(tree.root, null, false)
 
     // Cumulative guide positions: numeric until the first variable, a formula from there on.
     const origin = R(guides[0].at)
