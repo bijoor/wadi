@@ -42,7 +42,8 @@ function ensureActiveFloor(state) {
 // guides follow edges, permanent/named ones persist — see model/guides.js).
 function commit(state, newDoc) {
   let doc = newDoc
-  if (newDoc.rooms && !('guides' in newDoc)) {
+  const derivedGuides = !!newDoc.rooms && !('guides' in newDoc) // a rooms edit; guides re-derive
+  if (derivedGuides) {
     const s = syncGuides(newDoc.rooms, { guides: state.guides, bays: state.bays })
     doc = { ...newDoc, guides: s.guides, bays: s.bays }
   }
@@ -52,6 +53,14 @@ function commit(state, newDoc) {
   const spansNow = pruneSpans('spans' in doc ? doc.spans : state.spans, guidesNow)
   const varsNow = gcVariables('variables' in doc ? doc.variables : state.variables, spansNow)
   doc = { ...doc, spans: spansNow, variables: varsNow }
+  // Re-evaluate the size model after any change to the rooms (move/resize/add/delete) so fixed
+  // spans and their variables stay enforced and the layout stays consistent. Only when the
+  // action changed rooms and did NOT set guides itself (span/variable/plot edits already
+  // reflow), and only when spans exist (a no-op otherwise, so free editing is unchanged).
+  if (derivedGuides && (spansNow.x.length || spansNow.y.length)) {
+    const rf = reflowSpans({ ...state, ...doc })
+    doc = { ...doc, guides: rf.guides, rooms: rf.rooms, plot: rf.plot }
+  }
   return {
     ...state,
     ...doc,

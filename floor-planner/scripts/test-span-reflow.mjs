@@ -170,5 +170,21 @@ const roomBy = (rooms, id) => rooms.find((r) => r.id === id)
   assert('N10 reducer rejects the over-constraining fix', s.spans.y.length === 2 && !s.spans.y.some((sp) => sp.lo === 'g0' && sp.hi === 'g1'))
 }
 
+// N11: the size model is re-evaluated on a room edit — a FIXED room holds its size when a
+// DIFFERENT room is resized (reflow runs in commit).
+{
+  const st = {
+    plot: { x: 0, y: 0, w: 300, h: 100 }, floors: [{ id: 'f1', name: 'G' }], edges: [],
+    rooms: [{ id: 'A', name: 'A', floor: 'f1', x: 0, y: 0, w: 100, h: 100 }, { id: 'B', name: 'B', floor: 'f1', x: 100, y: 0, w: 100, h: 100 }],
+    guides: { x: [{ id: 'gx0', at: 0 }, { id: 'gx1', at: 100 }, { id: 'gx2', at: 200 }], y: [{ id: 'gy0', at: 0 }, { id: 'gy1', at: 100 }] },
+    spans: { x: [{ id: 's', lo: 'gx0', hi: 'gx1', policy: { kind: 'fixed', var: 'wa' } }], y: [] },
+    variables: { wa: { value: 100 } }, grid: { unitPerCell: 10 }, build: {},
+    tool: 'select', selection: { type: null, id: null }, selectedIds: [], activeFloor: 'f1', history: { past: [], future: [] },
+  }
+  const s = reducer(st, { type: 'UPDATE_ROOM', id: 'B', patch: { w: 150 } })
+  assert('N11 fixed room A holds when room B is resized', near(s.rooms.find((r) => r.id === 'A').w, 100))
+  assert('N11 resized room B took its new size', near(s.rooms.find((r) => r.id === 'B').w, 150))
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -153,7 +153,7 @@ function RoomEditor({ state, dispatch, room }) {
           <div className="seg">
             <Seg m="auto">Auto</Seg><Seg m="fixed">Fix</Seg>
           </div>
-          <CommitInput type="number" value={linkedVar ? (state.variables[linkedVar]?.value ?? size) : size} min={1}
+          <CommitInput type="number" value={linkedVar ? (state.variables[linkedVar]?.value ?? size) : size} min={grid.unitPerCell || 10} step={grid.unitPerCell || 10} float
             onCommit={(v) => mode === 'fixed' && linkedVar ? dispatch({ type: 'SET_VAR', name: linkedVar, value: Math.max(v, 1) }) : update({ [dim]: Math.max(v, 1) })} />
         </div>
         {mode === 'fixed' && (
@@ -482,6 +482,7 @@ function VariablesPanel({ state, dispatch }) {
   const names = Object.keys(vars)
   if (!names.length) return null
   const { system, perUnit } = unitsOf(state.build)
+  const step = state.grid?.unitPerCell || 10 // arrows step by the grid's least count
   const count = {}
   for (const ax of ['x', 'y']) for (const s of state.spans?.[ax] || []) if (s.policy?.var) count[s.policy.var] = (count[s.policy.var] || 0) + 1
   return (
@@ -492,7 +493,7 @@ function VariablesPanel({ state, dispatch }) {
         <div className="size-row" key={name}>
           <span className="knob-dot">◆</span>
           <CommitInput value={name} title="Rename this size" onCommit={(v) => dispatch({ type: 'RENAME_VAR', name, newName: v })} />
-          <CommitInput type="number" value={vars[name].value} min={1} title={`Value (${fmtLen(vars[name].value, system, perUnit)}). Editing re-flows every room bound to it.`}
+          <CommitInput type="number" value={vars[name].value} min={step} step={step} float title={`Value (${fmtLen(vars[name].value, system, perUnit)}). Editing re-flows every room bound to it.`}
             onCommit={(v) => dispatch({ type: 'SET_VAR', name, value: Math.max(v, 1) })} />
           <span className="size-count" title="Dimensions driven by this size">×{count[name] || 0}</span>
           <button className="icon" title="Delete (bound dimensions revert to Auto)" onClick={() => dispatch({ type: 'DELETE_VAR', name })}>✕</button>
