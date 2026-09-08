@@ -179,7 +179,9 @@ function Editor({ s, dispatch, goLibrary }) {
             const bad = flags[i].overlap || flags[i].oob.length
             const cls = `le-piece${bad ? ' bad' : ''}${s.selected === i ? ' sel' : ''}`
             const cx = X(r.cx), cy = Y(r.cy)
-            const facing = { 0: [0, 1], 90: [1, 0], 180: [0, -1], 270: [-1, 0] }[((p.rotation % 360) + 360) % 360] || [0, 1]
+            // facing vector for yaw (0=south, 90=east, 180=north, 270=west): (sin θ, cos θ)
+            const th = (((p.rotation % 360) + 360) % 360) * Math.PI / 180
+            const facing = [Math.sin(th), Math.cos(th)]
             const reach = Math.min(L(r.x1 - r.x0), L(r.y1 - r.y0)) * 0.4
             return (
               <g key={i} onPointerDown={(e) => onDown(e, i)} style={{ cursor: 'move' }}>
@@ -257,8 +259,10 @@ function EditorSidebar({ s, dispatch, goLibrary }) {
           </div>
           <label>Rotation
             <div className="le-rot">{[0, 90, 180, 270].map((r) => (
-              <button key={r} className={sel.rotation === r ? 'active' : ''} onClick={() => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { rotation: r } })}>{r}°</button>
+              <button key={r} className={((sel.rotation % 360) + 360) % 360 === r ? 'active' : ''} onClick={() => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { rotation: r } })}>{r}°</button>
             ))}</div>
+            <input type="number" step={15} value={sel.rotation} title="Rotation in degrees (any angle)"
+              onChange={(e) => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { rotation: ((Math.round(Number(e.target.value) || 0) % 360) + 360) % 360 } })} />
           </label>
         </div>
       )}
