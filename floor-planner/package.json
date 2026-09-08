@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test-spans": "node scripts/test-spans.mjs && node scripts/test-span-reflow.mjs && node scripts/test-span-export.mjs",
     "test-furniture": "node scripts/test-furniture-fit.mjs",
+    "test-connection-route": "node scripts/test-connection-route.mjs",
     "build-catalog": "node scripts/build-furniture-catalog.mjs",
     "test-layout-wdl": "cd ../editor && npx tsx ../floor-planner/scripts/test-layout-wdl.mjs",
     "check-layouts": "cd ../editor && npx tsx ../floor-planner/scripts/check-room-layouts.mjs",

@@ -73,35 +73,38 @@ export function connectionRoute(a, b) {
   const bx1 = b.x + b.w
   const by1 = b.y + b.h
 
-  // Vertical shared wall (left/right adjacency): door sits on the shared x edge,
-  // centred in the overlapping y range. The door (edge,ymid) is an explicit corner
-  // so the line provably crosses there, and the FINAL leg runs horizontally into B
-  // (along the connection's main east-west axis) so the arrow head points the right
-  // way: A -> (ax,ymid) -> door -> (edge,by) -> B.
+  // Vertical shared wall (left/right adjacency): the door sits on the shared x edge,
+  // centred in the overlapping y range. The route crosses the door on a horizontal leg
+  // (at y = ymid, which passes through (edge, ymid)) and then turns INSIDE room B — at
+  // mx, offset from the wall toward B's centre — so no leg lies on the wall itself. The
+  // final leg is horizontal into B, so the arrow head points along the connection:
+  // A -> (ax,ymid) -> (mx,ymid) -> (mx,by) -> B.
   if (ax1 === b.x || bx1 === a.x) {
     const y0 = Math.max(a.y, b.y)
     const y1 = Math.min(ay1, by1)
     if (y1 > y0) {
       const edge = ax1 === b.x ? ax1 : a.x
       const ymid = (y0 + y1) / 2
+      const mx = (edge + cb.cx) / 2 // a point inside B, off the shared wall
       return {
         door: { x: edge, y: ymid },
-        points: [[ca.cx, ca.cy], [ca.cx, ymid], [edge, ymid], [edge, cb.cy], [cb.cx, cb.cy]],
+        points: [[ca.cx, ca.cy], [ca.cx, ymid], [mx, ymid], [mx, cb.cy], [cb.cx, cb.cy]],
       }
     }
   }
-  // Horizontal shared wall (top/bottom adjacency): door on the shared y edge,
-  // centred in the overlapping x range. Final leg runs vertically into B (the main
-  // north-south axis): A -> (xmid,ay) -> door -> (bx,edge) -> B.
+  // Horizontal shared wall (top/bottom adjacency): mirror of the above. The route crosses
+  // the door on a vertical leg (at x = xmid) then turns inside B at my, off the wall; the
+  // final leg is vertical into B: A -> (xmid,ay) -> (xmid,my) -> (bx,my) -> B.
   if (ay1 === b.y || by1 === a.y) {
     const x0 = Math.max(a.x, b.x)
     const x1 = Math.min(ax1, bx1)
     if (x1 > x0) {
       const edge = ay1 === b.y ? ay1 : a.y
       const xmid = (x0 + x1) / 2
+      const my = (edge + cb.cy) / 2 // a point inside B, off the shared wall
       return {
         door: { x: xmid, y: edge },
-        points: [[ca.cx, ca.cy], [xmid, ca.cy], [xmid, edge], [cb.cx, edge], [cb.cx, cb.cy]],
+        points: [[ca.cx, ca.cy], [xmid, ca.cy], [xmid, my], [cb.cx, my], [cb.cx, cb.cy]],
       }
     }
   }
