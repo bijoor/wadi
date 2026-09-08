@@ -528,7 +528,7 @@ export default function Canvas({ state, dispatch, showFurniture }) {
       <defs>
         {/* Arrowhead for a directed connection (points a -> b = the flow). */}
         <marker id="edge-arrow" viewBox="0 0 10 10" refX="8" refY="5"
-          markerWidth="6" markerHeight="6" orient="auto-start-reverse"
+          markerWidth="11" markerHeight="11" orient="auto-start-reverse"
           markerUnits="userSpaceOnUse">
           <path d="M0,0 L10,5 L0,10 z" className="edge-arrowhead" />
         </marker>
