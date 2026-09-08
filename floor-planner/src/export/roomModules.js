@@ -67,12 +67,13 @@ function orientationsOf(layout) {
 }
 
 // Pick the arrangement for a typed room: among the layouts of its type (each in all four
-// rotations) that FIT the room, the one that overlaps the DOORS least, then the GAPS least,
-// then the fullest. Doors are hard conflicts (later shifted/dropped); gaps are SOFT — an open
-// passage that adds space — so we only prefer to avoid them, never remove furniture for them.
-// When room geometry is missing we fall back to the coarse wall-level door count. Ties keep pool
-// order (authored orientation before rotations, layouts in file order). Returns the chosen
-// (possibly rotated) layout, or null for a plain/too-small room.
+// rotations) that FIT the room, the one that KEEPS THE MOST furniture. Doors are hard conflicts
+// (pieces on a door are shifted, then dropped), so we count how many pieces SURVIVE placement and
+// maximise that — a fuller layout that accepts a gap beats a smaller one that avoids it. Gaps are
+// SOFT (an open passage that adds space): they break ties only, then the fuller target, then pool
+// order (authored orientation before rotations, layouts in file order). When room geometry is
+// missing we fall back to the coarse wall-level door count. Returns the chosen (possibly rotated)
+// layout, or null for a plain/too-small room.
 function pickLayout(roomType, ctx = {}) {
   const options = byType()[roomType]
   if (!options || !options.length) return null
@@ -93,18 +94,23 @@ function pickLayout(roomType, ctx = {}) {
     return best
   }
 
-  // Geometry-aware: rank by (door hits, gap hits, -area). Gaps break ties only.
-  const key = (c) => ({
-    doors: doorOverlapCount(c.pieces, ctx.room, ctx.wallT, ctx.units, ctx.doorIntervals),
-    gaps: doorOverlapCount(c.pieces, ctx.room, ctx.wallT, ctx.units, ctx.gapIntervals || {}),
-    a: area(c),
-  })
+  // Geometry-aware: maximise furniture KEPT after door placement, then fewest gap overlaps, then
+  // the fuller target. `kept` runs the same door shift/drop placePieces does, so a fuller layout
+  // that only overlaps a (soft) gap beats a smaller one that is conflict-free.
+  const key = (c) => {
+    const placed = placePieces(c.pieces, ctx.room, ctx.wallT, ctx.units, ctx.doorIntervals)
+    return {
+      kept: placed.length,
+      gaps: doorOverlapCount(placed, ctx.room, ctx.wallT, ctx.units, ctx.gapIntervals || {}),
+      a: area(c),
+    }
+  }
   let best = pool[0], bk = key(best)
   for (let i = 1; i < pool.length; i++) {
     const c = pool[i], k = key(c)
-    if (k.doors < bk.doors
-      || (k.doors === bk.doors && k.gaps < bk.gaps)
-      || (k.doors === bk.doors && k.gaps === bk.gaps && k.a > bk.a)) { best = c; bk = k }
+    if (k.kept > bk.kept
+      || (k.kept === bk.kept && k.gaps < bk.gaps)
+      || (k.kept === bk.kept && k.gaps === bk.gaps && k.a > bk.a)) { best = c; bk = k }
   }
   return best
 }
