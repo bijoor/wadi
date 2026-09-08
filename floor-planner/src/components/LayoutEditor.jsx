@@ -1,63 +1,74 @@
-// Room-layout authoring tool (minimal: library list + 2D anchor editor + live validation).
-// Layouts are authored in wadi-dsl/std-modules/rooms.wdl and compiled to roomLayouts.json; this
-// tool is a faster way to set the same anchor + gap numbers, previewing the real footprints and
-// flagging overlaps / out-of-bounds the way check-room-layouts does. It emits the per-room WDL
-// block to paste back (saving the whole rooms.wdl file is a later phase).
+// Room-layout authoring tool: a library over the furniture pack + a 2D anchor editor. Edits are
+// staged across the session and SAVED by splicing them into the real rooms.wdl (preserving its
+// header, comments, and untouched rooms), which downloads for the author to drop in and
+// `npm run build-layouts`. Placement/validation reuse furnitureFit so it matches the pipeline.
 import React, { useReducer, useRef } from 'react'
 import CATALOG from '../export/furnitureCatalog.json'
 import MANIFEST from '../export/roomLayouts.json'
+import ROOMS_SOURCE from '../export/roomsSource.js'
 import { pieceRect, anchorPoints, gapForCenter, validateLayout } from '../export/furnitureFit.js'
+import { emitRoomBlock, applyLayoutEdits, layoutName } from '../export/layoutWdl.js'
 
-const UNITS = { system: 'feet_inches', per_unit: 10 } // the layout pack's units
-const WALLT = 8 // expand.ts default wall thickness (matches check-room-layouts)
-const SIZE_STEP = 10 // room size grid (1 ft)
+const UNITS = { system: 'feet_inches', per_unit: 10 }
+const WALLT = 8
+const SIZE_STEP = 10
 const ANCHORS = [
   'top-left', 'top-center', 'top-right',
   'center-left', 'center', 'center-right',
   'bottom-left', 'bottom-center', 'bottom-right',
 ]
 const KNOWN_TYPES = [...new Set(MANIFEST.layouts.map((l) => l.type))]
-
-const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+const MANIFEST_NAMES = new Set(MANIFEST.layouts.map((l) => l.id))
 const r0 = (n) => Math.round(Number(n) || 0)
 
-// The `room …` WDL block for the current draft (author pastes it into rooms.wdl).
-function emitRoomWdl(d) {
-  const name = `${slug(d.type) || 'type'}_${slug(d.variant) || 'variant'}`
-  const height = d.height != null && d.height !== '' ? ` height ${r0(d.height)}` : ''
-  const body = d.pieces.map((p) => {
-    const g = (r0(p.gap_x) || r0(p.gap_y)) ? ` gap (${r0(p.gap_x)}, ${r0(p.gap_y)})` : ''
-    const rot = p.rotation ? ` rotation ${p.rotation}` : ''
-    return `      item f."${p.asset.id}" anchor ${p.anchor}${g}${rot}`
-  }).join('\n')
-  return `    room ${name} at (0, 0) size (${r0(d.w)}, ${r0(d.h)})${height} {\n${body}\n    }`
+const draftFromLayout = (l) => ({
+  type: l.type,
+  variant: l.id.startsWith(l.type + '_') ? l.id.slice(l.type.length + 1) : l.id,
+  w: l.w, h: l.h, height: l.height ?? '',
+  pieces: l.pieces.map((p) => ({ asset: p.asset, anchor: p.anchor || 'center', gap_x: p.gap_x ?? 0, gap_y: p.gap_y ?? 0, rotation: p.rotation ?? 0 })),
+})
+const emptyDraft = () => ({ type: '', variant: '', w: 100, h: 100, height: '', pieces: [] })
+
+// Fold the current draft into the staged edits (called on leaving the editor when dirty).
+function stage(edits, draft) {
+  if (!draft.type || !draft.variant) return edits // no valid name yet
+  const name = layoutName(draft)
+  return { ...edits, [name]: { op: MANIFEST_NAMES.has(name) ? 'replace' : 'insert', draft } }
 }
 
-const emptyDraft = () => ({ type: '', variant: '', w: 100, h: 100, height: '', pieces: [] })
+function download(name, text) {
+  const blob = new Blob([text], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = name; a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 function reducer(s, a) {
   switch (a.type) {
-    case 'LIBRARY': return { ...s, view: 'library', selected: null, picker: false }
-    case 'NEW': return { ...s, view: 'editor', draft: emptyDraft(), selected: null, picker: false }
-    case 'EDIT': {
-      const l = a.layout
-      const variant = l.id.startsWith(l.type + '_') ? l.id.slice(l.type.length + 1) : l.id
-      const pieces = l.pieces.map((p) => ({ asset: p.asset, anchor: p.anchor || 'center', gap_x: p.gap_x ?? 0, gap_y: p.gap_y ?? 0, rotation: p.rotation ?? 0 }))
-      return { ...s, view: 'editor', draft: { type: l.type, variant, w: l.w, h: l.h, height: l.height ?? '', pieces }, selected: null, picker: false }
+    case 'LIBRARY': {
+      const edits = s.view === 'editor' && s.dirty ? stage(s.edits, s.draft) : s.edits
+      return { ...s, view: 'library', selected: null, picker: false, dirty: false, edits }
     }
-    case 'META': return { ...s, draft: { ...s.draft, ...a.patch } }
+    case 'NEW': return { ...s, view: 'editor', draft: emptyDraft(), selected: null, picker: false, dirty: false }
+    case 'EDIT': return { ...s, view: 'editor', draft: a.draft, selected: null, picker: false, dirty: false }
+    case 'DELETE_LIB': {
+      const edits = { ...s.edits }
+      if (edits[a.name] && edits[a.name].op === 'insert') delete edits[a.name] // drop a not-yet-saved new room
+      else edits[a.name] = { op: 'delete' }
+      return { ...s, edits }
+    }
+    case 'DISCARD': return { ...s, edits: {} }
+    case 'META': return { ...s, draft: { ...s.draft, ...a.patch }, dirty: true }
     case 'ADD_PIECE': {
       const pieces = [...s.draft.pieces, { asset: a.asset, anchor: 'center', gap_x: 0, gap_y: 0, rotation: 0 }]
-      return { ...s, draft: { ...s.draft, pieces }, selected: pieces.length - 1, picker: false }
+      return { ...s, draft: { ...s.draft, pieces }, selected: pieces.length - 1, picker: false, dirty: true }
     }
     case 'UPDATE_PIECE': {
       const pieces = s.draft.pieces.map((p, i) => (i === a.index ? { ...p, ...a.patch } : p))
-      return { ...s, draft: { ...s.draft, pieces } }
+      return { ...s, draft: { ...s.draft, pieces }, dirty: true }
     }
-    case 'DELETE_PIECE': {
-      const pieces = s.draft.pieces.filter((_, i) => i !== a.index)
-      return { ...s, draft: { ...s.draft, pieces }, selected: null }
-    }
+    case 'DELETE_PIECE': return { ...s, draft: { ...s.draft, pieces: s.draft.pieces.filter((_, i) => i !== a.index) }, selected: null, dirty: true }
     case 'SELECT': return { ...s, selected: a.index }
     case 'PICKER': return { ...s, picker: a.open }
     default: return s
@@ -65,37 +76,60 @@ function reducer(s, a) {
 }
 
 export default function LayoutEditor({ onClose }) {
-  const [s, dispatch] = useReducer(reducer, undefined, () => ({ view: 'library', draft: emptyDraft(), selected: null, picker: false }))
-  if (s.view === 'library') return <Library dispatch={dispatch} onClose={onClose} />
+  const [s, dispatch] = useReducer(reducer, undefined, () => ({ view: 'library', draft: emptyDraft(), selected: null, picker: false, edits: {}, dirty: false }))
+  if (s.view === 'library') return <Library s={s} dispatch={dispatch} onClose={onClose} />
   return <Editor s={s} dispatch={dispatch} />
 }
 
-function Library({ dispatch, onClose }) {
-  const rows = MANIFEST.layouts
+function Library({ s, dispatch, onClose }) {
+  const edits = s.edits
+  const deleted = new Set(Object.keys(edits).filter((n) => edits[n].op === 'delete'))
+  const rows = MANIFEST.layouts.filter((l) => !deleted.has(l.id)).map((l) => {
+    const d = edits[l.id]?.draft // a staged edit shows its new size/count
+    return {
+      id: l.id, type: d?.type || l.type, w: d ? r0(d.w) : l.w, h: d ? r0(d.h) : l.h,
+      n: d ? d.pieces.length : l.pieces.length, badge: edits[l.id] ? 'edited' : null,
+      open: () => dispatch({ type: 'EDIT', draft: edits[l.id]?.draft || draftFromLayout(l) }),
+    }
+  })
+  const newRows = Object.entries(edits).filter(([, v]) => v.op === 'insert').map(([id, v]) => ({
+    id, type: v.draft.type, w: r0(v.draft.w), h: r0(v.draft.h), n: v.draft.pieces.length, badge: 'new',
+    open: () => dispatch({ type: 'EDIT', draft: v.draft }),
+  }))
+  const all = [...rows, ...newRows]
+  const pending = Object.keys(edits).length
+  const doSave = () => download('rooms.wdl', applyLayoutEdits(ROOMS_SOURCE, Object.entries(edits).map(([name, v]) => ({ op: v.op, name, draft: v.draft }))))
+
   return (
     <div className="layout-lib">
       <div className="lib-head">
-        <h2>Room layouts <span className="dim">({rows.length})</span></h2>
+        <h2>Room layouts <span className="dim">({all.length})</span></h2>
         <div>
+          {pending > 0 && <button onClick={() => dispatch({ type: 'DISCARD' })} title="Drop all staged changes">Discard ({pending})</button>}
+          <button className="primary" disabled={!pending} onClick={doSave} title="Save the whole rooms.wdl with your changes">💾 Save rooms.wdl</button>
           <button className="primary" onClick={() => dispatch({ type: 'NEW' })}>+ New room</button>
           <button onClick={onClose} title="Back to the floor planner">← Planner</button>
         </div>
       </div>
       <table className="lib-table">
-        <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Items</th></tr></thead>
+        <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Items</th><th></th><th></th></tr></thead>
         <tbody>
-          {rows.map((l) => (
-            <tr key={l.id} onClick={() => dispatch({ type: 'EDIT', layout: l })} title="Edit this layout">
-              <td className="mono">{l.id}</td>
-              <td>{l.type}</td>
-              <td>{l.w}×{l.h}</td>
-              <td>{l.pieces.length}</td>
+          {all.map((r) => (
+            <tr key={r.id} className={r.badge === 'new' ? 'is-new' : ''}>
+              <td className="mono" onClick={r.open} title="Edit">{r.id}</td>
+              <td onClick={r.open}>{r.type}</td>
+              <td onClick={r.open}>{r.w}×{r.h}</td>
+              <td onClick={r.open}>{r.n}</td>
+              <td>{r.badge && <span className={`badge ${r.badge}`}>{r.badge}</span>}</td>
+              <td><button className="icon" title="Delete this layout" onClick={() => dispatch({ type: 'DELETE_LIB', name: r.id })}>✕</button></td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="dim small">Pick a layout to edit, or create a new room. Edits emit a WDL block to paste into
-        wadi-dsl/std-modules/rooms.wdl, then run <code>npm run build-layouts</code>. (Saving the whole file is a later phase.)</p>
+      {deleted.size > 0 && <p className="dim small">Deleting on save: {[...deleted].join(', ')}</p>}
+      <p className="dim small">Edit a layout or create a new room, then <b>Save rooms.wdl</b> — it splices your changes into
+        the full pack (keeping the header, comments, and untouched rooms). Drop the file into
+        wadi-dsl/std-modules/rooms.wdl and run <code>npm run build-layouts</code>.</p>
     </div>
   )
 }
@@ -150,10 +184,11 @@ function Editor({ s, dispatch }) {
             const cls = `le-piece${bad ? ' bad' : ''}${s.selected === i ? ' sel' : ''}`
             const cx = X(r.cx), cy = Y(r.cy)
             const facing = { 0: [0, 1], 90: [1, 0], 180: [0, -1], 270: [-1, 0] }[((p.rotation % 360) + 360) % 360] || [0, 1]
+            const reach = Math.min(L(r.x1 - r.x0), L(r.y1 - r.y0)) * 0.4
             return (
               <g key={i} onPointerDown={(e) => onDown(e, i)} style={{ cursor: 'move' }}>
                 <rect x={X(r.x0)} y={Y(r.y0)} width={L(r.x1 - r.x0)} height={L(r.y1 - r.y0)} className={cls} />
-                <line x1={cx} y1={cy} x2={cx + facing[0] * Math.min(L(r.x1 - r.x0), L(r.y1 - r.y0)) * 0.4} y2={cy + facing[1] * Math.min(L(r.x1 - r.x0), L(r.y1 - r.y0)) * 0.4} className="le-facing" />
+                <line x1={cx} y1={cy} x2={cx + facing[0] * reach} y2={cy + facing[1] * reach} className="le-facing" />
                 <text x={cx} y={cy} className="le-label">{p.asset.name}</text>
               </g>
             )
@@ -174,12 +209,13 @@ function EditorSidebar({ s, dispatch }) {
   const d = s.draft
   const sel = s.selected != null ? d.pieces[s.selected] : null
   const setMeta = (patch) => dispatch({ type: 'META', patch })
-  const wdl = emitRoomWdl(d)
+  const name = layoutName(d)
+  const wdl = emitRoomBlock(d)
   return (
     <aside className="le-side">
       <div className="le-row">
-        <button onClick={() => dispatch({ type: 'LIBRARY' })}>← Library</button>
-        <b className="mono">{slug(d.type) || 'type'}_{slug(d.variant) || 'variant'}</b>
+        <button onClick={() => dispatch({ type: 'LIBRARY' })}>← Library {s.dirty ? '(stage)' : ''}</button>
+        <b className="mono">{name}</b>
       </div>
 
       <div className="panel">
@@ -234,7 +270,7 @@ function EditorSidebar({ s, dispatch }) {
       <div className="panel">
         <div className="le-row"><h3>WDL</h3><button onClick={() => navigator.clipboard?.writeText(wdl)}>Copy</button></div>
         <pre className="le-wdl">{wdl}</pre>
-        <p className="dim small">Paste into rooms.wdl (set a free <code>at (x, y)</code>), then <code>npm run build-layouts</code>.</p>
+        <p className="dim small">← Library stages this; then <b>Save rooms.wdl</b> writes the whole file.</p>
       </div>
 
       {s.picker && <Picker dispatch={dispatch} />}

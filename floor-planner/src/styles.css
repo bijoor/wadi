@@ -592,3 +592,9 @@ button.primary { background: #4f46e5; color: #fff; border-color: #4f46e5; }
 .le-cat { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; margin: 8px 0 2px; }
 .le-asset { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
 .le-asset:hover { background: #eef2ff; }
+
+.lib-table .badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+.lib-table .badge.edited { background: #fef3c7; color: #92400e; }
+.lib-table .badge.new { background: #dcfce7; color: #166534; }
+.lib-table tr.is-new .mono { color: #166534; }
+.lib-table td:first-child, .lib-table td:nth-child(2), .lib-table td:nth-child(3), .lib-table td:nth-child(4) { cursor: pointer; }
