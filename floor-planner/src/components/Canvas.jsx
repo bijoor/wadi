@@ -631,7 +631,15 @@ export default function Canvas({ state, dispatch }) {
         {/* edges on top of rooms so they are always clickable. A fat transparent
             hit-line makes thin edges easy to select. Green = satisfied (rooms
             share a wall), red = unsatisfied. */}
-        {edges.map((e) => {
+        {/* draw the selected edge last so its highlight paints over any
+            overlapping connections (SVG has no z-index; order is paint order) */}
+        {[...edges]
+          .sort((e1, e2) => {
+            const s1 = selection.type === 'edge' && selection.id === e1.id
+            const s2 = selection.type === 'edge' && selection.id === e2.id
+            return (s1 ? 1 : 0) - (s2 ? 1 : 0)
+          })
+          .map((e) => {
           const a = roomById(liveRooms, e.a)
           const b = roomById(liveRooms, e.b)
           if (!a || !b) return null
