@@ -367,6 +367,24 @@ export function roomDoorIntervals(room, rooms, edgeKind, doorWidth = DOOR_W) {
   return bySide
 }
 
+/** Per side, the GAP ('open') opening intervals (the full shared segment less the corner
+ *  margins). Furniture placement treats these as SOFT: preferred to avoid when selecting a
+ *  layout/rotation, but never a reason to shift or drop a piece. */
+export function roomGapIntervals(room, rooms, edgeKind) {
+  const bySide = { north: [], south: [], east: [], west: [] }
+  for (const side of SIDES) {
+    for (const n of rooms) {
+      if (n === room || n.floor !== room.floor) continue
+      const seg = sharedInterval(room, side, n)
+      if (!seg) continue
+      if (edgeKind(room.id, n.id) !== 'open') continue
+      const lo = seg[0] + DOOR_MARGIN, hi = seg[1] - DOOR_MARGIN
+      if (hi > lo) bySide[side].push([lo, hi])
+    }
+  }
+  return bySide
+}
+
 /** Build an `edgeKind(aId,bId)` lookup from the graph edges. A connection with no
  *  explicit kind defaults to `door`; a pair with no edge returns null (partition).
  *  Undirected: geometry treats a connection the same either way (the arrow only

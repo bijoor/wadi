@@ -55,40 +55,56 @@ function fits(layout, w, h) {
   return (layout.w || 0) <= w + FIT_TOL && (layout.h || 0) <= h + FIT_TOL
 }
 
-// Candidate arrangements for a layout: as authored, plus rotated 90° (A). The rotation lets a
-// portrait layout fill a landscape room, and gives door-avoidance (C) a second wall to try.
-// A furniture-free layout (balcony/terrace) has nothing to rotate.
+// Candidate arrangements for a layout: all FOUR rotations (0/90/180/270). Rotation lets a
+// portrait layout fill a landscape room and, more importantly, moves furniture onto different
+// walls so the picker can dodge doors and gaps. A furniture-free layout has nothing to rotate.
 function orientationsOf(layout) {
   if (!layout.pieces || !layout.pieces.length) return [layout]
-  return [layout, rotateLayoutCW(layout)]
+  const out = [layout]
+  let cur = layout
+  for (let i = 0; i < 3; i++) { cur = rotateLayoutCW(cur); out.push(cur) }
+  return out
 }
 
-// Pick the arrangement for a typed room: among the layouts of its type (each in its authored
-// and 90°-rotated orientation) that FIT the room, the one whose furniture overlaps the doors
-// LEAST — measured against the real door openings when we have the room geometry (C), else by
-// the coarse wall-level count. Tie-break: fullest arrangement, then authored orientation, then
-// file order. Returns the chosen (possibly rotated) layout, or null for a plain/too-small room.
+// Pick the arrangement for a typed room: among the layouts of its type (each in all four
+// rotations) that FIT the room, the one that overlaps the DOORS least, then the GAPS least,
+// then the fullest. Doors are hard conflicts (later shifted/dropped); gaps are SOFT — an open
+// passage that adds space — so we only prefer to avoid them, never remove furniture for them.
+// When room geometry is missing we fall back to the coarse wall-level door count. Ties keep pool
+// order (authored orientation before rotations, layouts in file order). Returns the chosen
+// (possibly rotated) layout, or null for a plain/too-small room.
 function pickLayout(roomType, ctx = {}) {
   const options = byType()[roomType]
   if (!options || !options.length) return null
   const open = ctx.openSides instanceof Set ? ctx.openSides : new Set(ctx.openSides || [])
   const useGeom = canPlaceByGeometry(ctx)
 
-  // Candidates in a stable order: authored before rotated, layouts in file order. Only those
-  // whose (oriented) target fits the room — a layout in a room smaller than it was designed
-  // for would push furniture through the walls. If none fits, the room stays unfurnished.
   const pool = []
   for (const l of options) for (const c of orientationsOf(l)) if (fits(c, ctx.w, ctx.h)) pool.push(c)
   if (!pool.length) return null
 
-  const score = (c) => (useGeom
-    ? doorOverlapCount(c.pieces, ctx.room, ctx.wallT, ctx.units, ctx.doorIntervals)
-    : conflictCount(c, open))
-  let best = pool[0], bestScore = score(pool[0])
+  if (!useGeom) {
+    // Coarse fallback (no geometry): fewest door-wall pieces, then fullest.
+    let best = pool[0], bestScore = conflictCount(pool[0], open)
+    for (let i = 1; i < pool.length; i++) {
+      const s = conflictCount(pool[i], open)
+      if (s < bestScore || (s === bestScore && area(pool[i]) > area(best))) { best = pool[i]; bestScore = s }
+    }
+    return best
+  }
+
+  // Geometry-aware: rank by (door hits, gap hits, -area). Gaps break ties only.
+  const key = (c) => ({
+    doors: doorOverlapCount(c.pieces, ctx.room, ctx.wallT, ctx.units, ctx.doorIntervals),
+    gaps: doorOverlapCount(c.pieces, ctx.room, ctx.wallT, ctx.units, ctx.gapIntervals || {}),
+    a: area(c),
+  })
+  let best = pool[0], bk = key(best)
   for (let i = 1; i < pool.length; i++) {
-    const s = score(pool[i])
-    // fewer door hits, then fuller, then (implicitly, via stable order) authored-before-rotated
-    if (s < bestScore || (s === bestScore && area(pool[i]) > area(best))) { best = pool[i]; bestScore = s }
+    const c = pool[i], k = key(c)
+    if (k.doors < bk.doors
+      || (k.doors === bk.doors && k.gaps < bk.gaps)
+      || (k.doors === bk.doors && k.gaps === bk.gaps && k.a > bk.a)) { best = c; bk = k }
   }
   return best
 }

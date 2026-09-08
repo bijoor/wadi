@@ -10,7 +10,7 @@
 // with no door is C11's cue to add one (or leave the wall off for an opening).
 
 import { emitWdl } from 'wadi-wdl-emitter'
-import { computeRoomWalls, edgeKindLookup, classifyOpenCorners, roomDoorSides, roomDoorIntervals } from './wallsFromGraph.js'
+import { computeRoomWalls, edgeKindLookup, classifyOpenCorners, roomDoorSides, roomDoorIntervals, roomGapIntervals } from './wallsFromGraph.js'
 import { roomModule } from './roomModules.js'
 import { guideUnitLabel, guidesFromRooms, guidesFromModel, roomGridFormulas } from './spanGrid.js'
 
@@ -108,6 +108,7 @@ export function modelToWadi(model, opts = {}) {
         // opening intervals per side, so furniture avoids / is carved off the actual doors.
         room: r, wallT: wallThickness, units: furnUnits,
         doorIntervals: roomDoorIntervals(r, floorRooms, edgeKind, doorWidth),
+        gapIntervals: roomGapIntervals(r, floorRooms, edgeKind), // soft: prefer to avoid, never carve
       })]),
     )
     const heightById = new Map(floorRooms.map((r) => [r.id, modById.get(r.id).height ?? wallHeight]))

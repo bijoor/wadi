@@ -5,8 +5,8 @@ import { PALETTE } from '../store/initialState.js'
 import { fmtLen, unitsOf } from '../utils/physical.js'
 import { syncGuides } from '../model/guides.js'
 import { roomModule } from '../export/roomModules.js'
-import { pieceRect } from '../export/furnitureFit.js'
-import { edgeKindLookup, roomDoorSides, roomDoorIntervals } from '../export/wallsFromGraph.js'
+import { pieceRect, unitsPerMeter, anchorFacing } from '../export/furnitureFit.js'
+import { edgeKindLookup, roomDoorSides, roomDoorIntervals, roomGapIntervals } from '../export/wallsFromGraph.js'
 
 // The fitted furniture for every typed room on this floor: the SAME pick the exporter makes
 // (orientation A + door-aware placement C), with the chosen template name. Rects are in project
@@ -23,10 +23,19 @@ function fittedFurniture(rooms, edges, build) {
     const room = { x: r.x, y: r.y, w: r.w, h: r.h }
     const mod = roomModule(r.roomType, {
       openSides: roomDoorSides(r, rooms, edgeKind), w: r.w, h: r.h,
-      room, wallT, units, doorIntervals: roomDoorIntervals(r, rooms, edgeKind, doorWidth),
+      room, wallT, units,
+      doorIntervals: roomDoorIntervals(r, rooms, edgeKind, doorWidth),
+      gapIntervals: roomGapIntervals(r, rooms, edgeKind),
     })
     if (!mod.template) continue
-    const pieces = mod.items.map((it) => ({ rect: pieceRect(it, room, wallT, units), rotation: it.rotation, name: it.asset?.name || it.asset?.id }))
+    const upm = unitsPerMeter(units)
+    // Keep the piece CENTRE + its true footprint (asset dims) + effective rotation, so the preview
+    // draws a rotated rectangle for any angle (matching the layout editor), not the bounding box.
+    const pieces = mod.items.map((it) => {
+      const rect = pieceRect(it, room, wallT, units)
+      const dims = it.asset?.dimensions || [0, 0, 0]
+      return { cx: rect.cx, cy: rect.cy, fw: dims[0] * upm, fd: dims[2] * upm, rot: it.rotation != null ? it.rotation : anchorFacing(it.anchor), name: it.asset?.name || it.asset?.id }
+    })
     out.push({ id: r.id, template: mod.template, rotated: mod.rotated, pieces })
   }
   return out
@@ -940,15 +949,15 @@ function FurnitureOverlay({ fit, cell, room }) {
   return (
     <g className="furn" pointerEvents="none">
       {fit.pieces.map((p, i) => {
-        const x = p.rect.x0 * cell, y = p.rect.y0 * cell
-        const w = (p.rect.x1 - p.rect.x0) * cell, h = (p.rect.y1 - p.rect.y0) * cell
-        const cx = p.rect.cx * cell, cy = p.rect.cy * cell
-        const facing = { 0: [0, 1], 90: [1, 0], 180: [0, -1], 270: [-1, 0] }[((p.rotation % 360) + 360) % 360] || [0, 1]
-        const reach = Math.min(w, h) * 0.35
+        const cx = p.cx * cell, cy = p.cy * cell
+        const fw = p.fw * cell, fd = p.fd * cell
+        const yaw = (((p.rot % 360) + 360) % 360)
+        const th = yaw * Math.PI / 180
+        const reach = Math.min(fw, fd) * 0.35
         return (
           <g key={i}>
-            <rect x={x} y={y} width={w} height={h} className="furn-piece" />
-            <line x1={cx} y1={cy} x2={cx + facing[0] * reach} y2={cy + facing[1] * reach} className="furn-facing" />
+            <rect x={cx - fw / 2} y={cy - fd / 2} width={fw} height={fd} transform={`rotate(${yaw} ${cx} ${cy})`} className="furn-piece" />
+            <line x1={cx} y1={cy} x2={cx + Math.sin(th) * reach} y2={cy + Math.cos(th) * reach} className="furn-facing" />
           </g>
         )
       })}
