@@ -5,7 +5,7 @@
 import React, { useReducer, useRef, useEffect } from 'react'
 import CATALOG from '../export/furnitureCatalog.json'
 import ROOMS_SOURCE from '../export/roomsSource.js'
-import { pieceRect, anchorPoints, gapForCenter, validateLayout, anchorFacing } from '../export/furnitureFit.js'
+import { pieceRect, anchorPoints, gapForCenter, validateLayout, anchorFacing, unitsPerMeter } from '../export/furnitureFit.js'
 import { emitRoomBlock, applyLayoutEdits, layoutName } from '../export/layoutWdl.js'
 import {
   libraryLayouts, libraryState, isLibraryDirty, libraryEdits,
@@ -22,6 +22,26 @@ const ANCHORS = [
 ]
 const r0 = (n) => Math.round(Number(n) || 0)
 const emptyDraft = () => ({ type: '', variant: '', w: 100, h: 100, height: '', pieces: [] })
+
+// A number input you can actually clear and edit: it keeps its own text while focused (so an
+// empty field or a partial "-" doesn't snap back to 0), commits a valid number as you type, and
+// resyncs to the model value on blur. `min` clamps on commit.
+function NumField({ value, onCommit, min, step, title }) {
+  const [str, setStr] = React.useState(String(value))
+  const focused = React.useRef(false)
+  React.useEffect(() => { if (!focused.current) setStr(String(value)) }, [value])
+  return (
+    <input type="number" step={step} title={title} value={str}
+      onFocus={() => { focused.current = true }}
+      onBlur={() => { focused.current = false; setStr(String(value)) }}
+      onChange={(e) => {
+        setStr(e.target.value)
+        if (e.target.value === '' || e.target.value === '-') return
+        const n = Number(e.target.value)
+        if (Number.isFinite(n)) onCommit(min != null ? Math.max(n, min) : n)
+      }} />
+  )
+}
 
 function download(name, text) {
   const blob = new Blob([text], { type: 'text/plain' })
@@ -138,6 +158,7 @@ function Editor({ s, dispatch, goLibrary }) {
   const sc = Math.min((VW - 2 * PAD) / room.w, (VH - 2 * PAD) / room.h)
   const ox = (VW - room.w * sc) / 2, oy = (VH - room.h * sc) / 2
   const X = (u) => ox + u * sc, Y = (u) => oy + u * sc, L = (u) => u * sc
+  const upm = unitsPerMeter(UNITS) // project units per metre, for the true footprint dims
   const { rects, flags } = validateLayout(d.pieces, room, WALLT, UNITS)
   const anchors = anchorPoints(room, WALLT)
   const nOverlap = flags.filter((f) => f.overlap).length
@@ -179,13 +200,18 @@ function Editor({ s, dispatch, goLibrary }) {
             const bad = flags[i].overlap || flags[i].oob.length
             const cls = `le-piece${bad ? ' bad' : ''}${s.selected === i ? ' sel' : ''}`
             const cx = X(r.cx), cy = Y(r.cy)
+            const yaw = (((p.rotation % 360) + 360) % 360)
+            // True oriented footprint (unrotated dims) rotated about the centre, so an arbitrary
+            // angle shows a tilted rectangle — not just the bounding box.
+            const fw = L((p.asset.dimensions?.[0] || 0) * upm)
+            const fd = L((p.asset.dimensions?.[2] || 0) * upm)
             // facing vector for yaw (0=south, 90=east, 180=north, 270=west): (sin θ, cos θ)
-            const th = (((p.rotation % 360) + 360) % 360) * Math.PI / 180
+            const th = yaw * Math.PI / 180
             const facing = [Math.sin(th), Math.cos(th)]
-            const reach = Math.min(L(r.x1 - r.x0), L(r.y1 - r.y0)) * 0.4
+            const reach = Math.min(fw, fd) * 0.4
             return (
               <g key={i} onPointerDown={(e) => onDown(e, i)} style={{ cursor: 'move' }}>
-                <rect x={X(r.x0)} y={Y(r.y0)} width={L(r.x1 - r.x0)} height={L(r.y1 - r.y0)} className={cls} />
+                <rect x={cx - fw / 2} y={cy - fd / 2} width={fw} height={fd} transform={`rotate(${yaw} ${cx} ${cy})`} className={cls} />
                 <line x1={cx} y1={cy} x2={cx + facing[0] * reach} y2={cy + facing[1] * reach} className="le-facing" />
                 <text x={cx} y={cy} className="le-label">{p.asset.name}</text>
               </g>
@@ -224,8 +250,8 @@ function EditorSidebar({ s, dispatch, goLibrary }) {
         </label>
         <label>Variant<input value={d.variant} onChange={(e) => setMeta({ variant: e.target.value })} placeholder="xs" /></label>
         <div className="le-row">
-          <label>Width<input type="number" step={SIZE_STEP} value={d.w} onChange={(e) => setMeta({ w: Math.max(Number(e.target.value) || 0, 1) })} /></label>
-          <label>Depth<input type="number" step={SIZE_STEP} value={d.h} onChange={(e) => setMeta({ h: Math.max(Number(e.target.value) || 0, 1) })} /></label>
+          <label>Width<NumField value={d.w} step={SIZE_STEP} min={1} onCommit={(n) => setMeta({ w: n })} /></label>
+          <label>Depth<NumField value={d.h} step={SIZE_STEP} min={1} onCommit={(n) => setMeta({ h: n })} /></label>
         </div>
         <label>Wall height (optional)
           <input type="number" step={5} value={d.height} placeholder="full" onChange={(e) => setMeta({ height: e.target.value === '' ? '' : Number(e.target.value) })} />
@@ -254,15 +280,15 @@ function EditorSidebar({ s, dispatch, goLibrary }) {
             ))}
           </div>
           <div className="le-row">
-            <label>Gap X<input type="number" value={sel.gap_x} onChange={(e) => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { gap_x: Number(e.target.value) || 0 } })} /></label>
-            <label>Gap Y<input type="number" value={sel.gap_y} onChange={(e) => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { gap_y: Number(e.target.value) || 0 } })} /></label>
+            <label>Gap X<NumField value={sel.gap_x} onCommit={(n) => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { gap_x: n } })} /></label>
+            <label>Gap Y<NumField value={sel.gap_y} onCommit={(n) => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { gap_y: n } })} /></label>
           </div>
           <label>Rotation
             <div className="le-rot">{[0, 90, 180, 270].map((r) => (
               <button key={r} className={((sel.rotation % 360) + 360) % 360 === r ? 'active' : ''} onClick={() => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { rotation: r } })}>{r}°</button>
             ))}</div>
-            <input type="number" step={15} value={sel.rotation} title="Rotation in degrees (any angle)"
-              onChange={(e) => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { rotation: ((Math.round(Number(e.target.value) || 0) % 360) + 360) % 360 } })} />
+            <NumField value={sel.rotation} step={15} title="Rotation in degrees (any angle)"
+              onCommit={(n) => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { rotation: ((Math.round(n) % 360) + 360) % 360 } })} />
           </label>
         </div>
       )}
