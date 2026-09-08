@@ -3,6 +3,8 @@
 // applyLayoutEdits to produce the whole file to download; the author drops it in and runs
 // `npm run build-layouts`. Kept pure + text-only (no DSL parse) so it round-trips predictably.
 
+import { anchorFacing } from './furnitureFit.js'
+
 const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 const r0 = (n) => Math.round(Number(n) || 0)
 
@@ -15,9 +17,13 @@ export function emitRoomBlock(draft, at = { x: 0, y: 0 }) {
   const height = draft.height != null && draft.height !== '' ? ` height ${r0(draft.height)}` : ''
   const head = `    room ${name} at (${r0(at.x)}, ${r0(at.y)}) size (${r0(draft.w)}, ${r0(draft.h)})${height}`
   const items = (draft.pieces || []).map((p) => {
+    const anchor = p.anchor || 'center'
     const g = (r0(p.gap_x) || r0(p.gap_y)) ? ` gap (${r0(p.gap_x)}, ${r0(p.gap_y)})` : ''
-    const rot = p.rotation ? ` rotation ${p.rotation}` : ''
-    return `      item f."${p.asset.id}" anchor ${p.anchor}${g}${rot}`
+    // Emit rotation only when it differs from the anchor's natural facing (0 included) — otherwise
+    // the pipeline reconstructs the wrong facing from the anchor. See layoutLibrary.effRot.
+    const eff = p.rotation != null ? r0(p.rotation) : anchorFacing(anchor)
+    const rot = eff !== anchorFacing(anchor) ? ` rotation ${eff}` : ''
+    return `      item f."${p.asset.id}" anchor ${anchor}${g}${rot}`
   })
   return items.length ? `${head} {\n${items.join('\n')}\n    }` : head
 }

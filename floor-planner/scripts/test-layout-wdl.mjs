@@ -35,6 +35,20 @@ ok(emitted.includes('item f."stove" anchor top-center gap (0, 4)'), 'emit item w
 ok(emitted.includes('gap (0, -30)'), 'emit negative gap literal')
 ok(layoutName(draft) === 'kitchen_test', 'layoutName slugs type_variant')
 
+// Rotation must be lossless vs the anchor's natural facing: a value that DIFFERS is emitted
+// (including 0), one that EQUALS the anchor default is omitted (the pipeline reconstructs it).
+{
+  const sideZero = { type: 'bedroom', variant: 'x', w: 95, h: 95, pieces: [
+    { asset: { id: 'bed_single' }, anchor: 'center-left', gap_x: 0, gap_y: 0, rotation: 0 },
+  ] }
+  ok(emitRoomBlock(sideZero).includes('anchor center-left rotation 0'), 'emit rotation 0 on a side wall (differs from anchor default 90)')
+  const sideDefault = { type: 'bedroom', variant: 'x', w: 95, h: 95, pieces: [
+    { asset: { id: 'wardrobe' }, anchor: 'center-right', gap_x: 0, gap_y: 0, rotation: 270 },
+  ] }
+  const line = emitRoomBlock(sideDefault).split('\n').find((l) => l.includes('wardrobe'))
+  ok(/anchor center-right\s*$/.test(line.trimEnd()), 'omit rotation when it equals the anchor default (270 on center-right)')
+}
+
 // ---- replace (in place, keeps at + rest of file) ----
 {
   const edit = { op: 'replace', name: 'kitchen_xs', draft: { type: 'kitchen', variant: 'xs', w: 78, h: 46, pieces: [

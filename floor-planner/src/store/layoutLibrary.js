@@ -6,6 +6,12 @@
 
 import BUILTIN from '../export/roomLayouts.json'
 import { layoutName } from '../export/layoutWdl.js'
+import { anchorFacing } from '../export/furnitureFit.js'
+
+// A piece's effective absolute rotation: explicit if set, else the anchor's natural facing (the
+// same rule the pipeline uses). rotation is only stored when it DIFFERS from this default, so a
+// value of 0 on a side/corner wall (whose default is 90/180/270) is kept, not dropped.
+const effRot = (p) => (p.rotation != null ? Math.round(p.rotation) : anchorFacing(p.anchor || 'center'))
 
 const KEY = 'floor-planner:layouts:v1'
 const BUILTIN_BY_ID = new Map((BUILTIN.layouts || []).map((l) => [l.id, l]))
@@ -28,7 +34,7 @@ function write(s) {
 // (no phantom "edited" once the pack has been rebuilt to include it).
 const canon = (l) => JSON.stringify({
   id: l.id, type: l.type, w: r0(l.w), h: r0(l.h), height: l.height ?? null,
-  pieces: (l.pieces || []).map((p) => ({ id: p.asset?.id, anchor: p.anchor || 'center', gx: r0(p.gap_x), gy: r0(p.gap_y), rot: p.rotation || 0 })),
+  pieces: (l.pieces || []).map((p) => ({ id: p.asset?.id, anchor: p.anchor || 'center', gx: r0(p.gap_x), gy: r0(p.gap_y), rot: effRot(p) })),
 })
 const sameAsBuiltin = (l) => BUILTIN_BY_ID.has(l.id) && canon(BUILTIN_BY_ID.get(l.id)) === canon(l)
 
@@ -77,12 +83,16 @@ export function layoutFromDraft(d) {
     id: layoutName(d),
     type: String(d.type || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
     w: r0(d.w), h: r0(d.h), ...height,
-    pieces: (d.pieces || []).map((p) => ({
-      asset: p.asset, anchor: p.anchor || 'center',
-      ...(r0(p.gap_x) ? { gap_x: r0(p.gap_x) } : {}),
-      ...(r0(p.gap_y) ? { gap_y: r0(p.gap_y) } : {}),
-      ...(p.rotation ? { rotation: p.rotation } : {}),
-    })),
+    pieces: (d.pieces || []).map((p) => {
+      const anchor = p.anchor || 'center'
+      const eff = effRot(p)
+      return {
+        asset: p.asset, anchor,
+        ...(r0(p.gap_x) ? { gap_x: r0(p.gap_x) } : {}),
+        ...(r0(p.gap_y) ? { gap_y: r0(p.gap_y) } : {}),
+        ...(eff !== anchorFacing(anchor) ? { rotation: eff } : {}), // keep only when it differs from the anchor default (0 included)
+      }
+    }),
   }
 }
 export function draftFromLayout(l) {
@@ -90,7 +100,9 @@ export function draftFromLayout(l) {
     type: l.type,
     variant: l.id.startsWith(l.type + '_') ? l.id.slice(l.type.length + 1) : l.id,
     w: l.w, h: l.h, height: l.height ?? '',
-    pieces: (l.pieces || []).map((p) => ({ asset: p.asset, anchor: p.anchor || 'center', gap_x: p.gap_x ?? 0, gap_y: p.gap_y ?? 0, rotation: p.rotation ?? 0 })),
+    // Show the EFFECTIVE rotation so the editor matches the planner (a piece with no stored
+    // rotation faces per its anchor, not 0).
+    pieces: (l.pieces || []).map((p) => ({ asset: p.asset, anchor: p.anchor || 'center', gap_x: p.gap_x ?? 0, gap_y: p.gap_y ?? 0, rotation: effRot(p) })),
   }
 }
 

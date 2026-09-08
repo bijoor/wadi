@@ -5,7 +5,7 @@
 import React, { useReducer, useRef, useEffect } from 'react'
 import CATALOG from '../export/furnitureCatalog.json'
 import ROOMS_SOURCE from '../export/roomsSource.js'
-import { pieceRect, anchorPoints, gapForCenter, validateLayout } from '../export/furnitureFit.js'
+import { pieceRect, anchorPoints, gapForCenter, validateLayout, anchorFacing } from '../export/furnitureFit.js'
 import { emitRoomBlock, applyLayoutEdits, layoutName } from '../export/layoutWdl.js'
 import {
   libraryLayouts, libraryState, isLibraryDirty, libraryEdits,
@@ -44,6 +44,16 @@ function reducer(s, a) {
     }
     case 'UPDATE_PIECE': {
       const pieces = s.draft.pieces.map((p, i) => (i === a.index ? { ...p, ...a.patch } : p))
+      return { ...s, draft: { ...s.draft, pieces }, dirty: true }
+    }
+    case 'SET_ANCHOR': {
+      // Moving a piece to a new anchor resets its gap and, if it was facing per its (old) wall's
+      // default, re-faces it into the room from the new wall — matching the pipeline. A custom
+      // rotation the author set is kept.
+      const p = s.draft.pieces[a.index]
+      const wasDefault = (p.rotation ?? anchorFacing(p.anchor)) === anchorFacing(p.anchor)
+      const rotation = wasDefault ? anchorFacing(a.anchor) : p.rotation
+      const pieces = s.draft.pieces.map((pp, i) => (i === a.index ? { ...pp, anchor: a.anchor, gap_x: 0, gap_y: 0, rotation } : pp))
       return { ...s, draft: { ...s.draft, pieces }, dirty: true }
     }
     case 'DELETE_PIECE': return { ...s, draft: { ...s.draft, pieces: s.draft.pieces.filter((_, i) => i !== a.index) }, selected: null, dirty: true }
@@ -160,7 +170,7 @@ function Editor({ s, dispatch, goLibrary }) {
           <rect x={X(WALLT)} y={Y(WALLT)} width={L(room.w - 2 * WALLT)} height={L(room.h - 2 * WALLT)} className="le-inner" />
           {Object.entries(anchors).map(([name, p]) => (
             <circle key={name} cx={X(p.x)} cy={Y(p.y)} r={3} className="le-anchor"
-              onPointerDown={(e) => { e.stopPropagation(); if (s.selected != null) dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { anchor: name, gap_x: 0, gap_y: 0 } }) }}>
+              onPointerDown={(e) => { e.stopPropagation(); if (s.selected != null) dispatch({ type: 'SET_ANCHOR', index: s.selected, anchor: name }) }}>
               <title>{name}</title>
             </circle>
           ))}
@@ -238,7 +248,7 @@ function EditorSidebar({ s, dispatch, goLibrary }) {
           <div className="le-anchor-grid">
             {ANCHORS.map((an) => (
               <button key={an} className={sel.anchor === an ? 'active' : ''} title={an}
-                onClick={() => dispatch({ type: 'UPDATE_PIECE', index: s.selected, patch: { anchor: an, gap_x: 0, gap_y: 0 } })}>·</button>
+                onClick={() => dispatch({ type: 'SET_ANCHOR', index: s.selected, anchor: an })}>·</button>
             ))}
           </div>
           <div className="le-row">
