@@ -779,11 +779,13 @@ export function generateFloorPlanSvg(
   // Python: `f'<text x="{width/2}" ...` — `width` is the shadowed local
   // variable (canvas width by default, or last staircase width if any).
   // Division always yields float in Python 3.
-  const titleXStr = titleWidthIsFloat ? fFloat(titleWidthVar / 2) : fFloat(titleWidthVar / 2);
-  // (Both branches use fFloat here because Py3's `/` always returns
-  // float; the isFloat distinction only matters when we know the value
-  // stays purely integer through addition without division — retained
-  // for future edits.)
+  // Center the title on the real canvas width. The old Python centered it on a
+  // variable that a staircase branch rebinds to the staircase width, so on any
+  // floor with a staircase the title sat at ~staircase_width/2 and a long title
+  // (floor name + built-up area) overflowed off the left edge and clipped. Use
+  // the true canvas `width` so the title is always centered on the sheet.
+  const titleXStr = fFloat(width / 2);
+  void titleWidthVar;
   void titleWidthIsFloat;
   const builtUpUnits = floorBuiltUpAreaUnits(floorConfig as { objects?: Array<Record<string, unknown>> });
   const areaLabel = builtUpUnits > 0 ? `  ·  Built-up ${formatArea(builtUpUnits)}` : "";
