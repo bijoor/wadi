@@ -9,7 +9,8 @@
 import { DEFAULT_GLOBAL_CONFIG, activeDimensions, scaledTextSize, scaledSpacing } from "./config";
 import { activeObjects } from "../schema/enabled";
 import { pillarRects } from "./wallTrim";
-import { formatDimension, f, fFloat } from "./format";
+import { formatDimension, formatArea, f, fFloat } from "./format";
+import { floorBuiltUpAreaUnits } from "./area";
 import { getNode } from "../registry/registry";
 import {
   svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawGap, svgDrawFloorSlab,
@@ -784,8 +785,10 @@ export function generateFloorPlanSvg(
   // stays purely integer through addition without division — retained
   // for future edits.)
   void titleWidthIsFloat;
+  const builtUpUnits = floorBuiltUpAreaUnits(floorConfig as { objects?: Array<Record<string, unknown>> });
+  const areaLabel = builtUpUnits > 0 ? `  ·  Built-up ${formatArea(builtUpUnits)}` : "";
   svg += `</g>
-<text x="${titleXStr}" y="30" text-anchor="middle" font-size="${scaledTextSize(16)}" font-weight="bold">${floorName}</text>
+<text x="${titleXStr}" y="30" text-anchor="middle" font-size="${scaledTextSize(16)}" font-weight="bold">${floorName}${areaLabel}</text>
 `;
 
   // Room-key legend, in the reserved strip at the bottom of the sheet.

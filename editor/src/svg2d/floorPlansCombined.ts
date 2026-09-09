@@ -1,7 +1,8 @@
 import { generateFloorPlanSvg } from "./floorPlan";
 import { buildGridOverlay } from "./floorPlansAll";
 import { scaledTextSize } from "./config";
-import { f, fFloat } from "./format";
+import { f, fFloat, formatArea } from "./format";
+import { floorBuiltUpAreaUnits } from "./area";
 import { expandRoomWalls, type HouseConfig } from "./expand";
 
 // Port of svg_2d.py::generate_combined_floor_plans. Renders each floor
@@ -31,6 +32,7 @@ export function generateCombinedFloorPlans(
     canvasHeight: number;
     translateX: number;
     contentWidth: number;
+    area: string;
   }
   const floorData: FloorEntry[] = [];
 
@@ -110,6 +112,7 @@ export function generateCombinedFloorPlans(
       tx = 0;
     }
 
+    const builtUpUnits = floorBuiltUpAreaUnits(floor as { objects?: Array<Record<string, unknown>> });
     floorData.push({
       name: floorName,
       number: floorNum,
@@ -118,6 +121,7 @@ export function generateCombinedFloorPlans(
       canvasHeight: svgHeight,
       translateX: tx,
       contentWidth,
+      area: builtUpUnits > 0 ? formatArea(builtUpUnits) : "",
     });
   }
 
@@ -164,7 +168,8 @@ export function generateCombinedFloorPlans(
     svg += "</g>\n";
     const labelX = currentX + floor.translateX + floor.contentWidth / 2;
     // labelX and labelY both float in Python.
-    svg += `<text x="${fFloat(labelX)}" y="${fFloat(labelY)}" text-anchor="middle" class="floor-label">${floor.name}</text>\n`;
+    const areaSuffix = floor.area ? `  ·  Built-up ${floor.area}` : "";
+    svg += `<text x="${fFloat(labelX)}" y="${fFloat(labelY)}" text-anchor="middle" class="floor-label">${floor.name}${areaSuffix}</text>\n`;
     svg += "</g>\n";
     currentX += floor.canvasWidth + spacing;
     // canvasWidth was parsed from a "1180.0"-style string — it's float

@@ -90,6 +90,28 @@ export function formatDimension(length: number): string {
   return `${converted.toFixed(precision)}${SUFFIX[system]}`;
 }
 
+const AREA_SUFFIX: Record<UnitSystem, string> = {
+  feet_inches: " sq ft",
+  feet: " sq ft",
+  meters: " m²",
+  centimeters: " cm²",
+  millimeters: " mm²",
+};
+
+// Convert an area in project units² to the active display units: a grouped whole
+// number of sq ft for the feet systems, `precision` decimals of m²/cm²/mm² for the
+// metric ones. Mirrors formatDimension's unit handling (converted = length/perUnit,
+// so an area divides by perUnit²).
+export function formatArea(areaUnits: number): string {
+  const { system, perUnit, precision } = activeUnits;
+  const converted = areaUnits / (perUnit * perUnit);
+  if (system === "feet_inches" || system === "feet") {
+    const n = Math.round(converted);
+    return `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${AREA_SUFFIX[system]}`;
+  }
+  return `${converted.toFixed(precision)}${AREA_SUFFIX[system]}`;
+}
+
 // Python's default `f"{v}"` for floats emits `.0` for whole values
 // (110.0), while ints render bare (110). JavaScript has one number type,
 // so we recreate the Python behavior with a per-value check: values that
