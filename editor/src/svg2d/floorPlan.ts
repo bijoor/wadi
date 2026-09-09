@@ -147,7 +147,15 @@ export function generateFloorPlanSvg(
     dimMargin = (maxOffset + scaledSpacing(20)) * scale;
   }
   const margin = baseMargin + dimMargin;
-  const topMargin = 50 + dimMargin;
+  // The sheet title (floor name + built-up area) is drawn at the top with a
+  // font that scales with the house span (scaledTextSize). Its baseline and the
+  // top band reserved for it must scale too, or a large-span plan's title
+  // ascenders overflow above the viewBox top and clip. Keep y=30 at the default
+  // scale so normal-sized houses render unchanged.
+  const titleFont = scaledTextSize(16);
+  const titleY = Math.max(30, 8 + titleFont * 0.75);
+  const titleReserve = titleY + titleFont * 0.25 + 10;
+  const topMargin = Math.max(50, titleReserve) + dimMargin;
 
   const width = (maxX - minX) * scale + 2 * margin;
 
@@ -790,7 +798,7 @@ export function generateFloorPlanSvg(
   const builtUpUnits = floorBuiltUpAreaUnits(floorConfig as { objects?: Array<Record<string, unknown>> });
   const areaLabel = builtUpUnits > 0 ? `  ·  Built-up ${formatArea(builtUpUnits)}` : "";
   svg += `</g>
-<text x="${titleXStr}" y="30" text-anchor="middle" font-size="${scaledTextSize(16)}" font-weight="bold">${floorName}${areaLabel}</text>
+<text x="${titleXStr}" y="${fFloat(titleY)}" text-anchor="middle" font-size="${titleFont}" font-weight="bold">${floorName}${areaLabel}</text>
 `;
 
   // Room-key legend, in the reserved strip at the bottom of the sheet.
