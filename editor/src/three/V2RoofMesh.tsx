@@ -34,6 +34,7 @@ const ROLE_COLOR: Partial<Record<MemberRole, string>> = {
   hip: "#f97316",
   valley: "#3b82f6",
   ring_beam: "#22c55e",
+  mid_ring: "#0d9488",
   rafter: "#a3a3a3",
   purlin: "#94a3b8",
   hip_beam: "#facc15",

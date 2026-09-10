@@ -36,6 +36,11 @@ export interface FramingConfig {
   valley_wall_mm?: number;
   ring_beam_size_in: [number, number];
   ring_beam_wall_mm: number;
+  // Add a horizontal ring at mid-slope on each roof face (aligned with the
+  // truss mid-height web node), rafter-sized. Off by default so existing
+  // models are unchanged. Follows each face's own mid-height, so it works
+  // under unequal pitch (the ring simply steps in Z at the hips).
+  mid_ring?: boolean;
   // Flat wall-top tie beams (ceiling ties). Default = ring-beam section.
   tie_beam_size_in?: [number, number];
   tie_beam_wall_mm?: number;
@@ -128,6 +133,7 @@ const FRAME_ROLES: MemberRole[] = [
   "hip",
   "valley",
   "ring_beam",
+  "mid_ring",
   "rafter",
   "purlin",
   "tie_beam",
@@ -204,6 +210,7 @@ export function computeFrameBom(
     cfg.valley_wall_mm ?? cfg.ridge_wall_mm,
   );
   push("ring_beam", "Ring beam", cfg.ring_beam_size_in, cfg.ring_beam_wall_mm);
+  push("mid_ring", "Mid-slope ring", cfg.rafter_size_in, cfg.rafter_wall_mm);
   push("rafter", "Rafters", cfg.rafter_size_in, cfg.rafter_wall_mm);
   push("purlin", "Purlins", cfg.purlin_size_in, cfg.purlin_wall_mm);
   push(

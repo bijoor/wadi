@@ -150,6 +150,42 @@ describe("populateRoofFraming — pure gable", () => {
   });
 });
 
+describe("populateRoofFraming — mid-slope ring", () => {
+  const cfg = pureHip();
+  const wallTopZ = 100;
+  const spec = derivePitchedRoof(cfg, { wallTopZ });
+
+  it("emits nothing unless framing.mid_ring is set (parity default)", () => {
+    const off = populateRoofFraming(spec, DEFAULT_V2_FRAMING, cfg, wallTopZ);
+    expect(off.members.filter((m) => m.role === "mid_ring").length).toBe(0);
+  });
+
+  it("emits one ring member per pitched face when enabled", () => {
+    const on = populateRoofFraming(
+      spec, { ...DEFAULT_V2_FRAMING, mid_ring: true }, cfg, wallTopZ,
+    );
+    const ring = on.members.filter((m) => m.role === "mid_ring");
+    // A pure hip has 4 faces (2 slopes + 2 hip ends).
+    expect(ring.length).toBe(4);
+    const faces = new Set(ring.map((m) => m.source_plane_id));
+    expect(faces.size).toBe(4);
+  });
+
+  it("sits at the face mid-height, horizontal, between wall-top and ridge", () => {
+    const on = populateRoofFraming(
+      spec, { ...DEFAULT_V2_FRAMING, mid_ring: true }, cfg, wallTopZ,
+    );
+    const ridgeZ = 150; // ridge_h 50 above wallTopZ
+    for (const m of on.members.filter((mm) => mm.role === "mid_ring")) {
+      // Each ring member is horizontal (both ends same Z).
+      expect(m.start[2]).toBeCloseTo(m.end[2], 5);
+      // Strictly between wall top and ridge.
+      expect(m.start[2]).toBeGreaterThan(wallTopZ);
+      expect(m.start[2]).toBeLessThan(ridgeZ);
+    }
+  });
+});
+
 describe("populateRoofFraming — non-pitched roofs are no-ops", () => {
   it("flat roof spec is returned unchanged", () => {
     const spec = { members: [], planes: [], trusses: [] };

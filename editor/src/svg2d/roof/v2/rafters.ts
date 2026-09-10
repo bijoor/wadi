@@ -105,6 +105,34 @@ export function populateRoofFraming(
         });
       }
     }
+
+    // MID-SLOPE RING — one horizontal member at the geometric CENTER of each
+    // face: the midpoint of its full up-slope extent, eave (including overhang)
+    // to peak (ridge/apex). A face is planar, so this one point is at once
+    // mid-height, mid-slope-length, and mid horizontal-run in plan — it reads
+    // as centered from the top view and every elevation. Emitted per face from
+    // the face polygon, so it works under UNEQUAL pitch (each face centers on
+    // itself, the ring simply steps in Z at the hips where pitches differ; for
+    // an equal-pitch hip every face shares the same mid-Z so the ring closes
+    // into one clean planar loop whose corners meet on the hip edges).
+    // Rafter-sized. Off unless framing.mid_ring.
+    if (framing.mid_ring && vSpan > 1e-3) {
+      const vMid = (vMin + vMax) / 2;
+      const range = intersectHorizontalWithPolygon(uv, vMid);
+      if (range) {
+        const [uLo, uHi] = range;
+        if (uHi - uLo >= 1e-3) {
+          extra.push({
+            id: `${plane.id}.mid_ring.${counter++}`,
+            start: unprojectFromUV(basis, uLo, vMid),
+            end: unprojectFromUV(basis, uHi, vMid),
+            role: "mid_ring",
+            source_segment_id: plane.source_segment_id,
+            source_plane_id: plane.id,
+          });
+        }
+      }
+    }
   }
 
   // TIE BEAMS — flat wall-top ceiling ties. For each segment, N members

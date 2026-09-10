@@ -224,7 +224,7 @@ export function V2RoofGableWalls({ config }: { config: HouseConfig }) {
 
 // Spine roles → "Ridges & trusses" layer (frame_spine).
 const SPINE_MEMBER_ROLES: Set<StraightMember["role"]> = new Set([
-  "ridge", "hip", "valley", "ring_beam", "gable_band",
+  "ridge", "hip", "valley", "ring_beam", "mid_ring", "gable_band",
   "truss_top_chord", "truss_bottom_chord", "truss_web",
   "pani_patti", "eave_L_channel", "corner_double_angle",
   "vent_strut", "tie_beam",
@@ -254,6 +254,9 @@ function sectionForMember(
       return framing.valley_size_in ?? framing.ridge_size_in;
     case "ring_beam":
       return framing.ring_beam_size_in;
+    case "mid_ring":
+      // Mid-slope ring is sized like a rafter.
+      return framing.rafter_size_in;
     case "gable_band":
       // Raking band continuous with the ring beam → same section.
       return framing.ring_beam_size_in;
@@ -285,6 +288,7 @@ function colorForRole(role: StraightMember["role"]): string {
     case "hip":                  return "#4b4b4b";
     case "valley":               return "#374151";
     case "ring_beam":            return "#525252";
+    case "mid_ring":             return "#0d9488";   // teal — mid-slope ring
     case "gable_band":           return "#6b5b45";   // RC band up the gable rake
     case "tie_beam":             return "#0369a1";   // steel-blue wall-top tie
     case "pani_patti":           return "#9ca3af";   // GI galvanised — lighter

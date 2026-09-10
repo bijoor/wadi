@@ -96,7 +96,7 @@ export function renderV2ToElevation(
   // Draw ridge / hip / valley members as outlines on top. Skip
   // members whose XY projection is degenerate for this view.
   for (const m of spec.members) {
-    if (m.role !== "ridge" && m.role !== "hip" && m.role !== "valley") continue;
+    if (m.role !== "ridge" && m.role !== "hip" && m.role !== "valley" && m.role !== "mid_ring") continue;
     const along = alongAxisFor(view);
     const a1 = along === "x" ? m.start[0] : m.start[1];
     const a2 = along === "x" ? m.end[0] : m.end[1];
@@ -105,7 +105,10 @@ export function renderV2ToElevation(
     const x2 = worldToSvgX(a2).toFixed(2);
     const y1 = zToY(m.start[2]).toFixed(2);
     const y2 = zToY(m.end[2]).toFixed(2);
-    const stroke = m.role === "ridge" ? "#3b1a05" : m.role === "hip" ? "#5a2e0b" : "#1e3a8a";
+    const stroke = m.role === "ridge" ? "#3b1a05"
+      : m.role === "hip" ? "#5a2e0b"
+      : m.role === "mid_ring" ? "#0d9488"
+      : "#1e3a8a";
     out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${roofThickness}"/>`);
   }
 
@@ -147,11 +150,12 @@ export function renderV2ToFloorPlan(
   }
 
   for (const m of spec.members) {
-    if (m.role !== "ridge" && m.role !== "hip" && m.role !== "valley") continue;
+    if (m.role !== "ridge" && m.role !== "hip" && m.role !== "valley" && m.role !== "mid_ring") continue;
     const [x1, y1] = xy(m.start[0], m.start[1]);
     const [x2, y2] = xy(m.end[0], m.end[1]);
     const stroke = m.role === "ridge" ? "#dc2626"
       : m.role === "hip" ? "#ea580c"
+      : m.role === "mid_ring" ? "#0d9488"
       : "#2563eb";
     const dash = m.role === "valley" ? ' stroke-dasharray="4,3"'
       : m.role === "hip" ? ' stroke-dasharray="6,2"' : "";

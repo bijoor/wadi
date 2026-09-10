@@ -244,6 +244,7 @@ export type MemberRole =
   | "hip"
   | "valley"
   | "ring_beam"
+  | "mid_ring"           // horizontal ring at mid-slope on each face, rafter-sized
   | "gable_band"         // raking band along the top of a gable wall
   | "hip_beam"
   | "vent_strut"
