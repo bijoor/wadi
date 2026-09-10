@@ -44,6 +44,7 @@ const MEMBER_STROKE: Record<string, string> = {
   hip: "#ea580c",           // orange-600
   valley: "#2563eb",        // blue-600
   ring_beam: "#16a34a",     // green-600
+  mid_ring: "#0d9488",      // teal-600 — mid-slope ring
   rafter: "#94a3b8",        // slate-400
   purlin: "#cbd5e1",        // slate-300
   tie_beam: "#0ea5e9",      // sky-500 — wall-top tie
@@ -56,6 +57,7 @@ const LEGEND_ORDER: Array<[string, string]> = [
   ["hip", "Hip"],
   ["valley", "Valley"],
   ["ring_beam", "Ring beam"],
+  ["mid_ring", "Mid-slope ring"],
 ];
 
 interface Bounds {
@@ -137,6 +139,7 @@ function memberSvg(
     member.role === "ridge" || member.role === "valley" ? 2 :
     member.role === "rafter" || member.role === "purlin" ? 0.4 :
     member.role === "tie_beam" ? 1.4 :
+    member.role === "mid_ring" ? 1.6 :
     1;
   const dash =
     member.role === "valley" ? " stroke-dasharray=\"4,3\"" :
@@ -230,7 +233,7 @@ export function renderTopViewPanel(
     // ring beam) sits ON TOP of the finer surface members (rafters,
     // purlins). Otherwise rafters cross the ridge lines visually.
     const surfaceOrder: MemberRole[] = ["rafter", "purlin", "tie_beam"];
-    const spineOrder: MemberRole[] = ["ring_beam", "hip", "valley", "ridge"];
+    const spineOrder: MemberRole[] = ["ring_beam", "mid_ring", "hip", "valley", "ridge"];
     for (const role of surfaceOrder) {
       for (const m of spec.members) {
         if (m.role === role) body.push(memberSvg(m, toSvg));
@@ -267,6 +270,38 @@ export function renderTopViewPanel(
       const ridgeLabel = `ridge ${escapeXml(formatDimension(lenW))}`;
       body.push(`<text ${ridgeCommon} fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">${ridgeLabel}</text>`);
       body.push(`<text ${ridgeCommon} fill="#b91c1c">${ridgeLabel}</text>`);
+    }
+
+    // Mid-slope ring dimensions — the ring's plan footprint (width × length).
+    // Label the ring's near horizontal edge with its width and its left vertical
+    // edge with its length, teal with a white halo so they read over the frame.
+    {
+      const ringM = spec.members.filter((m) => m.role === "mid_ring");
+      if (ringM.length) {
+        let rxa = Infinity, rxb = -Infinity, rya = Infinity, ryb = -Infinity;
+        for (const m of ringM) for (const p of [m.start, m.end]) {
+          if (p[0] < rxa) rxa = p[0]; if (p[0] > rxb) rxb = p[0];
+          if (p[1] < rya) rya = p[1]; if (p[1] > ryb) ryb = p[1];
+        }
+        const RING = "#0d9488";
+        // width — centered on the ring's top edge, nudged up
+        {
+          const [mx, my] = toSvg((rxa + rxb) / 2, rya);
+          const common = `x="${mx.toFixed(1)}" y="${(my - 6).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700"`;
+          const t = `ring ${escapeXml(formatDimension(rxb - rxa))}`;
+          body.push(`<text ${common} fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">${t}</text>`);
+          body.push(`<text ${common} fill="${RING}">${t}</text>`);
+        }
+        // length — centered on the ring's left edge, rotated, nudged left
+        {
+          const [mx, my] = toSvg(rxa, (rya + ryb) / 2);
+          const lx = mx - 8, ly = my;
+          const common = `x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="9.5" font-weight="700" transform="rotate(-90 ${lx.toFixed(1)} ${ly.toFixed(1)})"`;
+          const t = `ring ${escapeXml(formatDimension(ryb - rya))}`;
+          body.push(`<text ${common} fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">${t}</text>`);
+          body.push(`<text ${common} fill="${RING}">${t}</text>`);
+        }
+      }
     }
 
     // --- Key-plan markers: index every OTHER roof drawing on this plan ---

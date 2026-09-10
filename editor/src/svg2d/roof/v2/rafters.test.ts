@@ -171,17 +171,18 @@ describe("populateRoofFraming — mid-slope ring", () => {
     expect(faces.size).toBe(4);
   });
 
-  it("sits at the face mid-height, horizontal, between wall-top and ridge", () => {
+  it("sits at the span center (midway wall-top→ridge), horizontal, planar", () => {
     const on = populateRoofFraming(
       spec, { ...DEFAULT_V2_FRAMING, mid_ring: true }, cfg, wallTopZ,
     );
     const ridgeZ = 150; // ridge_h 50 above wallTopZ
+    const spanCenterZ = (wallTopZ + ridgeZ) / 2; // 125 — excludes the overhang
     for (const m of on.members.filter((mm) => mm.role === "mid_ring")) {
       // Each ring member is horizontal (both ends same Z).
       expect(m.start[2]).toBeCloseTo(m.end[2], 5);
-      // Strictly between wall top and ridge.
-      expect(m.start[2]).toBeGreaterThan(wallTopZ);
-      expect(m.start[2]).toBeLessThan(ridgeZ);
+      // Equal-pitch hip: every face's ring lands on the same span-center Z,
+      // so the loop is planar. Measured from the wall ring, not the eave tip.
+      expect(m.start[2]).toBeCloseTo(spanCenterZ, 3);
     }
   });
 });

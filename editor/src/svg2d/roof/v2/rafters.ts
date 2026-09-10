@@ -106,30 +106,38 @@ export function populateRoofFraming(
       }
     }
 
-    // MID-SLOPE RING — one horizontal member at the geometric CENTER of each
-    // face: the midpoint of its full up-slope extent, eave (including overhang)
-    // to peak (ridge/apex). A face is planar, so this one point is at once
-    // mid-height, mid-slope-length, and mid horizontal-run in plan — it reads
-    // as centered from the top view and every elevation. Emitted per face from
-    // the face polygon, so it works under UNEQUAL pitch (each face centers on
-    // itself, the ring simply steps in Z at the hips where pitches differ; for
-    // an equal-pitch hip every face shares the same mid-Z so the ring closes
-    // into one clean planar loop whose corners meet on the hip edges).
-    // Rafter-sized. Off unless framing.mid_ring.
+    // MID-SLOPE RING — one horizontal member at the center of each face's SPAN:
+    // midway between the wall ring beam (wall top) and the ridge/apex, i.e.
+    // world-Z = (wallTopZ + peakZ) / 2. The eave overhang is EXCLUDED — the
+    // span is measured from the wall ring, not the overhang tip, which is also
+    // where each fink truss vertical web tops out. Because every face shares the
+    // same wall top and ridge, that target Z is identical on all faces, so the
+    // ring closes into one clean planar loop whose corners meet on the hip
+    // edges; it stays a ring under UNEQUAL pitch too (a steeper face just insets
+    // less to reach the same height). Rafter-sized. Off unless framing.mid_ring.
     if (framing.mid_ring && vSpan > 1e-3) {
-      const vMid = (vMin + vMax) / 2;
-      const range = intersectHorizontalWithPolygon(uv, vMid);
-      if (range) {
-        const [uLo, uHi] = range;
-        if (uHi - uLo >= 1e-3) {
-          extra.push({
-            id: `${plane.id}.mid_ring.${counter++}`,
-            start: unprojectFromUV(basis, uLo, vMid),
-            end: unprojectFromUV(basis, uHi, vMid),
-            role: "mid_ring",
-            source_segment_id: plane.source_segment_id,
-            source_plane_id: plane.id,
-          });
+      // Z varies linearly with v (u runs horizontally along the eave, carrying
+      // no Z), and the basis orients +v up-slope, so vMin↔zMin (eave) and
+      // vMax↔zMax (peak). Map the target span-center Z back to a v to cut at.
+      const zVerts = uniqueVerts.map((p) => p[2]);
+      const zMin = Math.min(...zVerts);
+      const zMax = Math.max(...zVerts);
+      const targetZ = (wallTopZ + zMax) / 2;
+      if (zMax - zMin > 1e-6 && targetZ > zMin && targetZ < zMax) {
+        const vTarget = vMin + (vMax - vMin) * ((targetZ - zMin) / (zMax - zMin));
+        const range = intersectHorizontalWithPolygon(uv, vTarget);
+        if (range) {
+          const [uLo, uHi] = range;
+          if (uHi - uLo >= 1e-3) {
+            extra.push({
+              id: `${plane.id}.mid_ring.${counter++}`,
+              start: unprojectFromUV(basis, uLo, vTarget),
+              end: unprojectFromUV(basis, uHi, vTarget),
+              role: "mid_ring",
+              source_segment_id: plane.source_segment_id,
+              source_plane_id: plane.id,
+            });
+          }
         }
       }
     }

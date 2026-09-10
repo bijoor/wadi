@@ -37,6 +37,7 @@ const FRAME_STROKES: Partial<Record<StraightMember["role"], string>> = {
   hip: "#5a2e0b",
   valley: "#1e3a8a",
   ring_beam: "#166534",
+  mid_ring: "#0d9488",
   hip_beam: "#b45309",
   vent_strut: "#a16207",
   tie_beam: "#0369a1",
@@ -49,14 +50,18 @@ const FRAME_STROKES: Partial<Record<StraightMember["role"], string>> = {
 };
 function frameWidth(role: StraightMember["role"]): number {
   if (role === "ridge") return 2.4;
-  if (role === "ring_beam" || role === "hip" || role === "valley" || role === "tie_beam") return 2;
+  if (role === "ring_beam" || role === "mid_ring" || role === "hip" || role === "valley" || role === "tie_beam") return 2;
   if (role.startsWith("truss")) return 1.2;
   if (role === "pani_patti" || role === "eave_L_channel" || role === "corner_double_angle") return 1;
   return 1.6;
 }
 
 interface WLine { a: Point3D; b: Point3D; color: string; w: number; dash?: string; tick: boolean; }
-interface WLabel { at: Point3D; text: string; }
+interface WLabel { at: Point3D; text: string; color?: string; }
+
+// Mid-slope ring dimensions are drawn in the ring's own teal so they read as a
+// distinct set from the red overall frame dims.
+const RING_DIM_COLOR = "#0d9488";
 
 // Build overall tape-measure dimensions along the frame's axes (world space,
 // so they feed the panel's fit pass before scaling). Returns the dimension
@@ -90,6 +95,10 @@ function buildFrameDimensions(spec: RoofSpec): { lines: WLine[]; labels: WLabel[
   };
   const addWit = (a: Point3D, b: Point3D) =>
     lines.push({ a, b, color: WIT_COLOR, w: 0.5, dash: "3 2", tick: false });
+  const addDimC = (a: Point3D, b: Point3D, text: string, color: string) => {
+    lines.push({ a, b, color, w: 1, tick: true });
+    labels.push({ at: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], text, color });
+  };
 
   // WIDTH (X extent) along the front edge (y = aY), offset outward in -Y.
   {
@@ -139,6 +148,28 @@ function buildFrameDimensions(spec: RoofSpec): { lines: WLine[]; labels: WLabel[
         addDim([marks[i], dy, baseZ], [marks[i + 1], dy, baseZ], formatDimension(g));
       }
       for (const mk of marks) addWit([mk, bY, baseZ], [mk, dy, baseZ]);
+    }
+  }
+
+  // MID-SLOPE RING — its plan footprint (width × length) at the ring's own Z,
+  // plus its height above the wall ring. Teal, so it reads separately from the
+  // red overall frame dims.
+  {
+    const ringM = spec.members.filter((m) => m.role === "mid_ring");
+    if (ringM.length) {
+      let rxa = Infinity, rxb = -Infinity, rya = Infinity, ryb = -Infinity, ringZ = 0;
+      for (const m of ringM) for (const p of [m.start, m.end]) {
+        if (p[0] < rxa) rxa = p[0]; if (p[0] > rxb) rxb = p[0];
+        if (p[1] < rya) rya = p[1]; if (p[1] > ryb) ryb = p[1];
+        ringZ = p[2];
+      }
+      const roff = off * 0.45;
+      // WIDTH along the ring's front edge, at the ring's Z.
+      addDimC([rxa, rya - roff, ringZ], [rxb, rya - roff, ringZ], `ring ${formatDimension(rxb - rxa)}`, RING_DIM_COLOR);
+      // LENGTH along the ring's left edge, at the ring's Z.
+      addDimC([rxa - roff, rya, ringZ], [rxa - roff, ryb, ringZ], `ring ${formatDimension(ryb - rya)}`, RING_DIM_COLOR);
+      // HEIGHT above the wall ring (wall-top → ring) at the back-left corner.
+      addDimC([rxa - roff, ryb + roff, baseZ], [rxa - roff, ryb + roff, ringZ], formatDimension(ringZ - baseZ), RING_DIM_COLOR);
     }
   }
 
@@ -259,7 +290,7 @@ export function v2PerspectivePanel(
       let dx = mx - pc[0], dy = my - pc[1];
       const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
       const lx = mx + dx * 12, ly = my + dy * 12;
-      svg += haloText(lx, ly + 3, lb.text, { fill: DIM_COLOR, size: 11, weight: 700 });
+      svg += haloText(lx, ly + 3, lb.text, { fill: lb.color ?? DIM_COLOR, size: 11, weight: 700 });
     }
 
     // Per-SEGMENT cut lengths on the ridge / hips / valleys. A ridge/hip is
@@ -390,7 +421,7 @@ export function v2PerspectivePanel(
     }
 
     // Legend — clarify the units + that these are the numbers to measure.
-    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = overall + truss spacing · brown = ridge &amp; hip segments · <tspan fill="#0e7490">teal = front eave length + overhang from wall</tspan></text>\n`;
+    svg += `<text x="${(x0 + 12).toFixed(1)}" y="${(y0 + height - 12).toFixed(1)}" text-anchor="start" font-size="9" fill="#b91c1c">red = overall + truss spacing · brown = ridge &amp; hip segments · <tspan fill="#0e7490">cyan = eave length + overhang</tspan> · <tspan fill="#0d9488">green = mid-slope ring (width × length + height above wall)</tspan></text>\n`;
   }
 
   svg += `</g>\n`;
