@@ -302,6 +302,9 @@ function colorForRole(role: StraightMember["role"]): string {
 //   local X → member length
 //   local Y → depth  (vertical when the member is horizontal)
 //   local Z → width  (horizontal-perpendicular to the member)
+// Ridge-family members set on edge (larger dimension vertical/plumb).
+const ON_EDGE_ROLES = new Set<StraightMember["role"]>(["ridge", "hip", "valley"]);
+
 // Rotation aligns local X with the member direction. Legacy convention:
 // framing sizes are [width, depth] in inches (see roofFrame.beamBetween).
 function FrameMemberBox({
@@ -349,11 +352,18 @@ function FrameMemberBox({
     const q = new THREE.Quaternion().setFromRotationMatrix(m);
     const widthU = section[0] * IN_TO_U;
     const depthU = section[1] * IN_TO_U;
+    // Ridge-family tubes (the central ridge, hips, valleys) are set ON EDGE —
+    // their larger cross-section dimension stands vertical (plumb), like a steel
+    // ridge beam. Other members keep the authored [width, depth] with depth
+    // vertical (rafters/purlins already read as [thin, deep] = on edge).
+    const onEdge = ON_EDGE_ROLES.has(member.role);
+    const vertU = onEdge ? Math.max(widthU, depthU) : depthU;
+    const horizU = onEdge ? Math.min(widthU, depthU) : widthU;
     return {
       pos: [mid.x, mid.y, mid.z] as [number, number, number],
       quat: [q.x, q.y, q.z, q.w] as [number, number, number, number],
-      // Box args: [X=length, Y=depth, Z=width].
-      size: [length, depthU, widthU] as [number, number, number],
+      // Box args: [X=length, Y=vertical (up), Z=horizontal (across)].
+      size: [length, vertU, horizU] as [number, number, number],
     };
   }, [member, plotWidth, plotLength, section]);
   if (!props) return null;
