@@ -41,6 +41,9 @@ export interface FramingConfig {
   // models are unchanged. Follows each face's own mid-height, so it works
   // under unequal pitch (the ring simply steps in Z at the hips).
   mid_ring?: boolean;
+  // Add fabrication end-cut panels (hip + rafter cut sheets) to the Roof
+  // Details tab. Off by default so a roof's detail sheet is unchanged.
+  cut_sheets?: boolean;
   // Flat wall-top tie beams (ceiling ties). Default = ring-beam section.
   tie_beam_size_in?: [number, number];
   tie_beam_wall_mm?: number;

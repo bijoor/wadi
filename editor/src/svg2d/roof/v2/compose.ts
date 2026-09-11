@@ -19,8 +19,21 @@ import { v2FacePanel, groupFaces } from "./facePanel";
 import { v2TrussPanel, groupTrusses } from "./trussPanel";
 import { v2FrameDimPanel } from "./frameDimPanel";
 import { v2EavePanel, groupEaves } from "./eavePanel";
+import { computeRafterCuts, computeHipCuts } from "./cutGeometry";
+import { renderCutPanel, renderCutKeyPlan } from "./cutPanel";
+import { DEFAULT_V2_FRAMING, type FramingConfig } from "./bom";
 import { roofMaxZ } from "./projections";
 import type { RoofSpec } from "./model";
+
+// True when any roof object opts into the fabrication cut sheets.
+function roofsWantCutSheets(cfg: HouseConfig): boolean {
+  for (const fl of cfg.floors ?? []) {
+    for (const o of ((fl as { objects?: Array<Record<string, unknown>> }).objects ?? [])) {
+      if (o.type === "roof" && (o.framing as { cut_sheets?: boolean } | undefined)?.cut_sheets) return true;
+    }
+  }
+  return false;
+}
 
 export interface V2RoofMasterResult {
   master: { filename: "roof_plan.svg"; content: string };
@@ -176,6 +189,38 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
       render: (x0, y0, w, h) => v2TrussPanel(x0, y0, w, h, group),
     });
   });
+
+  // Fabrication end-cut panels (opt-in via framing.cut_sheets). One key plan,
+  // one panel per rafter-cut group, and one per hip-end cut.
+  if (roofsWantCutSheets(cfg)) {
+    const perUnit = (cfg as { units?: { per_unit?: number } }).units?.per_unit ?? 10;
+    const inPerUnit = perUnit / 12;
+    const framingCfg: FramingConfig = { ...DEFAULT_V2_FRAMING, ...(spec.framing ?? {}) };
+    const rafterSec = framingCfg.rafter_size_in;
+    const hipSec = framingCfg.hip_size_in ?? framingCfg.ridge_size_in;
+    const raf = computeRafterCuts(spec, framingCfg, inPerUnit);
+    if (raf.cuts.length > 0) {
+      defs.push({
+        id: "cut_keyplan",
+        title: "Rafter cuts — key plan",
+        render: (x0, y0, w, h) => renderCutKeyPlan(x0, y0, w, h, spec, raf.cuts, raf.groupOfRafterId),
+      });
+      raf.cuts.forEach((c, i) => defs.push({
+        id: `raf_cut_${i}`,
+        title: `Rafter cut ${i + 1} — ${c.label}`,
+        render: (x0, y0, w, h) => renderCutPanel(x0, y0, w, h, c, rafterSec, {
+          index: i + 1, headerColor: c.color, sub: c.label, countNote: `× ${c.count} rafters (handed pairs mirror ±)`,
+        }),
+      }));
+    }
+    computeHipCuts(spec, framingCfg, inPerUnit).forEach((c, i) => defs.push({
+      id: `hip_cut_${i}`,
+      title: `Hip end cut ${i + 1}`,
+      render: (x0, y0, w, h) => renderCutPanel(x0, y0, w, h, c, hipSec, {
+        index: i + 1, headerColor: "#0d9488", sub: c.label, countNote: `× ${c.count} hips (handed)`,
+      }),
+    }));
+  }
 
   // Grid: 2 columns × N rows.
   const cols = 2;
