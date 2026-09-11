@@ -369,8 +369,18 @@ function FrameMemberBox({
     //   local +Z = +X × +Y (right-handed)
     const forward = dir.clone().normalize();
     const worldUp = new THREE.Vector3(0, 1, 0);
+    // Surface members (rafters, purlins) orient their cross-section to the roof
+    // FACE: up = the slope normal, so they lie FLAT on the slope. A purlin runs
+    // horizontally, so without this its section would sit vertical instead of
+    // flat on the rafters. (For a rafter the slope normal already equals the
+    // world-up projection, so it is unchanged.)
+    const faceN = planeNormalWorld
+      ? threeDir(planeNormalWorld, member.start, plotWidth, plotLength)
+      : null;
     let up: THREE.Vector3;
-    if (Math.abs(forward.dot(worldUp)) > 0.999) {
+    if (faceN) {
+      up = faceN.clone().sub(forward.clone().multiplyScalar(faceN.dot(forward))).normalize();
+    } else if (Math.abs(forward.dot(worldUp)) > 0.999) {
       // Beam is essentially vertical — use world +Z as substitute so
       // the basis stays well-defined.
       up = new THREE.Vector3(0, 0, 1);
@@ -401,16 +411,11 @@ function FrameMemberBox({
     const RING_CLEAR = 2 * IN_TO_U;
     const RAFTER_DEPTH = 4 * IN_TO_U; // nominal, for stacking purlins on top of rafters
     if (member.role === "rafter" || member.role === "purlin") {
-      // Offset ⟂ to the SLOPE (the face normal). A rafter's own local `up` is
-      // the slope normal, but a purlin runs horizontally so its `up` is vertical
-      // — use the passed face normal so both stack the same way.
-      const N = planeNormalWorld
-        ? threeDir(planeNormalWorld, member.start, plotWidth, plotLength)
-        : up;
+      // Lift ⟂ to the slope (up is the slope normal for surface members).
       const lift = member.role === "rafter"
         ? vertU / 2 + RING_CLEAR                 // rafter bottom onto the rings
         : RING_CLEAR + RAFTER_DEPTH + vertU / 2; // purlin bottom onto the rafter tops
-      mid.addScaledVector(N, lift);
+      mid.addScaledVector(up, lift);
     } else if (onEdge) {
       mid.y += vertU / 2; // ridge/hip/valley sit on the truss apex (bottom at apex)
     }
