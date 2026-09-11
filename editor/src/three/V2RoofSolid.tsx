@@ -359,6 +359,18 @@ function FrameMemberBox({
     const onEdge = ON_EDGE_ROLES.has(member.role);
     const vertU = onEdge ? Math.max(widthU, depthU) : depthU;
     const horizU = onEdge ? Math.min(widthU, depthU) : widthU;
+    // Bearing offsets — the analytical model keeps every member on a shared
+    // centreline, but the real frame STACKS: the trusses are mounted, the ridge
+    // and hips are welded on TOP of the truss apex, and the rafters/purlins rest
+    // on TOP of the rings and ridge (they overhang the wall ring, never pierce
+    // it). Shift only the DISPLAY box so the 3D reads as the real stack; the
+    // centrelines the cut sheets + BOM use are unchanged.
+    const RING_CLEAR = 2 * IN_TO_U;
+    if (member.role === "rafter" || member.role === "purlin") {
+      mid.addScaledVector(up, vertU / 2 + RING_CLEAR); // lift onto the rings/ridge (⟂ slope)
+    } else if (onEdge) {
+      mid.y += vertU / 2; // ridge/hip/valley sit on the truss apex (bottom at apex)
+    }
     return {
       pos: [mid.x, mid.y, mid.z] as [number, number, number],
       quat: [q.x, q.y, q.z, q.w] as [number, number, number, number],
