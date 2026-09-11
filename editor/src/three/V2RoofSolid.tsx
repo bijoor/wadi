@@ -166,6 +166,10 @@ export function V2RoofSurface({ config }: { config: HouseConfig }) {
         const surfaceMembers = spec.members.filter(
           (m) => SURFACE_MEMBER_ROLES.has(m.role),
         );
+        // Per-face outward normal, so surface members can be stacked ⟂ to the
+        // slope (rafters on the rings, purlins on top of the rafters).
+        const planeN = new Map<string, [number, number, number]>();
+        for (const p of spec.planes) planeN.set(p.id, faceNormalWorld(p.vertices));
         return (
           <group key={idx}>
             {surfaceMembers.map((m) => (
@@ -173,6 +177,7 @@ export function V2RoofSurface({ config }: { config: HouseConfig }) {
                 key={m.id} member={m}
                 section={sectionForMember(m.role, framing)}
                 plotWidth={plot.width} plotLength={plot.length}
+                planeNormalWorld={m.source_plane_id ? planeN.get(m.source_plane_id) : undefined}
               />
             ))}
           </group>
@@ -305,6 +310,32 @@ function colorForRole(role: StraightMember["role"]): string {
 // Ridge-family members set on edge (larger dimension vertical/plumb).
 const ON_EDGE_ROLES = new Set<StraightMember["role"]>(["ridge", "hip", "valley"]);
 
+// Outward (up) unit normal of a roof face polygon, in world coords (Newell's).
+function faceNormalWorld(verts: ReadonlyArray<ReadonlyArray<number>>): [number, number, number] {
+  let nx = 0, ny = 0, nz = 0;
+  for (let i = 0; i < verts.length; i++) {
+    const a = verts[i], b = verts[(i + 1) % verts.length];
+    nx += (a[1] - b[1]) * (a[2] + b[2]);
+    ny += (a[2] - b[2]) * (a[0] + b[0]);
+    nz += (a[0] - b[0]) * (a[1] + b[1]);
+  }
+  const l = Math.hypot(nx, ny, nz) || 1;
+  let n: [number, number, number] = [nx / l, ny / l, nz / l];
+  if (n[2] < 0) n = [-n[0], -n[1], -n[2]]; // point up-and-out
+  return n;
+}
+
+// A world-space direction, expressed in three-space (via the same affine map
+// as positions), by mapping a base point and base+dir and taking the delta.
+function threeDir(
+  dirWorld: [number, number, number], baseWorld: readonly number[],
+  plotWidth: number, plotLength: number,
+): THREE.Vector3 {
+  const p0 = toThreePos(baseWorld[0], baseWorld[1], baseWorld[2], plotWidth, plotLength);
+  const p1 = toThreePos(baseWorld[0] + dirWorld[0], baseWorld[1] + dirWorld[1], baseWorld[2] + dirWorld[2], plotWidth, plotLength);
+  return new THREE.Vector3(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z).normalize();
+}
+
 // Rotation aligns local X with the member direction. Legacy convention:
 // framing sizes are [width, depth] in inches (see roofFrame.beamBetween).
 function FrameMemberBox({
@@ -312,11 +343,13 @@ function FrameMemberBox({
   section,
   plotWidth,
   plotLength,
+  planeNormalWorld,
 }: {
   member: StraightMember;
   section: [number, number];  // [width_in, depth_in]
   plotWidth: number;
   plotLength: number;
+  planeNormalWorld?: [number, number, number];
 }) {
   const props = useMemo(() => {
     const a = toThreePos(member.start[0], member.start[1], member.start[2], plotWidth, plotLength);
@@ -366,8 +399,18 @@ function FrameMemberBox({
     // it). Shift only the DISPLAY box so the 3D reads as the real stack; the
     // centrelines the cut sheets + BOM use are unchanged.
     const RING_CLEAR = 2 * IN_TO_U;
+    const RAFTER_DEPTH = 4 * IN_TO_U; // nominal, for stacking purlins on top of rafters
     if (member.role === "rafter" || member.role === "purlin") {
-      mid.addScaledVector(up, vertU / 2 + RING_CLEAR); // lift onto the rings/ridge (⟂ slope)
+      // Offset ⟂ to the SLOPE (the face normal). A rafter's own local `up` is
+      // the slope normal, but a purlin runs horizontally so its `up` is vertical
+      // — use the passed face normal so both stack the same way.
+      const N = planeNormalWorld
+        ? threeDir(planeNormalWorld, member.start, plotWidth, plotLength)
+        : up;
+      const lift = member.role === "rafter"
+        ? vertU / 2 + RING_CLEAR                 // rafter bottom onto the rings
+        : RING_CLEAR + RAFTER_DEPTH + vertU / 2; // purlin bottom onto the rafter tops
+      mid.addScaledVector(N, lift);
     } else if (onEdge) {
       mid.y += vertU / 2; // ridge/hip/valley sit on the truss apex (bottom at apex)
     }
