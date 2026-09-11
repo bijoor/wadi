@@ -559,11 +559,12 @@ function collectV2Roofs(config: HouseConfig): V2RoofBundle[] {
   return out;
 }
 
-// Shell offset above the frame — matches the rafter/purlin depth (in
-// project units) so the shell polygon covers the framing members below
-// it. Ridges/hips/valleys are intentionally left above the shell — they
-// will be capped by dedicated ridge tiles in the finished model.
-const SHELL_LIFT_U = 5;   // ≈ 6 in (rafter depth + a hair)
+// Shell offset above the frame — must clear the STACKED surface members: the
+// rafters ride on the rings and the purlins ride on the rafters, so the shell
+// sits above (ring clearance 2" + rafter depth 4" + purlin depth 1" + a hair).
+// Ridges/hips/valleys are intentionally left above the shell — they will be
+// capped by dedicated ridge tiles in the finished model.
+const SHELL_LIFT_U = 8 * IN_TO_U;   // ≈ 8 in, on top of the purlins
 
 // Newell's method — computes a robust outward polygon normal from a
 // planar 3D polygon. Returns null for degenerate polygons.

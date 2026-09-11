@@ -25,14 +25,16 @@ import { DEFAULT_V2_FRAMING, type FramingConfig } from "./bom";
 import { roofMaxZ } from "./projections";
 import type { RoofSpec } from "./model";
 
-// True when any roof object opts into the fabrication cut sheets.
+// Whether to emit the fabrication cut sheets. ON by default for pitched roofs;
+// a roof opts OUT with framing.cut_sheets === false. (The panel builders below
+// no-op anyway when there are no rafters/hips, e.g. flat/shed roofs.)
 function roofsWantCutSheets(cfg: HouseConfig): boolean {
   for (const fl of cfg.floors ?? []) {
     for (const o of ((fl as { objects?: Array<Record<string, unknown>> }).objects ?? [])) {
-      if (o.type === "roof" && (o.framing as { cut_sheets?: boolean } | undefined)?.cut_sheets) return true;
+      if (o.type === "roof" && (o.framing as { cut_sheets?: boolean } | undefined)?.cut_sheets === false) return false;
     }
   }
-  return false;
+  return true;
 }
 
 export interface V2RoofMasterResult {
