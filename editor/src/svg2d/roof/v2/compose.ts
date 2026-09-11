@@ -25,18 +25,6 @@ import { DEFAULT_V2_FRAMING, type FramingConfig } from "./bom";
 import { roofMaxZ } from "./projections";
 import type { RoofSpec } from "./model";
 
-// Whether to emit the fabrication cut sheets. ON by default for pitched roofs;
-// a roof opts OUT with framing.cut_sheets === false. (The panel builders below
-// no-op anyway when there are no rafters/hips, e.g. flat/shed roofs.)
-function roofsWantCutSheets(cfg: HouseConfig): boolean {
-  for (const fl of cfg.floors ?? []) {
-    for (const o of ((fl as { objects?: Array<Record<string, unknown>> }).objects ?? [])) {
-      if (o.type === "roof" && (o.framing as { cut_sheets?: boolean } | undefined)?.cut_sheets === false) return false;
-    }
-  }
-  return true;
-}
-
 export interface V2RoofMasterResult {
   master: { filename: "roof_plan.svg"; content: string };
   panels: Array<{
@@ -192,9 +180,10 @@ export function computeV2RoofSections(cfg: HouseConfig): V2RoofMasterResult | nu
     });
   });
 
-  // Fabrication end-cut panels (opt-in via framing.cut_sheets). One key plan,
+  // Fabrication end-cut panels — always emitted for a sloping roof (the builders
+  // below no-op when there are no rafters/hips, e.g. a flat roof). One key plan,
   // one panel per rafter-cut group, and one per hip-end cut.
-  if (roofsWantCutSheets(cfg)) {
+  {
     const perUnit = (cfg as { units?: { per_unit?: number } }).units?.per_unit ?? 10;
     const inPerUnit = perUnit / 12;
     const framingCfg: FramingConfig = { ...DEFAULT_V2_FRAMING, ...(spec.framing ?? {}) };
