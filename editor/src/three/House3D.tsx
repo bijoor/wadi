@@ -218,6 +218,7 @@ export function House3D({ config }: { config: HouseConfig }) {
       // boxes emitted in the object loop below (which are gated off when on).
       if (composeWallsFlag) {
         const ci = composedFloorInputs(objects, globals.wallThickness, band.wallHeight);
+        const wallBaseZ = band.slabZ + band.slabThickness;
         if (ci.walls.length) {
           push(
             roomLayer,
@@ -226,12 +227,32 @@ export function House3D({ config }: { config: HouseConfig }) {
               walls={ci.walls}
               rooms={ci.rooms}
               openings={ci.openings}
-              baseZ={band.slabZ + band.slabThickness}
+              baseZ={wallBaseZ}
               wallHeight={band.wallHeight}
               plotWidth={plot.width}
               plotLength={plot.length}
             />,
           );
+          // Door leaves + window panes for the cut openings (gaps stay bare).
+          ci.openings.forEach((op, oi) => {
+            if (op.kind === "gap") return;
+            const c = toThreePos(op.cx, op.cy, 0, plot.width, plot.length);
+            const rotY = op.axis === "x" ? 0 : -Math.PI / 2;
+            push(
+              openingsLayer,
+              <OpeningPane
+                key={`f${fi}-cop-${oi}`}
+                cx={c.x}
+                cy={wallBaseZ + op.sill + op.height / 2}
+                cz={c.z}
+                width={op.span}
+                height={op.height}
+                rotY={rotY}
+                kind={op.kind}
+                wallDepth={op.thickness}
+              />,
+            );
+          });
         }
       }
 

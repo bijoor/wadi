@@ -20,6 +20,7 @@ import { lateriteMaps } from "./procTextures";
 // (cx,cy) = opening centre in plan, `span` = width along the wall.
 export interface ComposedOpening {
   axis: "x" | "y"; cx: number; cy: number; span: number; height: number; sill: number; thickness: number;
+  kind: "door" | "window" | "gap";
 }
 
 const OVERCUT = 2;    // extend the cut past the wall faces so it fully punches through
@@ -96,10 +97,11 @@ export function composedFloorInputs(objects: Obj[], defaultT: number, wallHeight
       const w = o.width as number, h = (o.height as number | undefined) ?? wallHeight;
       const sill = o.type === "window" ? ((o.sill_height as number | undefined) ?? 0) : 0;
       const ox = o.x as number, oy = o.y as number;
+      const kind = o.type as "door" | "window" | "gap";
       if (dir === "east" || dir === "west") {
-        openings.push({ axis: "y", cx: ox + t / 2, cy: oy + w / 2, span: w, height: h, sill, thickness: t });
+        openings.push({ axis: "y", cx: ox + t / 2, cy: oy + w / 2, span: w, height: h, sill, thickness: t, kind });
       } else {
-        openings.push({ axis: "x", cx: ox + w / 2, cy: oy + t / 2, span: w, height: h, sill, thickness: t });
+        openings.push({ axis: "x", cx: ox + w / 2, cy: oy + t / 2, span: w, height: h, sill, thickness: t, kind });
       }
     }
   }
