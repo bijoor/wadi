@@ -1,6 +1,7 @@
 # Wadi wall composition — a whole-model wall network, classified per face
 
-Status: **P0-P2 done; P3 default-flip done (2026-09-12); P3 cleanup pending.**
+Status: **DONE (P0-P3, 2026-09-12).** Composition is the ONLY wall path — the
+per-room fallback + flag are deleted (see "P3 cleanup" below).
 
 **Height-aware composition (2026-09-12):** `composeWalls` now carries a per-wall
 `height` (WallInput.height, sourced by `composedFloorInputs` from the room-side
@@ -28,12 +29,17 @@ to the 2D wall poché. Verified composed renders correctly by default on atale,
 family_home, coastal_konkan, house_config, and the cottage/library configs (no
 crash, non-empty poché, continuous walls, no white column).
 
-**Still pending (deferred by choice — flip first, delete once proven on real
-houses):** delete the retired code paths listed in "What this retires" (the
-per-room ring stamping in House3D, the whole-wall verdict in wallArea, the planner
-ownership in wallsFromGraph, the interim end-cap patch), and the grid-line /
-tartan-thickness consumption (depends on [grid-convention.md](grid-convention.md)).
-Until then the fallback stays live behind `compose_walls:false`.
+**P3 cleanup DONE (2026-09-12).** The retired per-room path is deleted and
+composition is unconditional (no `compose_walls` / `window.__composeWalls` flag):
+removed `three/wallCSG.tsx` (WallWithOpenings + the interim end-cap patch
+`pointExposedOnFloor`/`brickStart`/`brickEnd`), `House3D` `emitRoomWalls` /
+`emitStandaloneWall` and their helpers, `wallArea.ts` `computeWallAreas` /
+`roomSideIsExternal` / `classifyStandaloneWall` / `splitWallByCoverage`, and the
+old 2D wall drawing (`svgDrawRoom`/`svgDrawWall`/`drawWallPoly`/`subtractIntervals`
++ `gapCutsByRoom`). Kept `buildRoomRects` / `roomSideOpenToWeather` (lint C2/C8).
+~1080 lines removed; tests 680, parity 6/6 byte-identical (composition was already
+the rendered default). Still open (a NEW capability, not cleanup): grid-line /
+tartan-thickness consumption, depends on [grid-convention.md](grid-convention.md).
 
 `composeWalls`
 geometry core + pocheContours (`editor/src/model/composeWalls.ts`, tested) and the

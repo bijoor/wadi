@@ -1,6 +1,5 @@
 import { generateFloorPlanSvg, type FloorPlanRoofOverlay, type FloorPlanGridOverlay } from "./floorPlan";
 import { expandRoomWalls, type HouseConfig } from "./expand";
-import { composeWallsFlag } from "../model/composeWalls";
 import { resolvedGridsForConfig, resolvedGeneratedGuidesForConfig } from "../param/resolve";
 import { derivePitchedRoof } from "./roof/v2/derivePitched";
 import { deriveFlatRoof } from "./roof/v2/deriveFlat";
@@ -28,7 +27,6 @@ export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[]
     .defaults;
   const wallThickness = houseDefaults?.wall_thickness ?? DEFAULT_GLOBAL_CONFIG.wall_thickness;
   const gridOverlay = buildGridOverlay(houseConfig);
-  const composePoche = composeWallsFlag(houseConfig);
   const out: FloorPlanFile[] = [];
   for (let fi = 0; fi < (hc.floors ?? []).length; fi++) {
     const floor = hc.floors![fi];
@@ -37,7 +35,7 @@ export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[]
     const filename = `floor_plan_${floorNum}_${floorName.replace(/ /g, "_")}.svg`;
     // Compute a merged v2 roof spec for THIS floor's roof objects only.
     const roofOverlay = computeFloorRoofOverlay(hc, fi, houseDefaults);
-    const content = generateFloorPlanSvg(floor, 2.0, roofOverlay ?? undefined, wallThickness, gridOverlay, composePoche);
+    const content = generateFloorPlanSvg(floor, 2.0, roofOverlay ?? undefined, wallThickness, gridOverlay);
     // Match Python: floors with no bounded 2D objects (e.g. loft with
     // only a hip_roof) return '' and Python skips writing them, so we
     // omit them from the output list too — but with a v2 roof overlay,

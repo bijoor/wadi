@@ -47,8 +47,7 @@ import { collectV2AsLegacyFrameMembers } from "../svg2d/roof/v2/computeFromHouse
 import { computeMergedV2Spec } from "../svg2d/roof/v2/computeFromHouse";
 import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
-import { computeWallAreas, composedWallAreas } from "../estimate/wallArea";
-import { composeWallsFlag } from "../model/composeWalls";
+import { composedWallAreas } from "../estimate/wallArea";
 import { wallAreaHtml } from "../estimate/wallAreaHtml";
 import { setDimensionUnits } from "../svg2d/format";
 import { setTextScale, computeTextScale, houseSpanUnits, setActiveDimFlags } from "../svg2d/config";
@@ -849,9 +848,8 @@ function rebuildSvgMap(): void {
   // Quantities: external + internal wall areas (net of openings) + gable ends.
   // Wrapped so a compute/geometry error can't take out the whole template load.
   safe("wall area", () => {
-    // Composed per-face estimator when wall composition is on (matches the
-    // composed 3D render); the per-room estimator otherwise.
-    const report = composeWallsFlag(cfg) ? composedWallAreas(cfg) : computeWallAreas(cfg);
+    // Composed per-face estimator — matches the composed 3D render + 2D poché.
+    const report = composedWallAreas(cfg);
     svgMap.set("2d/quantities/wall_area.html", wallAreaHtml(report));
     window.quantitiesManifest = [
       { filename: "2d/quantities/wall_area.html", displayName: "Wall areas" },

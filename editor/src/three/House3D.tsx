@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo } from "react";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
-import { pillarRects, trimSpans, type PillarRect } from "../svg2d/wallTrim";
+import { pillarRects, type PillarRect } from "../svg2d/wallTrim";
 import { BoxWithHoles } from "./slabCSG";
 import {
   computeFloorZBands,
@@ -30,28 +30,18 @@ import {
 import { V2RoofFrame, V2RoofGableWalls, V2RoofSolid, V2RoofSurface } from "./V2RoofSolid";
 import { StaircaseMesh } from "./staircase";
 import { getNode } from "../registry/registry";
-import { WallWithOpenings, type WallOpening } from "./wallCSG";
 import { ComposedWalls, composedFloorInputs } from "./ComposedWalls";
-import { composeWallsFlag as composeWallsFlagFn } from "../model/composeWalls";
 import { OpeningPane } from "./openings";
 import { defaultLayerFor, effectiveLayers, useLayerStore } from "./layers";
 import { setExpansionWarnings, setRoofWarnings } from "./geometryWarnings";
 import { computeMergedV2Spec } from "./v2RoofFromHouse";
 import { useLayerDefaultsStore } from "../state/layerDefaults";
-import {
-  buildRoomRects,
-  splitWallByCoverage,
-  classifyStandaloneWall,
-  pointExposedOnFloor,
-  type RoomRect,
-} from "../estimate/wallArea";
 
 interface Obj {
   type: string;
   [k: string]: unknown;
 }
 
-const POS_TOL = 2.0; // matches Python's normalize_edge_key tolerance
 
 // Short deterministic hash of an object's content, appended to its React key so
 // a geometry change remounts the object (see the key comment in byLayer). djb2.
@@ -112,13 +102,8 @@ export function House3D({ config }: { config: HouseConfig }) {
     const globals: Globals = {
       ...readGlobals(houseDefaults),
       units: (hc as { units?: { system?: string; per_unit?: number } }).units,
-      roomRects: buildRoomRects(hc as unknown as Parameters<typeof buildRoomRects>[0]),
     };
     const plot = readPlotBounds(hc);
-    // Wall composition (plans/wall-composition.md): render ONE composed wall solid
-    // per floor instead of per-room boxes. On by default (P3); a config opts out
-    // with compose_walls:false and the per-room path below is the fallback.
-    const composeWallsFlag = composeWallsFlagFn(config);
     // The plinth is now the first floor (number 0); its `height` seeds the
     // stack from ground(0). computeFloorZBands no longer takes a plinth height.
     const bands = computeFloorZBands(
@@ -202,7 +187,6 @@ export function House3D({ config }: { config: HouseConfig }) {
       // bare "openings" id is NOT in effectiveLayers, so it would be dropped.
       const openingsLayer = defaultLayerFor("door", floorNum, layerDefaults);
       const slabLayer = defaultLayerFor("floor_slab", floorNum, layerDefaults);
-      const openings = objects.filter((o) => o.type === "door" || o.type === "window" || o.type === "gap");
       // Pillar footprints that pass through this floor — walls trim to their
       // faces (no overlap). Include full-height columns declared on lower floors
       // whose vertical extent reaches this floor's slot, not just this floor's
@@ -213,9 +197,9 @@ export function House3D({ config }: { config: HouseConfig }) {
         .filter((p) => Math.min(p.z1, floorHi) - Math.max(p.z0, floorLo) > 1e-6)
         .map((p) => p.rect);
 
-      // Composed wall solid for this floor (opt-in). Replaces the per-room wall
-      // boxes emitted in the object loop below (which are gated off when on).
-      if (composeWallsFlag) {
+      // Composed wall solid for this floor (plans/wall-composition.md): ONE wall
+      // solid per floor from the composed footprint — the only wall path.
+      {
         const ci = composedFloorInputs(objects, globals.wallThickness, band.wallHeight);
         const wallBaseZ = band.slabZ + band.slabThickness;
         if (ci.walls.length) {
@@ -414,10 +398,6 @@ export function House3D({ config }: { config: HouseConfig }) {
               height={h}
             />,
           );
-        } else if (obj.type === "room") {
-          if (!composeWallsFlag) emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, openingsLayer, pillars, fi);
-        } else if (obj.type === "wall") {
-          if (!composeWallsFlag) emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, openingsLayer, pillars, fi);
         } else if (obj.type === "staircase") {
           // Supports the "new" schema (start_x/start_y + step_* +
           // compass direction). Legacy format (x/y/width/length) can be
@@ -557,12 +537,6 @@ function childSig(kids: React.ReactNode[] | undefined): string {
 
 // ---- helpers -------------------------------------------------------
 
-type PushFn = (layer: string, node: React.ReactNode) => void;
-
-interface Band {
-  slabZ: number; wallZ: number; wallTop: number;
-  floorHeight: number; wallHeight: number; slabThickness: number;
-}
 interface Globals {
   wallThickness: number;
   slabThickness: number;
@@ -573,383 +547,5 @@ interface Globals {
   // Project units settings (system + per_unit) — used to keep wall/roof
   // texture block size physically constant across projects.
   units?: { system?: string; per_unit?: number };
-  // Room rectangles across all floors (each tagged with its floor index) —
-  // used to classify each wall as external (weather-facing → laterite texture)
-  // or internal (partition → plain paint).
-  roomRects: RoomRect[];
-}
-interface Plot { width: number; length: number }
-
-// Outward (weather) normal per room side, in Inkscape coords (X-right, Y-down).
-const SIDE_OUT_NORMAL: Record<string, [number, number]> = {
-  north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0],
-};
-// The sign of a wall's LOCAL +Z (thickness) axis that points toward `outward`.
-// A wall's local +Z maps to Inkscape (sin rotY, cos rotY); the outer (weather)
-// face is whichever big face's normal aligns with the outward direction.
-function outerLocalZSign(rotY: number, nx: number, ny: number): 1 | -1 {
-  return Math.sin(rotY) * nx + Math.cos(rotY) * ny >= 0 ? 1 : -1;
 }
 
-function heightFor(
-  room: Obj,
-  side: string,
-  defaultH: number,
-): number {
-  const wh = (room.wall_heights as Record<string, unknown> | undefined) ?? {};
-  const entry = wh[side];
-  if (typeof entry === "number") return entry;
-  if (entry && typeof entry === "object") {
-    const h = (entry as { height?: number }).height;
-    if (typeof h === "number") return h;
-  }
-  const h = room.height as number | undefined;
-  return h ?? defaultH;
-}
-
-// Match an opening to a wall by physical position (independent of the
-// opening's `direction` field, which can be overridden). Returns the
-// `along` and `from` offsets in the wall's local frame if it matches.
-function matchOpeningToRoomWall(
-  op: Obj,
-  side: "north" | "south" | "east" | "west",
-  rx: number, ry: number, rw: number, rl: number, t: number,
-): WallOpening | null {
-  const x = op.x as number, y = op.y as number;
-  const w = op.width as number, h = op.height as number;
-  const kind = op.type as "door" | "window" | "gap";
-  const sill = kind === "window" ? ((op.sill_height as number | undefined) ?? 0) : 0;
-  // A gap is a frameless void: always bare (no leaf/glazing fill).
-  const open = kind === "gap" ? true : (op.open as boolean | undefined);
-
-  // Orientation guard: an opening belongs to walls of ONE orientation
-  // (direction north/south → horizontal wall, east/west → vertical). Without
-  // this, an opening at a shared corner (offset 0) sits exactly on the
-  // PERPENDICULAR wall's line too and would be drawn on it as a phantom.
-  const dir = (op.direction as string | undefined)?.toLowerCase();
-  if (dir === "north" || dir === "south") {
-    if (side === "east" || side === "west") return null;
-  } else if (dir === "east" || dir === "west") {
-    if (side === "north" || side === "south") return null;
-  }
-
-  if (side === "north") {
-    // Wall at y ~ ry
-    if (Math.abs(y - ry) > POS_TOL) return null;
-    if (x < rx - POS_TOL || x + w > rx + rw + POS_TOL) return null;
-    return { along: x - rx, from: sill, width: w, height: h, kind, open };
-  }
-  if (side === "south") {
-    if (Math.abs(y - (ry + rl - t)) > POS_TOL) return null;
-    if (x < rx - POS_TOL || x + w > rx + rw + POS_TOL) return null;
-    return { along: x - rx, from: sill, width: w, height: h, kind, open };
-  }
-  if (side === "west") {
-    if (Math.abs(x - rx) > POS_TOL) return null;
-    if (y < ry - POS_TOL || y + w > ry + rl + POS_TOL) return null;
-    return { along: y - ry, from: sill, width: w, height: h, kind, open };
-  }
-  // east
-  if (Math.abs(x - (rx + rw - t)) > POS_TOL) return null;
-  if (y < ry - POS_TOL || y + w > ry + rl + POS_TOL) return null;
-  return { along: y - ry, from: sill, width: w, height: h, kind, open };
-}
-
-function matchOpeningToStandaloneWall(
-  op: Obj,
-  sx: number, sy: number, ex: number, ey: number, t: number,
-): WallOpening | null {
-  const dx = ex - sx, dy = ey - sy;
-  const length = Math.hypot(dx, dy);
-  if (length < 1e-6) return null;
-  const ux = dx / length, uy = dy / length;
-  const x = op.x as number, y = op.y as number;
-  const w = op.width as number, h = op.height as number;
-  const kind = op.type as "door" | "window" | "gap";
-  const sill = kind === "window" ? ((op.sill_height as number | undefined) ?? 0) : 0;
-  const open = kind === "gap" ? true : (op.open as boolean | undefined);
-
-  // Orientation guard (see matchOpeningToRoomWall): an opening's `direction`
-  // (north/south → horizontal wall, east/west → vertical) must match this
-  // wall's axis, so a corner opening isn't drawn on a perpendicular wall.
-  const dir = (op.direction as string | undefined)?.toLowerCase();
-  if (dir === "north" || dir === "south" || dir === "east" || dir === "west") {
-    const opHorizontal = dir === "north" || dir === "south";
-    const wallHorizontal = Math.abs(dx) >= Math.abs(dy);
-    if (opHorizontal !== wallHorizontal) return null;
-  }
-
-  // Project (x, y) onto the wall's line.
-  // The expander shifts the opening's world coord by -t/2 along the
-  // wall's normal (see wall_opening_to_flat), so project from the
-  // opening's "outer" side back to the wall centreline.
-  const halfT = t / 2;
-  const nx = -uy, ny = ux; // perpendicular (normal), rotated 90° CCW
-  const cx = x + halfT * Math.abs(nx);
-  const cy = y + halfT * Math.abs(ny);
-  const proj = (cx - sx) * ux + (cy - sy) * uy;
-  const perp = Math.abs((cx - sx) * nx + (cy - sy) * ny);
-  if (perp > POS_TOL) return null;
-  if (proj < -POS_TOL || proj + w > length + POS_TOL) return null;
-  return { along: proj, from: sill, width: w, height: h, kind, open };
-}
-
-function emitRoomWalls(
-  obj: Obj,
-  band: Band,
-  globals: Globals,
-  plot: Plot,
-  key: string,
-  openings: Obj[],
-  push: PushFn,
-  layer: string,
-  openingsLayer: string,
-  pillars: PillarRect[],
-  floorIdx: number,
-) {
-  const rawWalls = obj.walls as string[] | Record<string, unknown> | undefined;
-  const wallsList: string[] = rawWalls
-    ? Array.isArray(rawWalls) ? rawWalls : Object.keys(rawWalls)
-    : ["north", "south", "east", "west"];
-  const rx = obj.x as number, ry = obj.y as number;
-  const rw = obj.width as number, rl = obj.length as number;
-  const t = (obj.wall_thickness as number | undefined) ?? globals.wallThickness;
-  // Unified z_offset from the FLOOR BASE. Omitted → the floor's slab
-  // thickness, so walls sit on the slab top (= band.wallZ) as before; set it
-  // for a split-level room.
-  const baseZ = band.slabZ + ((obj.z_offset as number | undefined) ?? band.slabThickness);
-
-  for (const sideRaw of wallsList) {
-    const side = sideRaw.toLowerCase() as "north" | "south" | "east" | "west";
-    // Walls use the floor's WALL height (independent of floor_height).
-    const wh = heightFor(obj, side, band.wallHeight);
-
-    const matched: WallOpening[] = [];
-    for (const op of openings) {
-      const m = matchOpeningToRoomWall(op, side, rx, ry, rw, rl, t);
-      if (m) matched.push(m);
-    }
-
-    // The wall as an axis-aligned run: axis ("x"/"y"), the perpendicular centre,
-    // and the world span. Openings' `along` is measured from the span start.
-    let axis: "x" | "y", perp: number, aStart: number, aEnd: number, rotY: number;
-    if (side === "north") {
-      axis = "x"; perp = ry + t / 2; aStart = rx; aEnd = rx + rw; rotY = 0;
-    } else if (side === "south") {
-      axis = "x"; perp = ry + rl - t / 2; aStart = rx; aEnd = rx + rw; rotY = 0;
-    } else if (side === "east") {
-      axis = "y"; perp = rx + rw - t / 2; aStart = ry + t; aEnd = ry + rl - t; rotY = -Math.PI / 2;
-    } else {
-      axis = "y"; perp = rx + t / 2; aStart = ry + t; aEnd = ry + rl - t; rotY = -Math.PI / 2;
-    }
-    // East/west walls are inset by `t` on each end (corners belong to N/S), so
-    // measure `along` from the inset span start.
-    if (side === "east" || side === "west") for (const m of matched) m.along -= t;
-    // Which local-Z face is the weather face (only meaningful when external).
-    const outerSign = outerLocalZSign(rotY, SIDE_OUT_NORMAL[side][0], SIDE_OUT_NORMAL[side][1]);
-
-    // Trim the run so it stops at any overlapping pillar's faces; a wall with
-    // no overlap yields the single full span (unchanged geometry).
-    const trimmed = pillars.length
-      ? trimSpans(axis === "x" ? "h" : "v", perp, aStart, aEnd, t, pillars)
-      : ([[aStart, aEnd]] as [number, number][]);
-    // Sample line just past the outer face; split each span where a porch /
-    // balcony / room-above starts or stops covering the wall, so the exposed
-    // length reads as exterior (laterite) and the covered length as interior.
-    const probe = Math.max(6, t * 1.5);
-    const beyond =
-      side === "north" ? ry - probe
-      : side === "south" ? ry + rl + probe
-      : side === "east" ? rx + rw + probe
-      : rx - probe;
-    const segments = trimmed.flatMap(([ws, we]) =>
-      splitWallByCoverage(globals.roomRects, axis, beyond, ws, we, floorIdx),
-    );
-
-    for (const { s: ws, e: we, external } of segments) {
-      const subLen = we - ws;
-      if (subLen < 1e-6) continue;
-      // End-cap exposure: probe just past each end (at the wall's centreline) on
-      // this floor. An end open to weather gets brick even on an internal wall,
-      // so a corner it owns doesn't leave a flat-paint stub against the adjacent
-      // external wall. `ws` is the local -X (start) end, `we` the local +X (end).
-      const startPt: [number, number] = axis === "x" ? [ws - probe, perp] : [perp, ws - probe];
-      const endPt: [number, number] = axis === "x" ? [we + probe, perp] : [perp, we + probe];
-      const brickStart = pointExposedOnFloor(globals.roomRects, startPt[0], startPt[1], floorIdx);
-      const brickEnd = pointExposedOnFloor(globals.roomRects, endPt[0], endPt[1], floorIdx);
-      const off = ws - aStart; // this piece's offset into the original wall
-      const sub = matched
-        .filter((m) => {
-          const cen = m.along + m.width / 2;
-          return cen >= off - 1e-6 && cen <= off + subLen + 1e-6;
-        })
-        .map((m) => ({ ...m, along: m.along - off }));
-      const cxW = axis === "x" ? ws + subLen / 2 : perp;
-      const cyW = axis === "x" ? perp : ws + subLen / 2;
-      const c = toThreePos(cxW, cyW, 0, plot.width, plot.length);
-      push(
-        layer,
-        <WallWithOpenings
-          key={`${key}-${side}-${ws.toFixed(1)}`}
-          cx={c.x}
-          cy={baseZ + wh / 2}
-          cz={c.z}
-          length={subLen}
-          depth={t}
-          height={wh}
-          rotY={rotY}
-          color="#e8e5df"
-          openings={sub}
-          units={globals.units}
-          external={external}
-          outerSign={outerSign}
-          brickStart={brickStart}
-          brickEnd={brickEnd}
-        />,
-      );
-      // Fill each opening with a framed window / slab door — unless it's
-      // flagged `open` (left as a bare hole).
-      for (const m of sub) {
-        if (m.open) continue;
-        const localAlong = m.along + m.width / 2 - subLen / 2;
-        const localFrom = m.from + m.height / 2 - wh / 2;
-        const dx = Math.cos(rotY) * localAlong;
-        const dz = -Math.sin(rotY) * localAlong;
-        push(
-          openingsLayer,
-          <OpeningPane
-            key={`${key}-${side}-op-${m.along.toFixed(2)}`}
-            cx={c.x + dx}
-            cy={baseZ + wh / 2 + localFrom}
-            cz={c.z + dz}
-            width={m.width}
-            height={m.height}
-            rotY={rotY}
-            kind={m.kind === "gap" ? "door" : m.kind}
-            wallDepth={t}
-          />,
-        );
-      }
-    }
-  }
-}
-
-function emitStandaloneWall(
-  obj: Obj,
-  band: Band,
-  globals: Globals,
-  plot: Plot,
-  key: string,
-  openings: Obj[],
-  push: PushFn,
-  layer: string,
-  openingsLayer: string,
-  pillars: PillarRect[],
-  floorIdx: number,
-) {
-  const sx = obj.start_x as number, sy = obj.start_y as number;
-  const ex = obj.end_x as number, ey = obj.end_y as number;
-  const t = (obj.thickness as number | undefined) ?? globals.wallThickness;
-  // Standalone walls use the floor's WALL height (independent of
-  // floor_height); the wall's own `height` field overrides both.
-  const h = (obj.height as number | undefined) ?? band.wallHeight;
-  // Optional sloped top: end height (at start_x/y → end_x/y). Defaults to a
-  // flat top when absent. The start end (h) anchors the bottom, so cy/opening
-  // maths below are unchanged.
-  const hEnd = (obj.height_end as number | undefined) ?? h;
-  // Unified z_offset from the FLOOR BASE. Omitted → slab thickness, so the
-  // wall sits on the slab top (= band.wallZ) as before.
-  const baseZ = band.slabZ + ((obj.z_offset as number | undefined) ?? band.slabThickness);
-  const dx = ex - sx, dy = ey - sy;
-  const wallLen = Math.hypot(dx, dy);
-  if (wallLen < 1e-6) return;
-  const rotY = Math.atan2(-dy, dx);
-  // External if either face is weather-facing; interior partitions stay plain.
-  // `outerSign` marks which local-Z face is the weather face for texturing.
-  const { external: isExternal, outerSign } = classifyStandaloneWall(globals.roomRects, sx, sy, ex, ey, t, floorIdx);
-
-  const matched: WallOpening[] = [];
-  for (const op of openings) {
-    const m = matchOpeningToStandaloneWall(op, sx, sy, ex, ey, t);
-    if (m) matched.push(m);
-  }
-
-  // Trim axis-aligned, flat, positive-direction walls at pillar faces. Sloped
-  // (heightEnd ≠ height) or diagonal walls emit unchanged.
-  const horiz = Math.abs(dy) < 1e-9 && dx > 0;
-  const vert = Math.abs(dx) < 1e-9 && dy > 0;
-  if (pillars.length && h === hEnd && (horiz || vert)) {
-    const perp = horiz ? sy : sx;
-    const aStart = horiz ? sx : sy;
-    const aEnd = horiz ? ex : ey;
-    for (const [ws, we] of trimSpans(horiz ? "h" : "v", perp, aStart, aEnd, t, pillars)) {
-      const subLen = we - ws;
-      if (subLen < 1e-6) continue;
-      const off = ws - aStart;
-      const sub = matched
-        .filter((m) => {
-          const cen = m.along + m.width / 2;
-          return cen >= off - 1e-6 && cen <= off + subLen + 1e-6;
-        })
-        .map((m) => ({ ...m, along: m.along - off }));
-      const cc = toThreePos(horiz ? ws + subLen / 2 : sx, horiz ? sy : ws + subLen / 2, 0, plot.width, plot.length);
-      push(
-        layer,
-        <WallWithOpenings key={`${key}-${ws.toFixed(1)}`} cx={cc.x} cy={baseZ + h / 2} cz={cc.z} length={subLen} depth={t} height={h} rotY={rotY} color="#e8e5df" openings={sub} units={globals.units} external={isExternal} outerSign={outerSign} />,
-      );
-      for (const m of sub) {
-        if (m.open) continue;
-        const localAlong = m.along + m.width / 2 - subLen / 2;
-        const localFrom = m.from + m.height / 2 - h / 2;
-        push(
-          openingsLayer,
-          <OpeningPane key={`${key}-op-${m.along.toFixed(2)}`} cx={cc.x + Math.cos(rotY) * localAlong} cy={baseZ + h / 2 + localFrom} cz={cc.z - Math.sin(rotY) * localAlong} width={m.width} height={m.height} rotY={rotY} kind={m.kind === "gap" ? "door" : m.kind} wallDepth={t} />,
-        );
-      }
-    }
-    return;
-  }
-
-  const midX = (sx + ex) / 2, midY = (sy + ey) / 2;
-  const c = toThreePos(midX, midY, 0, plot.width, plot.length);
-  push(
-    layer,
-    <WallWithOpenings
-      key={key}
-      cx={c.x}
-      cy={baseZ + h / 2}
-      cz={c.z}
-      length={wallLen}
-      depth={t}
-      height={h}
-      heightEnd={hEnd}
-      rotY={rotY}
-      color="#e8e5df"
-      openings={matched}
-      units={globals.units}
-      external={isExternal}
-      outerSign={outerSign}
-    />,
-  );
-  for (const m of matched) {
-    if (m.open) continue;
-    const localAlong = m.along + m.width / 2 - wallLen / 2;
-    const localFrom = m.from + m.height / 2 - h / 2;
-    const dxL = Math.cos(rotY) * localAlong;
-    const dzL = -Math.sin(rotY) * localAlong;
-    push(
-      "openings",
-      <OpeningPane
-        key={`${key}-op-${m.along.toFixed(2)}`}
-        cx={c.x + dxL}
-        cy={baseZ + h / 2 + localFrom}
-        cz={c.z + dzL}
-        width={m.width}
-        height={m.height}
-        rotY={rotY}
-        kind={m.kind === "gap" ? "door" : m.kind}
-        wallDepth={t}
-      />,
-    );
-  }
-}

@@ -8,12 +8,11 @@
 
 import { DEFAULT_GLOBAL_CONFIG, activeDimensions, scaledTextSize, scaledSpacing } from "./config";
 import { activeObjects } from "../schema/enabled";
-import { pillarRects } from "./wallTrim";
 import { formatDimension, formatArea, f, fFloat } from "./format";
 import { floorBuiltUpAreaUnits } from "./area";
 import { getNode } from "../registry/registry";
 import {
-  svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawGap, svgDrawFloorSlab,
+  svgDrawDoor, svgDrawWindow, svgDrawGap, svgDrawFloorSlab,
   svgDrawPillar, svgDrawBeam, svgDrawStaircase, svgDrawKitchenPlatform,
   svgDrawGround, svgDrawPlinth, svgDrawItem,
 } from "./shapes";
@@ -66,10 +65,6 @@ export function generateFloorPlanSvg(
   // the code constant when the caller doesn't pass one.
   wallThickness: number = DEFAULT_GLOBAL_CONFIG.wall_thickness,
   gridOverlay?: FloorPlanGridOverlay,
-  // When true, draw the wall poché as ONE composed union boundary per floor
-  // (plans/wall-composition.md P2) instead of per-room wall rectangles.
-  // Default false keeps the parity golden byte-identical.
-  composePoche = false,
 ): string {
   const floorNum = floorConfig.floor_number ?? 0;
   const floorName = floorConfig.name ?? `Floor ${floorNum}`;
@@ -337,65 +332,21 @@ export function generateFloorPlanSvg(
   }
 
   const pillarsToDraw: Array<{ x: number; y: number; size?: number; width?: number; length?: number }> = [];
-  // Pillar footprints, gathered up front so room/wall runs can be trimmed to
-  // stop at the pillar faces (walls butt into columns, no overlap).
-  const pillars = pillarRects(objects);
 
-  // A `gap` (open passage) breaks the wall poché — the floor slab underneath then
-  // shows through, so the opening reads as a real break rather than a solid wall
-  // with a faint symbol on top. Collect each gap's span on its owner room + side.
-  type Side = "north" | "south" | "east" | "west";
-  const gapCutsByRoom: Record<string, Partial<Record<Side, Array<[number, number]>>>> = {};
-  for (const o of objects) {
-    if (o.type !== "gap") continue;
-    const room = o.room as string | undefined;
-    const dir = ((o.direction as string | undefined) ?? "").toLowerCase() as Side;
-    if (!room || (dir !== "north" && dir !== "south" && dir !== "east" && dir !== "west")) continue;
-    const gx = o.x as number, gy = o.y as number, gw = o.width as number;
-    const span: [number, number] = (dir === "north" || dir === "south") ? [gx, gx + gw] : [gy, gy + gw];
-    (gapCutsByRoom[room] ??= {});
-    ((gapCutsByRoom[room][dir] ??= []) as Array<[number, number]>).push(span);
-  }
-
-  // Composed poché (P2): one union-boundary polygon per floor, gaps notched out,
-  // replacing the per-room/per-wall rectangles. Dimensions and the door/window/
-  // gap symbol passes are unchanged (they read the room/wall objects directly).
-  if (composePoche) {
-    const shapes = composedPoche(objects as unknown as Parameters<typeof composedPoche>[0], wallThickness);
-    for (const s of shapes) {
-      const ring = (pts: { x: number; y: number }[]) =>
-        "M" + pts.map((p) => `${fFloat(p.x)},${fFloat(p.y)}`).join(" L") + " Z";
-      let d = ring(s.outer);
-      for (const h of s.holes) d += " " + ring(h);
-      svg += `<path d="${d}" fill="#8B4513" fill-rule="evenodd" stroke="#000" stroke-width="0.5"/>\n`;
-    }
+  // Wall poché: one composed union-boundary polygon per floor (the outer contour +
+  // room-cavity holes), with `gap` openings notched out. This is the only wall
+  // path; dimensions and the door/window/gap symbol passes read the room/wall
+  // objects directly and are unchanged.
+  for (const s of composedPoche(objects as unknown as Parameters<typeof composedPoche>[0], wallThickness)) {
+    const ring = (pts: { x: number; y: number }[]) =>
+      "M" + pts.map((p) => `${fFloat(p.x)},${fFloat(p.y)}`).join(" L") + " Z";
+    let d = ring(s.outer);
+    for (const h of s.holes) d += " " + ring(h);
+    svg += `<path d="${d}" fill="#8B4513" fill-rule="evenodd" stroke="#000" stroke-width="0.5"/>\n`;
   }
 
   for (const obj of objects) {
-    const t = obj.type as string;
-    if (t === "room") {
-      if (composePoche) continue; // poché drawn above
-      const walls = obj.walls as string[] | Record<string, unknown> | undefined;
-      const wallsList: string[] | undefined = walls
-        ? Array.isArray(walls) ? walls : Object.keys(walls)
-        : undefined;
-      svg += svgDrawRoom(
-        obj.x as number, obj.y as number,
-        obj.width as number, obj.length as number,
-        ((obj.wall_thickness as number | undefined) ?? wallThickness),
-        wallsList ?? ["north", "south", "east", "west"],
-        pillars,
-        gapCutsByRoom[obj.name as string],
-      );
-    } else if (t === "wall") {
-      if (composePoche) continue; // poché drawn above
-      const thickness = (obj.thickness as number | undefined) ?? wallThickness;
-      svg += svgDrawWall(
-        obj.start_x as number, obj.start_y as number,
-        obj.end_x as number, obj.end_y as number,
-        thickness, undefined, pillars,
-      );
-    } else if (t === "pillar") {
+    if (obj.type === "pillar") {
       pillarsToDraw.push({
         x: obj.x as number, y: obj.y as number,
         size: obj.size as number | undefined,

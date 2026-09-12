@@ -167,24 +167,6 @@ export interface ComposedOpening {
 
 type FloorObj = { type: string;[k: string]: unknown };
 
-// The compose-walls flag. Composition is the DEFAULT wall path (P3); a config can
-// opt OUT with `compose_walls:false` (keeping the legacy per-room path as a
-// fallback), and the `window.__composeWalls` runtime toggle can force either way
-// for A/B comparison. Node/parity has no `window`, so the golden is rendered with
-// composition on (the P3 baseline).
-export function composeWallsFlag(config: unknown): boolean {
-  const cw = config && typeof config === "object"
-    ? (config as { compose_walls?: unknown }).compose_walls : undefined;
-  if (cw === false) return false;
-  if (cw === true) return true;
-  if (typeof window !== "undefined") {
-    const w = (window as unknown as { __composeWalls?: boolean }).__composeWalls;
-    if (w === false) return false;
-    if (w === true) return true;
-  }
-  return true; // default on
-}
-
 // Extract composeWalls inputs from a floor's expanded objects: each room's four
 // FULL-SPAN side centrelines (no inset — the union fills the corners), standalone
 // walls, room footprints, and openings (door/window/gap) as axis-aligned cuts.
