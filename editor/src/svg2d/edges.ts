@@ -128,25 +128,48 @@ export interface Bounds {
   max_y: number;
 }
 
-// Port of svg_2d.py::classify_perimeter_edges.
+export interface RoomRect { x: number; y: number; w: number; l: number }
+
+// True iff (px,py) lies inside any room's outer rectangle.
+function inAnyRoom(px: number, py: number, rooms: RoomRect[]): boolean {
+  for (const r of rooms) {
+    if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.l) return true;
+  }
+  return false;
+}
+
+// Classify each wall edge as an OUTER (perimeter) wall by EXPOSURE: a wall is on
+// the perimeter on the side that faces OUT of the building — the point just past
+// that face lies in no room. This handles L / T / U footprints where an outer wall
+// sits at an INTERMEDIATE position (the step beside a protruding terrace or porch),
+// which the old min/max-bounds test missed (it only caught walls at the extreme
+// bounding box, so step walls were wrongly dimensioned as interior). A wall whose
+// both sides sit in a room is an interior partition (not perimeter). The exposed
+// side also gives the direction, so the dimension line is drawn outside that face.
 export function classifyPerimeterEdges(
   edges: EdgeMap,
-  bounds: Bounds,
+  rooms: RoomRect[],
 ): PerimeterEdges {
-  const tolerance = 2.0;
-  const perimeter: PerimeterEdges = {
-    north: [], south: [], east: [], west: [],
-  };
+  const PROBE = 6; // units past the wall face; clears the wall (~8u) into open air
+  const perimeter: PerimeterEdges = { north: [], south: [], east: [], west: [] };
+  const outside = (px: number, py: number) => !inAnyRoom(px, py, rooms);
 
   for (const edge of Object.values(edges.horizontal)) {
-    const y = edge.y1;
-    if (Math.abs(y - bounds.min_y) < tolerance) perimeter.north.push(edge);
-    else if (Math.abs(y - bounds.max_y) < tolerance) perimeter.south.push(edge);
+    const mx = (edge.x1 + edge.x2) / 2, my = edge.y1;
+    const northOpen = outside(mx, my - PROBE);
+    const southOpen = outside(mx, my + PROBE);
+    if (northOpen && !southOpen) perimeter.north.push(edge);
+    else if (southOpen && !northOpen) perimeter.south.push(edge);
+    else if (northOpen && southOpen) perimeter.north.push(edge); // freestanding wall
+    // both sides in a room → interior partition, not perimeter
   }
   for (const edge of Object.values(edges.vertical)) {
-    const x = edge.x1;
-    if (Math.abs(x - bounds.min_x) < tolerance) perimeter.west.push(edge);
-    else if (Math.abs(x - bounds.max_x) < tolerance) perimeter.east.push(edge);
+    const mx = edge.x1, my = (edge.y1 + edge.y2) / 2;
+    const westOpen = outside(mx - PROBE, my);
+    const eastOpen = outside(mx + PROBE, my);
+    if (westOpen && !eastOpen) perimeter.west.push(edge);
+    else if (eastOpen && !westOpen) perimeter.east.push(edge);
+    else if (westOpen && eastOpen) perimeter.west.push(edge); // freestanding wall
   }
   return perimeter;
 }

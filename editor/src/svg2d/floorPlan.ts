@@ -19,7 +19,7 @@ import {
 } from "./shapes";
 import {
   extractFloorEdges, classifyPerimeterEdges, detectWallConnections,
-  assignDimensionOffsetLevels, normalizeEdgeKey,
+  assignDimensionOffsetLevels, normalizeEdgeKey, type RoomRect,
 } from "./edges";
 import {
   assignOpeningOffsetLevels, svgDrawDimensionLine, svgDrawOpeningDimensions,
@@ -590,24 +590,15 @@ export function generateFloorPlanSvg(
     // in the Python original — we call it for parity (harmless) even
     // though the return isn't used further down.
     detectWallConnections(edges);
-    // Classify perimeter against the WALL extent, not the overall object bounds.
-    // A floor slab / plinth / deck apron can reach past the outer walls (e.g. the
-    // tiny-home decks), which would push the bounds beyond every wall edge so NO
-    // wall lands on the perimeter — collapsing the outer/inner split (outer shows
-    // only the floor extent, inner then owns every wall). Deriving the bounds from
-    // the wall edges themselves keeps the outer walls on the perimeter. For houses
-    // whose walls already reach the object bounds (no apron) this is identical, so
-    // the parity golden is unchanged.
-    let wMinX = INF, wMinY = INF, wMaxX = -INF, wMaxY = -INF;
-    for (const e of [...Object.values(edges.horizontal), ...Object.values(edges.vertical)]) {
-      wMinX = Math.min(wMinX, e.x1, e.x2); wMaxX = Math.max(wMaxX, e.x1, e.x2);
-      wMinY = Math.min(wMinY, e.y1, e.y2); wMaxY = Math.max(wMaxY, e.y1, e.y2);
-    }
-    const hasEdges = wMinX !== INF;
-    const bounds = hasEdges
-      ? { min_x: wMinX, max_x: wMaxX, min_y: wMinY, max_y: wMaxY }
-      : { min_x: minX, max_x: maxX, min_y: minY, max_y: maxY };
-    const perimeter = classifyPerimeterEdges(edges, bounds);
+    // Classify each wall as outer/inner by EXPOSURE against the room footprints
+    // (see classifyPerimeterEdges) rather than the overall bounding box. This keeps
+    // an outer wall at an intermediate STEP position (beside a protruding terrace or
+    // porch, or a slab/deck apron that reaches past the walls) on the perimeter —
+    // the min/max-bounds test missed those.
+    const rooms: RoomRect[] = objects
+      .filter((o) => o.type === "room")
+      .map((o) => ({ x: o.x as number, y: o.y as number, w: o.width as number, l: o.length as number }));
+    const perimeter = classifyPerimeterEdges(edges, rooms);
 
     if (dim.show_outer_dimensions) {
       const baseOffset = scaledSpacing(dim.dimension_offset);
