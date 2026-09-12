@@ -162,6 +162,7 @@ function pointInRing(px: number, py: number, ring: Vec2[]): boolean {
 export interface ComposedOpening {
   axis: "x" | "y"; cx: number; cy: number; span: number; height: number; sill: number; thickness: number;
   kind: "door" | "window" | "gap";
+  open: boolean; // no leaf/pane — a bare hole (always true for a gap; a door flagged open)
 }
 
 type FloorObj = { type: string;[k: string]: unknown };
@@ -235,10 +236,13 @@ export function composedFloorInputs(objects: FloorObj[], defaultT: number, wallH
       const sill = o.type === "window" ? ((o.sill_height as number | undefined) ?? 0) : 0;
       const ox = o.x as number, oy = o.y as number;
       const kind = o.type as "door" | "window" | "gap";
+      // A gap is inherently a bare hole; a door flagged `open` is left as one too
+      // (no leaf) — matching the per-room path's `if (m.open) continue`.
+      const open = kind === "gap" || (kind === "door" && o.open === true);
       if (dir === "east" || dir === "west") {
-        openings.push({ axis: "y", cx: ox + t / 2, cy: oy + w / 2, span: w, height: h, sill, thickness: t, kind });
+        openings.push({ axis: "y", cx: ox + t / 2, cy: oy + w / 2, span: w, height: h, sill, thickness: t, kind, open });
       } else {
-        openings.push({ axis: "x", cx: ox + w / 2, cy: oy + t / 2, span: w, height: h, sill, thickness: t, kind });
+        openings.push({ axis: "x", cx: ox + w / 2, cy: oy + t / 2, span: w, height: h, sill, thickness: t, kind, open });
       }
     }
   }

@@ -233,9 +233,10 @@ export function House3D({ config }: { config: HouseConfig }) {
               units={globals.units}
             />,
           );
-          // Door leaves + window panes for the cut openings (gaps stay bare).
+          // Door leaves + window panes for the cut openings. Bare holes (gaps, and
+          // doors flagged `open`) get no pane — just the cut opening.
           ci.openings.forEach((op, oi) => {
-            if (op.kind === "gap") return;
+            if (op.kind === "gap" || op.open) return;
             const c = toThreePos(op.cx, op.cy, 0, plot.width, plot.length);
             const rotY = op.axis === "x" ? 0 : -Math.PI / 2;
             push(

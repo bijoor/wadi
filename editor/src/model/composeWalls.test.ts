@@ -100,6 +100,20 @@ describe("composedFloorInputs — per-wall height sourcing", () => {
     const { walls } = composedFloorInputs([{ type: "room", name: "R", x: 0, y: 0, width: 100, length: 100 }], T, 96);
     expect(walls.every((w) => w.height === 96)).toBe(true);
   });
+
+  it("flags a door `open` (no pane) only when open:true; a gap is always open, a window never", () => {
+    const { openings } = composedFloorInputs([
+      { type: "door", name: "Closed", x: 0, y: 0, width: 40, height: 84, direction: "south" },
+      { type: "door", name: "Open", x: 60, y: 0, width: 40, height: 84, direction: "south", open: true },
+      { type: "window", name: "Win", x: 120, y: 0, width: 40, height: 40, direction: "south" },
+      { type: "gap", name: "Gap", x: 180, y: 0, width: 40, direction: "south" },
+    ], T, 90);
+    const byKindName = (k: string) => openings.filter((o) => o.kind === k);
+    expect(byKindName("door").find((_, i) => i === 0)?.open).toBe(false); // Closed
+    expect(byKindName("door").find((_, i) => i === 1)?.open).toBe(true);  // Open
+    expect(byKindName("window")[0].open).toBe(false);
+    expect(byKindName("gap")[0].open).toBe(true);
+  });
 });
 
 describe("composeWalls — collinear same-thickness walls split by height", () => {
