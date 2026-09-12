@@ -590,7 +590,23 @@ export function generateFloorPlanSvg(
     // in the Python original — we call it for parity (harmless) even
     // though the return isn't used further down.
     detectWallConnections(edges);
-    const bounds = { min_x: minX, max_x: maxX, min_y: minY, max_y: maxY };
+    // Classify perimeter against the WALL extent, not the overall object bounds.
+    // A floor slab / plinth / deck apron can reach past the outer walls (e.g. the
+    // tiny-home decks), which would push the bounds beyond every wall edge so NO
+    // wall lands on the perimeter — collapsing the outer/inner split (outer shows
+    // only the floor extent, inner then owns every wall). Deriving the bounds from
+    // the wall edges themselves keeps the outer walls on the perimeter. For houses
+    // whose walls already reach the object bounds (no apron) this is identical, so
+    // the parity golden is unchanged.
+    let wMinX = INF, wMinY = INF, wMaxX = -INF, wMaxY = -INF;
+    for (const e of [...Object.values(edges.horizontal), ...Object.values(edges.vertical)]) {
+      wMinX = Math.min(wMinX, e.x1, e.x2); wMaxX = Math.max(wMaxX, e.x1, e.x2);
+      wMinY = Math.min(wMinY, e.y1, e.y2); wMaxY = Math.max(wMaxY, e.y1, e.y2);
+    }
+    const hasEdges = wMinX !== INF;
+    const bounds = hasEdges
+      ? { min_x: wMinX, max_x: wMaxX, min_y: wMinY, max_y: wMaxY }
+      : { min_x: minX, max_x: maxX, min_y: minY, max_y: maxY };
     const perimeter = classifyPerimeterEdges(edges, bounds);
 
     if (dim.show_outer_dimensions) {
