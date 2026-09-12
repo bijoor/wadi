@@ -873,6 +873,14 @@
         body[data-dim2d="on"] #filters-toggle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
         body[data-filters="open"] #filters-toggle { left: 288px; }
         body[data-filters="open"] #filters-toggle .lt-arw { transform: rotate(180deg); }
+        /* Desktop only: when BOTH left docks are open (configurator + filters, side
+           by side at 288px each), both tabs ride the OUTER dock's right edge (576px)
+           so they don't sit on top of the filters-panel content. On mobile the docks
+           overlay at the screen edge instead (handled by the media block below). */
+        @media (min-width: 901px) {
+            body[data-left="open"][data-config="on"][data-dim2d="on"][data-filters="open"] #left-toggle,
+            body[data-left="open"][data-config="on"][data-dim2d="on"][data-filters="open"] #filters-toggle { left: 576px; }
+        }
         @media (max-width: 900px) {
             body[data-dim2d="on"][data-filters="open"] #viewer-filters-dock {
                 position: absolute; top: 0; left: 0; width: min(88%, 340px); height: 100%;

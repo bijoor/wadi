@@ -149,6 +149,21 @@ describe("outerWallSegments — runs trace the OUTER wall faces", () => {
   it("no walls → no segments", () => {
     expect(outerWallSegments([], 8)).toEqual([]);
   });
+
+  it("subdivides a shared side into a per-room chain that sums to the full side", () => {
+    // two rooms stacked on a shared horizontal wall: the west (and east) side
+    // breaks into two runs at the shared wall, summing to the full outer height.
+    const segs = outerWallSegments([
+      { type: "room", name: "Top", x: 0, y: 0, width: 200, length: 100, walls: ["north", "south", "east", "west"] },
+      { type: "room", name: "Bot", x: 0, y: 100, width: 200, length: 120, walls: ["north", "south", "east", "west"] },
+    ], 8);
+    const west = segs.filter((s) => s.dir === "west").map(len).sort((a, b) => a - b);
+    expect(west.length).toBe(2);           // one run per room, not one merged run
+    expect(west.reduce((a, b) => a + b, 0)).toBe(220); // sums to the full outer height
+    // north/south are single rooms → one full-width run each
+    expect(segs.filter((s) => s.dir === "north").length).toBe(1);
+    expect(segs.filter((s) => s.dir === "south").length).toBe(1);
+  });
 });
 
 describe("composeWalls — collinear same-thickness walls split by height", () => {

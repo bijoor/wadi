@@ -294,11 +294,55 @@ function simplifyRing(pts: Vec2[]): Vec2[] {
   return out.length >= 3 ? out : pts;
 }
 
+// Break an outer run wherever a perpendicular interior wall meets it, so the run
+// reads as a per-room dimension chain (Verandah | Bedroom | Living heights) that
+// sums to the full side — not one merged run. Break positions are the crossing
+// walls' centrelines; the end pieces still reach the outer-face corners.
+function subdivideRun(run: OuterWallSeg, walls: WallInput[], defaultT: number): OuterWallSeg[] {
+  const vertical = Math.abs(run.b.y - run.a.y) > Math.abs(run.b.x - run.a.x);
+  const A = vertical ? run.a.y : run.a.x;
+  const B = vertical ? run.b.y : run.b.x;
+  const lo = Math.min(A, B), hi = Math.max(A, B);
+  const fixed = vertical ? run.a.x : run.a.y;
+  const breaks = new Set<number>();
+  for (const w of walls) {
+    const wVert = Math.abs(w.ey - w.sy) > Math.abs(w.ex - w.sx);
+    if (wVert === vertical) continue; // want walls perpendicular to the run
+    const along = Math.round(vertical ? w.sy : w.sx);     // where it crosses the run
+    const cLo = Math.min(vertical ? w.sx : w.sy, vertical ? w.ex : w.ey);
+    const cHi = Math.max(vertical ? w.sx : w.sy, vertical ? w.ex : w.ey);
+    const m = w.thickness || defaultT;
+    if (fixed < cLo - m || fixed > cHi + m) continue;     // wall doesn't reach this run
+    // Break only at genuine INTERIOR crossings — skip anything within a wall
+    // thickness of the corners, which is the run's own end (perimeter) wall whose
+    // centreline sits half a thickness inside the outer face.
+    if (along > lo + defaultT && along < hi - defaultT) breaks.add(along);
+  }
+  // Cluster breaks within a wall thickness into one (two abutting rooms each carry
+  // their own wall, giving two crossings a thickness apart — one room boundary).
+  const sorted = [...breaks].sort((a, b) => a - b);
+  const clustered: number[] = [];
+  for (const p of sorted) {
+    const last = clustered[clustered.length - 1];
+    if (last !== undefined && p - last <= defaultT + 1) clustered[clustered.length - 1] = Math.round((last + p) / 2);
+    else clustered.push(p);
+  }
+  const cuts = [lo, ...clustered, hi];
+  const out: OuterWallSeg[] = [];
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const s = cuts[i], e = cuts[i + 1];
+    const a = vertical ? { x: fixed, y: s } : { x: s, y: fixed };
+    const b = vertical ? { x: fixed, y: e } : { x: e, y: fixed };
+    out.push({ a, b, dir: run.dir });
+  }
+  return out;
+}
+
 // The outer wall FACES of a floor, as dimensionable runs — the outer contour of the
 // composed wall footprint (so it honours the drawn wall faces, L/T steps and any
-// convention, and ignores furniture). Each run carries the side it faces. Coords
-// carry a sub-unit inflation from the union's robustness GROW; it rounds away in
-// the foot/inch label, and the caller may snap for tidy geometry.
+// convention, and ignores furniture). Each full-side run is subdivided at interior
+// wall crossings into a per-room chain; each carries the side it faces. Coords carry
+// a sub-unit inflation from the union's robustness GROW; it rounds off in the label.
 export function outerWallSegments(objects: FloorObj[], defaultT: number): OuterWallSeg[] {
   const { walls, rooms } = composedFloorInputs(objects, defaultT, 90);
   if (!walls.length) return [];
@@ -323,7 +367,7 @@ export function outerWallSegments(objects: FloorObj[], defaultT: number): OuterW
       } else {
         dir = poche.contains(new Point(mx - 2, my)) ? "east" : "west";
       }
-      segs.push({ a, b, dir });
+      segs.push(...subdivideRun({ a, b, dir }, walls, defaultT));
     }
   }
   return segs;
