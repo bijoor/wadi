@@ -1,6 +1,6 @@
 # Wadi wall composition — a whole-model wall network, classified per face
 
-Status: **design proposed, owner-initiated (2026-09-04), not started.** Supersedes
+Status: **open questions resolved (2026-09-12); P0 in progress.** Supersedes
 the per-room wall stamping in `editor/src/three/House3D.tsx` + the per-wall
 external/internal verdict in `editor/src/estimate/wallArea.ts`. Builds on the
 centreline model in [grid-convention.md](grid-convention.md) and the `center`
@@ -167,22 +167,57 @@ render and the quantities can never disagree.
 - **Split-level / per-side wall heights** must survive: sections carry height +
   `height_end`, merged only when heights agree (else keep as distinct sections).
 
-## Open questions
+## Open questions — resolved (2026-09-12)
 
-1. **Opening → boundary-edge mapping.** An opening is authored on a room side /
-   wall at an offset+width. After buffer+union it must be located on the poché to
-   cut the right box. Straightforward for a segment that survives union unchanged;
-   needs care where the union merged or split the host wall. Likely: keep each
-   opening bound to its source centreline + span, and cut in centreline space
-   before/independently of the boundary classification.
-2. **Boundary-edge probe distance vs thin walls.** The just-outside probe must
-   clear the wall's own thickness but not reach past a thin adjacent room. Reuse
-   `probeDist = max(6, t*1.5)` from `wallArea.ts`, validated on the parity set.
-3. **Union robustness at near-coincident centrelines** (float noise where a room
-   edge and a wall nearly align). Snap centrelines to a tolerance before union.
-4. **Poché boundary → 2D wall lines.** The floor plan currently strokes room
-   rectangles; from the poché it strokes the boundary polygon instead. Confirm the
-   dimension pipeline (which keys off room rects / wall bounds) still resolves.
+Grounded in the existing code: `model/geom.ts` already provides `obbRing`
+(angle-agnostic buffered rectangle) + `footprintUnion` (flatten `unify`) +
+point/segment distance; openings are `{kind, offset, width}` on a source wall
+with `openingAnchor.openingStartOffset` normalising any anchor to a start-based
+offset; `estimate/wallArea.ts` has `probeDist` + `inAnyRoom`.
+
+1. **Opening → boundary-edge mapping → CUT IN CENTRELINE SPACE, never on the
+   merged polygon.** Every opening is already a 1-D span `[offset, offset+width]`
+   on a known centreline. Each `WallSection` keeps its source centreline + span;
+   the opening is a sub-span. Extrude the poché, then subtract an opening box
+   built from `centreline-span × thickness × opening-height` (as the CSG path does
+   today). The union/poché is used ONLY for the solid footprint + face
+   classification; openings are never re-located onto the merged boundary.
+   Decision 3 falls out: the authored gap span is the clear/interior span (v2
+   clear-span anchoring) and the corner squares come from the perpendicular walls'
+   rectangles, which are never subtracted. Where the union splits a host wall into
+   sub-sections (decision 1), clip the opening span to each sub-section `[s0,s1]`
+   (interval intersection) and subtract per section.
+2. **Boundary-edge probe → PROBE FROM THE BOUNDARY EDGE, not the centreline, so
+   the distance shrinks to an epsilon.** In the composed model each boundary edge
+   sits at the wall's OUTER FACE, so exposure needs only a few units outward
+   (`max(3, t*0.25)`), tested with `inAnyRoom` against the room-footprint UNION.
+   This drops the `t*1.5` "clear my own thickness" term the centreline probe
+   needed, so the thin-neighbour false-negative essentially disappears. Validate
+   numerically on the 6 parity configs at P1.
+3. **Union robustness → SNAP THEN GROW.** (a) Snap centreline endpoints to a
+   tolerance before buffering (rooms are axis-aligned on `center`, usually on the
+   grid, so coincident edges become exactly coincident; snap a standalone wall's
+   ends to nearby room-edge endpoints within tolerance). (b) Buffer each rectangle
+   with a tiny outward epsilon so near-coincident rectangles reliably overlap and
+   merge; the epsilon on the outer boundary is negligible (shrink back if exactness
+   is needed). (c) Wrap `unify` with a fallback (retry snapped/epsilon-grown on
+   throw); deterministic input order.
+4. **Poché boundary → 2D (P2 only) → KEEP DIMENSIONS SEMANTIC; only the poché
+   rendering changes.** Dimensions describe room sizes + wall runs, authored per
+   room, so the dim pipeline (`dimResolve`, `gapCutsByRoom`) stays on the
+   room/wall objects untouched. Only the wall POCHÉ switches: stroke the union
+   boundary polygon (iterate flatten `poly.faces → edges → segments`; all segments,
+   no arcs, since we union rectangles) instead of per-room rectangles, and drive
+   the 2D gap breaks off the section+opening instead of `gapCutsByRoom`. This is a
+   P2 concern and does NOT block P0.
+
+Sequencing: **P0 needs only Q1–Q3** (all resolvable with existing machinery —
+`obbRing`, `footprintUnion`, `probeDist`/`inAnyRoom`, opening offset+width). Q4 is
+P2. Flatten boundary-edge iteration (`.faces`/`.edges`) is supported but new to
+this repo, so P0 includes a unit test that the union of two rooms yields the
+expected boundary edges. (The earlier "3/6 parity configs drift on this branch"
+caveat is stale — the gate has been 6/6 byte-identical, so the P2 golden regen
+will be clean.)
 
 ## Phases
 
