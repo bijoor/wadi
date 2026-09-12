@@ -32,8 +32,13 @@ export interface BoundaryEdge {
 }
 export interface ComposedFloor { poche: Footprint; edges: BoundaryEdge[] }
 
-const SNAP = 1e-3;   // centreline snap tolerance (Q3)
-const GROW = 1e-3;   // rectangle epsilon-grow so near-coincident rects merge (Q3)
+const SNAP = 1e-2;   // centreline snap tolerance (Q3)
+// Grow each rectangle so ABUTTING walls (a shared boundary with zero overlap —
+// e.g. two rooms' back-to-back side walls, or a T-junction) actually overlap.
+// flatten's polygon boolean is fragile on edge-touching-only inputs and throws
+// ("Cannot complete boolean operation"); a small overlap makes the union robust.
+// Half a unit inflates the poché imperceptibly (walls are ~8 units thick).
+const GROW = 0.5;    // rectangle grow so abutting/near-coincident rects merge (Q3)
 const OUT_EPS = 0.5; // tiny step to decide which side of an edge is "outside"
 
 const snap = (v: number) => Math.round(v / SNAP) * SNAP;
