@@ -13,7 +13,7 @@
 
 import { Point, Polygon } from "@flatten-js/core";
 import {
-  obbRing, rectRing, ringsToFootprint, footprintUnion,
+  obbRing, rectRing, ringsToFootprint, footprintUnion, footprintSubtract,
   type Vec2, type Footprint,
 } from "./geom";
 
@@ -127,6 +127,14 @@ export interface ComposedOpening {
 
 type FloorObj = { type: string;[k: string]: unknown };
 
+// The compose-walls flag: on via `config.compose_walls` (persisted) or the
+// `window.__composeWalls` runtime toggle (browser only). In node/parity `window`
+// is undefined, so the flag is off and the golden stays byte-identical.
+export function composeWallsFlag(config: unknown): boolean {
+  if (config && typeof config === "object" && (config as { compose_walls?: unknown }).compose_walls === true) return true;
+  return typeof window !== "undefined" && (window as unknown as { __composeWalls?: boolean }).__composeWalls === true;
+}
+
 // Extract composeWalls inputs from a floor's expanded objects: each room's four
 // FULL-SPAN side centrelines (no inset — the union fills the corners), standalone
 // walls, room footprints, and openings (door/window/gap) as axis-aligned cuts.
@@ -170,6 +178,30 @@ export function composedFloorInputs(objects: FloorObj[], defaultT: number, wallH
     }
   }
   return { walls, rooms, openings };
+}
+
+const GAP_OVERCUT = 2; // extend a gap notch past both wall faces so it fully breaks the poché
+
+// Compose a floor's wall poché for 2D plan rendering: the union boundary with
+// `gap` openings notched out (a gap is an open passage — it breaks the poché so
+// the slab shows through). Doors/windows do NOT notch the poché (they are drawn
+// as symbols on top, matching the per-room 2D path). Pure — returns contours
+// ready to stroke as SVG. Shared with the 3D/estimator composeWalls pipeline so
+// the plan poché and the model can never disagree on wall extent.
+export function composedPoche(objects: FloorObj[], defaultT: number): PocheShape[] {
+  const { walls, rooms, openings } = composedFloorInputs(objects, defaultT, 90);
+  if (!walls.length) return [];
+  const { poche } = composeWalls(walls, rooms);
+  let poly = poche;
+  for (const op of openings) {
+    if (op.kind !== "gap") continue;
+    const across = op.thickness + GAP_OVERCUT;
+    const w = op.axis === "x" ? op.span : across;
+    const h = op.axis === "x" ? across : op.span;
+    const rect = ringsToFootprint([rectRing(op.cx - w / 2, op.cy - h / 2, w, h)]);
+    poly = footprintSubtract(poly, rect);
+  }
+  return pocheContours(poly);
 }
 
 export interface PocheShape { outer: Vec2[]; holes: Vec2[][] }

@@ -27,6 +27,7 @@ import {
 import type { RoofSpec } from "./roof/v2/model";
 import { renderV2ToFloorPlan } from "./roof/v2/projections";
 import { resetDimView, setDimBump } from "./dimResolve";
+import { composedPoche } from "../model/composeWalls";
 
 interface FloorConfig {
   floor_number?: number;
@@ -65,6 +66,10 @@ export function generateFloorPlanSvg(
   // the code constant when the caller doesn't pass one.
   wallThickness: number = DEFAULT_GLOBAL_CONFIG.wall_thickness,
   gridOverlay?: FloorPlanGridOverlay,
+  // When true, draw the wall poché as ONE composed union boundary per floor
+  // (plans/wall-composition.md P2) instead of per-room wall rectangles.
+  // Default false keeps the parity golden byte-identical.
+  composePoche = false,
 ): string {
   const floorNum = floorConfig.floor_number ?? 0;
   const floorName = floorConfig.name ?? `Floor ${floorNum}`;
@@ -352,9 +357,24 @@ export function generateFloorPlanSvg(
     ((gapCutsByRoom[room][dir] ??= []) as Array<[number, number]>).push(span);
   }
 
+  // Composed poché (P2): one union-boundary polygon per floor, gaps notched out,
+  // replacing the per-room/per-wall rectangles. Dimensions and the door/window/
+  // gap symbol passes are unchanged (they read the room/wall objects directly).
+  if (composePoche) {
+    const shapes = composedPoche(objects as unknown as Parameters<typeof composedPoche>[0], wallThickness);
+    for (const s of shapes) {
+      const ring = (pts: { x: number; y: number }[]) =>
+        "M" + pts.map((p) => `${fFloat(p.x)},${fFloat(p.y)}`).join(" L") + " Z";
+      let d = ring(s.outer);
+      for (const h of s.holes) d += " " + ring(h);
+      svg += `<path d="${d}" fill="#8B4513" fill-rule="evenodd" stroke="#000" stroke-width="0.5"/>\n`;
+    }
+  }
+
   for (const obj of objects) {
     const t = obj.type as string;
     if (t === "room") {
+      if (composePoche) continue; // poché drawn above
       const walls = obj.walls as string[] | Record<string, unknown> | undefined;
       const wallsList: string[] | undefined = walls
         ? Array.isArray(walls) ? walls : Object.keys(walls)
@@ -368,6 +388,7 @@ export function generateFloorPlanSvg(
         gapCutsByRoom[obj.name as string],
       );
     } else if (t === "wall") {
+      if (composePoche) continue; // poché drawn above
       const thickness = (obj.thickness as number | undefined) ?? wallThickness;
       svg += svgDrawWall(
         obj.start_x as number, obj.start_y as number,

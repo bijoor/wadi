@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeWalls, type WallInput, type RoomRect } from "./composeWalls";
+import { composeWalls, composedPoche, type WallInput, type RoomRect, type PocheShape } from "./composeWalls";
 
 const T = 8;
 // The four edges of a room rectangle as wall centrelines (center convention).
@@ -83,5 +83,52 @@ describe("composeWalls — diagonal wall composes the same way (angle-agnostic)"
     const r = composeWalls([{ sx: 0, sy: 0, ex: 100, ey: 100, thickness: T }], []);
     expect(r.poche.area()).toBeGreaterThan(0);
     expect(r.edges.every((e) => e.brick)).toBe(true); // no rooms → all exposed
+  });
+});
+
+// Net poché area of a set of shapes (outer rings minus holes), via shoelace.
+function ringArea(pts: { x: number; y: number }[]): number {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return Math.abs(a / 2);
+}
+function pocheArea(shapes: PocheShape[]): number {
+  return shapes.reduce((s, sh) => s + ringArea(sh.outer) - sh.holes.reduce((h, r) => h + ringArea(r), 0), 0);
+}
+
+describe("composedPoche — 2D plan poché from the union boundary", () => {
+  it("a single room is a hollow ring: one outer contour with one room-cavity hole", () => {
+    const shapes = composedPoche([{ type: "room", name: "R", x: 0, y: 0, width: 200, length: 160 }], T);
+    expect(shapes.length).toBe(1);
+    expect(shapes[0].holes.length).toBe(1);
+    // wall poché area ≈ outer footprint − inner cavity (ring of ~one thickness).
+    // outer ≈ 208×168, inner ≈ 192×152 → ~35k − ~29k ≈ 6k (GROW inflates slightly).
+    expect(pocheArea(shapes)).toBeGreaterThan(4000);
+    expect(pocheArea(shapes)).toBeLessThan(9000);
+  });
+
+  it("a gap notches the poché (less wall area than the same room with no gap)", () => {
+    const solid = composedPoche([{ type: "room", name: "R", x: 0, y: 0, width: 200, length: 160 }], T);
+    const withGap = composedPoche([
+      { type: "room", name: "R", x: 0, y: 0, width: 200, length: 160 },
+      { type: "gap", name: "G", x: 80, y: 160 - T, width: 40, direction: "south" },
+    ], T);
+    expect(pocheArea(withGap)).toBeLessThan(pocheArea(solid));
+  });
+
+  it("a door does NOT notch the poché (doors are drawn as symbols on top)", () => {
+    const solid = composedPoche([{ type: "room", name: "R", x: 0, y: 0, width: 200, length: 160 }], T);
+    const withDoor = composedPoche([
+      { type: "room", name: "R", x: 0, y: 0, width: 200, length: 160 },
+      { type: "door", name: "D", x: 80, y: 160 - T, width: 40, height: 84, direction: "south" },
+    ], T);
+    expect(pocheArea(withDoor)).toBeCloseTo(pocheArea(solid), -1);
+  });
+
+  it("no walls → no shapes", () => {
+    expect(composedPoche([], T)).toEqual([]);
   });
 });

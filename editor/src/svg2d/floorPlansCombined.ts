@@ -4,6 +4,7 @@ import { scaledTextSize } from "./config";
 import { f, fFloat, formatArea } from "./format";
 import { floorBuiltUpAreaUnits } from "./area";
 import { expandRoomWalls, type HouseConfig } from "./expand";
+import { composeWallsFlag } from "../model/composeWalls";
 
 // Port of svg_2d.py::generate_combined_floor_plans. Renders each floor
 // via generateFloorPlanSvg, extracts the inner content group (via the
@@ -15,6 +16,7 @@ export function generateCombinedFloorPlans(
   const hc = expandRoomWalls(houseConfig, undefined, { lenient: true });
   const floors = hc.floors ?? [];
   const gridOverlay = buildGridOverlay(houseConfig);
+  const composePoche = composeWallsFlag(houseConfig);
 
   const scale = 2.0;
   const spacing = 100;
@@ -39,7 +41,7 @@ export function generateCombinedFloorPlans(
   for (const floor of floors) {
     const floorNum = (floor.floor_number as number | undefined) ?? 0;
     const floorName = (floor.name as string | undefined) ?? `Floor ${floorNum}`;
-    const svgContent = generateFloorPlanSvg(floor, scale, undefined, undefined, gridOverlay);
+    const svgContent = generateFloorPlanSvg(floor, scale, undefined, undefined, gridOverlay, composePoche);
     if (!svgContent) continue;
 
     // Extract the outer content-group transform.

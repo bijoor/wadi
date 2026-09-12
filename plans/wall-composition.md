@@ -1,6 +1,6 @@
 # Wadi wall composition — a whole-model wall network, classified per face
 
-Status: **P0 + P1 done behind a flag (2026-09-12); P2 next.** `composeWalls`
+Status: **P0 + P1 + P2 done behind a flag (2026-09-12); P3 next.** `composeWalls`
 geometry core + pocheContours (`editor/src/model/composeWalls.ts`, tested) and the
 3D render (`editor/src/three/ComposedWalls.tsx`, wired into House3D behind
 `config.compose_walls` / `window.__composeWalls`) render one composed wall solid
@@ -21,7 +21,25 @@ per-room estimator and are not meant to: the composed model correctly counts
 upper-floor walls facing open terraces as weather-facing, which the old per-room
 estimator under-counted (atale external 2,484 sq ft composed vs 1,400 old). The
 per-wall inventory table is empty under the composed path (there are no discrete
-per-room walls, only poché edges); summary + per-floor are the outputs. Supersedes
+per-room walls, only poché edges); summary + per-floor are the outputs.
+
+**P2 (2D plan poché on the composed sections) done.** `composedPoche(objects, t)`
+in `editor/src/model/composeWalls.ts` returns the floor's wall poché as
+`{outer, holes}` contours from the SAME union boundary, with `gap` openings
+notched out (doors/windows stay symbols drawn on top, matching the per-room path).
+`generateFloorPlanSvg` takes a `composePoche` flag (passed from
+`generateCombinedFloorPlans` via `composeWallsFlag(config)`); when on it strokes
+one `<path fill-rule="evenodd">` per contour instead of per-room wall rectangles.
+Dimensions, grid, room labels and the door/window/gap symbol passes are untouched
+(they read the room/wall objects directly), so only the wall fill changes.
+Verified in-app on atale: continuous wall network, pillars on top, no white
+column, openings + dimensions intact. **The parity golden is unchanged and still
+6/6 byte-identical** — the flag is off by default (no `window` in node, no
+`compose_walls` in the repo configs), so the intentional golden regen is deferred
+to P3 when the flag flips on by default. Elevations are unaffected (they draw
+projected faces, not plan poché).
+
+Supersedes
 the per-room wall stamping in `editor/src/three/House3D.tsx` + the per-wall
 external/internal verdict in `editor/src/estimate/wallArea.ts`. Builds on the
 centreline model in [grid-convention.md](grid-convention.md) and the `center`

@@ -133,6 +133,12 @@ export function footprintUnion(fs: Footprint[]): Footprint {
   return fs.reduce((acc, f) => BooleanOperations.unify(acc, f));
 }
 
+/** `a` minus `b` (the part of `a` not covered by `b`). */
+export function footprintSubtract(a: Footprint, b: Footprint): Footprint {
+  if (a.area() <= AREA_EPS) return a;
+  return BooleanOperations.subtract(a, b);
+}
+
 /** True iff `inner` lies entirely within `outer` (inner minus outer is empty). */
 export function footprintContains(outer: Footprint, inner: Footprint): boolean {
   if (inner.area() <= AREA_EPS) return false;
