@@ -1,0 +1,2603 @@
+{
+  "coord_convention": "center",
+  "units": {
+    "system": "meters",
+    "per_unit": 100
+  },
+  "site": {
+    "reference_x": 0,
+    "reference_y": 0,
+    "plot_width": 1100,
+    "plot_length": 1700
+  },
+  "defaults": {
+    "floor_height": 250,
+    "wall_height": 230,
+    "slab_thickness": 20,
+    "wall_thickness": 20
+  },
+  "grids": {
+    "main": {
+      "x": [
+        {
+          "name": "0",
+          "at": 0
+        },
+        {
+          "name": "2",
+          "at": 200
+        },
+        {
+          "name": "4",
+          "at": 400
+        },
+        {
+          "name": "6",
+          "at": 600
+        },
+        {
+          "name": "8",
+          "at": 800
+        },
+        {
+          "name": "11",
+          "at": 1100
+        }
+      ],
+      "y": [
+        {
+          "name": "0",
+          "at": 0
+        },
+        {
+          "name": "2",
+          "at": 200
+        },
+        {
+          "name": "3",
+          "at": 300
+        },
+        {
+          "name": "5",
+          "at": 500
+        },
+        {
+          "name": "6",
+          "at": 600
+        },
+        {
+          "name": "8",
+          "at": 800
+        },
+        {
+          "name": "10",
+          "at": 1000
+        },
+        {
+          "name": "14",
+          "at": 1400
+        },
+        {
+          "name": "16",
+          "at": 1600
+        },
+        {
+          "name": "17",
+          "at": 1700
+        }
+      ]
+    }
+  },
+  "template": {
+    "tags": [
+      "5-bed",
+      "2-floor",
+      "garage",
+      "airbnb",
+      "residential+rental"
+    ],
+    "thumbnails": [
+      "thumbnails/surve-updated-plan-1.png",
+      "thumbnails/surve-updated-plan-2.png",
+      "thumbnails/surve-updated-plan-3.png",
+      "thumbnails/surve-updated-plan-4.png"
+    ]
+  },
+  "floors": [
+    {
+      "floor_number": 0,
+      "name": "Plinth",
+      "objects": [
+        {
+          "type": "plinth",
+          "x": 0,
+          "y": 0,
+          "width": 1100,
+          "length": 1700,
+          "height": 60,
+          "name": "Plinth",
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y0",
+            "width": "= main.x11 - main.x0",
+            "length": "= main.y17 - main.y0"
+          }
+        }
+      ],
+      "height": 60
+    },
+    {
+      "floor_number": 1,
+      "name": "Ground",
+      "objects": [
+        {
+          "type": "floor_slab",
+          "x": 0,
+          "y": 0,
+          "width": 1100,
+          "length": 1700,
+          "name": "Plinth Slab",
+          "thickness": 20,
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y0",
+            "width": "= main.x11 - main.x0",
+            "length": "= main.y17 - main.y0"
+          }
+        },
+        {
+          "type": "staircase",
+          "start_x": 0,
+          "start_y": 500,
+          "step_rise": 18,
+          "step_tread": 25,
+          "direction": "north",
+          "width": 200,
+          "length": 300,
+          "name": "MainStaircase",
+          "climb": "up",
+          "rise_height": 250,
+          "landing_depth": 70,
+          "turn": "anticlockwise",
+          "formulas": {
+            "start_x": "= main.x0",
+            "start_y": "= main.y5",
+            "width": "= main.x2 - main.x0",
+            "length": "= main.y8 - main.y5"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x0_y0",
+          "x": -10,
+          "y": -10,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x0 - 10",
+            "y": "= main.y0 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x0_y3",
+          "x": -10,
+          "y": 290,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x0 - 10",
+            "y": "= main.y3 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x0_y8",
+          "x": -10,
+          "y": 790,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x0 - 10",
+            "y": "= main.y8 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x0_y10",
+          "x": -10,
+          "y": 990,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x0 - 10",
+            "y": "= main.y10 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x2_y14",
+          "x": 190,
+          "y": 1390,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x2 - 10",
+            "y": "= main.y14 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x6_y0",
+          "x": 590,
+          "y": -10,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y0 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x6_y3",
+          "x": 590,
+          "y": 290,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y3 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x6_y8",
+          "x": 590,
+          "y": 790,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y8 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x6_y10",
+          "x": 590,
+          "y": 990,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y10 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x6_y14",
+          "x": 590,
+          "y": 1390,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y14 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x6_y16",
+          "x": 590,
+          "y": 1590,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y16 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x11_y0",
+          "x": 1090,
+          "y": -10,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y0 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x11_y3",
+          "x": 1090,
+          "y": 290,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y3 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x11_y8",
+          "x": 1090,
+          "y": 790,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y8 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x11_y10",
+          "x": 1090,
+          "y": 990,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y10 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x11_y14",
+          "x": 1090,
+          "y": 1390,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y14 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col_x11_y16",
+          "x": 1090,
+          "y": 1590,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y16 - 10"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Garage",
+          "x": 200,
+          "y": 1000,
+          "width": 400,
+          "length": 400,
+          "walls": {
+            "east": {}
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "ferrari",
+                "src": "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/ferrari.glb",
+                "dimensions": [
+                  2,
+                  1.3,
+                  4.5
+                ],
+                "name": "Ferrari Sports Car",
+                "category": "Vehicles"
+              },
+              "anchor": "center",
+              "gap_x": 0,
+              "gap_y": 0,
+              "rotation": 0
+            }
+          ],
+          "connections": [
+            "Verandah"
+          ],
+          "formulas": {
+            "x": "= main.x2",
+            "y": "= main.y10",
+            "width": "= main.x6 - main.x2",
+            "length": "= main.y14 - main.y10"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Verandah",
+          "x": 0,
+          "y": 800,
+          "width": 600,
+          "length": 200,
+          "walls": {
+            "east": {},
+            "west": {
+              "height": 80
+            }
+          },
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y8",
+            "width": "= main.x6 - main.x0",
+            "length": "= main.y10 - main.y8"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Living",
+          "x": 200,
+          "y": 300,
+          "width": 400,
+          "length": 500,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "StudyDoor",
+                  "offset": 150,
+                  "width": 80,
+                  "height": 180
+                }
+              ]
+            },
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "MainDoor",
+                  "offset": 0,
+                  "width": 80,
+                  "height": 180,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "west": {}
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "sofa",
+                "src": "https://templates.wadi.house/furniture/sofa.glb",
+                "dimensions": [
+                  1.9,
+                  0.8,
+                  0.9
+                ],
+                "name": "Sofa",
+                "category": "Living"
+              },
+              "anchor": "bottom-left",
+              "gap_x": 20,
+              "gap_y": 120,
+              "rotation": 90
+            },
+            {
+              "asset": {
+                "id": "coffee_table",
+                "src": "https://templates.wadi.house/furniture/coffee_table.glb",
+                "dimensions": [
+                  1.1,
+                  0.4,
+                  0.6
+                ],
+                "name": "Coffee table",
+                "category": "Living"
+              },
+              "anchor": "center",
+              "gap_x": 0,
+              "gap_y": 30,
+              "rotation": 90,
+              "formulas": {
+                "gap_x": "= -20"
+              }
+            },
+            {
+              "asset": {
+                "id": "armchair",
+                "src": "https://templates.wadi.house/furniture/armchair.glb",
+                "dimensions": [
+                  0.85,
+                  0.8,
+                  0.85
+                ],
+                "name": "Armchair",
+                "category": "Living"
+              },
+              "anchor": "center",
+              "gap_x": 0,
+              "gap_y": 0,
+              "rotation": 0,
+              "formulas": {
+                "gap_x": "= -15",
+                "gap_y": "= -80"
+              }
+            },
+            {
+              "asset": {
+                "id": "armchair",
+                "src": "https://templates.wadi.house/furniture/armchair.glb",
+                "dimensions": [
+                  0.85,
+                  0.8,
+                  0.85
+                ],
+                "name": "Armchair",
+                "category": "Living"
+              },
+              "anchor": "center",
+              "gap_x": 0,
+              "gap_y": 140,
+              "rotation": 180,
+              "formulas": {
+                "gap_x": "= -15"
+              }
+            },
+            {
+              "asset": {
+                "id": "tv_unit",
+                "src": "https://templates.wadi.house/furniture/tv_unit.glb",
+                "dimensions": [
+                  1.5,
+                  0.5,
+                  0.4
+                ],
+                "name": "TV unit",
+                "category": "Living"
+              },
+              "anchor": "top-right",
+              "gap_x": 0,
+              "gap_y": 0,
+              "rotation": 270,
+              "formulas": {
+                "gap_x": "= -20"
+              }
+            },
+            {
+              "asset": {
+                "id": "tv_unit",
+                "src": "https://templates.wadi.house/furniture/tv_unit.glb",
+                "dimensions": [
+                  1.5,
+                  0.5,
+                  0.4
+                ],
+                "name": "TV unit",
+                "category": "Living"
+              },
+              "anchor": "top-right",
+              "gap_x": 0,
+              "gap_y": 0,
+              "rotation": 0,
+              "formulas": {
+                "gap_x": "= -20"
+              }
+            }
+          ],
+          "connections": [
+            "Kitchen",
+            "Verandah",
+            "Pooja",
+            "Passage"
+          ],
+          "formulas": {
+            "x": "= main.x2",
+            "y": "= main.y3",
+            "width": "= main.x6 - main.x2",
+            "length": "= main.y8 - main.y3"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Kitchen",
+          "x": 600,
+          "y": 200,
+          "width": 500,
+          "length": 400,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "KitchenBalconyDoor",
+                  "offset": 30,
+                  "width": 80,
+                  "height": 180
+                },
+                {
+                  "kind": "window",
+                  "name": "KitchenWindow2",
+                  "offset": 80,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "end"
+                }
+              ]
+            },
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "KitchenWindow",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "fridge",
+                "src": "https://templates.wadi.house/furniture/fridge.glb",
+                "dimensions": [
+                  0.7,
+                  1.8,
+                  0.7
+                ],
+                "name": "Fridge",
+                "category": "Kitchen"
+              },
+              "anchor": "bottom-right",
+              "gap_x": 0,
+              "gap_y": 30,
+              "rotation": 270
+            },
+            {
+              "asset": {
+                "id": "dining_table",
+                "src": "https://templates.wadi.house/furniture/dining_table.glb",
+                "dimensions": [
+                  1.5,
+                  0.75,
+                  0.9
+                ],
+                "name": "Dining table",
+                "category": "Dining"
+              },
+              "anchor": "top-center",
+              "gap_x": 0,
+              "gap_y": 90,
+              "scale": 1.2,
+              "formulas": {
+                "gap_x": "= -50"
+              }
+            },
+            {
+              "asset": {
+                "id": "chair",
+                "src": "https://templates.wadi.house/furniture/chair.glb",
+                "dimensions": [
+                  0.5,
+                  0.9,
+                  0.5
+                ],
+                "name": "Chair",
+                "category": "Dining"
+              },
+              "anchor": "top-center",
+              "gap_x": 0,
+              "gap_y": 30,
+              "formulas": {
+                "gap_x": "= -10"
+              }
+            },
+            {
+              "asset": {
+                "id": "chair",
+                "src": "https://templates.wadi.house/furniture/chair.glb",
+                "dimensions": [
+                  0.5,
+                  0.9,
+                  0.5
+                ],
+                "name": "Chair",
+                "category": "Dining"
+              },
+              "anchor": "top-center",
+              "gap_x": 0,
+              "gap_y": 30,
+              "formulas": {
+                "gap_x": "= -100"
+              }
+            },
+            {
+              "asset": {
+                "id": "chair",
+                "src": "https://templates.wadi.house/furniture/chair.glb",
+                "dimensions": [
+                  0.5,
+                  0.9,
+                  0.5
+                ],
+                "name": "Chair",
+                "category": "Dining"
+              },
+              "anchor": "top-center",
+              "gap_x": 0,
+              "gap_y": 200,
+              "rotation": 180,
+              "formulas": {
+                "gap_x": "= -10"
+              }
+            },
+            {
+              "asset": {
+                "id": "chair",
+                "src": "https://templates.wadi.house/furniture/chair.glb",
+                "dimensions": [
+                  0.5,
+                  0.9,
+                  0.5
+                ],
+                "name": "Chair",
+                "category": "Dining"
+              },
+              "anchor": "top-center",
+              "gap_x": 0,
+              "gap_y": 200,
+              "rotation": 180,
+              "formulas": {
+                "gap_x": "= -100"
+              }
+            },
+            {
+              "asset": {
+                "id": "kitchen_sink",
+                "src": "https://templates.wadi.house/furniture/kitchen_sink.glb",
+                "dimensions": [
+                  0.6,
+                  0.9,
+                  0.6
+                ],
+                "name": "Kitchen sink",
+                "category": "Kitchen"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 5,
+              "rotation": 90
+            },
+            {
+              "asset": {
+                "id": "kitchen_island",
+                "src": "https://templates.wadi.house/furniture/kitchen_island.glb",
+                "dimensions": [
+                  0.82,
+                  0.8,
+                  0.4
+                ],
+                "name": "Kitchen island",
+                "category": "Kitchen"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 60,
+              "rotation": 90
+            },
+            {
+              "asset": {
+                "id": "kitchen_island",
+                "src": "https://templates.wadi.house/furniture/kitchen_island.glb",
+                "dimensions": [
+                  0.82,
+                  0.8,
+                  0.4
+                ],
+                "name": "Kitchen island",
+                "category": "Kitchen"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 130,
+              "rotation": 90
+            },
+            {
+              "asset": {
+                "id": "kitchen_island",
+                "src": "https://templates.wadi.house/furniture/kitchen_island.glb",
+                "dimensions": [
+                  0.82,
+                  0.8,
+                  0.4
+                ],
+                "name": "Kitchen island",
+                "category": "Kitchen"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 200,
+              "rotation": 90
+            }
+          ],
+          "connections": [
+            "Passage",
+            "Balcony Kitchen",
+            "Store Room"
+          ],
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y2",
+            "width": "= main.x11 - main.x6",
+            "length": "= main.y6 - main.y2"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Balcony Kitchen",
+          "x": 600,
+          "y": 0,
+          "width": 500,
+          "length": 200,
+          "height": 80,
+          "walls": {
+            "north": {},
+            "east": {}
+          },
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y0",
+            "width": "= main.x11 - main.x6",
+            "length": "= main.y2 - main.y0"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Store Room",
+          "x": 800,
+          "y": 600,
+          "width": 300,
+          "length": 200,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "StoreDoor",
+                  "offset": 0,
+                  "width": 80,
+                  "height": 180,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "south": {},
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "StoreWindow",
+                  "offset": 0,
+                  "width": 50,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "west": {}
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "wardrobe",
+                "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+                "dimensions": [
+                  1,
+                  1.8,
+                  0.55
+                ],
+                "name": "Wardrobe",
+                "category": "Bedroom"
+              },
+              "anchor": "center-left",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "formulas": {
+            "x": "= main.x8",
+            "y": "= main.y6",
+            "width": "= main.x11 - main.x8",
+            "length": "= main.y8 - main.y6"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bedroom 1",
+          "x": 600,
+          "y": 1000,
+          "width": 500,
+          "length": 400,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bedroom1Door",
+                  "offset": 80,
+                  "width": 80,
+                  "height": 180
+                }
+              ]
+            },
+            "south": {},
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bedroom1Window1",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "bed_double",
+                "src": "https://templates.wadi.house/furniture/bed_double.glb",
+                "dimensions": [
+                  1.5,
+                  0.5,
+                  2
+                ],
+                "name": "Double bed",
+                "category": "Bedroom"
+              },
+              "anchor": "bottom-center",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "wardrobe",
+                "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+                "dimensions": [
+                  1,
+                  1.8,
+                  0.55
+                ],
+                "name": "Wardrobe",
+                "category": "Bedroom"
+              },
+              "anchor": "bottom-right",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y10",
+            "width": "= main.x11 - main.x6",
+            "length": "= main.y14 - main.y10"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bath 1",
+          "x": 800,
+          "y": 800,
+          "width": 300,
+          "length": 200,
+          "walls": {
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bath1Door",
+                  "offset": 30,
+                  "width": 80,
+                  "height": 180
+                }
+              ]
+            },
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bath1Window",
+                  "offset": 0,
+                  "width": 50,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "toilet",
+                "src": "https://templates.wadi.house/furniture/toilet.glb",
+                "dimensions": [
+                  0.5,
+                  0.8,
+                  0.7
+                ],
+                "name": "Toilet",
+                "category": "Bathroom"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "bathroom_sink",
+                "src": "https://templates.wadi.house/furniture/bathroom_sink.glb",
+                "dimensions": [
+                  0.6,
+                  0.85,
+                  0.5
+                ],
+                "name": "Washbasin",
+                "category": "Bathroom"
+              },
+              "anchor": "top-left",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "connections": [
+            "Bedroom 1"
+          ],
+          "formulas": {
+            "x": "= main.x8",
+            "y": "= main.y8",
+            "width": "= main.x11 - main.x8",
+            "length": "= main.y10 - main.y8"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Pooja",
+          "x": 0,
+          "y": 300,
+          "width": 200,
+          "length": 200,
+          "walls": {
+            "north": {},
+            "south": {},
+            "east": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "PoojaLivingDoor",
+                  "offset": 0,
+                  "width": 80,
+                  "height": 180,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "PoojaWindow",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "desk",
+                "src": "https://templates.wadi.house/furniture/desk.glb",
+                "dimensions": [
+                  1.2,
+                  0.75,
+                  0.6
+                ],
+                "name": "Desk",
+                "category": "Study"
+              },
+              "anchor": "center-left",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y3",
+            "width": "= main.x2 - main.x0",
+            "length": "= main.y5 - main.y3"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Staircase",
+          "x": 0,
+          "y": 500,
+          "width": 200,
+          "length": 300,
+          "walls": {
+            "north": {},
+            "west": {}
+          },
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y5",
+            "width": "= main.x2 - main.x0",
+            "length": "= main.y8 - main.y5"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Passage",
+          "x": 600,
+          "y": 600,
+          "width": 200,
+          "length": 400,
+          "walls": {
+            "east": {}
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "bookcase",
+                "src": "https://templates.wadi.house/furniture/bookcase.glb",
+                "dimensions": [
+                  0.9,
+                  1.8,
+                  0.3
+                ],
+                "name": "Bookcase",
+                "category": "Study"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 5,
+              "rotation": 90
+            }
+          ],
+          "connections": [
+            "Bedroom 1"
+          ],
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y6",
+            "width": "= main.x8 - main.x6",
+            "length": "= main.y10 - main.y6"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bath 3",
+          "x": 400,
+          "y": 0,
+          "width": 200,
+          "length": 300,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bath3Window",
+                  "offset": 0,
+                  "width": 50,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "south": {},
+            "east": {},
+            "west": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bath3Door",
+                  "offset": 30,
+                  "width": 80,
+                  "height": 180,
+                  "anchor": "end"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "toilet",
+                "src": "https://templates.wadi.house/furniture/toilet.glb",
+                "dimensions": [
+                  0.5,
+                  0.8,
+                  0.7
+                ],
+                "name": "Toilet",
+                "category": "Bathroom"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 5,
+              "rotation": 270
+            },
+            {
+              "asset": {
+                "id": "bathroom_sink",
+                "src": "https://templates.wadi.house/furniture/bathroom_sink.glb",
+                "dimensions": [
+                  0.6,
+                  0.85,
+                  0.5
+                ],
+                "name": "Washbasin",
+                "category": "Bathroom"
+              },
+              "anchor": "bottom-right",
+              "gap_x": 5,
+              "gap_y": 5,
+              "rotation": 270
+            }
+          ],
+          "formulas": {
+            "x": "= main.x4",
+            "y": "= main.y0",
+            "width": "= main.x6 - main.x4",
+            "length": "= main.y3 - main.y0"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Guest Bedroom",
+          "x": 0,
+          "y": 0,
+          "width": 400,
+          "length": 300,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "StudyWindow",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "StudyDoor",
+                  "offset": 50,
+                  "width": 80,
+                  "height": 180,
+                  "anchor": "end"
+                }
+              ]
+            },
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "StudyWindow",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "bed_single",
+                "src": "https://templates.wadi.house/furniture/bed_single.glb",
+                "dimensions": [
+                  0.9,
+                  0.5,
+                  1.9
+                ],
+                "name": "Single bed",
+                "category": "Bedroom"
+              },
+              "anchor": "top-left",
+              "gap_x": 5,
+              "gap_y": 5,
+              "rotation": 90
+            },
+            {
+              "asset": {
+                "id": "wardrobe",
+                "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+                "dimensions": [
+                  1,
+                  1.8,
+                  0.55
+                ],
+                "name": "Wardrobe",
+                "category": "Bedroom"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "desk",
+                "src": "https://templates.wadi.house/furniture/desk.glb",
+                "dimensions": [
+                  1.2,
+                  0.75,
+                  0.6
+                ],
+                "name": "Desk",
+                "category": "Study"
+              },
+              "anchor": "bottom-left",
+              "gap_x": 5,
+              "gap_y": 5,
+              "rotation": 90
+            },
+            {
+              "asset": {
+                "id": "chair",
+                "src": "https://templates.wadi.house/furniture/chair.glb",
+                "dimensions": [
+                  0.5,
+                  0.9,
+                  0.5
+                ],
+                "name": "Chair",
+                "category": "Dining"
+              },
+              "anchor": "bottom-left",
+              "gap_x": 50,
+              "gap_y": 50,
+              "rotation": 270
+            }
+          ],
+          "connections": [
+            "Bath 3",
+            "Living"
+          ],
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y0",
+            "width": "= main.x4 - main.x0",
+            "length": "= main.y3 - main.y0"
+          }
+        }
+      ],
+      "slab_thickness": 20
+    },
+    {
+      "floor_number": 2,
+      "name": "First Floor",
+      "objects": [
+        {
+          "type": "floor_slab",
+          "x": 0,
+          "y": 0,
+          "width": 200,
+          "length": 500,
+          "name": "First Floor Slab West North",
+          "thickness": 20,
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y0",
+            "width": "= main.x2 - main.x0",
+            "length": "= main.y5 - main.y0"
+          }
+        },
+        {
+          "type": "floor_slab",
+          "x": 0,
+          "y": 800,
+          "width": 200,
+          "length": 200,
+          "name": "First Floor Slab West South",
+          "thickness": 20,
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y8",
+            "width": "= main.x2 - main.x0",
+            "length": "= main.y10 - main.y8"
+          }
+        },
+        {
+          "type": "floor_slab",
+          "x": 200,
+          "y": 0,
+          "width": 400,
+          "length": 1400,
+          "name": "First Floor Slab Middle",
+          "thickness": 20,
+          "formulas": {
+            "x": "= main.x2",
+            "y": "= main.y0",
+            "width": "= main.x6 - main.x2",
+            "length": "= main.y14 - main.y0"
+          }
+        },
+        {
+          "type": "floor_slab",
+          "x": 600,
+          "y": 0,
+          "width": 500,
+          "length": 1600,
+          "name": "First Floor Slab East",
+          "thickness": 20,
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y0",
+            "width": "= main.x11 - main.x6",
+            "length": "= main.y16 - main.y0"
+          }
+        },
+        {
+          "type": "beam",
+          "x": -10,
+          "y": 500,
+          "width": 20,
+          "length": 300,
+          "name": "Stairway West Beam",
+          "height": 20,
+          "formulas": {
+            "x": "= main.x0 - 10",
+            "y": "= main.y5",
+            "length": "= main.y8 - main.y5"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x0_y0",
+          "x": -10,
+          "y": -10,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x0 - 10",
+            "y": "= main.y0 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x0_y3",
+          "x": -10,
+          "y": 290,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x0 - 10",
+            "y": "= main.y3 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x0_y8",
+          "x": -10,
+          "y": 790,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x0 - 10",
+            "y": "= main.y8 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x0_y10",
+          "x": -10,
+          "y": 990,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x0 - 10",
+            "y": "= main.y10 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x2_y14",
+          "x": 190,
+          "y": 1390,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x2 - 10",
+            "y": "= main.y14 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x6_y0",
+          "x": 590,
+          "y": -10,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y0 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x6_y3",
+          "x": 590,
+          "y": 290,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y3 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x6_y8",
+          "x": 590,
+          "y": 790,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y8 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x6_y10",
+          "x": 590,
+          "y": 990,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y10 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x6_y14",
+          "x": 590,
+          "y": 1390,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x6 - 10",
+            "y": "= main.y14 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x11_y0",
+          "x": 1090,
+          "y": -10,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y0 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x11_y3",
+          "x": 1090,
+          "y": 290,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y3 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x11_y8",
+          "x": 1090,
+          "y": 790,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y8 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x11_y10",
+          "x": 1090,
+          "y": 990,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y10 - 10"
+          }
+        },
+        {
+          "type": "pillar",
+          "name": "Col2_x11_y14",
+          "x": 1090,
+          "y": 1390,
+          "width": 20,
+          "length": 20,
+          "height": 250,
+          "formulas": {
+            "x": "= main.x11 - 10",
+            "y": "= main.y14 - 10"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Staircase 2",
+          "x": 0,
+          "y": 500,
+          "width": 200,
+          "length": 300,
+          "walls": {
+            "north": {},
+            "west": {}
+          },
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y5",
+            "width": "= main.x2 - main.x0",
+            "length": "= main.y8 - main.y5"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Main Passage",
+          "x": 0,
+          "y": 800,
+          "width": 600,
+          "length": 200,
+          "walls": {
+            "south": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "PassageWindow1",
+                  "offset": 50,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80
+                }
+              ]
+            },
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "PassageWindow2",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y8",
+            "width": "= main.x6 - main.x0",
+            "length": "= main.y10 - main.y8"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Passage 2",
+          "x": 600,
+          "y": 600,
+          "width": 200,
+          "length": 400,
+          "walls": {
+            "east": {}
+          },
+          "connections": [
+            "Bedroom 2",
+            "Bedroom 3",
+            "Bedroom 4"
+          ],
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y6",
+            "width": "= main.x8 - main.x6",
+            "length": "= main.y10 - main.y6"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bedroom 4",
+          "x": 200,
+          "y": 300,
+          "width": 400,
+          "length": 500,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bedroom4BalconyDoor",
+                  "offset": 0,
+                  "width": 200,
+                  "height": 250,
+                  "open": true
+                }
+              ]
+            },
+            "south": {},
+            "east": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bedroom4Door",
+                  "offset": 30,
+                  "width": 80,
+                  "height": 180,
+                  "anchor": "end"
+                }
+              ]
+            },
+            "west": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "OpenPart",
+                  "offset": 0,
+                  "width": 200,
+                  "height": 250,
+                  "anchor": "start",
+                  "open": true
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "bed_double",
+                "src": "https://templates.wadi.house/furniture/bed_double.glb",
+                "dimensions": [
+                  1.5,
+                  0.5,
+                  2
+                ],
+                "name": "Double bed",
+                "category": "Bedroom"
+              },
+              "anchor": "center-left",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "wardrobe",
+                "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+                "dimensions": [
+                  1,
+                  1.8,
+                  0.55
+                ],
+                "name": "Wardrobe",
+                "category": "Bedroom"
+              },
+              "anchor": "bottom-left",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "connections": [
+            "Passage 2",
+            "Bath 4",
+            "Balcony / Terrace"
+          ],
+          "formulas": {
+            "x": "= main.x2",
+            "y": "= main.y3",
+            "width": "= main.x6 - main.x2",
+            "length": "= main.y8 - main.y3"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bath 4",
+          "x": 400,
+          "y": 0,
+          "width": 200,
+          "length": 300,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bath4Window",
+                  "offset": 0,
+                  "width": 50,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bath4Door",
+                  "offset": 0,
+                  "width": 80,
+                  "height": 180,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "east": {},
+            "west": {}
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "toilet",
+                "src": "https://templates.wadi.house/furniture/toilet.glb",
+                "dimensions": [
+                  0.5,
+                  0.8,
+                  0.7
+                ],
+                "name": "Toilet",
+                "category": "Bathroom"
+              },
+              "anchor": "top-left",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "bathroom_sink",
+                "src": "https://templates.wadi.house/furniture/bathroom_sink.glb",
+                "dimensions": [
+                  0.6,
+                  0.85,
+                  0.5
+                ],
+                "name": "Washbasin",
+                "category": "Bathroom"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "formulas": {
+            "x": "= main.x4",
+            "y": "= main.y0",
+            "width": "= main.x6 - main.x4",
+            "length": "= main.y3 - main.y0"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Side Bedroom",
+          "x": 0,
+          "y": 0,
+          "width": 400,
+          "length": 300,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "StudyWindow",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "StudyWindow",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "bed_single",
+                "src": "https://templates.wadi.house/furniture/bed_single.glb",
+                "dimensions": [
+                  0.9,
+                  0.5,
+                  1.9
+                ],
+                "name": "Single bed",
+                "category": "Bedroom"
+              },
+              "anchor": "top-left",
+              "gap_x": 5,
+              "gap_y": 5,
+              "rotation": 90
+            },
+            {
+              "asset": {
+                "id": "wardrobe",
+                "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+                "dimensions": [
+                  1,
+                  1.8,
+                  0.55
+                ],
+                "name": "Wardrobe",
+                "category": "Bedroom"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "desk",
+                "src": "https://templates.wadi.house/furniture/desk.glb",
+                "dimensions": [
+                  1.2,
+                  0.75,
+                  0.6
+                ],
+                "name": "Desk",
+                "category": "Study"
+              },
+              "anchor": "bottom-left",
+              "gap_x": 5,
+              "gap_y": 5,
+              "rotation": 90
+            },
+            {
+              "asset": {
+                "id": "chair",
+                "src": "https://templates.wadi.house/furniture/chair.glb",
+                "dimensions": [
+                  0.5,
+                  0.9,
+                  0.5
+                ],
+                "name": "Chair",
+                "category": "Dining"
+              },
+              "anchor": "bottom-left",
+              "gap_x": 50,
+              "gap_y": 50,
+              "rotation": 270
+            }
+          ],
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y0",
+            "width": "= main.x4 - main.x0",
+            "length": "= main.y3 - main.y0"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Guest-Pantry",
+          "x": 0,
+          "y": 300,
+          "width": 200,
+          "length": 200,
+          "walls": {
+            "south": {},
+            "west": {}
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "desk",
+                "src": "https://templates.wadi.house/furniture/desk.glb",
+                "dimensions": [
+                  1.2,
+                  0.75,
+                  0.6
+                ],
+                "name": "Desk",
+                "category": "Study"
+              },
+              "anchor": "center-left",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "formulas": {
+            "x": "= main.x0",
+            "y": "= main.y3",
+            "width": "= main.x2 - main.x0",
+            "length": "= main.y5 - main.y3"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bedroom 3",
+          "x": 600,
+          "y": 200,
+          "width": 500,
+          "length": 400,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bedroom3BalconyDoor",
+                  "offset": 80,
+                  "width": 80,
+                  "height": 180
+                },
+                {
+                  "kind": "window",
+                  "name": "Bedroom3Window2",
+                  "offset": 80,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "end"
+                }
+              ]
+            },
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bedroom3Door",
+                  "offset": 80,
+                  "width": 80,
+                  "height": 180
+                }
+              ]
+            },
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bedroom3Window",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "bed_double",
+                "src": "https://templates.wadi.house/furniture/bed_double.glb",
+                "dimensions": [
+                  1.5,
+                  0.5,
+                  2
+                ],
+                "name": "Double bed",
+                "category": "Bedroom"
+              },
+              "anchor": "top-center",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "wardrobe",
+                "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+                "dimensions": [
+                  1,
+                  1.8,
+                  0.55
+                ],
+                "name": "Wardrobe",
+                "category": "Bedroom"
+              },
+              "anchor": "bottom-right",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "connections": [
+            "Passage 2",
+            "Balcony 3"
+          ],
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y2",
+            "width": "= main.x11 - main.x6",
+            "length": "= main.y6 - main.y2"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Balcony 3",
+          "x": 600,
+          "y": 0,
+          "width": 500,
+          "length": 200,
+          "height": 80,
+          "walls": {
+            "north": {},
+            "east": {}
+          },
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y0",
+            "width": "= main.x11 - main.x6",
+            "length": "= main.y2 - main.y0"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bath 3",
+          "x": 800,
+          "y": 600,
+          "width": 300,
+          "length": 200,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bath3_2_Door",
+                  "offset": 50,
+                  "width": 80,
+                  "height": 180
+                }
+              ]
+            },
+            "south": {},
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bath3_2_Window",
+                  "offset": 0,
+                  "width": 50,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "west": {}
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "toilet",
+                "src": "https://templates.wadi.house/furniture/toilet.glb",
+                "dimensions": [
+                  0.5,
+                  0.8,
+                  0.7
+                ],
+                "name": "Toilet",
+                "category": "Bathroom"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "bathroom_sink",
+                "src": "https://templates.wadi.house/furniture/bathroom_sink.glb",
+                "dimensions": [
+                  0.6,
+                  0.85,
+                  0.5
+                ],
+                "name": "Washbasin",
+                "category": "Bathroom"
+              },
+              "anchor": "top-left",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "formulas": {
+            "x": "= main.x8",
+            "y": "= main.y6",
+            "width": "= main.x11 - main.x8",
+            "length": "= main.y8 - main.y6"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bedroom 2",
+          "x": 600,
+          "y": 1000,
+          "width": 500,
+          "length": 400,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bedroom2Door",
+                  "offset": 80,
+                  "width": 80,
+                  "height": 180
+                }
+              ]
+            },
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bedroom2BalconyDoor",
+                  "offset": 50,
+                  "width": 80,
+                  "height": 180
+                }
+              ],
+              "height": 220
+            },
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bedroom2Window1",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "bed_double",
+                "src": "https://templates.wadi.house/furniture/bed_double.glb",
+                "dimensions": [
+                  1.5,
+                  0.5,
+                  2
+                ],
+                "name": "Double bed",
+                "category": "Bedroom"
+              },
+              "anchor": "bottom-center",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "wardrobe",
+                "src": "https://templates.wadi.house/furniture/wardrobe.glb",
+                "dimensions": [
+                  1,
+                  1.8,
+                  0.55
+                ],
+                "name": "Wardrobe",
+                "category": "Bedroom"
+              },
+              "anchor": "bottom-right",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "connections": [
+            "Balcony 2"
+          ],
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y10",
+            "width": "= main.x11 - main.x6",
+            "length": "= main.y14 - main.y10"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Bath 2",
+          "x": 800,
+          "y": 800,
+          "width": 300,
+          "length": 200,
+          "walls": {
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bath2Door",
+                  "offset": 30,
+                  "width": 80,
+                  "height": 180
+                }
+              ]
+            },
+            "east": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bath2Window",
+                  "offset": 0,
+                  "width": 50,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "toilet",
+                "src": "https://templates.wadi.house/furniture/toilet.glb",
+                "dimensions": [
+                  0.5,
+                  0.8,
+                  0.7
+                ],
+                "name": "Toilet",
+                "category": "Bathroom"
+              },
+              "anchor": "top-right",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "bathroom_sink",
+                "src": "https://templates.wadi.house/furniture/bathroom_sink.glb",
+                "dimensions": [
+                  0.6,
+                  0.85,
+                  0.5
+                ],
+                "name": "Washbasin",
+                "category": "Bathroom"
+              },
+              "anchor": "top-left",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "connections": [
+            "Bedroom 2"
+          ],
+          "formulas": {
+            "x": "= main.x8",
+            "y": "= main.y8",
+            "width": "= main.x11 - main.x8",
+            "length": "= main.y10 - main.y8"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Balcony 2",
+          "x": 600,
+          "y": 1400,
+          "width": 500,
+          "length": 200,
+          "walls": {
+            "south": {
+              "height": 80
+            },
+            "east": {
+              "height": 80
+            },
+            "west": {
+              "height": 80
+            }
+          },
+          "formulas": {
+            "x": "= main.x6",
+            "y": "= main.y14",
+            "width": "= main.x11 - main.x6",
+            "length": "= main.y16 - main.y14"
+          }
+        },
+        {
+          "type": "room",
+          "name": "Pantry",
+          "x": 200,
+          "y": 1000,
+          "width": 400,
+          "length": 400,
+          "walls": {
+            "north": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "PantryDoor",
+                  "offset": 50,
+                  "width": 80,
+                  "height": 180
+                }
+              ]
+            },
+            "south": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "PantryWindow2",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            },
+            "east": {},
+            "west": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "PantryWindow1",
+                  "offset": 0,
+                  "width": 100,
+                  "height": 100,
+                  "sill_height": 80,
+                  "anchor": "center"
+                }
+              ]
+            }
+          },
+          "items": [
+            {
+              "asset": {
+                "id": "fridge",
+                "src": "https://templates.wadi.house/furniture/fridge.glb",
+                "dimensions": [
+                  0.7,
+                  1.8,
+                  0.7
+                ],
+                "name": "Fridge",
+                "category": "Kitchen"
+              },
+              "anchor": "bottom-left",
+              "gap_x": 5,
+              "gap_y": 5
+            },
+            {
+              "asset": {
+                "id": "kitchen_sink",
+                "src": "https://templates.wadi.house/furniture/kitchen_sink.glb",
+                "dimensions": [
+                  0.6,
+                  0.9,
+                  0.6
+                ],
+                "name": "Kitchen sink",
+                "category": "Kitchen"
+              },
+              "anchor": "bottom-right",
+              "gap_x": 5,
+              "gap_y": 5
+            }
+          ],
+          "connections": [
+            "Main Passage"
+          ],
+          "formulas": {
+            "x": "= main.x2",
+            "y": "= main.y10",
+            "width": "= main.x6 - main.x2",
+            "length": "= main.y14 - main.y10"
+          }
+        }
+      ],
+      "slab_thickness": 20
+    },
+    {
+      "floor_number": 3,
+      "name": "Roof Floor",
+      "objects": [
+        {
+          "type": "roof",
+          "roof_type": "pitched",
+          "name": "Main Hip Roof",
+          "default_endpoint": "closed",
+          "slope": {
+            "by": "height",
+            "ridge_h": 180
+          },
+          "min_overhang": 50,
+          "segments": [
+            {
+              "id": "MainRoofSegment",
+              "start": [
+                550,
+                0
+              ],
+              "end": [
+                550,
+                1400
+              ],
+              "width": 1100,
+              "hip_setback_start": 200,
+              "hip_setback_end": 200,
+              "formulas": {
+                "start_x": "= (main.x0 + main.x11) / 2",
+                "start_y": "= main.y0",
+                "end_x": "= (main.x0 + main.x11) / 2",
+                "end_y": "= main.y14",
+                "width": "= main.x11 - main.x0"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

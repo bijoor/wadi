@@ -243,14 +243,23 @@ export function composedFloorInputs(objects: FloorObj[], defaultT: number, wallH
 
 const GAP_OVERCUT = 2; // extend a gap notch past both wall faces so it fully breaks the poché
 
+// Grow the pillar cut a hair past the column footprint so the wall RECEDES from the
+// column faces. Without it, a column the same size as the wall thickness (a common
+// case — 20u column on a 20u wall) leaves the wall's cut face exactly coincident
+// with the column face, which z-fights ("pillars and walls fighting"). ~1u recess
+// reads as a clean reveal and is well below the depth-buffer coincidence threshold.
+const PILLAR_CLEAR = 1;
+
 // Cut pillar footprints out of a wall poché — pillars (structural columns) win over
 // walls, so a wall butts into a column instead of running through it. The column is
-// drawn on top afterwards, filling the notch.
+// drawn on top afterwards, covering the recess.
 export function subtractPillars(poly: Footprint, pillars: RoomRect[]): Footprint {
   let out = poly;
   for (const p of pillars) {
     if (p.w <= 0 || p.l <= 0) continue;
-    out = footprintSubtract(out, ringsToFootprint([rectRing(p.x, p.y, p.w, p.l)]));
+    out = footprintSubtract(out, ringsToFootprint([
+      rectRing(p.x - PILLAR_CLEAR, p.y - PILLAR_CLEAR, p.w + 2 * PILLAR_CLEAR, p.l + 2 * PILLAR_CLEAR),
+    ]));
   }
   return out;
 }
