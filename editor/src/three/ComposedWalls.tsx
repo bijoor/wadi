@@ -12,16 +12,12 @@ import * as THREE from "three";
 import { Brush, Evaluator, SUBTRACTION } from "three-bvh-csg";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Point } from "@flatten-js/core";
-import { composeWalls, pocheContours, type WallInput, type RoomRect } from "../model/composeWalls";
+import { composeWalls, composedFloorInputs, pocheContours, type ComposedOpening } from "../model/composeWalls";
+import type { WallInput, RoomRect } from "../model/composeWalls";
 import { rectRing, ringsToFootprint, footprintUnion, type Footprint } from "../model/geom";
 import { lateriteMaps } from "./procTextures";
-
-// An opening as an axis-aligned cut (P0 is axis-aligned): `axis` = the wall run,
-// (cx,cy) = opening centre in plan, `span` = width along the wall.
-export interface ComposedOpening {
-  axis: "x" | "y"; cx: number; cy: number; span: number; height: number; sill: number; thickness: number;
-  kind: "door" | "window" | "gap";
-}
+export { composedFloorInputs };
+export type { ComposedOpening };
 
 const OVERCUT = 2;    // extend the cut past the wall faces so it fully punches through
 const FACE_PROBE = 4; // units outward from a boundary face to test exposure
@@ -62,50 +58,6 @@ function classifyGroups(geo: THREE.BufferGeometry, rooms: Footprint): THREE.Buff
   res.addGroup(0, brickTris.length * 3, 0);
   res.addGroup(brickTris.length * 3, paintTris.length * 3, 1);
   return res;
-}
-
-// Extract composeWalls inputs from a floor's expanded objects: each room's four
-// FULL-SPAN side centrelines (no inset — the union fills the corners), standalone
-// walls, room footprints, and openings (door/window/gap) as axis-aligned cuts.
-type Obj = { type: string;[k: string]: unknown };
-export function composedFloorInputs(objects: Obj[], defaultT: number, wallHeight: number): {
-  walls: WallInput[]; rooms: RoomRect[]; openings: ComposedOpening[];
-} {
-  const walls: WallInput[] = [];
-  const rooms: RoomRect[] = [];
-  const openings: ComposedOpening[] = [];
-  for (const o of objects) {
-    if (o.type === "room") {
-      const rx = o.x as number, ry = o.y as number, rw = o.width as number, rl = o.length as number;
-      const t = (o.wall_thickness as number | undefined) ?? defaultT;
-      rooms.push({ x: rx, y: ry, w: rw, l: rl });
-      const raw = o.walls as string[] | Record<string, unknown> | undefined;
-      const sides = raw ? (Array.isArray(raw) ? raw : Object.keys(raw)) : ["north", "south", "east", "west"];
-      for (const sRaw of sides) {
-        const s = String(sRaw).toLowerCase();
-        if (s === "north") walls.push({ sx: rx, sy: ry + t / 2, ex: rx + rw, ey: ry + t / 2, thickness: t });
-        else if (s === "south") walls.push({ sx: rx, sy: ry + rl - t / 2, ex: rx + rw, ey: ry + rl - t / 2, thickness: t });
-        else if (s === "west") walls.push({ sx: rx + t / 2, sy: ry, ex: rx + t / 2, ey: ry + rl, thickness: t });
-        else if (s === "east") walls.push({ sx: rx + rw - t / 2, sy: ry, ex: rx + rw - t / 2, ey: ry + rl, thickness: t });
-      }
-    } else if (o.type === "wall") {
-      const t = (o.thickness as number | undefined) ?? defaultT;
-      walls.push({ sx: o.start_x as number, sy: o.start_y as number, ex: o.end_x as number, ey: o.end_y as number, thickness: t });
-    } else if (o.type === "door" || o.type === "window" || o.type === "gap") {
-      const dir = String((o.direction as string | undefined) ?? "").toLowerCase();
-      const t = defaultT;
-      const w = o.width as number, h = (o.height as number | undefined) ?? wallHeight;
-      const sill = o.type === "window" ? ((o.sill_height as number | undefined) ?? 0) : 0;
-      const ox = o.x as number, oy = o.y as number;
-      const kind = o.type as "door" | "window" | "gap";
-      if (dir === "east" || dir === "west") {
-        openings.push({ axis: "y", cx: ox + t / 2, cy: oy + w / 2, span: w, height: h, sill, thickness: t, kind });
-      } else {
-        openings.push({ axis: "x", cx: ox + w / 2, cy: oy + t / 2, span: w, height: h, sill, thickness: t, kind });
-      }
-    }
-  }
-  return { walls, rooms, openings };
 }
 
 export function ComposedWalls(props: {

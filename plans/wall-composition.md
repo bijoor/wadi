@@ -1,13 +1,27 @@
 # Wadi wall composition — a whole-model wall network, classified per face
 
-Status: **P0 done behind a flag (2026-09-12); P1 next.** `composeWalls` geometry
-core + pocheContours (`editor/src/model/composeWalls.ts`, tested) and the 3D
-render (`editor/src/three/ComposedWalls.tsx`, wired into House3D behind
+Status: **P0 + P1 done behind a flag (2026-09-12); P2 next.** `composeWalls`
+geometry core + pocheContours (`editor/src/model/composeWalls.ts`, tested) and the
+3D render (`editor/src/three/ComposedWalls.tsx`, wired into House3D behind
 `config.compose_walls` / `window.__composeWalls`) render one composed wall solid
 per floor: extrude poché → CSG openings → per-face brick/paint by exposure probe.
 Verified on atale: exterior laterite, interior paint, openings cut with framed
-glazed door/window panes, no white column. Flag off is parity 6/6. **P0 done;
-P1 (estimator on sections) next.** Supersedes
+glazed door/window panes, no white column. Flag off is parity 6/6.
+
+**P1 (estimator on the composed sections) done (option B — re-baseline).**
+`composedWallAreas(config)` in `editor/src/estimate/wallArea.ts` derives the
+wall-area report from the SAME `composeWalls` poché the renderer uses (shared
+`composedFloorInputs`, now in the model module): each boundary edge contributes
+`length × height` to external (brick) or internal (paint), openings deducted per
+edge (`edgeOpeningArea`). The config is expanded (`expandRoomWalls`) first so
+room-wall openings are cut exactly as the 3D CSG cuts them, i.e. estimate ==
+render by construction (asserted in `composedWallAreas.test.ts`). The viewer's
+Quantities panel routes to it under the flag. These numbers do NOT match the old
+per-room estimator and are not meant to: the composed model correctly counts
+upper-floor walls facing open terraces as weather-facing, which the old per-room
+estimator under-counted (atale external 2,484 sq ft composed vs 1,400 old). The
+per-wall inventory table is empty under the composed path (there are no discrete
+per-room walls, only poché edges); summary + per-floor are the outputs. Supersedes
 the per-room wall stamping in `editor/src/three/House3D.tsx` + the per-wall
 external/internal verdict in `editor/src/estimate/wallArea.ts`. Builds on the
 centreline model in [grid-convention.md](grid-convention.md) and the `center`

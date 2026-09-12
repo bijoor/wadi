@@ -19,7 +19,8 @@
 // (default 10 units = 1 ft), mirroring svg2d/format.ts.
 
 import { computeMergedV2Spec } from "../svg2d/roof/v2/computeFromHouse";
-import type { HouseConfig } from "../svg2d/expand";
+import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
+import { composeWalls, composedFloorInputs, type ComposedOpening } from "../model/composeWalls";
 
 type Bag = Record<string, unknown>;
 const num = (v: unknown, d = 0): number => (typeof v === "number" && isFinite(v) ? v : d);
@@ -394,6 +395,86 @@ export function computeWallAreas(config: HouseConfig): WallAreaReport {
           else { add(external, face, op); add(fExt, face, op); extA += faceNet; anyExt = true; }
         }
         inventory.push({ floor: fi, room: String(o.name ?? "Wall"), wall: "(wall)", type: anyExt ? "external" : "internal", lengthU: len, heightU: h, extAreaU: extA, intAreaU: intA });
+      }
+    }
+    perFloor.push({ floor: num(fl.floor_number, fi), name: String(fl.name ?? `Floor ${fi}`), external: fExt, internal: fInt });
+  }
+
+  const gables = computeGables(config);
+  return {
+    external, internal, gables,
+    grandExternal: external.net + gables.area,
+    perFloor, inventory, units,
+  };
+}
+
+// ---- composed (per-face) variant (plans/wall-composition.md, P1) -----------
+//
+// Same report shape as computeWallAreas, but the wall faces come from the
+// composed poché (composeWalls): each boundary EDGE is one face, classified
+// brick (external) or interior on its own merits. Openings are cut in centreline
+// space (both faces of their host wall). This is the more-correct baseline — it
+// counts e.g. an upper-floor wall facing an open terrace as external, which the
+// per-room path misses. Gables are roof-derived and carried over unchanged.
+
+// Area of the openings that fall on one boundary edge (each opening cuts both
+// faces of its wall, so it is subtracted from whichever face(s) it lands on).
+function edgeOpeningArea(
+  e: { a: { x: number; y: number }; b: { x: number; y: number } },
+  openings: ComposedOpening[], wallH: number,
+): number {
+  const dx = e.b.x - e.a.x, dy = e.b.y - e.a.y;
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const midX = (e.a.x + e.b.x) / 2, midY = (e.a.y + e.b.y) / 2;
+  let cut = 0;
+  for (const op of openings) {
+    const opH = Math.min(op.height, wallH);
+    if (op.axis === "x" && horizontal) {
+      if (Math.abs(midY - op.cy) > op.thickness / 2 + 2) continue; // not a face of this wall band
+      const eLo = Math.min(e.a.x, e.b.x), eHi = Math.max(e.a.x, e.b.x);
+      const ov = Math.max(0, Math.min(eHi, op.cx + op.span / 2) - Math.max(eLo, op.cx - op.span / 2));
+      cut += ov * opH;
+    } else if (op.axis === "y" && !horizontal) {
+      if (Math.abs(midX - op.cx) > op.thickness / 2 + 2) continue;
+      const eLo = Math.min(e.a.y, e.b.y), eHi = Math.max(e.a.y, e.b.y);
+      const ov = Math.max(0, Math.min(eHi, op.cy + op.span / 2) - Math.max(eLo, op.cy - op.span / 2));
+      cut += ov * opH;
+    }
+  }
+  return cut;
+}
+
+export function composedWallAreas(config: HouseConfig): WallAreaReport {
+  const units = readUnits(config);
+  const defaults = (config as Bag).defaults as Bag | undefined;
+  const defWallH = num(defaults?.wall_height, 90);
+  const wallT = num(defaults?.wall_thickness, 8);
+
+  // Expand room-wall openings into flat door/window/gap objects (same as the 3D
+  // renderer consumes), so composedFloorInputs sees openings and cuts them —
+  // and so the estimate matches the composed render by construction.
+  const expanded = expandRoomWalls(config, wallT, { lenient: true });
+
+  const external = triple(), internal = triple();
+  const inventory: WallInvRow[] = [];
+  const perFloor: FloorAreas[] = [];
+  const floors = (expanded.floors ?? []) as Bag[];
+  for (let fi = 0; fi < floors.length; fi++) {
+    const fl = floors[fi];
+    const floorWallH = num(fl.wall_height, defWallH);
+    const fExt = triple(), fInt = triple();
+    const { walls, rooms, openings } = composedFloorInputs(
+      (fl.objects ?? []) as unknown as Parameters<typeof composedFloorInputs>[0],
+      wallT, floorWallH,
+    );
+    if (walls.length) {
+      const { edges } = composeWalls(walls, rooms);
+      for (const e of edges) {
+        const len = Math.hypot(e.b.x - e.a.x, e.b.y - e.a.y);
+        const gross = len * floorWallH;
+        const op = edgeOpeningArea(e, openings, floorWallH);
+        if (e.brick) { add(external, gross, op); add(fExt, gross, op); }
+        else { add(internal, gross, op); add(fInt, gross, op); }
       }
     }
     perFloor.push({ floor: num(fl.floor_number, fi), name: String(fl.name ?? `Floor ${fi}`), external: fExt, internal: fInt });
