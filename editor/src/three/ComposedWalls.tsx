@@ -13,7 +13,7 @@ import { Brush, Evaluator, SUBTRACTION } from "three-bvh-csg";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { composeWalls, composedFloorInputs, pocheContours, type ComposedOpening, type BoundaryEdge } from "../model/composeWalls";
 import type { WallInput, RoomRect } from "../model/composeWalls";
-import { lateriteMaps } from "./procTextures";
+import { lateriteMaps, wallUvK } from "./procTextures";
 export { composedFloorInputs };
 export type { ComposedOpening };
 
@@ -33,7 +33,7 @@ function segDist(px: number, py: number, ax: number, ay: number, bx: number, by:
 // normal it shares — so every triangle on one wall face agrees (no per-triangle
 // zig-zag), matching the 2D plan and the estimator, which read the same edges.
 // Top caps are brick (ring-beam datum), soffits interior.
-function classifyGroups(geo: THREE.BufferGeometry, edges: BoundaryEdge[]): THREE.BufferGeometry {
+function classifyGroups(geo: THREE.BufferGeometry, edges: BoundaryEdge[], uvK: number): THREE.BufferGeometry {
   const g = geo.index ? geo.toNonIndexed() : geo;
   const pos = g.getAttribute("position");
   const triCount = pos.count / 3;
@@ -62,15 +62,42 @@ function classifyGroups(geo: THREE.BufferGeometry, edges: BoundaryEdge[]): THREE
     }
     (brick ? brickTris : paintTris).push(i);
   }
-  // reorder into two contiguous runs: brick first (group 0), then paint (group 1)
+  // Reorder into two contiguous runs (brick group 0, paint group 1) and project
+  // world-space UVs so the laterite texture tiles at a constant real-world scale
+  // on every face regardless of orientation (matching the old wall path's planar
+  // UV = worldPos * uvK). A vertical face maps U along its horizontal run and V up
+  // the height; a cap maps U/V across the plan.
   const src = pos.array as ArrayLike<number>;
   const out = new Float32Array(pos.count * 3);
-  let w = 0;
-  const copyTri = (t: number) => { for (let k = 0; k < 9; k++) out[w++] = src[t * 9 + k]; };
+  const uvOut = new Float32Array(pos.count * 2);
+  let w = 0, uw = 0;
+  const copyTri = (t: number) => {
+    const base = t * 9;
+    const ax = src[base], ay = src[base + 1], az = src[base + 2];
+    const bx = src[base + 3], by = src[base + 4], bz = src[base + 5];
+    const cx = src[base + 6], cy = src[base + 7], cz = src[base + 8];
+    // face normal
+    let nx = (by - ay) * (cz - az) - (bz - az) * (cy - ay);
+    let ny = (bz - az) * (cx - ax) - (bx - ax) * (cz - az);
+    let nz = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+    const nl = Math.hypot(nx, ny, nz) || 1;
+    nx /= nl; ny /= nl; nz /= nl;
+    const cap = Math.abs(ny) > 0.6;
+    // horizontal tangent for a vertical face: perp to the plan normal (nx,nz)
+    const tx = -nz, tz = nx;
+    for (let v = 0; v < 3; v++) {
+      const px = src[base + v * 3], py = src[base + v * 3 + 1], pz = src[base + v * 3 + 2];
+      const u = cap ? px * uvK : (px * tx + pz * tz) * uvK;
+      const vv = cap ? pz * uvK : py * uvK;
+      uvOut[uw++] = u; uvOut[uw++] = vv;
+    }
+    for (let k = 0; k < 9; k++) out[w++] = src[base + k];
+  };
   for (const t of brickTris) copyTri(t);
   for (const t of paintTris) copyTri(t);
   const res = new THREE.BufferGeometry();
   res.setAttribute("position", new THREE.BufferAttribute(out, 3));
+  res.setAttribute("uv", new THREE.BufferAttribute(uvOut, 2));
   res.computeVertexNormals();
   res.clearGroups();
   res.addGroup(0, brickTris.length * 3, 0);
@@ -87,8 +114,10 @@ export function ComposedWalls(props: {
   plotWidth: number;
   plotLength: number;
   color?: string;
+  units?: { system?: string; per_unit?: number };
 }) {
-  const { walls, rooms, openings, baseZ, wallHeight, plotWidth, plotLength, color = "#e8e5df" } = props;
+  const { walls, rooms, openings, baseZ, wallHeight, plotWidth, plotLength, color = "#e8e5df", units } = props;
+  const uvK = wallUvK(units);
   const geometry = useMemo(() => {
     const { groups } = composeWalls(walls, rooms);
     const edges = groups.flatMap((g) => g.edges); // per-face brick/paint verdicts
@@ -132,8 +161,8 @@ export function ComposedWalls(props: {
       result = brush.geometry;
     }
 
-    return classifyGroups(result, edges);
-  }, [walls, rooms, openings, wallHeight, baseZ]);
+    return classifyGroups(result, edges, uvK);
+  }, [walls, rooms, openings, wallHeight, baseZ, uvK]);
 
   if (!geometry) return null;
   const laterite = lateriteMaps();

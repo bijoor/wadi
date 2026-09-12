@@ -230,6 +230,7 @@ export function House3D({ config }: { config: HouseConfig }) {
               wallHeight={band.wallHeight}
               plotWidth={plot.width}
               plotLength={plot.length}
+              units={globals.units}
             />,
           );
           // Door leaves + window panes for the cut openings (gaps stay bare).
