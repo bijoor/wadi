@@ -275,6 +275,60 @@ export function composedPoche(objects: FloorObj[], defaultT: number): PocheShape
 
 export interface PocheShape { outer: Vec2[]; holes: Vec2[][] }
 
+// One straight run of the OUTER wall face, for dimensioning. `dir` is the side of
+// the building it faces (so the dimension line is placed outside that face).
+export interface OuterWallSeg { a: Vec2; b: Vec2; dir: "north" | "south" | "east" | "west" }
+
+// Drop collinear vertices so each straight wall run is a single segment (the union
+// of the wall rectangles leaves spurious mid-run vertices where perpendicular walls
+// meet).
+function simplifyRing(pts: Vec2[]): Vec2[] {
+  const n = pts.length;
+  if (n < 3) return pts;
+  const out: Vec2[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = pts[(i - 1 + n) % n], c = pts[i], q = pts[(i + 1) % n];
+    const cross = (c.x - p.x) * (q.y - c.y) - (c.y - p.y) * (q.x - c.x);
+    if (Math.abs(cross) > 1e-6) out.push(c); // keep only true corners
+  }
+  return out.length >= 3 ? out : pts;
+}
+
+// The outer wall FACES of a floor, as dimensionable runs — the outer contour of the
+// composed wall footprint (so it honours the drawn wall faces, L/T steps and any
+// convention, and ignores furniture). Each run carries the side it faces. Coords
+// carry a sub-unit inflation from the union's robustness GROW; it rounds away in
+// the foot/inch label, and the caller may snap for tidy geometry.
+export function outerWallSegments(objects: FloorObj[], defaultT: number): OuterWallSeg[] {
+  const { walls, rooms } = composedFloorInputs(objects, defaultT, 90);
+  if (!walls.length) return [];
+  const { poche } = composeWalls(walls, rooms);
+  const segs: OuterWallSeg[] = [];
+  // Remove the union's outward GROW inflation (+GROW/2 = 0.25 past each face) so a
+  // run's length is the true outer-face span. Wall faces sit at room-coord ±
+  // half-thickness (integers for the usual even thickness); snapping to the nearest
+  // unit rounds the 0.25 inflation off cleanly.
+  const snap = (v: number) => Math.round(v);
+  for (const s of pocheContours(poche)) {
+    const ring = simplifyRing(s.outer.map((p) => ({ x: snap(p.x), y: snap(p.y) })));
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      if (Math.hypot(dx, dy) < 1) continue;
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      let dir: OuterWallSeg["dir"];
+      if (Math.abs(dy) <= Math.abs(dx)) {
+        // horizontal run: the poché (wall) is on one side, open air the other
+        dir = poche.contains(new Point(mx, my - 2)) ? "south" : "north";
+      } else {
+        dir = poche.contains(new Point(mx - 2, my)) ? "east" : "west";
+      }
+      segs.push({ a, b, dir });
+    }
+  }
+  return segs;
+}
+
 // Extract the poché as a set of {outer, holes} rings for extrusion. Outer
 // contours have positive signed area, holes negative (flatten's convention for
 // a union result); each hole is assigned to the outer that contains it.

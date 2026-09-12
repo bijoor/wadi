@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeWalls, composedPoche, composedFloorInputs, type WallInput, type RoomRect, type PocheShape } from "./composeWalls";
+import { composeWalls, composedPoche, composedFloorInputs, outerWallSegments, type WallInput, type RoomRect, type PocheShape } from "./composeWalls";
 
 const T = 8;
 const H = 90;
@@ -113,6 +113,41 @@ describe("composedFloorInputs — per-wall height sourcing", () => {
     expect(byKindName("door").find((_, i) => i === 1)?.open).toBe(true);  // Open
     expect(byKindName("window")[0].open).toBe(false);
     expect(byKindName("gap")[0].open).toBe(true);
+  });
+});
+
+describe("outerWallSegments — runs trace the OUTER wall faces", () => {
+  // A single room 200x160 with 8-thick walls (outer-rect coords): the outer face
+  // runs are the room's full outer dimensions, one per side.
+  const segs = outerWallSegments([{ type: "room", name: "R", x: 0, y: 0, width: 200, length: 160, walls: ["north", "south", "east", "west"] }], 8);
+  const len = (s: { a: { x: number; y: number }; b: { x: number; y: number } }) => Math.round(Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y));
+
+  it("one run per side, each the full outer face length (not the clear span)", () => {
+    const north = segs.filter((s) => s.dir === "north");
+    const south = segs.filter((s) => s.dir === "south");
+    const west = segs.filter((s) => s.dir === "west");
+    const east = segs.filter((s) => s.dir === "east");
+    expect(north.length).toBe(1);
+    expect(len(north[0])).toBe(200); // full outer width, NOT 200-2t
+    expect(len(south[0])).toBe(200);
+    expect(len(west[0])).toBe(160);
+    expect(len(east[0])).toBe(160);
+  });
+
+  it("an L-footprint keeps the protruding wing's outer face as a full run", () => {
+    // main block + wing protruding north-right; wing north outer face = wing width
+    const l = outerWallSegments([
+      { type: "room", name: "Main", x: 0, y: 100, width: 300, length: 200, walls: ["north", "south", "east", "west"] },
+      { type: "room", name: "Wing", x: 180, y: 0, width: 120, length: 100, walls: ["north", "south", "east", "west"] },
+    ], 8);
+    const north = l.filter((s) => s.dir === "north").map(len).sort((a, b) => a - b);
+    // main block north (left of wing) = 180, wing north = 120
+    expect(north).toContain(120);
+    expect(north).toContain(180);
+  });
+
+  it("no walls → no segments", () => {
+    expect(outerWallSegments([], 8)).toEqual([]);
   });
 });
 

@@ -27,7 +27,7 @@ import {
 import type { RoofSpec } from "./roof/v2/model";
 import { renderV2ToFloorPlan } from "./roof/v2/projections";
 import { resetDimView, setDimBump } from "./dimResolve";
-import { composedPoche } from "../model/composeWalls";
+import { composedPoche, outerWallSegments } from "../model/composeWalls";
 
 interface FloorConfig {
   floor_number?: number;
@@ -602,35 +602,48 @@ export function generateFloorPlanSvg(
 
     if (dim.show_outer_dimensions) {
       const baseOffset = scaledSpacing(dim.dimension_offset);
-      northLevels = assignDimensionOffsetLevels(perimeter.north, true);
-      southLevels = assignDimensionOffsetLevels(perimeter.south, true);
-      westLevels  = assignDimensionOffsetLevels(perimeter.west, false);
-      eastLevels  = assignDimensionOffsetLevels(perimeter.east, false);
+      // Outer dimensions run to the OUTER WALL FACES: dimension the outer contour
+      // of the composed wall footprint (honours the drawn faces, L/T steps and any
+      // convention; furniture is ignored). Each run is drawn at its full length —
+      // no wall-thickness inset, which would give the clear/inside span instead.
+      const outerSegs = outerWallSegments(objects as unknown as Parameters<typeof outerWallSegments>[0], wallThickness);
+      const toEdge = (s: { a: { x: number; y: number }; b: { x: number; y: number } }) =>
+        ({ x1: s.a.x, y1: s.a.y, x2: s.b.x, y2: s.b.y, source: "outer" });
+      const north = outerSegs.filter((s) => s.dir === "north").map(toEdge);
+      const south = outerSegs.filter((s) => s.dir === "south").map(toEdge);
+      const west  = outerSegs.filter((s) => s.dir === "west").map(toEdge);
+      const east  = outerSegs.filter((s) => s.dir === "east").map(toEdge);
+      northLevels = assignDimensionOffsetLevels(north, true);
+      southLevels = assignDimensionOffsetLevels(south, true);
+      westLevels  = assignDimensionOffsetLevels(west, false);
+      eastLevels  = assignDimensionOffsetLevels(east, false);
 
-      for (const edge of perimeter.north) {
-        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
-        const level = northLevels[key] ?? 0;
-        const offset = baseOffset + level * offsetIncrement;
-        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, -offset, true, true, true);
+      for (const edge of north) {
+        const level = northLevels[normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2)] ?? 0;
+        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, -(baseOffset + level * offsetIncrement), true, false, false);
       }
-      for (const edge of perimeter.south) {
-        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
-        const level = southLevels[key] ?? 0;
-        const offset = baseOffset + level * offsetIncrement;
-        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, offset, true, true, true);
+      for (const edge of south) {
+        const level = southLevels[normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2)] ?? 0;
+        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, baseOffset + level * offsetIncrement, true, false, false);
       }
-      for (const edge of perimeter.west) {
-        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
-        const level = westLevels[key] ?? 0;
-        const offset = baseOffset + level * offsetIncrement;
-        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, -offset, false, true, true);
+      for (const edge of west) {
+        const level = westLevels[normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2)] ?? 0;
+        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, -(baseOffset + level * offsetIncrement), false, false, false);
       }
-      for (const edge of perimeter.east) {
-        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
-        const level = eastLevels[key] ?? 0;
-        const offset = baseOffset + level * offsetIncrement;
-        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, offset, false, true, true);
+      for (const edge of east) {
+        const level = eastLevels[normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2)] ?? 0;
+        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, baseOffset + level * offsetIncrement, false, false, false);
       }
+
+      // Overall floor extent — to the OUTER WALL FACES (the outer contour bbox),
+      // NOT the object bounding box (which would include furniture/decks beyond
+      // the walls). Fall back to the object bounds when there are no walls.
+      let eMinX = INF, eMinY = INF, eMaxX = -INF, eMaxY = -INF;
+      for (const s of outerSegs) {
+        eMinX = Math.min(eMinX, s.a.x, s.b.x); eMaxX = Math.max(eMaxX, s.a.x, s.b.x);
+        eMinY = Math.min(eMinY, s.a.y, s.b.y); eMaxY = Math.max(eMaxY, s.a.y, s.b.y);
+      }
+      if (eMinX === INF) { eMinX = minX; eMaxX = maxX; eMinY = minY; eMaxY = maxY; }
 
       const maxNorth = maxValue(northLevels);
       const maxSouth = maxValue(southLevels);
@@ -640,14 +653,32 @@ export function generateFloorPlanSvg(
 
       // Floor-extent offsets include floorExtentOffsetIncrement (float
       // from `* 1.5`), so downstream dim coords must render as float.
-      const oN = baseOffset + (maxNorth + 1) * offsetIncrement + floorExtentOffsetIncrement;
-      svg += svgDrawDimensionLine(minX, minY, maxX, minY, -oN, true, false, false, true);
-      const oS = baseOffset + (maxSouth + 1) * offsetIncrement + floorExtentOffsetIncrement;
-      svg += svgDrawDimensionLine(minX, maxY, maxX, maxY, oS, true, false, false, true);
-      const oW = baseOffset + (maxWest + 1) * offsetIncrement + floorExtentOffsetIncrement;
-      svg += svgDrawDimensionLine(minX, minY, minX, maxY, -oW, false, false, false, true);
-      const oE = baseOffset + (maxEast + 1) * offsetIncrement + floorExtentOffsetIncrement;
-      svg += svgDrawDimensionLine(maxX, minY, maxX, maxY, oE, false, false, false, true);
+      // Skip the overall extent on a side when a single wall run already spans it
+      // (a rectangular side), so we don't stack a duplicate of the same value; keep
+      // it where the side is broken into steps (L/T), where it gives the overall.
+      type E = { x1: number; y1: number; x2: number; y2: number };
+      const spansFull = (arr: E[], axis: "x" | "y", lo: number, hi: number) =>
+        arr.some((e) => {
+          const a = axis === "x" ? Math.min(e.x1, e.x2) : Math.min(e.y1, e.y2);
+          const b = axis === "x" ? Math.max(e.x1, e.x2) : Math.max(e.y1, e.y2);
+          return Math.abs(a - lo) < 1 && Math.abs(b - hi) < 1;
+        });
+      if (!spansFull(north, "x", eMinX, eMaxX)) {
+        const oN = baseOffset + (maxNorth + 1) * offsetIncrement + floorExtentOffsetIncrement;
+        svg += svgDrawDimensionLine(eMinX, eMinY, eMaxX, eMinY, -oN, true, false, false, true);
+      }
+      if (!spansFull(south, "x", eMinX, eMaxX)) {
+        const oS = baseOffset + (maxSouth + 1) * offsetIncrement + floorExtentOffsetIncrement;
+        svg += svgDrawDimensionLine(eMinX, eMaxY, eMaxX, eMaxY, oS, true, false, false, true);
+      }
+      if (!spansFull(west, "y", eMinY, eMaxY)) {
+        const oW = baseOffset + (maxWest + 1) * offsetIncrement + floorExtentOffsetIncrement;
+        svg += svgDrawDimensionLine(eMinX, eMinY, eMinX, eMaxY, -oW, false, false, false, true);
+      }
+      if (!spansFull(east, "y", eMinY, eMaxY)) {
+        const oE = baseOffset + (maxEast + 1) * offsetIncrement + floorExtentOffsetIncrement;
+        svg += svgDrawDimensionLine(eMaxX, eMinY, eMaxX, eMaxY, oE, false, false, false, true);
+      }
     }
 
     if (dim.show_inner_dimensions) {
