@@ -172,11 +172,12 @@ type FloorObj = { type: string;[k: string]: unknown };
 // walls, room footprints, and openings (door/window/gap) as axis-aligned cuts.
 // Shared by the 3D renderer and the estimator so they can never disagree.
 export function composedFloorInputs(objects: FloorObj[], defaultT: number, wallHeight: number): {
-  walls: WallInput[]; rooms: RoomRect[]; openings: ComposedOpening[];
+  walls: WallInput[]; rooms: RoomRect[]; openings: ComposedOpening[]; pillars: RoomRect[];
 } {
   const walls: WallInput[] = [];
   const rooms: RoomRect[] = [];
   const openings: ComposedOpening[] = [];
+  const pillars: RoomRect[] = [];
   for (const o of objects) {
     if (o.enabled === false) continue;
     if (o.type === "room") {
@@ -226,12 +227,33 @@ export function composedFloorInputs(objects: FloorObj[], defaultT: number, wallH
       } else {
         openings.push({ axis: "x", cx: ox + w / 2, cy: oy + t / 2, span: w, height: h, sill, thickness: t, kind, open });
       }
+    } else if (o.type === "pillar") {
+      // Pillars (structural columns) win over walls — their footprint is cut out
+      // of the wall poché so a wall butts into the column instead of passing
+      // through it. x,y is the top-left corner (like a room).
+      const px = o.x as number, py = o.y as number;
+      const size = o.size as number | undefined;
+      const pw = (o.width as number | undefined) ?? size ?? defaultT;
+      const pl = (o.length as number | undefined) ?? size ?? defaultT;
+      if (typeof px === "number" && typeof py === "number") pillars.push({ x: px, y: py, w: pw, l: pl });
     }
   }
-  return { walls, rooms, openings };
+  return { walls, rooms, openings, pillars };
 }
 
 const GAP_OVERCUT = 2; // extend a gap notch past both wall faces so it fully breaks the poché
+
+// Cut pillar footprints out of a wall poché — pillars (structural columns) win over
+// walls, so a wall butts into a column instead of running through it. The column is
+// drawn on top afterwards, filling the notch.
+export function subtractPillars(poly: Footprint, pillars: RoomRect[]): Footprint {
+  let out = poly;
+  for (const p of pillars) {
+    if (p.w <= 0 || p.l <= 0) continue;
+    out = footprintSubtract(out, ringsToFootprint([rectRing(p.x, p.y, p.w, p.l)]));
+  }
+  return out;
+}
 
 // Compose a floor's wall poché for 2D plan rendering: the union boundary with
 // `gap` openings notched out (a gap is an open passage — it breaks the poché so
@@ -240,7 +262,7 @@ const GAP_OVERCUT = 2; // extend a gap notch past both wall faces so it fully br
 // ready to stroke as SVG. Shared with the 3D/estimator composeWalls pipeline so
 // the plan poché and the model can never disagree on wall extent.
 export function composedPoche(objects: FloorObj[], defaultT: number): PocheShape[] {
-  const { walls, rooms, openings } = composedFloorInputs(objects, defaultT, 90);
+  const { walls, rooms, openings, pillars } = composedFloorInputs(objects, defaultT, 90);
   if (!walls.length) return [];
   const { poche } = composeWalls(walls, rooms);
   let poly = poche;
@@ -252,6 +274,7 @@ export function composedPoche(objects: FloorObj[], defaultT: number): PocheShape
     const rect = ringsToFootprint([rectRing(op.cx - w / 2, op.cy - h / 2, w, h)]);
     poly = footprintSubtract(poly, rect);
   }
+  poly = subtractPillars(poly, pillars); // pillars win over walls
   return pocheContours(poly);
 }
 

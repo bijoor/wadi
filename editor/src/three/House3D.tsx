@@ -210,6 +210,7 @@ export function House3D({ config }: { config: HouseConfig }) {
               walls={ci.walls}
               rooms={ci.rooms}
               openings={ci.openings}
+              pillars={ci.pillars}
               baseZ={wallBaseZ}
               wallHeight={band.wallHeight}
               plotWidth={plot.width}

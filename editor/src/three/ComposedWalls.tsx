@@ -11,7 +11,7 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { Brush, Evaluator, SUBTRACTION } from "three-bvh-csg";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { composeWalls, composedFloorInputs, pocheContours, type ComposedOpening, type BoundaryEdge } from "../model/composeWalls";
+import { composeWalls, composedFloorInputs, pocheContours, subtractPillars, type ComposedOpening, type BoundaryEdge } from "../model/composeWalls";
 import type { WallInput, RoomRect } from "../model/composeWalls";
 import { lateriteMaps, wallUvK } from "./procTextures";
 export { composedFloorInputs };
@@ -109,6 +109,7 @@ export function ComposedWalls(props: {
   walls: WallInput[];
   rooms: RoomRect[];
   openings: ComposedOpening[];
+  pillars: RoomRect[];
   baseZ: number;
   wallHeight: number;
   plotWidth: number;
@@ -116,17 +117,18 @@ export function ComposedWalls(props: {
   color?: string;
   units?: { system?: string; per_unit?: number };
 }) {
-  const { walls, rooms, openings, baseZ, wallHeight, plotWidth, plotLength, color = "#e8e5df", units } = props;
+  const { walls, rooms, openings, pillars, baseZ, wallHeight, plotWidth, plotLength, color = "#e8e5df", units } = props;
   const uvK = wallUvK(units);
   const geometry = useMemo(() => {
     const { groups } = composeWalls(walls, rooms);
     const edges = groups.flatMap((g) => g.edges); // per-face brick/paint verdicts
     // Extrude each height-group's sub-poché to ITS OWN height, so collinear
     // same-thickness walls of different height render as a step, not one block.
+    // Pillars are cut out of each group's poché (columns win over walls).
     const geos: THREE.BufferGeometry[] = [];
     for (const g of groups) {
       if (g.height <= 0) continue;
-      for (const s of pocheContours(g.poche)) {
+      for (const s of pocheContours(subtractPillars(g.poche, pillars))) {
         // Build the shape in (x, -y) so that, after ExtrudeGeometry (+Z) and
         // rotateX(-90°), the geometry lands in world coords (x=worldX, y=0..H,
         // z=worldY) — matching toThreePos's axis relabel.
@@ -162,7 +164,7 @@ export function ComposedWalls(props: {
     }
 
     return classifyGroups(result, edges, uvK);
-  }, [walls, rooms, openings, wallHeight, baseZ, uvK]);
+  }, [walls, rooms, openings, pillars, wallHeight, baseZ, uvK]);
 
   if (!geometry) return null;
   const laterite = lateriteMaps();

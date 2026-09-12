@@ -240,6 +240,15 @@ describe("composedPoche — 2D plan poché from the union boundary", () => {
     expect(pocheArea(withGap)).toBeLessThan(pocheArea(solid));
   });
 
+  it("a pillar is cut out of the poché (pillars win over walls)", () => {
+    const noPillar = composedPoche([{ type: "room", name: "R", x: 0, y: 0, width: 200, length: 160 }], T);
+    const withPillar = composedPoche([
+      { type: "room", name: "R", x: 0, y: 0, width: 200, length: 160 },
+      { type: "pillar", name: "P", x: 0, y: 0, width: 12, length: 12 }, // NW corner column
+    ], T);
+    expect(pocheArea(withPillar)).toBeLessThan(pocheArea(noPillar));
+  });
+
   it("a door does NOT notch the poché (doors are drawn as symbols on top)", () => {
     const solid = composedPoche([{ type: "room", name: "R", x: 0, y: 0, width: 200, length: 160 }], T);
     const withDoor = composedPoche([
