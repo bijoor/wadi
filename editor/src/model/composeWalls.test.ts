@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeWalls, composedPoche, type WallInput, type RoomRect, type PocheShape } from "./composeWalls";
+import { composeWalls, composedPoche, composedFloorInputs, type WallInput, type RoomRect, type PocheShape } from "./composeWalls";
 
 const T = 8;
 const H = 90;
@@ -76,6 +76,29 @@ describe("composeWalls — corner of two exterior walls (white-column fix)", () 
   it("bricks every face including the corner (no interior verdict at the join)", () => {
     expect(r.edges.length).toBeGreaterThan(0);
     expect(r.edges.every((e) => e.brick)).toBe(true);
+  });
+});
+
+describe("composedFloorInputs — per-wall height sourcing", () => {
+  it("reads room.wall_heights[side] (a parapet/verandah override), else room.height, else floor height", () => {
+    const objects = [{
+      type: "room", name: "Verandah", x: 0, y: 0, width: 200, length: 100,
+      height: 30, // room-level height
+      walls: ["north", "east", "west"],
+      wall_heights: { north: { height: 18 } }, // north override
+    }];
+    const { walls } = composedFloorInputs(objects, T, 90);
+    const byDir = (sx: number, sy: number, ex: number, ey: number) =>
+      walls.find((w) => w.sx === sx && w.sy === sy && w.ex === ex && w.ey === ey);
+    // north centreline at y = t/2 = 4, spanning x 0..200 → height 18 (override)
+    expect(byDir(0, 4, 200, 4)?.height).toBe(18);
+    // east/west inherit the room height 30 (no per-side override)
+    expect(walls.filter((w) => w.height === 30).length).toBe(2);
+    expect(walls.some((w) => w.height === 90)).toBe(false); // floor default unused here
+  });
+  it("a plain room (no height) uses the floor wall height", () => {
+    const { walls } = composedFloorInputs([{ type: "room", name: "R", x: 0, y: 0, width: 100, length: 100 }], T, 96);
+    expect(walls.every((w) => w.height === 96)).toBe(true);
   });
 });
 

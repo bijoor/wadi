@@ -200,16 +200,25 @@ export function composedFloorInputs(objects: FloorObj[], defaultT: number, wallH
       const rx = o.x as number, ry = o.y as number, rw = o.width as number, rl = o.length as number;
       const t = (o.wall_thickness as number | undefined) ?? defaultT;
       rooms.push({ x: rx, y: ry, w: rw, l: rl });
-      // Per-wall height (drives the 3D extrude split): a room-side wall config may
-      // set its own height, else the room's height, else the floor wall height.
+      // Per-wall height (drives the 3D extrude split): a room-side height override
+      // (room.wall_heights[side], a number or {height}) wins, else the room's own
+      // height, else the floor wall height. Mirrors House3D's roomWallHeight().
       const roomH = (o.height as number | undefined) ?? wallHeight;
+      const wh = (o.wall_heights as Record<string, unknown> | undefined) ?? {};
+      const sideHeight = (side: string): number => {
+        const entry = wh[side];
+        if (typeof entry === "number") return entry;
+        if (entry && typeof entry === "object") {
+          const hh = (entry as { height?: number }).height;
+          if (typeof hh === "number") return hh;
+        }
+        return roomH;
+      };
       const raw = o.walls as string[] | Record<string, unknown> | undefined;
       const sides = raw ? (Array.isArray(raw) ? raw : Object.keys(raw)) : ["north", "south", "east", "west"];
-      const dict = raw && !Array.isArray(raw) ? raw : undefined;
       for (const sRaw of sides) {
         const s = String(sRaw).toLowerCase();
-        const wc = dict?.[sRaw] as { height?: number } | undefined;
-        const h = (wc && typeof wc === "object" ? wc.height : undefined) ?? roomH;
+        const h = sideHeight(s);
         if (s === "north") walls.push({ sx: rx, sy: ry + t / 2, ex: rx + rw, ey: ry + t / 2, thickness: t, height: h });
         else if (s === "south") walls.push({ sx: rx, sy: ry + rl - t / 2, ex: rx + rw, ey: ry + rl - t / 2, thickness: t, height: h });
         else if (s === "west") walls.push({ sx: rx + t / 2, sy: ry, ex: rx + t / 2, ey: ry + rl, thickness: t, height: h });
