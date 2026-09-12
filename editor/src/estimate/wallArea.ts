@@ -468,13 +468,17 @@ export function composedWallAreas(config: HouseConfig): WallAreaReport {
       wallT, floorWallH,
     );
     if (walls.length) {
-      const { edges } = composeWalls(walls, rooms);
-      for (const e of edges) {
-        const len = Math.hypot(e.b.x - e.a.x, e.b.y - e.a.y);
-        const gross = len * floorWallH;
-        const op = edgeOpeningArea(e, openings, floorWallH);
-        if (e.brick) { add(external, gross, op); add(fExt, gross, op); }
-        else { add(internal, gross, op); add(fInt, gross, op); }
+      // Iterate per-height groups so each edge's area uses ITS wall height, not a
+      // single floor height (a 30-high verandah wall no longer counts as 90).
+      const { groups } = composeWalls(walls, rooms);
+      for (const g of groups) {
+        for (const e of g.edges) {
+          const len = Math.hypot(e.b.x - e.a.x, e.b.y - e.a.y);
+          const gross = len * g.height;
+          const op = edgeOpeningArea(e, openings, g.height);
+          if (e.brick) { add(external, gross, op); add(fExt, gross, op); }
+          else { add(internal, gross, op); add(fInt, gross, op); }
+        }
       }
     }
     perFloor.push({ floor: num(fl.floor_number, fi), name: String(fl.name ?? `Floor ${fi}`), external: fExt, internal: fInt });

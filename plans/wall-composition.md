@@ -1,6 +1,21 @@
 # Wadi wall composition — a whole-model wall network, classified per face
 
 Status: **P0-P2 done; P3 default-flip done (2026-09-12); P3 cleanup pending.**
+
+**Height-aware composition (2026-09-12):** `composeWalls` now carries a per-wall
+`height` (WallInput.height, sourced by `composedFloorInputs` from the room-side
+wall / room / floor height) and composes ONE sub-poché PER DISTINCT HEIGHT
+(`ComposedFloor.groups`). Collinear same-thickness walls of DIFFERENT height land
+in different groups, so the union never fuses them into one uniform block (the
+owner's decision-1 split, extended from thickness to height). The 3D extrudes each
+group to its own height; the estimator sums `length × group.height` per group. The
+full poché (all heights unioned) still drives the height-agnostic 2D plan, so
+parity stays byte-identical. Verified on atale: verandah walls (h=30, north 18)
+and the half-height bathroom partition (h=45) now render/estimate at their real
+heights (external 2,484 → 2,029 sq ft; internal 3,638 → 3,240). This fixes a
+regression the default-flip introduced (the composed path had extruded every wall
+to the floor height).
+
 Composition is now the DEFAULT wall path — `composeWallsFlag(config)` returns true
 unless a config sets `compose_walls:false` (the legacy per-room path is KEPT as an
 opt-out fallback) or the `window.__composeWalls` runtime toggle forces it off. The

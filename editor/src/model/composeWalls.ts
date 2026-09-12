@@ -20,6 +20,7 @@ import {
 export interface WallInput {
   sx: number; sy: number; ex: number; ey: number;
   thickness: number;
+  height: number;        // wall height (drives the 3D extrude + estimator area)
 }
 export interface RoomRect { x: number; y: number; w: number; l: number }
 
@@ -29,8 +30,17 @@ export interface BoundaryEdge {
   outward: Vec2;         // unit normal pointing OUT of the wall solid
   brick: boolean;        // exposed to weather (the point just outside is in no room)
   thickness: number;     // nearest wall thickness (drove the probe distance)
+  height: number;        // nearest wall height (uniform within a WallGroup)
 }
-export interface ComposedFloor { poche: Footprint; edges: BoundaryEdge[] }
+// Walls that share a height compose together into one sub-poché extruded to that
+// height. Collinear same-thickness walls with DIFFERENT heights land in different
+// groups, so the union never fuses them into one uniform-height block.
+export interface WallGroup { height: number; poche: Footprint; edges: BoundaryEdge[] }
+export interface ComposedFloor {
+  poche: Footprint;      // union of ALL walls, height-agnostic (drives the 2D plan)
+  edges: BoundaryEdge[]; // boundary edges of the full poché
+  groups: WallGroup[];   // per-height sub-pochés (drive the 3D extrude + estimator)
+}
 
 const SNAP = 1e-2;   // centreline snap tolerance (Q3)
 // Grow each rectangle so ABUTTING walls (a shared boundary with zero overlap —
@@ -51,27 +61,21 @@ function pointSegDist(p: Vec2, a: Vec2, b: Vec2): number {
   return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
 }
 
-// Buffer each wall centreline to a thickness rectangle and union them into the
-// floor poché; classify every boundary edge by exposure. Axis-agnostic (obbRing
-// handles any yaw). See Q1-Q3 in plans/wall-composition.md.
-export function composeWalls(walls: WallInput[], rooms: RoomRect[]): ComposedFloor {
+// Union one set of walls into a poché and classify its boundary edges by exposure.
+// `probeWalls` supplies the nearest-wall thickness/height (the whole floor for the
+// full poché, or just the group's walls for a per-height sub-poché). Axis-agnostic
+// (obbRing handles any yaw). See Q1-Q3 in plans/wall-composition.md.
+function composeGroup(walls: WallInput[], roomUnion: Footprint, probeWalls: WallInput[]): { poche: Footprint; edges: BoundaryEdge[] } {
   const rects: Footprint[] = [];
-  const clean: WallInput[] = [];
   for (const w of walls) {
-    const sx = snap(w.sx), sy = snap(w.sy), ex = snap(w.ex), ey = snap(w.ey);
-    const dx = ex - sx, dy = ey - sy;
+    const dx = w.ex - w.sx, dy = w.ey - w.sy;
     const len = Math.hypot(dx, dy);
     if (len < 1e-6 || w.thickness <= 0) continue;
-    clean.push({ sx, sy, ex, ey, thickness: w.thickness });
-    const cx = (sx + ex) / 2, cy = (sy + ey) / 2;
+    const cx = (w.sx + w.ex) / 2, cy = (w.sy + w.ey) / 2;
     const rotDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
     rects.push(ringsToFootprint([obbRing(cx, cy, len + GROW, w.thickness + GROW, rotDeg)]));
   }
   const poche = rects.length ? footprintUnion(rects) : new Polygon();
-  const roomUnion = rooms.length
-    ? footprintUnion(rooms.map((r) => ringsToFootprint([rectRing(r.x, r.y, r.w, r.l)])))
-    : new Polygon();
-
   const edges: BoundaryEdge[] = [];
   for (const e of poche.edges) {
     const a: Vec2 = { x: e.start.x, y: e.start.y };
@@ -84,18 +88,53 @@ export function composeWalls(walls: WallInput[], rooms: RoomRect[]): ComposedFlo
     // outward = the perp direction whose tiny step leaves the poché solid
     const inPlus = poche.contains(new Point(mid.x + perp.x * OUT_EPS, mid.y + perp.y * OUT_EPS));
     const outward: Vec2 = inPlus ? { x: -perp.x, y: -perp.y } : perp;
-    // nearest wall thickness → probe distance (Q2). We probe from the boundary
-    // edge (already at the outer face), so a few units clears it.
-    let bestD = Infinity, t = clean[0]?.thickness ?? 8;
-    for (const w of clean) {
+    // nearest wall thickness/height → probe distance (Q2). We probe from the
+    // boundary edge (already at the outer face), so a few units clears it.
+    let bestD = Infinity, t = probeWalls[0]?.thickness ?? 8, h = probeWalls[0]?.height ?? 90;
+    for (const w of probeWalls) {
       const d = pointSegDist(mid, { x: w.sx, y: w.sy }, { x: w.ex, y: w.ey });
-      if (d < bestD) { bestD = d; t = w.thickness; }
+      if (d < bestD) { bestD = d; t = w.thickness; h = w.height; }
     }
     const probe = Math.max(3, t * 0.25);
     const brick = !roomUnion.contains(new Point(mid.x + outward.x * probe, mid.y + outward.y * probe));
-    edges.push({ a, b, outward, brick, thickness: t });
+    edges.push({ a, b, outward, brick, thickness: t, height: h });
   }
   return { poche, edges };
+}
+
+// Buffer every wall centreline to a thickness rectangle and union them into the
+// floor poché, then ALSO compose one sub-poché per distinct wall height so the 3D
+// extrude and the estimator honour per-wall height (collinear same-thickness walls
+// of different height stay separate — the split the owner asked for). The full
+// poché (all heights unioned) drives the height-agnostic 2D plan. See
+// plans/wall-composition.md.
+export function composeWalls(walls: WallInput[], rooms: RoomRect[]): ComposedFloor {
+  const clean: WallInput[] = [];
+  for (const w of walls) {
+    const sx = snap(w.sx), sy = snap(w.sy), ex = snap(w.ex), ey = snap(w.ey);
+    if (Math.hypot(ex - sx, ey - sy) < 1e-6 || w.thickness <= 0) continue;
+    clean.push({ sx, sy, ex, ey, thickness: w.thickness, height: w.height });
+  }
+  const roomUnion = rooms.length
+    ? footprintUnion(rooms.map((r) => ringsToFootprint([rectRing(r.x, r.y, r.w, r.l)])))
+    : new Polygon();
+
+  const full = composeGroup(clean, roomUnion, clean);
+
+  // Partition by snapped height; each height composes its own sub-poché.
+  const byHeight = new Map<number, WallInput[]>();
+  for (const w of clean) {
+    const key = snap(w.height);
+    const g = byHeight.get(key);
+    if (g) g.push(w); else byHeight.set(key, [w]);
+  }
+  const groups: WallGroup[] = [];
+  for (const [height, ws] of byHeight) {
+    const { poche, edges } = composeGroup(ws, roomUnion, ws);
+    groups.push({ height, poche, edges });
+  }
+
+  return { poche: full.poche, edges: full.edges, groups };
 }
 
 // Signed area of a ring (plan coords). >0 and <0 distinguish outer vs hole.
@@ -161,18 +200,25 @@ export function composedFloorInputs(objects: FloorObj[], defaultT: number, wallH
       const rx = o.x as number, ry = o.y as number, rw = o.width as number, rl = o.length as number;
       const t = (o.wall_thickness as number | undefined) ?? defaultT;
       rooms.push({ x: rx, y: ry, w: rw, l: rl });
+      // Per-wall height (drives the 3D extrude split): a room-side wall config may
+      // set its own height, else the room's height, else the floor wall height.
+      const roomH = (o.height as number | undefined) ?? wallHeight;
       const raw = o.walls as string[] | Record<string, unknown> | undefined;
       const sides = raw ? (Array.isArray(raw) ? raw : Object.keys(raw)) : ["north", "south", "east", "west"];
+      const dict = raw && !Array.isArray(raw) ? raw : undefined;
       for (const sRaw of sides) {
         const s = String(sRaw).toLowerCase();
-        if (s === "north") walls.push({ sx: rx, sy: ry + t / 2, ex: rx + rw, ey: ry + t / 2, thickness: t });
-        else if (s === "south") walls.push({ sx: rx, sy: ry + rl - t / 2, ex: rx + rw, ey: ry + rl - t / 2, thickness: t });
-        else if (s === "west") walls.push({ sx: rx + t / 2, sy: ry, ex: rx + t / 2, ey: ry + rl, thickness: t });
-        else if (s === "east") walls.push({ sx: rx + rw - t / 2, sy: ry, ex: rx + rw - t / 2, ey: ry + rl, thickness: t });
+        const wc = dict?.[sRaw] as { height?: number } | undefined;
+        const h = (wc && typeof wc === "object" ? wc.height : undefined) ?? roomH;
+        if (s === "north") walls.push({ sx: rx, sy: ry + t / 2, ex: rx + rw, ey: ry + t / 2, thickness: t, height: h });
+        else if (s === "south") walls.push({ sx: rx, sy: ry + rl - t / 2, ex: rx + rw, ey: ry + rl - t / 2, thickness: t, height: h });
+        else if (s === "west") walls.push({ sx: rx + t / 2, sy: ry, ex: rx + t / 2, ey: ry + rl, thickness: t, height: h });
+        else if (s === "east") walls.push({ sx: rx + rw - t / 2, sy: ry, ex: rx + rw - t / 2, ey: ry + rl, thickness: t, height: h });
       }
     } else if (o.type === "wall") {
       const t = (o.thickness as number | undefined) ?? defaultT;
-      walls.push({ sx: o.start_x as number, sy: o.start_y as number, ex: o.end_x as number, ey: o.end_y as number, thickness: t });
+      const h = (o.height as number | undefined) ?? wallHeight;
+      walls.push({ sx: o.start_x as number, sy: o.start_y as number, ex: o.end_x as number, ey: o.end_y as number, thickness: t, height: h });
     } else if (o.type === "door" || o.type === "window" || o.type === "gap") {
       const dir = String((o.direction as string | undefined) ?? "").toLowerCase();
       const t = defaultT;

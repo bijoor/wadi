@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import { composeWalls, composedPoche, type WallInput, type RoomRect, type PocheShape } from "./composeWalls";
 
 const T = 8;
+const H = 90;
 // The four edges of a room rectangle as wall centrelines (center convention).
-function ring(x: number, y: number, w: number, l: number, t = T): WallInput[] {
+function ring(x: number, y: number, w: number, l: number, t = T, h = H): WallInput[] {
   return [
-    { sx: x, sy: y, ex: x + w, ey: y, thickness: t },         // N
-    { sx: x, sy: y + l, ex: x + w, ey: y + l, thickness: t }, // S
-    { sx: x, sy: y, ex: x, ey: y + l, thickness: t },         // W
-    { sx: x + w, sy: y, ex: x + w, ey: y + l, thickness: t }, // E
+    { sx: x, sy: y, ex: x + w, ey: y, thickness: t, height: h },         // N
+    { sx: x, sy: y + l, ex: x + w, ey: y + l, thickness: t, height: h }, // S
+    { sx: x, sy: y, ex: x, ey: y + l, thickness: t, height: h },         // W
+    { sx: x + w, sy: y, ex: x + w, ey: y + l, thickness: t, height: h }, // E
   ];
 }
 const len = (e: { a: { x: number; y: number }; b: { x: number; y: number } }) =>
@@ -78,9 +79,42 @@ describe("composeWalls — corner of two exterior walls (white-column fix)", () 
   });
 });
 
+describe("composeWalls — collinear same-thickness walls split by height", () => {
+  // Two end-to-end collinear runs on y=0, same thickness, heights 90 and 30.
+  const walls: WallInput[] = [
+    { sx: 0, sy: 0, ex: 100, ey: 0, thickness: T, height: 90 },
+    { sx: 100, sy: 0, ex: 200, ey: 0, thickness: T, height: 30 },
+  ];
+  const r = composeWalls(walls, []);
+
+  it("produces one group per distinct height (not one merged block)", () => {
+    expect(r.groups.length).toBe(2);
+    expect(r.groups.map((g) => g.height).sort((a, b) => a - b)).toEqual([30, 90]);
+  });
+  it("each group's edges carry that group's height", () => {
+    for (const g of r.groups) {
+      expect(g.edges.every((e) => e.height === g.height)).toBe(true);
+      expect(g.poche.area()).toBeGreaterThan(0);
+    }
+  });
+  it("the full poché still merges both runs (height-agnostic, for the 2D plan)", () => {
+    // one continuous run 0..200, so its bbox spans the full length
+    const box = r.poche.box;
+    expect(box.xmax - box.xmin).toBeGreaterThan(199);
+  });
+  it("same-height collinear walls stay a single group", () => {
+    const same = composeWalls([
+      { sx: 0, sy: 0, ex: 100, ey: 0, thickness: T, height: 90 },
+      { sx: 100, sy: 0, ex: 200, ey: 0, thickness: T, height: 90 },
+    ], []);
+    expect(same.groups.length).toBe(1);
+    expect(same.groups[0].height).toBe(90);
+  });
+});
+
 describe("composeWalls — diagonal wall composes the same way (angle-agnostic)", () => {
   it("produces a poché and classifies its edges", () => {
-    const r = composeWalls([{ sx: 0, sy: 0, ex: 100, ey: 100, thickness: T }], []);
+    const r = composeWalls([{ sx: 0, sy: 0, ex: 100, ey: 100, thickness: T, height: H }], []);
     expect(r.poche.area()).toBeGreaterThan(0);
     expect(r.edges.every((e) => e.brick)).toBe(true); // no rooms → all exposed
   });

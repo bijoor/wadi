@@ -72,18 +72,22 @@ export function ComposedWalls(props: {
 }) {
   const { walls, rooms, openings, baseZ, wallHeight, plotWidth, plotLength, color = "#e8e5df" } = props;
   const geometry = useMemo(() => {
-    const { poche } = composeWalls(walls, rooms);
-    const shapes = pocheContours(poche);
-    if (!shapes.length || wallHeight <= 0) return null;
+    const { groups } = composeWalls(walls, rooms);
+    // Extrude each height-group's sub-poché to ITS OWN height, so collinear
+    // same-thickness walls of different height render as a step, not one block.
     const geos: THREE.BufferGeometry[] = [];
-    for (const s of shapes) {
-      // Build the shape in (x, -y) so that, after ExtrudeGeometry (+Z) and
-      // rotateX(-90°), the geometry lands in world coords (x=worldX, y=0..H,
-      // z=worldY) — matching toThreePos's axis relabel.
-      const shape = new THREE.Shape(s.outer.map((p) => new THREE.Vector2(p.x, -p.y)));
-      for (const h of s.holes) shape.holes.push(new THREE.Path(h.map((p) => new THREE.Vector2(p.x, -p.y))));
-      geos.push(new THREE.ExtrudeGeometry(shape, { depth: wallHeight, bevelEnabled: false, steps: 1 }));
+    for (const g of groups) {
+      if (g.height <= 0) continue;
+      for (const s of pocheContours(g.poche)) {
+        // Build the shape in (x, -y) so that, after ExtrudeGeometry (+Z) and
+        // rotateX(-90°), the geometry lands in world coords (x=worldX, y=0..H,
+        // z=worldY) — matching toThreePos's axis relabel.
+        const shape = new THREE.Shape(s.outer.map((p) => new THREE.Vector2(p.x, -p.y)));
+        for (const h of s.holes) shape.holes.push(new THREE.Path(h.map((p) => new THREE.Vector2(p.x, -p.y))));
+        geos.push(new THREE.ExtrudeGeometry(shape, { depth: g.height, bevelEnabled: false, steps: 1 }));
+      }
     }
+    if (!geos.length) return null;
     let solid = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
     if (!solid) return null;
     solid.rotateX(-Math.PI / 2);
