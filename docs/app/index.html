@@ -874,11 +874,13 @@
         body[data-filters="open"] #filters-toggle { left: 288px; }
         body[data-filters="open"] #filters-toggle .lt-arw { transform: rotate(180deg); }
         /* Desktop only: when BOTH left docks are open (configurator + filters, side
-           by side at 288px each), both tabs ride the OUTER dock's right edge (576px)
-           so they don't sit on top of the filters-panel content. On mobile the docks
+           by side at 288px each), each collapse tab rides ITS OWN dock's right edge —
+           CONFIG at the shared divider (288px), FILTERS at the outer edge (576px). The
+           CONFIG tab is centred on the divider so its 24px width sits in the two
+           docks' padding gutter, clear of either panel's content. On mobile the docks
            overlay at the screen edge instead (handled by the media block below). */
         @media (min-width: 901px) {
-            body[data-left="open"][data-config="on"][data-dim2d="on"][data-filters="open"] #left-toggle,
+            body[data-left="open"][data-config="on"][data-dim2d="on"][data-filters="open"] #left-toggle { left: 276px; }
             body[data-left="open"][data-config="on"][data-dim2d="on"][data-filters="open"] #filters-toggle { left: 576px; }
         }
         @media (max-width: 900px) {
