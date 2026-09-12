@@ -1,6 +1,14 @@
 # Wadi wall composition — a whole-model wall network, classified per face
 
-Status: **open questions resolved (2026-09-12); P0 in progress.** Supersedes
+Status: **P0 done behind a flag (2026-09-12); P1 next.** `composeWalls` geometry
+core + pocheContours (`editor/src/model/composeWalls.ts`, tested) and the 3D
+render (`editor/src/three/ComposedWalls.tsx`, wired into House3D behind
+`config.compose_walls` / `window.__composeWalls`) render one composed wall solid
+per floor: extrude poché → CSG openings → per-face brick/paint by exposure probe.
+Verified on atale: exterior laterite, interior paint, openings cut, no white
+column. Flag off is parity 6/6. Remaining P0 polish: draw door/window leaves +
+panes in composed mode (voids are cut, but leaves are skipped with the per-room
+path). Supersedes
 the per-room wall stamping in `editor/src/three/House3D.tsx` + the per-wall
 external/internal verdict in `editor/src/estimate/wallArea.ts`. Builds on the
 centreline model in [grid-convention.md](grid-convention.md) and the `center`
