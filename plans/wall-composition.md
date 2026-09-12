@@ -1,6 +1,26 @@
 # Wadi wall composition — a whole-model wall network, classified per face
 
-Status: **P0 + P1 + P2 done behind a flag (2026-09-12); P3 next.** `composeWalls`
+Status: **P0-P2 done; P3 default-flip done (2026-09-12); P3 cleanup pending.**
+Composition is now the DEFAULT wall path — `composeWallsFlag(config)` returns true
+unless a config sets `compose_walls:false` (the legacy per-room path is KEPT as an
+opt-out fallback) or the `window.__composeWalls` runtime toggle forces it off. The
+3D renderer (House3D), the 2D floor plan (generateFloorPlanSvg via
+generateCombined/AllFloorPlans) and the estimator (viewer Quantities) all route
+through the shared flag, so one switch drives every surface. The parity golden was
+regenerated as the single intentional change: only the `plans` hash moved on all 6
+configs (expand/elevations/roof byte-identical), i.e. the change is scoped exactly
+to the 2D wall poché. Verified composed renders correctly by default on atale,
+family_home, coastal_konkan, house_config, and the cottage/library configs (no
+crash, non-empty poché, continuous walls, no white column).
+
+**Still pending (deferred by choice — flip first, delete once proven on real
+houses):** delete the retired code paths listed in "What this retires" (the
+per-room ring stamping in House3D, the whole-wall verdict in wallArea, the planner
+ownership in wallsFromGraph, the interim end-cap patch), and the grid-line /
+tartan-thickness consumption (depends on [grid-convention.md](grid-convention.md)).
+Until then the fallback stays live behind `compose_walls:false`.
+
+`composeWalls`
 geometry core + pocheContours (`editor/src/model/composeWalls.ts`, tested) and the
 3D render (`editor/src/three/ComposedWalls.tsx`, wired into House3D behind
 `config.compose_walls` / `window.__composeWalls`) render one composed wall solid
@@ -267,5 +287,7 @@ will be clean.)
   the 6 parity configs (numbers, not bytes).
 - **P2** — Move 2D (floor plan + elevation) onto sections; regenerate the parity
   golden as one intentional geometry change.
-- **P3** — Delete the per-room ring path, the ownership bookkeeping, and the
-  interim per-face patch. Consume grid lines + tartan thickness directly.
+- **P3** — Flip composition on by default (done — reversible via
+  `compose_walls:false`), regenerate the golden as one intentional change (done).
+  THEN (pending): delete the per-room ring path, the ownership bookkeeping, and the
+  interim per-face patch; consume grid lines + tartan thickness directly.

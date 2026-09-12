@@ -48,6 +48,7 @@ import { computeMergedV2Spec } from "../svg2d/roof/v2/computeFromHouse";
 import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
 import { computeWallAreas, composedWallAreas } from "../estimate/wallArea";
+import { composeWallsFlag } from "../model/composeWalls";
 import { wallAreaHtml } from "../estimate/wallAreaHtml";
 import { setDimensionUnits } from "../svg2d/format";
 import { setTextScale, computeTextScale, houseSpanUnits, setActiveDimFlags } from "../svg2d/config";
@@ -850,10 +851,7 @@ function rebuildSvgMap(): void {
   safe("wall area", () => {
     // Composed per-face estimator when wall composition is on (matches the
     // composed 3D render); the per-room estimator otherwise.
-    const composeOn =
-      (cfg as { compose_walls?: boolean }).compose_walls === true ||
-      (typeof window !== "undefined" && (window as { __composeWalls?: boolean }).__composeWalls === true);
-    const report = composeOn ? composedWallAreas(cfg) : computeWallAreas(cfg);
+    const report = composeWallsFlag(cfg) ? composedWallAreas(cfg) : computeWallAreas(cfg);
     svgMap.set("2d/quantities/wall_area.html", wallAreaHtml(report));
     window.quantitiesManifest = [
       { filename: "2d/quantities/wall_area.html", displayName: "Wall areas" },

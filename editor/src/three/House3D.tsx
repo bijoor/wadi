@@ -32,6 +32,7 @@ import { StaircaseMesh } from "./staircase";
 import { getNode } from "../registry/registry";
 import { WallWithOpenings, type WallOpening } from "./wallCSG";
 import { ComposedWalls, composedFloorInputs } from "./ComposedWalls";
+import { composeWallsFlag as composeWallsFlagFn } from "../model/composeWalls";
 import { OpeningPane } from "./openings";
 import { defaultLayerFor, effectiveLayers, useLayerStore } from "./layers";
 import { setExpansionWarnings, setRoofWarnings } from "./geometryWarnings";
@@ -114,12 +115,10 @@ export function House3D({ config }: { config: HouseConfig }) {
       roomRects: buildRoomRects(hc as unknown as Parameters<typeof buildRoomRects>[0]),
     };
     const plot = readPlotBounds(hc);
-    // P0 wall composition (plans/wall-composition.md): render ONE composed wall
-    // solid per floor instead of per-room boxes. Opt-in via config.compose_walls
-    // or window.__composeWalls; the per-room path is the fallback.
-    const composeWallsFlag =
-      (config as { compose_walls?: boolean }).compose_walls === true ||
-      (typeof window !== "undefined" && (window as { __composeWalls?: boolean }).__composeWalls === true);
+    // Wall composition (plans/wall-composition.md): render ONE composed wall solid
+    // per floor instead of per-room boxes. On by default (P3); a config opts out
+    // with compose_walls:false and the per-room path below is the fallback.
+    const composeWallsFlag = composeWallsFlagFn(config);
     // The plinth is now the first floor (number 0); its `height` seeds the
     // stack from ground(0). computeFloorZBands no longer takes a plinth height.
     const bands = computeFloorZBands(
