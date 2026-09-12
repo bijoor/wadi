@@ -31,6 +31,7 @@ import { V2RoofFrame, V2RoofGableWalls, V2RoofSolid, V2RoofSurface } from "./V2R
 import { StaircaseMesh } from "./staircase";
 import { getNode } from "../registry/registry";
 import { WallWithOpenings, type WallOpening } from "./wallCSG";
+import { ComposedWalls, composedFloorInputs } from "./ComposedWalls";
 import { OpeningPane } from "./openings";
 import { defaultLayerFor, effectiveLayers, useLayerStore } from "./layers";
 import { setExpansionWarnings, setRoofWarnings } from "./geometryWarnings";
@@ -113,6 +114,12 @@ export function House3D({ config }: { config: HouseConfig }) {
       roomRects: buildRoomRects(hc as unknown as Parameters<typeof buildRoomRects>[0]),
     };
     const plot = readPlotBounds(hc);
+    // P0 wall composition (plans/wall-composition.md): render ONE composed wall
+    // solid per floor instead of per-room boxes. Opt-in via config.compose_walls
+    // or window.__composeWalls; the per-room path is the fallback.
+    const composeWallsFlag =
+      (config as { compose_walls?: boolean }).compose_walls === true ||
+      (typeof window !== "undefined" && (window as { __composeWalls?: boolean }).__composeWalls === true);
     // The plinth is now the first floor (number 0); its `height` seeds the
     // stack from ground(0). computeFloorZBands no longer takes a plinth height.
     const bands = computeFloorZBands(
@@ -206,6 +213,27 @@ export function House3D({ config }: { config: HouseConfig }) {
       const pillars = allPillars
         .filter((p) => Math.min(p.z1, floorHi) - Math.max(p.z0, floorLo) > 1e-6)
         .map((p) => p.rect);
+
+      // Composed wall solid for this floor (opt-in). Replaces the per-room wall
+      // boxes emitted in the object loop below (which are gated off when on).
+      if (composeWallsFlag) {
+        const ci = composedFloorInputs(objects, globals.wallThickness, band.wallHeight);
+        if (ci.walls.length) {
+          push(
+            roomLayer,
+            <ComposedWalls
+              key={`f${fi}-composed`}
+              walls={ci.walls}
+              rooms={ci.rooms}
+              openings={ci.openings}
+              baseZ={band.slabZ + band.slabThickness}
+              wallHeight={band.wallHeight}
+              plotWidth={plot.width}
+              plotLength={plot.length}
+            />,
+          );
+        }
+      }
 
       for (let oi = 0; oi < objects.length; oi++) {
         const obj = objects[oi];
@@ -365,9 +393,9 @@ export function House3D({ config }: { config: HouseConfig }) {
             />,
           );
         } else if (obj.type === "room") {
-          emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, openingsLayer, pillars, fi);
+          if (!composeWallsFlag) emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, openingsLayer, pillars, fi);
         } else if (obj.type === "wall") {
-          emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, openingsLayer, pillars, fi);
+          if (!composeWallsFlag) emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, openingsLayer, pillars, fi);
         } else if (obj.type === "staircase") {
           // Supports the "new" schema (start_x/start_y + step_* +
           // compass direction). Legacy format (x/y/width/length) can be

@@ -92,3 +92,48 @@ export function composeWalls(walls: WallInput[], rooms: RoomRect[]): ComposedFlo
   }
   return { poche, edges };
 }
+
+// Signed area of a ring (plan coords). >0 and <0 distinguish outer vs hole.
+function signedArea(pts: Vec2[]): number {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return a / 2;
+}
+
+// Standard even-odd point-in-polygon.
+function pointInRing(px: number, py: number, ring: Vec2[]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i].x, yi = ring[i].y, xj = ring[j].x, yj = ring[j].y;
+    if (((yi > py) !== (yj > py)) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+export interface PocheShape { outer: Vec2[]; holes: Vec2[][] }
+
+// Extract the poché as a set of {outer, holes} rings for extrusion. Outer
+// contours have positive signed area, holes negative (flatten's convention for
+// a union result); each hole is assigned to the outer that contains it.
+export function pocheContours(poche: Footprint): PocheShape[] {
+  const outers: Vec2[][] = [];
+  const holes: Vec2[][] = [];
+  for (const face of poche.faces) {
+    const pts: Vec2[] = [];
+    let e = face.first, guard = 0;
+    if (!e) continue;
+    do { pts.push({ x: e.start.x, y: e.start.y }); e = e.next; guard++; } while (e && e !== face.first && guard < 100000);
+    if (pts.length < 3) continue;
+    (signedArea(pts) >= 0 ? outers : holes).push(pts);
+  }
+  const shapes: PocheShape[] = outers.map((outer) => ({ outer, holes: [] }));
+  for (const h of holes) {
+    const c = h[0];
+    const owner = shapes.find((s) => pointInRing(c.x, c.y, s.outer));
+    (owner ?? shapes[0])?.holes.push(h);
+  }
+  return shapes;
+}
