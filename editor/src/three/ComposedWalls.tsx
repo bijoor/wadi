@@ -11,18 +11,29 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { Brush, Evaluator, SUBTRACTION } from "three-bvh-csg";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { Point } from "@flatten-js/core";
-import { composeWalls, composedFloorInputs, pocheContours, type ComposedOpening } from "../model/composeWalls";
+import { composeWalls, composedFloorInputs, pocheContours, type ComposedOpening, type BoundaryEdge } from "../model/composeWalls";
 import type { WallInput, RoomRect } from "../model/composeWalls";
-import { rectRing, ringsToFootprint, footprintUnion, type Footprint } from "../model/geom";
 import { lateriteMaps } from "./procTextures";
 export { composedFloorInputs };
 export type { ComposedOpening };
 
-const OVERCUT = 2;    // extend the cut past the wall faces so it fully punches through
-const FACE_PROBE = 4; // units outward from a boundary face to test exposure
+const OVERCUT = 2; // extend the cut past the wall faces so it fully punches through
 
-function classifyGroups(geo: THREE.BufferGeometry, rooms: Footprint): THREE.BufferGeometry {
+// Distance from plan point p to segment a-b.
+function segDist(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const abx = bx - ax, aby = by - ay;
+  const l2 = abx * abx + aby * aby;
+  let t = l2 > 0 ? ((px - ax) * abx + (py - ay) * aby) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * abx), py - (ay + t * aby));
+}
+
+// Split the wall solid into brick (exterior/laterite) and paint (interior) faces.
+// A vertical face inherits the verdict of the NEAREST boundary edge whose outward
+// normal it shares — so every triangle on one wall face agrees (no per-triangle
+// zig-zag), matching the 2D plan and the estimator, which read the same edges.
+// Top caps are brick (ring-beam datum), soffits interior.
+function classifyGroups(geo: THREE.BufferGeometry, edges: BoundaryEdge[]): THREE.BufferGeometry {
   const g = geo.index ? geo.toNonIndexed() : geo;
   const pos = g.getAttribute("position");
   const triCount = pos.count / 3;
@@ -39,8 +50,15 @@ function classifyGroups(geo: THREE.BufferGeometry, rooms: Footprint): THREE.Buff
       brick = n.y > 0; // top cap brick (ring-beam datum), soffit interior
     } else {
       const cx = (a.x + b.x + c.x) / 3, cz = (a.z + b.z + c.z) / 3;
-      const px = cx + n.x * FACE_PROBE, pz = cz + n.z * FACE_PROBE;
-      brick = !rooms.contains(new Point(px, pz)); // exposed → brick
+      // Nearest boundary edge that faces the same way as this face.
+      let best = Infinity, bestAligned = Infinity, brickAligned = true, brickNear = true;
+      for (const e of edges) {
+        const d = segDist(cx, cz, e.a.x, e.a.y, e.b.x, e.b.y);
+        if (d < best) { best = d; brickNear = e.brick; }
+        const dot = n.x * e.outward.x + n.z * e.outward.y;
+        if (dot > 0.3 && d < bestAligned) { bestAligned = d; brickAligned = e.brick; }
+      }
+      brick = bestAligned < Infinity ? brickAligned : brickNear;
     }
     (brick ? brickTris : paintTris).push(i);
   }
@@ -73,6 +91,7 @@ export function ComposedWalls(props: {
   const { walls, rooms, openings, baseZ, wallHeight, plotWidth, plotLength, color = "#e8e5df" } = props;
   const geometry = useMemo(() => {
     const { groups } = composeWalls(walls, rooms);
+    const edges = groups.flatMap((g) => g.edges); // per-face brick/paint verdicts
     // Extrude each height-group's sub-poché to ITS OWN height, so collinear
     // same-thickness walls of different height render as a step, not one block.
     const geos: THREE.BufferGeometry[] = [];
@@ -113,10 +132,7 @@ export function ComposedWalls(props: {
       result = brush.geometry;
     }
 
-    const rooms2d = rooms.length
-      ? footprintUnion(rooms.map((r) => ringsToFootprint([rectRing(r.x, r.y, r.w, r.l)])))
-      : ringsToFootprint([rectRing(0, 0, 0, 0)]);
-    return classifyGroups(result, rooms2d);
+    return classifyGroups(result, edges);
   }, [walls, rooms, openings, wallHeight, baseZ]);
 
   if (!geometry) return null;
