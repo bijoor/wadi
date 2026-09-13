@@ -934,6 +934,12 @@ export function generateElevationView(
 
       for (const opening of obj.openings ?? []) {
         const openingType = opening.type as string;
+        // A door marked `open` is legacy authoring for what is now the `gap`
+        // primitive: there is no leaf and no frame, so it does not render in the
+        // elevation at all (matching the 3D, which emits no panel). Skip it
+        // entirely — no rect, no opening dimension. Use a real `gap` for an
+        // intentional open passage, which does render as a light void.
+        if (openingType === "door" && opening.open) continue;
         const openingWidth = opening.width as number;
         const openingHeight = opening.height as number;
         const coordKey = obj.coord_key as string;
@@ -954,14 +960,8 @@ export function generateElevationView(
         const openingSvgTopY = zToY(openingZBottom + openingHeight);
         const openingSvgHeight = openingSvgBottomY - openingSvgTopY;
         // door → leaf brown, window → glass blue, gap → open (light void).
-        // A door marked `open` has no leaf in the plane (it is swung aside), so
-        // draw it as an open void like a gap — matching the 3D, which renders no
-        // panel for an open door (House3D: op.kind === "gap" || op.open).
-        const isOpenDoor = openingType === "door" && !!opening.open;
         const fillColor =
-          openingType === "window" ? "#87CEEB"
-          : (openingType === "gap" || isOpenDoor) ? "#f5f5f5"
-          : "#D2691E";
+          openingType === "window" ? "#87CEEB" : openingType === "gap" ? "#f5f5f5" : "#D2691E";
         svg += `<rect x="${f(openingX)}" y="${fFloat(openingSvgTopY)}" width="${f(openingWidth)}" height="${fFloat(openingSvgHeight)}" fill="${fillColor}" stroke="#000" stroke-width="0.5"/>\n`;
 
         // Collect every viewer-facing window for sill dimensioning, not

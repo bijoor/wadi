@@ -14,13 +14,13 @@
   "single_story_cottage": {
     "expand": "3b08ea8487d0b7bb",
     "plans": "606ef7ea3c24b23c",
-    "elevations": "589ade4324bbcd72",
+    "elevations": "8066939a6fe6f4ec",
     "roof": "ef00a26cd00690ca"
   },
   "lib/coastal_konkan": {
     "expand": "200672a1029a0041",
     "plans": "b566900cc5b3f8f4",
-    "elevations": "e8d1153f7532dbce",
+    "elevations": "c2715c33613e46c8",
     "roof": "92b9f572d4e7bc06"
   },
   "lib/family_home": {
@@ -32,7 +32,7 @@
   "lib/single_story_cottage": {
     "expand": "c75cdc594958022f",
     "plans": "d56af77321023d9b",
-    "elevations": "afeeba84546b8a56",
+    "elevations": "0de45fc20686252b",
     "roof": "3d63b734d578ccd1"
   }
 }
