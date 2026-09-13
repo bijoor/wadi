@@ -1278,9 +1278,23 @@ function wireLayoutApi(): void {
       floors.push({ num, name: fname });
       ((f.objects as Array<Record<string, unknown>>) ?? []).forEach((o, oi) => {
         const t = o.type as string;
-        if (t === "door" || t === "window") {
+        if (t === "door" || t === "window" || t === "gap") {
           hasOpening = true;
           return; // openings draw with their wall — not standalone rows
+        }
+        // Openings are usually authored NESTED in a room's / wall's openings
+        // list, not as top-level objects — detect those too, or the "Doors &
+        // windows" toggle never appears and turning off any other object type
+        // silently strips every opening (applyDrawFilter keeps openings only
+        // when "openings" is in the positive type set).
+        if (t === "room" && o.walls && typeof o.walls === "object" && !Array.isArray(o.walls)) {
+          for (const w of Object.values(o.walls as Record<string, unknown>)) {
+            const ops = (w as { openings?: unknown } | null)?.openings;
+            if (Array.isArray(ops) && ops.length > 0) hasOpening = true;
+          }
+        } else if (t === "wall" && Array.isArray((o as { openings?: unknown }).openings) &&
+                   ((o as { openings: unknown[] }).openings).length > 0) {
+          hasOpening = true;
         }
         typeIds.add(t);
         const layer =

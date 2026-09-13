@@ -171,7 +171,7 @@ export function generateElevationView(
   // so the surrounding margins must grow too or the outer dimension lines and
   // their labels clip against the fixed viewBox. scaledSpacing(k) === k at
   // factor 1, so default elevations stay byte-identical.
-  if (dimCfg.show_outer_dimensions) {
+  if (dimCfg.show_outer_dimensions || dimCfg.show_opening_dimensions) {
     horizontalMargin = scaledSpacing(150);
     verticalMargin = scaledSpacing(150);
     titleSpace = scaledSpacing(60);
@@ -1087,10 +1087,14 @@ export function generateElevationView(
     );
   }
 
-  // Dimensions
-  if (dimCfg.show_outer_dimensions) {
+  // Dimensions — categorised so the draw filter's toggles work independently:
+  // outer & height dims respond to show_outer_dimensions, opening-width & sill
+  // dims to show_opening_dimensions. Section order is preserved so the default
+  // (all flags on) stays byte-identical.
+  if (dimCfg.show_outer_dimensions || dimCfg.show_opening_dimensions) {
     const baseOffset = scaledSpacing(30);
 
+    if (dimCfg.show_outer_dimensions) {
     // 1. Right side floor heights
     // y_bottom/y_top come from zToY(int) — Python float. Flag y1/y2 as float.
     const rightOffset = baseOffset;
@@ -1120,9 +1124,11 @@ export function generateElevationView(
       );
     }
 
+    } // end outer floor-height + overall-width dims
+
     // 3. Opening dimensions — HORIZONTAL widths + gaps, also carried by the
     // plan's opening chain. Suppressed under cross-view dedup.
-    if (!suppressSpanDims && elevationOpenings.length > 0) {
+    if (dimCfg.show_opening_dimensions && !suppressSpanDims && elevationOpenings.length > 0) {
       const wallGroups: Record<string, ElevationOpening[]> = {};
       for (const opening of elevationOpenings) {
         const wk = opening.wall_name;
@@ -1175,7 +1181,7 @@ export function generateElevationView(
     }
 
     // 4. Wall custom heights
-    if (wallsWithCustomHeights.length > 0) {
+    if (dimCfg.show_outer_dimensions && wallsWithCustomHeights.length > 0) {
       const leftOffset = -baseOffset;
       const dimensionedRanges = new Set<string>();
 
@@ -1232,17 +1238,19 @@ export function generateElevationView(
     // left to the reader's interpretation. Mirrors svg_2d.py section 5.
     // Flags match section 1 (floor heights): x like the opening dims
     // (int-typed), y from zToY (float-typed).
-    const sillOffset = -scaledSpacing(8);
-    for (const w of sillWindows) {
-      if (w.sill_height <= 0) continue;
-      const sillXSvg = worldToSvgX(w.x, w.width);
-      const sillFloorY = zToY(w.z_bottom - w.sill_height);
-      const sillTopY = zToY(w.z_bottom);
-      svg += svgDrawDimensionLine(
-        sillXSvg, sillFloorY, sillXSvg, sillTopY,
-        sillOffset, false, false, false,
-        false, false, true, false, true,
-      );
+    if (dimCfg.show_opening_dimensions) {
+      const sillOffset = -scaledSpacing(8);
+      for (const w of sillWindows) {
+        if (w.sill_height <= 0) continue;
+        const sillXSvg = worldToSvgX(w.x, w.width);
+        const sillFloorY = zToY(w.z_bottom - w.sill_height);
+        const sillTopY = zToY(w.z_bottom);
+        svg += svgDrawDimensionLine(
+          sillXSvg, sillFloorY, sillXSvg, sillTopY,
+          sillOffset, false, false, false,
+          false, false, true, false, true,
+        );
+      }
     }
   }
 
