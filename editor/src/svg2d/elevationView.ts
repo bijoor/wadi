@@ -934,12 +934,7 @@ export function generateElevationView(
 
       for (const opening of obj.openings ?? []) {
         const openingType = opening.type as string;
-        // A door marked `open` is legacy authoring for what is now the `gap`
-        // primitive: there is no leaf and no frame, so it does not render in the
-        // elevation at all (matching the 3D, which emits no panel). Skip it
-        // entirely — no rect, no opening dimension. Use a real `gap` for an
-        // intentional open passage, which does render as a light void.
-        if (openingType === "door" && opening.open) continue;
+        const isOpenDoor = openingType === "door" && !!opening.open;
         const openingWidth = opening.width as number;
         const openingHeight = opening.height as number;
         const coordKey = obj.coord_key as string;
@@ -959,6 +954,16 @@ export function generateElevationView(
         const openingSvgBottomY = zToY(openingZBottom);
         const openingSvgTopY = zToY(openingZBottom + openingHeight);
         const openingSvgHeight = openingSvgBottomY - openingSvgTopY;
+        // A door marked `open` is legacy authoring for what is now the `gap`
+        // primitive: cut the wall (show the opening) but put NOTHING in it — no
+        // leaf, no void tint. Paint it with the page background so the wall reads
+        // as cut clean through, with only the cut outline drawn. Skip the leaf and
+        // the opening dimension. (An intentional open passage should use a real
+        // `gap`, which renders as a light void.)
+        if (isOpenDoor) {
+          svg += `<rect x="${f(openingX)}" y="${fFloat(openingSvgTopY)}" width="${f(openingWidth)}" height="${fFloat(openingSvgHeight)}" fill="#ffffff" stroke="#000" stroke-width="0.5"/>\n`;
+          continue;
+        }
         // door → leaf brown, window → glass blue, gap → open (light void).
         const fillColor =
           openingType === "window" ? "#87CEEB" : openingType === "gap" ? "#f5f5f5" : "#D2691E";
