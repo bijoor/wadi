@@ -942,12 +942,46 @@ export function generateElevationView(
         } else {
           svg += `<polygon points="${emitX(xLeft)},${fFloat(blY)} ${emitX(xLeft)},${fFloat(tlY)} ${emitX(xRight)},${fFloat(trY)} ${emitX(xRight)},${fFloat(brY)}" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
         }
+      } else if (!voidHoles.length) {
+        svg += `<rect x="${emitX(objX)}" y="${fFloat(objTopY)}" width="${f(objW)}" height="${fFloat(objSvgHeight)}" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
       } else {
-        if (voidHoles.length) {
-          const outline = `M${emitX(objX)},${fFloat(objTopY)} L${f(objX + objW)},${fFloat(objTopY)} L${f(objX + objW)},${fFloat(objTopY + objSvgHeight)} L${emitX(objX)},${fFloat(objTopY + objSvgHeight)} Z`;
-          svg += `<path d="${outline}${holeSubpaths}" fill-rule="evenodd" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
-        } else {
-          svg += `<rect x="${emitX(objX)}" y="${fFloat(objTopY)}" width="${f(objW)}" height="${fFloat(objSvgHeight)}" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
+        // A FULL-HEIGHT void (an open door) SPLITS the wall into separate
+        // segments, so no line is drawn across the top or bottom of the gap — the
+        // wall is cleanly broken. A PARTIAL void (a gap with a lintel/sill) stays
+        // a rectangular hole in its segment, with its reveal outlined.
+        const eps = 0.01;
+        const objBotY = objTopY + objSvgHeight;
+        const isFull = (h: { y: number; h: number }) =>
+          h.y <= objTopY + eps && h.y + h.h >= objBotY - eps;
+        const fullCols = voidHoles
+          .filter(isFull)
+          .map((h) => [h.x, h.x + h.w] as [number, number])
+          .sort((a, b) => a[0] - b[0]);
+        const partials = voidHoles.filter((h) => !isFull(h));
+        // Horizontal wall segments remaining after removing the full-height columns.
+        let segs: Array<[number, number]> = [[objX, objX + objW]];
+        for (const [cx, cex] of fullCols) {
+          const next: Array<[number, number]> = [];
+          for (const [sx, ex] of segs) {
+            if (cex <= sx + eps || cx >= ex - eps) { next.push([sx, ex]); continue; }
+            if (cx > sx + eps) next.push([sx, cx]);
+            if (cex < ex - eps) next.push([cex, ex]);
+          }
+          segs = next;
+        }
+        for (const [sx, ex] of segs) {
+          const segW = ex - sx;
+          if (segW <= eps) continue;
+          const segHoles = partials.filter((h) => h.x >= sx - eps && h.x + h.w <= ex + eps);
+          if (segHoles.length) {
+            const outline = `M${f(sx)},${fFloat(objTopY)} L${f(ex)},${fFloat(objTopY)} L${f(ex)},${fFloat(objBotY)} L${f(sx)},${fFloat(objBotY)} Z`;
+            const subs = segHoles
+              .map((h) => ` M${f(h.x)},${fFloat(h.y)} L${f(h.x + h.w)},${fFloat(h.y)} L${f(h.x + h.w)},${fFloat(h.y + h.h)} L${f(h.x)},${fFloat(h.y + h.h)} Z`)
+              .join("");
+            svg += `<path d="${outline}${subs}" fill-rule="evenodd" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
+          } else {
+            svg += `<rect x="${f(sx)}" y="${fFloat(objTopY)}" width="${f(segW)}" height="${fFloat(objSvgHeight)}" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
+          }
         }
       }
 
