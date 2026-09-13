@@ -243,12 +243,21 @@ export function composedFloorInputs(objects: FloorObj[], defaultT: number, wallH
 
 const GAP_OVERCUT = 2; // extend a gap notch past both wall faces so it fully breaks the poché
 
-// Grow the pillar cut a hair past the column footprint so the wall RECEDES from the
-// column faces. Without it, a column the same size as the wall thickness (a common
-// case — 20u column on a 20u wall) leaves the wall's cut face exactly coincident
-// with the column face, which z-fights ("pillars and walls fighting"). ~1u recess
-// reads as a clean reveal and is well below the depth-buffer coincidence threshold.
-const PILLAR_CLEAR = 1;
+// The poché is inflated by GROW/2 (0.25u) for union robustness, so an EXACT pillar
+// cut leaves a thin inflated wall lip overhanging the column (that lip is what
+// "fought"). Cut just enough to remove that lip: the wall is pulled back by 0.25u
+// all round the column, leaving a small uniform recess. The pillar is then drawn
+// PILLAR_PROUD past its true edge (see below), lapping over that recess so there is
+// no visible gap and the wall's cut faces are buried inside the column (no z-fight).
+const PILLAR_CLEAR = 0.25;
+
+// Render pillars this far past their true footprint on every face. It must exceed
+// PILLAR_CLEAR so the column laps over the wall recess (kills the gap) AND exceeds
+// the 0.25u poché inflation so the wall's outer faces sit inside the column rather
+// than coincident with its faces (kills the z-fight). Shared by the 3D PillarBox and
+// the 2D pillar so both views agree. Walls are ~20u thick, so ~0.5u reads as a
+// column standing marginally proud of its infill wall, which is realistic.
+export const PILLAR_PROUD = 0.5;
 
 // Cut pillar footprints out of a wall poché — pillars (structural columns) win over
 // walls, so a wall butts into a column instead of running through it. The column is

@@ -26,7 +26,7 @@ import {
 import type { RoofSpec } from "./roof/v2/model";
 import { renderV2ToFloorPlan } from "./roof/v2/projections";
 import { resetDimView, setDimBump } from "./dimResolve";
-import { composedPoche, outerWallSegments } from "../model/composeWalls";
+import { composedPoche, outerWallSegments, PILLAR_PROUD } from "../model/composeWalls";
 
 interface FloorConfig {
   floor_number?: number;
@@ -754,8 +754,14 @@ export function generateFloorPlanSvg(
   // -----------------------------------------------------------------
   // Pillars drawn last so they sit on top.
   // -----------------------------------------------------------------
+  // Draw each column PILLAR_PROUD past its true footprint so it laps over the recess
+  // subtractPillars leaves in the poché (the wall is pulled back 0.25u round the
+  // column), matching the 3D PillarBox. The true footprint (pillarRects) still drives
+  // cutting; only the visible rect is grown.
   for (const p of pillarsToDraw) {
-    svg += svgDrawPillar(p.x, p.y, p.size, p.width, p.length);
+    const w = (p.width ?? p.size ?? wallThickness) + 2 * PILLAR_PROUD;
+    const l = (p.length ?? p.size ?? wallThickness) + 2 * PILLAR_PROUD;
+    svg += svgDrawPillar(p.x - PILLAR_PROUD, p.y - PILLAR_PROUD, undefined, w, l);
   }
 
   // -----------------------------------------------------------------

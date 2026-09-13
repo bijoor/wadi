@@ -11,10 +11,10 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { Brush, Evaluator, SUBTRACTION } from "three-bvh-csg";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { composeWalls, composedFloorInputs, pocheContours, subtractPillars, type ComposedOpening, type BoundaryEdge } from "../model/composeWalls";
+import { composeWalls, composedFloorInputs, pocheContours, subtractPillars, PILLAR_PROUD, type ComposedOpening, type BoundaryEdge } from "../model/composeWalls";
 import type { WallInput, RoomRect } from "../model/composeWalls";
 import { lateriteMaps, wallUvK } from "./procTextures";
-export { composedFloorInputs };
+export { composedFloorInputs, PILLAR_PROUD };
 export type { ComposedOpening };
 
 const OVERCUT = 2; // extend the cut past the wall faces so it fully punches through

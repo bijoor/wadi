@@ -30,7 +30,7 @@ import {
 import { V2RoofFrame, V2RoofGableWalls, V2RoofSolid, V2RoofSurface } from "./V2RoofSolid";
 import { StaircaseMesh } from "./staircase";
 import { getNode } from "../registry/registry";
-import { ComposedWalls, composedFloorInputs } from "./ComposedWalls";
+import { ComposedWalls, composedFloorInputs, PILLAR_PROUD } from "./ComposedWalls";
 import { OpeningPane } from "./openings";
 import { defaultLayerFor, effectiveLayers, useLayerStore } from "./layers";
 import { setExpansionWarnings, setRoofWarnings } from "./geometryWarnings";
@@ -388,8 +388,11 @@ export function House3D({ config }: { config: HouseConfig }) {
               key={key}
               cx={c.x}
               cz={c.z}
-              width={w}
-              length={l}
+              // Draw the column PILLAR_PROUD past its true footprint on every face so
+              // it laps over the wall recess left by subtractPillars (no gap) and
+              // buries the wall's cut faces (no z-fight). Centre is unchanged.
+              width={w + 2 * PILLAR_PROUD}
+              length={l + 2 * PILLAR_PROUD}
               // Pillars rise from the FLOOR BASE (band.slabZ = plinth top on
               // floor 0, else the floor below's top) through the slab to the
               // ring beam above. Unified z_offset convention (default 0),
