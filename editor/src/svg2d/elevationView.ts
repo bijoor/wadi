@@ -889,6 +889,38 @@ export function generateElevationView(
       const isSloping =
         hasHeightEnd && heightEndValue !== undefined && objH !== heightEndValue;
 
+      // Openings that are a real void in the wall — a `gap`, or a door marked
+      // `open` (legacy authoring for a gap) — cut a hole THROUGH the wall body
+      // (fill-rule evenodd) rather than being painted on top, so the wall truly
+      // has a gap you can see through. Windows and closed doors still paint as
+      // panels in the openings pass below.
+      const voidHoles: Array<{ x: number; y: number; w: number; h: number }> = [];
+      for (const opening of obj.openings ?? []) {
+        const ot = opening.type as string;
+        const isOpenDoorVoid = ot === "door" && !!opening.open;
+        if (ot !== "gap" && !isOpenDoorVoid) continue;
+        const ow = opening.width as number;
+        const ck = obj.coord_key as string;
+        const oxw = (opening[ck] as number | undefined) ?? 0;
+        const ox = worldToSvgX(oxw, ow);
+        if (isOpenDoorVoid) {
+          // An open door is a full-height gap: cut the wall floor-to-top for the
+          // door's width, so the wall is split by a clean vertical break (no
+          // lintel, no rectangle). See straight through.
+          voidHoles.push({ x: ox, y: objTopY, w: ow, h: objSvgHeight });
+        } else {
+          // A gap keeps its authored height/sill.
+          const oh = opening.height as number;
+          const ozb = objZ + ((opening.sill_height as number | undefined) ?? 0);
+          const hTopY = zToY(ozb + oh);
+          const hBotY = zToY(ozb);
+          voidHoles.push({ x: ox, y: hTopY, w: ow, h: hBotY - hTopY });
+        }
+      }
+      const holeSubpaths = voidHoles
+        .map((h) => ` M${f(h.x)},${fFloat(h.y)} L${f(h.x + h.w)},${fFloat(h.y)} L${f(h.x + h.w)},${fFloat(h.y + h.h)} L${f(h.x)},${fFloat(h.y + h.h)} Z`)
+        .join("");
+
       if (isSloping) {
         let hLeft: number, hRight: number;
         if (viewType === "front" || viewType === "right") {
@@ -904,9 +936,19 @@ export function generateElevationView(
         const brY = zToY(objZ);
         const xLeft = objX;
         const xRight = objX + objW;
-        svg += `<polygon points="${emitX(xLeft)},${fFloat(blY)} ${emitX(xLeft)},${fFloat(tlY)} ${emitX(xRight)},${fFloat(trY)} ${emitX(xRight)},${fFloat(brY)}" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
+        if (voidHoles.length) {
+          const outline = `M${emitX(xLeft)},${fFloat(blY)} L${emitX(xLeft)},${fFloat(tlY)} L${emitX(xRight)},${fFloat(trY)} L${emitX(xRight)},${fFloat(brY)} Z`;
+          svg += `<path d="${outline}${holeSubpaths}" fill-rule="evenodd" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
+        } else {
+          svg += `<polygon points="${emitX(xLeft)},${fFloat(blY)} ${emitX(xLeft)},${fFloat(tlY)} ${emitX(xRight)},${fFloat(trY)} ${emitX(xRight)},${fFloat(brY)}" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
+        }
       } else {
-        svg += `<rect x="${emitX(objX)}" y="${fFloat(objTopY)}" width="${f(objW)}" height="${fFloat(objSvgHeight)}" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
+        if (voidHoles.length) {
+          const outline = `M${emitX(objX)},${fFloat(objTopY)} L${f(objX + objW)},${fFloat(objTopY)} L${f(objX + objW)},${fFloat(objTopY + objSvgHeight)} L${emitX(objX)},${fFloat(objTopY + objSvgHeight)} Z`;
+          svg += `<path d="${outline}${holeSubpaths}" fill-rule="evenodd" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
+        } else {
+          svg += `<rect x="${emitX(objX)}" y="${fFloat(objTopY)}" width="${f(objW)}" height="${fFloat(objSvgHeight)}" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>\n`;
+        }
       }
 
       const isFrontWall = Math.abs(obj.depth - maxWallDepth) <= depthTolerance;
@@ -954,20 +996,15 @@ export function generateElevationView(
         const openingSvgBottomY = zToY(openingZBottom);
         const openingSvgTopY = zToY(openingZBottom + openingHeight);
         const openingSvgHeight = openingSvgBottomY - openingSvgTopY;
-        // A door marked `open` is legacy authoring for what is now the `gap`
-        // primitive: cut the wall (show the opening) but put NOTHING in it — no
-        // leaf, no void tint. Paint it with the page background so the wall reads
-        // as cut clean through, with only the cut outline drawn. Skip the leaf and
-        // the opening dimension. (An intentional open passage should use a real
-        // `gap`, which renders as a light void.)
-        if (isOpenDoor) {
-          svg += `<rect x="${f(openingX)}" y="${fFloat(openingSvgTopY)}" width="${f(openingWidth)}" height="${fFloat(openingSvgHeight)}" fill="#ffffff" stroke="#000" stroke-width="0.5"/>\n`;
-          continue;
+        // A `gap`, or a door marked `open` (== a gap), is a real void: the wall
+        // body above already carries a hole for it, so paint nothing here. Only
+        // windows (glass) and closed doors (leaf) paint a panel on the wall.
+        const isVoid = openingType === "gap" || isOpenDoor;
+        if (!isVoid) {
+          // door → leaf brown, window → glass blue.
+          const fillColor = openingType === "window" ? "#87CEEB" : "#D2691E";
+          svg += `<rect x="${f(openingX)}" y="${fFloat(openingSvgTopY)}" width="${f(openingWidth)}" height="${fFloat(openingSvgHeight)}" fill="${fillColor}" stroke="#000" stroke-width="0.5"/>\n`;
         }
-        // door → leaf brown, window → glass blue, gap → open (light void).
-        const fillColor =
-          openingType === "window" ? "#87CEEB" : openingType === "gap" ? "#f5f5f5" : "#D2691E";
-        svg += `<rect x="${f(openingX)}" y="${fFloat(openingSvgTopY)}" width="${f(openingWidth)}" height="${fFloat(openingSvgHeight)}" fill="${fillColor}" stroke="#000" stroke-width="0.5"/>\n`;
 
         // Collect every viewer-facing window for sill dimensioning, not
         // just the front-most wall — so set-back windows (e.g. bedroom
