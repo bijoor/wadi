@@ -134,11 +134,17 @@ room bedroom_s type bedroom { … }                     // rooms.wdl template: e
   available (bonus: the 2D Bedrooms/Bathrooms filter grouping, quantities-by-type, and C11
   adjacency can read it later).
 - **`furniture auto` derives the type from the enclosing room's `type`** — no argument in the common
-  case. Two optional overrides: `furniture auto <type>` to furnish a room as a different type, or
-  pin a specific template by id from the imported rooms module (`furniture auto rooms."bedroom_lb"`)
-  when an exact layout is wanted instead of the engine's best-fit pick among that type's variants.
-- **`rooms.wdl` becomes a module of typed template rooms** the engine reads (a std module, or an
-  explicit `import`), so template lookup is "rooms of this `type`", never id-parsing. Validate a
+  case. Overrides: `furniture auto <type>` to furnish a room as a different type, or **pin a specific
+  template by referencing it from an included room-layout module** — `furniture auto rooms."bedroom_lb"`
+  (the std pack) or `furniture auto my."cozy_living"` (a user module `import`ed as `my`) — when an
+  exact layout is wanted instead of the engine's best-fit pick among that type's variants.
+- **Room layouts are first-class DSL MODULES, std AND user-authored.** A room-layout module is just a
+  `.wdl` of typed template rooms (like `rooms.wdl`), so it rides the existing module + user-library
+  system (`import "…" as ns`; the unified module cache — see [[project_dsl_modules]]). The engine's
+  layout pool = the std pack plus any imported room-layout module, so a USER can author their own
+  template packs (their own arrangements, their own room types) and reference them exactly like the
+  std ones — either by pinning (`ns."id"`) or by contributing variants that type-based `furniture
+  auto` picks among. Template lookup is always "rooms of this `type`", never id-parsing. Validate a
   room's `type` against the available template types (a lint/validation warning on an unknown type).
 
 The SAME block, MATERIALIZED — the engine filled the body and kept the `auto bedroom` tag so it can
@@ -281,18 +287,22 @@ auto-managed section, not just furniture:
    (`auto`/`locked` header + `item` body); expand flattens the body as nested items; decompile
    emits both. Load `rooms.wdl` as a module of TYPED template rooms (read each template's native
    `type`, retire id-parsing) into `Layout[]`, and derive door/gap intervals from the room's
-   expanded openings (`openingIntervals`). A studio "furnish room" command runs `autoplaceRoom` for
-   the selected room (its `type` + size + real openings), materialises the pieces into the room's
-   `furniture` body, and honors `locked`. Point the planner export at the container too.
+   expanded openings (`openingIntervals`). The loader resolves room-layout modules through the
+   existing module cache, so the pool is the std pack PLUS any imported user room-layout module
+   (`import "…" as ns`) — user-authored template packs are first-class from here, referenced by
+   `ns."id"` or contributing type variants. A studio "furnish room" command runs `autoplaceRoom`
+   for the selected room (its `type` + size + real openings), materialises the pieces into the
+   room's `furniture` body, and honors `locked`. Point the planner export at the container too.
    Rectangular rooms only. The low-risk MVP that delivers most of the value.
 4. **`furniture auto` + the configurator.** Wire `auto <type>` so its re-place runs as part of the
    owner re-derive (re-configure), and auto-surface a furniture configuration option from any
    `furniture auto` (at minimum a furnish/re-place action; a layout CHOICE when the pack has
    variants for the room type). NO expand-time engine run and NO version gate — placement is a
    configuration-time step (see Part 2 semantics). Supersedes the earlier expand-time-resolve idea.
-5. **Extensions.** The optional lint tripwire; non-rectangular rooms; the layout editor we built
-   becoming a studio surface for authoring template packs (user-library authoring already exists in
-   the main app).
+5. **Extensions.** The optional lint tripwire; non-rectangular rooms; a VISUAL layout editor as a
+   studio surface for authoring room-layout modules (authoring them AS `.wdl` modules is already
+   first-class from Phase 3 via the module + user-library system — this is just the graphical
+   front-end, the floor-planner's layout editor brought over).
 
 Phases 1 to 3 are the core and are low risk. Phase 4 no longer touches `expand.ts` placement (the
 engine runs at re-configure, not render), so there is no expand-time version gate to hold — expand
