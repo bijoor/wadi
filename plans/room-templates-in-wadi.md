@@ -168,10 +168,19 @@ its `auto <type>` tag and stays the same owned region.
   role-tag on items cannot give them.
 - Flattening is unchanged: a `furniture { items }` body expands like a room's nested items today, so
   2D/3D rendering and the parity gate are unaffected.
-- **Expand runs the engine ONLY for an empty `furniture auto`** (the dynamic case), **version-gated**
-  so existing configs stay byte-identical. A materialized body (`furniture auto <type> { items }`)
-  renders its items as-is — expand never re-runs the engine for it, so it is parity-safe. Re-placing
-  a materialized block is an explicit "furnish/refresh" command, never a render side effect.
+- **The engine runs at RE-CONFIGURE, never at render.** The item contents of a `furniture` block
+  change only when the room is re-configured (the furnish/re-place action, which also reads the
+  room's current size + openings); render/expand just draws the materialized items. So the engine
+  never runs inside `expand.ts`, render stays pure, and a `furniture auto <type> { items }` block is
+  parity-safe by construction (no version gate needed). A freshly authored empty `furniture auto`
+  shows no furniture until configured once (shipped templates would be materialized already). This
+  SUPERSEDES the earlier "dynamic resolve at expand, version-gated" idea (old Phase 4) — placement is
+  a configuration-time step, not a render-time one.
+- **`furniture auto` implies a configuration option.** Any `furniture auto` in a model makes the room
+  configurable, so the model automatically gains at least ONE furniture configuration option (a
+  "furnish / re-place" action) without the author wiring a configurator control; if the pack offers
+  several layouts for the room type, the option is a layout CHOICE. Implicit by default; the author
+  may still declare it in `configurator {}` to give it a label / group / named variants.
 - **Locking, two granularities:** `furniture … locked { }` freezes the whole block (never
   regenerated); `item … locked` inside pins one piece (a refresh preserves it and routes the rest
   around it). See Part 3.
@@ -224,10 +233,11 @@ lock a single item to keep it through a block regeneration (rule 4).
 
 ### Interaction with `furniture auto`
 
-`auto` (resolve-time behavior) and `locked` (tool-edit prohibition) are orthogonal.
-`furniture auto locked` is coherent (auto-resolves at render, but no tool may materialize or change
-it). The recommended v1 forms are `furniture auto` (fully tool-managed) and `furniture locked { }`
-(a hand-tuned frozen block); combining is allowed but not the default guidance.
+`auto <type>` (engine-managed, of this room type) and `locked` (tool-edit prohibition) are
+orthogonal. `furniture auto <type> locked { }` is coherent (materialized by the engine, but pinned
+so a re-configure will not touch it — the owner froze this arrangement). The common forms are
+`furniture auto <type>` (tool-managed, re-placed on re-configure) and `furniture locked { }` (a
+hand-tuned frozen block); combining is allowed but not the default guidance.
 
 ---
 
@@ -245,10 +255,12 @@ auto-managed section, not just furniture:
 
 ## Rollout (unified, protection first)
 
-1. **`locked` attribute.** Schema (`locked?: boolean` on the base object shape, additive-optional)
-   + grammar (a shared trailing flag) + honor it in the existing writers (planner `toWadi`,
-   configurator emitter, `emitWdl`). Add the convention entry and the agent note. Cheap, and it
-   immediately protects hand edits against the tools that already write WDL.
+1. **`locked` attribute. DONE (2026-09-14, commit 28431de).** Schema (`locked?: boolean` on the
+   primitives' common tail + every hand-written object + the nested opening, additive-optional) +
+   grammar (a bare flag in `CommonFields` + the `Opening` rule) + compile/emit round-trip
+   (`applyCommon`/`commonSuffix`, RESERVED) + the convention entry, dsl.md flag, and data-model.md.
+   Round-trip test added. Parity 6/6. The writers that must ENFORCE it (autoplace/furnish, planner
+   export) arrive with Phase 3.
 2. **Engine port.** `roomModules` + algorithmic `furnitureFit` -> `editor/src/furniture/
    autoplace.ts`, rewired onto `anchorItem`/`expandRoomWalls`; delete the mirror. Pure module with
    unit tests carried over. No pipeline change, so no parity risk.
@@ -257,24 +269,29 @@ auto-managed section, not just furniture:
    (type + size + real openings), materializes the pieces into the room's `furniture { }` block,
    and honors `locked`. Point the planner export at the block too. Rectangular rooms only. This is
    the low-risk MVP that delivers most of the value: pick a room type, furnish it, then hand-tune.
-4. **`furniture auto` dynamic resolve.** Expand-time placement, version-gated for parity, with
-   `materialize` writing back into the block for anyone who wants explicit items.
+4. **`furniture auto` + the configurator.** Wire `auto <type>` so its re-place runs as part of the
+   owner re-derive (re-configure), and auto-surface a furniture configuration option from any
+   `furniture auto` (at minimum a furnish/re-place action; a layout CHOICE when the pack has
+   variants for the room type). NO expand-time engine run and NO version gate — placement is a
+   configuration-time step (see Part 2 semantics). Supersedes the earlier expand-time-resolve idea.
 5. **Extensions.** The optional lint tripwire; non-rectangular rooms; the layout editor we built
    becoming a studio surface for authoring template packs (user-library authoring already exists in
    the main app).
 
-Phases 1 to 3 are the core and are low risk. Phase 4 touches `expand.ts` and needs the version gate
-held to 6/6 byte-identical.
+Phases 1 to 3 are the core and are low risk. Phase 4 no longer touches `expand.ts` placement (the
+engine runs at re-configure, not render), so there is no expand-time version gate to hold — expand
+only flattens the materialized `furniture` body as nested items.
 
 ---
 
 ## Layers touched (file-level)
 
 - Grammar: `wadi-dsl/src/language/wadi.langium` (the `furniture` block, `auto`, the `locked` flag).
-- Schema: `editor/src/schema/houseConfig.ts` + `schema/fields` (`locked`, furniture container or a
-  `role: "furniture"` tag). `reference/data-model.md` regenerates from it.
-- Expand: `editor/src/svg2d/expand.ts` (flatten `furniture`; run autoplace for `furniture auto`,
-  version-gated).
+- Schema: `editor/src/schema/houseConfig.ts` + `schema/fields` (`locked` DONE; a `furniture`
+  CONTAINER with `auto`/type/`locked` metadata + an `item` body). `reference/data-model.md`
+  regenerates from it.
+- Expand: `editor/src/svg2d/expand.ts` (flatten a `furniture` body as nested items ONLY — the engine
+  is NOT run here; placement happens at re-configure, so no version gate).
 - Engine: new `editor/src/furniture/autoplace.ts` (+ tests) built on `svg2d/furnitureAnchor.ts`.
 - Emit / decompile: `emitWdl`, the configurator emitter, the planner `toWadi` (write into the block;
   honor `locked`).
