@@ -74,13 +74,18 @@ describe("counter.render3D", () => {
     expect(cabKids.length).toBeGreaterThanOrEqual(3); // countertop + body + fronts (+ toe)
   });
 
-  it("sink/hob add fixture children on top", () => {
+  it("sink/hob add fixtures; a sink cuts the top into border boxes (hole)", () => {
+    const none = counterNode.render3D!({ ...base, length: 120 }, ctx) as {
+      node: { props: { children: unknown[] } };
+    };
     const withFix = counterNode.render3D!({ ...base, length: 120, sink: true, hob: true }, ctx) as {
       node: { props: { children: unknown[] } };
     };
+    const noneKids = (none.node.props.children as unknown[]).flat().filter(Boolean);
     const kids = (withFix.node.props.children as unknown[]).flat().filter(Boolean);
-    // one solid block + a sink + a hob
-    expect(kids.length).toBe(3);
+    expect(noneKids.length).toBe(1); // one solid slab, no hole
+    // sink cuts the slab into border boxes + adds the sink + hob fixtures → more children
+    expect(kids.length).toBeGreaterThan(noneKids.length + 1);
   });
 });
 

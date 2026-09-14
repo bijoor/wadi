@@ -89,25 +89,58 @@ export const counterNode: NodeDefinition = {
     // mounted group, so it must go through defaultLayerFor like item/model do.
     const layerId = (obj.layer as string | undefined) ?? defaultLayerFor("counter", ctx.floorNum);
     const GRANITE = "#3f3f46";
+    const unitsScale = metersToUnits(1, ctx.unitsRef);
 
     // Everything lives in ONE group at the run's floor base (Y up, length → local X,
     // depth → local Z, front/room face = +local Z). Children are placed in that frame.
     const parts: ReactNode[] = [];
 
-    // Base geometry: either the base-cabinet treatment (countertop slab + carcass body +
-    // recessed toe-kick plinth) or a single solid block (the masonry otta). The plinth is
-    // inset on both depth faces (the back one hides in the wall, the front reads as the
-    // toe-kick), so it needs no front-direction detection.
+    // A sink recesses INTO the top: cut a rectangular hole in the countertop at the sink
+    // position (built from border boxes — the top is procedural, so no CSG needed), then
+    // drop the sink so the bowl sits below the surface with the rim ~flush. The hole is
+    // biased slightly to the front (+Z) to sit under the bowl, not the faucet.
+    const hasSink = !!obj.sink;
+    const sinkOff = (obj.sink_offset as number | undefined) ?? 0;
+    const holeW = metersToUnits(0.44, ctx.unitsRef);
+    const holeD = metersToUnits(0.34, ctx.unitsRef);
+    const holeCz = metersToUnits(0.05, ctx.unitsRef);
+    // The countertop slab: one box, or four border boxes around the sink hole.
+    const slab = (topY: number, thickness: number, color: string, rough: number): ReactNode[] => {
+      if (!hasSink) {
+        return [
+          <mesh key="slab" position={[0, topY, 0]} castShadow receiveShadow>
+            <boxGeometry args={[length, thickness, depth]} />
+            <meshStandardMaterial color={color} roughness={rough} />
+          </mesh>,
+        ];
+      }
+      const hx0 = Math.max(-length / 2, sinkOff - holeW / 2);
+      const hx1 = Math.min(length / 2, sinkOff + holeW / 2);
+      const hz0 = Math.max(-depth / 2, holeCz - holeD / 2);
+      const hz1 = Math.min(depth / 2, holeCz + holeD / 2);
+      const mat = () => <meshStandardMaterial color={color} roughness={rough} />;
+      const out: ReactNode[] = [];
+      const lw = hx0 + length / 2; // strip left of the hole
+      if (lw > 0.1) out.push(<mesh key="sl-l" position={[(-length / 2 + hx0) / 2, topY, 0]} castShadow receiveShadow><boxGeometry args={[lw, thickness, depth]} />{mat()}</mesh>);
+      const rw = length / 2 - hx1; // right of the hole
+      if (rw > 0.1) out.push(<mesh key="sl-r" position={[(hx1 + length / 2) / 2, topY, 0]} castShadow receiveShadow><boxGeometry args={[rw, thickness, depth]} />{mat()}</mesh>);
+      const bd = hz0 + depth / 2; // behind the hole (-Z)
+      if (bd > 0.1) out.push(<mesh key="sl-b" position={[(hx0 + hx1) / 2, topY, (-depth / 2 + hz0) / 2]} castShadow receiveShadow><boxGeometry args={[hx1 - hx0, thickness, bd]} />{mat()}</mesh>);
+      const fd = depth / 2 - hz1; // in front of the hole (+Z)
+      if (fd > 0.1) out.push(<mesh key="sl-f" position={[(hx0 + hx1) / 2, topY, (hz1 + depth / 2) / 2]} castShadow receiveShadow><boxGeometry args={[hx1 - hx0, thickness, fd]} />{mat()}</mesh>);
+      return out;
+    };
+
+    // Base geometry: the base-cabinet treatment (countertop slab + carcass body + recessed
+    // toe-kick plinth) or a single solid block (the masonry otta). The plinth is inset on
+    // both depth faces (the back hides in the wall, the front reads as the toe-kick).
     if (obj.cabinet) {
       const topT = Math.max(1, (obj.top_thickness as number | undefined) ?? Math.min(4, height * 0.15));
       const toe = Math.max(0, (obj.toe_kick as number | undefined) ?? Math.min(8, height * 0.22));
       const toeInset = Math.min(5, depth * 0.25);
       const bodyH = Math.max(0.5, height - topT - toe);
+      parts.push(...slab(height - topT / 2, topT, GRANITE, 0.6));
       parts.push(
-        <mesh key="top" position={[0, height - topT / 2, 0]} castShadow receiveShadow>
-          <boxGeometry args={[length, topT, depth]} />
-          <meshStandardMaterial color={GRANITE} roughness={0.6} />
-        </mesh>,
         <mesh key="body" position={[0, toe + bodyH / 2, 0]} castShadow receiveShadow>
           <boxGeometry args={[length, bodyH, depth]} />
           <meshStandardMaterial color="#8a8a94" roughness={0.75} />
@@ -125,37 +158,27 @@ export const counterNode: NodeDefinition = {
         );
       }
     } else {
-      parts.push(
-        <mesh key="slab" position={[0, height / 2, 0]} castShadow receiveShadow>
-          <boxGeometry args={[length, height, depth]} />
-          <meshStandardMaterial color={GRANITE} roughness={0.7} />
-        </mesh>,
-      );
+      parts.push(...slab(height / 2, height, GRANITE, 0.7));
     }
 
-    // Fixtures (Phase C): a sink (bowl + faucet) and/or a gas cooktop seated ON the top,
-    // at an offset along the run (local X, 0 = centred). GLBs auto-scale to their catalog
-    // dims; base seats on the counter top (local Y = height). The sink is turned so its
-    // faucet sits toward the back (wall) rather than the room.
-    const unitsScale = metersToUnits(1, ctx.unitsRef);
-    const fixture = (id: string, offX: number, yawDeg: number) => {
+    // Fixtures (Phase C): a sink (bowl + faucet) recessed into the top, and/or a gas
+    // cooktop seated on the top, at an offset along the run (local X, 0 = centred). GLBs
+    // auto-scale to their catalog dims. The sink is turned so its faucet sits at the back.
+    const fixture = (id: string, offX: number, yawDeg: number, baseY: number) => {
       const a = furnitureAsset(id);
       return (
         <Suspense key={id} fallback={null}>
-          <FurnitureItem
-            src={a.src}
-            dimensions={a.dimensions}
-            cx={offX}
-            cz={0}
-            baseY={height}
-            yawDeg={yawDeg}
-            unitsScale={unitsScale}
-          />
+          <FurnitureItem src={a.src} dimensions={a.dimensions} cx={offX} cz={0} baseY={baseY} yawDeg={yawDeg} unitsScale={unitsScale} />
         </Suspense>
       );
     };
-    if (obj.sink) parts.push(fixture("kitchen_sink_bare", (obj.sink_offset as number | undefined) ?? 0, 180));
-    if (obj.hob) parts.push(fixture("cooktop_hob", (obj.hob_offset as number | undefined) ?? 0, 0));
+    if (obj.sink) {
+      // Drop the sink so its bowl sinks into the hole (rim ~flush). ~45% of the sink's
+      // height is the bowl below the rim.
+      const drop = 0.45 * metersToUnits(furnitureAsset("kitchen_sink_bare").dimensions[1], ctx.unitsRef);
+      parts.push(fixture("kitchen_sink_bare", sinkOff, 180, height - drop));
+    }
+    if (obj.hob) parts.push(fixture("cooktop_hob", (obj.hob_offset as number | undefined) ?? 0, 0, height));
 
     return {
       layerId,
