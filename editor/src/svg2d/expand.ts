@@ -363,17 +363,26 @@ export function expandRoomWalls(
       }
       // Flatten a room's nested furniture into absolute-positioned `item`s, anchored
       // to the (resolved) room footprint. Renderers only ever see the flat items.
-      if (obj.type === "room" && Array.isArray((obj as { items?: unknown[] }).items)) {
-        const rr: RoomRect = {
-          x: obj.x as number,
-          y: obj.y as number,
-          w: obj.width as number,
-          l: obj.length as number,
-        };
-        for (const it of activeObjects((obj as { items?: Obj[] }).items)) {
-          head.push(anchoredItem(rr, it));
+      // Both the room's `items` and its `furniture` CONTAINER body flatten the same
+      // way (the furniture block is scope/ownership, not a different item type).
+      if (obj.type === "room") {
+        const rawItems = (obj as { items?: Obj[] }).items;
+        const roomItems = Array.isArray(rawItems) ? rawItems : [];
+        const furn = (obj as { furniture?: { items?: Obj[] } }).furniture;
+        const furnItems = furn && Array.isArray(furn.items) ? furn.items : [];
+        if (roomItems.length || furnItems.length) {
+          const rr: RoomRect = {
+            x: obj.x as number,
+            y: obj.y as number,
+            w: obj.width as number,
+            l: obj.length as number,
+          };
+          for (const it of activeObjects([...roomItems, ...furnItems])) {
+            head.push(anchoredItem(rr, it));
+          }
         }
         delete (first as { items?: unknown }).items; // strip from the expanded room
+        delete (first as { furniture?: unknown }).furniture;
       }
     }
     floor.objects = [...head, ...deferredDoors, ...deferredWindows];

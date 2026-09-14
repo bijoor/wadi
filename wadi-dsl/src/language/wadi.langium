@@ -335,13 +335,27 @@ Room:
     'room' name=NameRef
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
-        ( 'height' height=Expr | 'material' material=STRING | CommonFields )*
+        ( 'height' height=Expr | 'material' material=STRING | 'type' room_type=ID | CommonFields )*
         // Inside the block, `connect`, `wall`, and `item` statements may appear in
         // ANY order (and `connect` may repeat — names accumulate). Authors don't
         // have to remember that connections come first.
         ('{' ( ('connect' connections+=NameRef (connections+=NameRef)*)
              | walls+=RoomWall
-             | items+=RoomItem )* '}')?;
+             | items+=RoomItem
+             | furniture=Furniture )* '}')?;
+// The `furniture` CONTAINER — a room's owned, tool-managed furniture region
+// (plans/room-templates-in-wadi.md, Part 2). `auto` marks it engine-managed and
+// names its layout SOURCE (the room's own `type` when bare; `type <type>` for an
+// explicit type; `room <ref>` for one exact layout — a same-house sibling room or
+// an imported module template). `locked` freezes the whole block from tools. The
+// body holds the placed `item`s (the same primitive as a room's `item`s). Items
+// only change when the room is re-configured; render just draws the body.
+Furniture:
+    'furniture'
+    ( auto?='auto' ( 'type' auto_type=ID
+                   | 'room' (auto_room_module=ID '.')? auto_room=NameRef )? )?
+    (locked?='locked')?
+    ('{' items+=RoomItem* '}')?;
 // One or more sides in a single statement: plain walls read `wall east west
 // north`; a wall that carries openings is declared on its own side with a block.
 RoomWall:

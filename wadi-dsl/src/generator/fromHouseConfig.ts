@@ -132,6 +132,7 @@ function roomItemTail(it: Obj): string {
 function emitRoom(w: W, indent: number, o: Obj): void {
   let head = `room ${nameTok(o.name)} ${at(o)} ${size(o)}`;
   if (has(o, "height")) head += ` height ${fld(o, "height")}`;
+  if (typeof o.room_type === "string" && o.room_type) head += ` type ${o.room_type}`; // room CATEGORY
   head += commonSuffix(o);
   const conns = Array.isArray(o.connections)
     ? (o.connections as unknown[]).filter((c): c is string => typeof c === "string")
@@ -139,7 +140,8 @@ function emitRoom(w: W, indent: number, o: Obj): void {
   const walls = o.walls && !Array.isArray(o.walls) ? (o.walls as Record<string, Obj>) : {};
   const items = Array.isArray(o.items) ? (o.items as Obj[]) : [];
   const wallSides = Object.entries(walls);
-  const hasBody = wallSides.length > 0 || items.length > 0 || conns.length > 0;
+  const furn = o.furniture && typeof o.furniture === "object" ? (o.furniture as Obj) : null;
+  const hasBody = wallSides.length > 0 || items.length > 0 || conns.length > 0 || !!furn;
   if (!hasBody) {
     w.line(indent, head);
     return;
@@ -166,6 +168,30 @@ function emitRoom(w: W, indent: number, o: Obj): void {
     w.line(indent + 1, "}");
   }
   flush();
+  for (const it of items) emitRoomItem(w, indent + 1, it);
+  if (furn) emitFurniture(w, indent + 1, furn);
+  w.line(indent, "}");
+}
+
+// The `furniture` container: header (auto + source + locked) then the item body.
+function emitFurniture(w: W, indent: number, f: Obj): void {
+  let head = "furniture";
+  if (f.auto) {
+    head += " auto";
+    if (typeof f.auto_type === "string" && f.auto_type) {
+      head += ` type ${f.auto_type}`;
+    } else if (typeof f.auto_room === "string" && f.auto_room) {
+      const mod = typeof f.auto_room_module === "string" && f.auto_room_module ? `${f.auto_room_module}.` : "";
+      head += ` room ${mod}${nameTok(f.auto_room)}`;
+    }
+  }
+  if (f.locked) head += " locked";
+  const items = Array.isArray(f.items) ? (f.items as Obj[]) : [];
+  if (!items.length) {
+    w.line(indent, head);
+    return;
+  }
+  w.line(indent, head + " {");
   for (const it of items) emitRoomItem(w, indent + 1, it);
   w.line(indent, "}");
 }

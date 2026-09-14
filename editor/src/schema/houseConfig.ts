@@ -234,6 +234,24 @@ const roomItem = z
   .strict();
 export type RoomItem = z.infer<typeof roomItem>;
 
+// A room's `furniture` CONTAINER — its owned, tool-managed furniture region. The
+// body (`items`) is the same `item` primitive; the block header carries metadata:
+// `auto` (engine-managed) + its layout SOURCE (`auto_type` = a type, or
+// `auto_room`/`auto_room_module` = one exact layout — a same-house room name, or a
+// module-qualified template) and `locked` (freeze from tools). No geometry — expand
+// flattens the body as nested items exactly like `room.items`.
+const furnitureBlock = z
+  .object({
+    auto: z.boolean().optional(),
+    auto_type: z.string().optional(),
+    auto_room: z.string().optional(),
+    auto_room_module: z.string().optional(),
+    locked: z.boolean().optional(),
+    items: z.array(roomItem).optional(),
+  })
+  .strict();
+export type FurnitureBlock = z.infer<typeof furnitureBlock>;
+
 const room = z
   .object({
     type: z.literal("room"),
@@ -242,6 +260,12 @@ const room = z
     layer: z.string().optional(),
     locked: z.boolean().optional(),
     name: z.string(),
+    // Room CATEGORY (bedroom, living, kitchen, verandah, …) — pure metadata, no
+    // geometry (the resolver/expand ignore it). Drives furniture auto-placement
+    // (the template pack keys layouts on it) and is available to type-aware
+    // features (the 2D room-group filter, quantities-by-type). Named `room_type`
+    // because `type` is the object discriminator; the WDL keyword is `type`.
+    room_type: z.string().optional(),
     x: z.number(),
     y: z.number(),
     width: positive(),
@@ -286,6 +310,11 @@ const room = z
     // footprint (see roomItem), so it reflows when the room resizes. Expanded into
     // top-level `item` objects at render time.
     items: z.array(roomItem).optional(),
+    // The room's tool-managed furniture CONTAINER (auto-placement region). Its body
+    // is expanded exactly like `items`; the header metadata (auto/source/locked)
+    // drives the furnish command. Distinct from `items` so a tool owns only this
+    // region and never touches hand-authored `items`.
+    furniture: furnitureBlock.optional(),
   })
   .strict();
 export type Room = z.infer<typeof room>;

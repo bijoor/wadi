@@ -244,6 +244,7 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `layer` | string |  | *(shared — see top)* |
 | `locked` | boolean |  |  |
 | `name` | string | **yes** |  |
+| `room_type` | string |  | Room CATEGORY (bedroom, living, kitchen, verandah, …) — pure metadata, no geometry (the resolver/expand ignore it). Drives furniture auto-placement (the template pack keys layouts on it) and is available to type-aware features (the 2D room-group filter, quantities-by-type). Named `room_type` because `type` is the object discriminator; the WDL keyword is `type`. |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
 | `width` | number > 0 | **yes** |  |
@@ -255,6 +256,7 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `walls` | union — see notes |  |  |
 | `wall_heights` | map: string → [wall_heights entry](#wall-heights-entry) |  |  |
 | `items` | array of [RoomItem](#roomitem) |  | Furniture nested in this room. Each piece is anchored to the room's inner footprint (see roomItem), so it reflows when the room resizes. Expanded into top-level `item` objects at render time. |
+| `furniture` | `furnitureBlock` |  | The room's tool-managed furniture CONTAINER (auto-placement region). Its body is expanded exactly like `items`; the header metadata (auto/source/locked) drives the furnish command. Distinct from `items` so a tool owns only this region and never touches hand-authored `items`. |
 
 
 ### `wall`

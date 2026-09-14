@@ -157,8 +157,10 @@ function room(r: ast.Room): Record<string, unknown> {
   };
   const h = put("height", r.height);
   if (h !== undefined) o.height = h;
+  if (r.room_type) o.room_type = r.room_type; // room CATEGORY (WDL keyword `type`)
   if (Object.keys(walls).length) o.walls = walls;
   if (items.length) o.items = items;
+  if (r.furniture) o.furniture = furniture(r.furniture);
   if (r.connections.length) {
     // De-dupe; keep author order. Names may be ID or STRING → unquote.
     o.connections = [...new Set(r.connections.map(unquote))];
@@ -212,6 +214,20 @@ function roomItem(it: ast.RoomItem): Record<string, unknown> {
   if (sc !== undefined) o.scale = sc;
   applyCommon(o, formulas, it);
   return done(o, formulas);
+}
+
+// The `furniture` container: header metadata (auto + its layout source + locked)
+// plus the item body. Pure passthrough — no geometry.
+function furniture(f: ast.Furniture): Record<string, unknown> {
+  const o: Record<string, unknown> = {};
+  if (f.auto) o.auto = true;
+  if (f.auto_type) o.auto_type = f.auto_type;
+  if (f.auto_room) o.auto_room = unquote(f.auto_room);
+  if (f.auto_room_module) o.auto_room_module = f.auto_room_module;
+  if (f.locked) o.locked = true;
+  const items = (f.items ?? []).map(roomItem);
+  if (items.length) o.items = items;
+  return o;
 }
 
 function wall(w: ast.Wall): Record<string, unknown> {

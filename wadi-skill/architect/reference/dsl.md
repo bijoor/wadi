@@ -152,14 +152,28 @@ enclosed on all four sides.** List plain walls compactly; give a wall its own li
 only when it carries a door/window; omit a side to leave it open (verandah).
 
 ```wdl
-room Name at (x,y) size (w,l) [height <h>] [material "…"] {
+room Name at (x,y) size (w,l) [height <h>] [type <category>] [material "…"] {
   connect Kitchen Hall                 // rooms this room opens into (same floor)
   wall east west north                 // plain walls — several in one statement
   wall south { door Main at <offset> [from start|center|end] size (w,h) [open] [locked] }   // wall WITH openings
   wall west  { window W at <offset> [from start|center|end] size (w,h) [sill <s>] [open] [locked] }
   item asset { … } anchor center [gap (gx,gy)]   // furniture anchored inside the room
+  furniture auto                       // tool-managed furniture container (see below)
 }
 ```
+
+- `type <category>` — the room's CATEGORY (bedroom, living, kitchen, verandah, …). Pure metadata
+  (no geometry). Optional; drives furniture auto-placement (`furniture auto` reads it) and is
+  available to type-aware features.
+- `furniture …` — the room's tool-managed furniture CONTAINER. `furniture { item … }` is
+  hand-authored; `furniture auto` marks it engine-managed and names its layout SOURCE:
+  - `furniture auto` — furnish from the room's own `type`.
+  - `furniture auto type <category>` — an explicit type (override, or for an untyped room).
+  - `furniture auto room <RoomName>` — clone a sibling room's furniture in the same house.
+  - `furniture auto room <ns>."<id>"` — pin an exact template from an imported room-layout module.
+  Add `locked` (`furniture auto … locked { … }`) to freeze the whole block from tools, or `locked`
+  on a single `item` inside to keep it through a refresh. The body holds the placed items; they
+  change only when the room is re-configured, never at render.
 
 - `connect A B …` records that this room adjoins the named room(s) — space-separated,
   quote a name with spaces (`connect "Guest Room"`). It's design intent + a functional
