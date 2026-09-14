@@ -41,16 +41,28 @@ function parseAnchor(a?: string): { h: H; v: V } {
   return { h, v };
 }
 
-// Compute the item's plan CENTRE (x, y) from the room rect + anchor spec.
-// `wallT` = wall thickness (project units). The room rect edge is the wall's OUTER
-// face, so the anchor rect is inset by the FULL wall thickness to reach the INNER
-// wall face — furniture then hugs the visible inside surface, not the wall centerline.
-// `units` = house units, to scale the asset's metric footprint into project units.
-export function anchorItem(
+// A plan footprint in PROJECT UNITS: `w` = X extent, `l` = Y extent, both BEFORE the
+// piece's yaw is applied. The source-agnostic shape the anchor core works in — a GLB
+// item derives it from `metersToUnits(asset.dimensions)`, a parametric furniture element
+// (e.g. `counter`) derives it straight from its own `length`/`depth` params.
+export interface FootprintSpec {
+  anchor?: string; // 9-point enum; default "center"
+  gapX?: number; // per-axis inset from the anchor, into the room (project units)
+  gapY?: number;
+  rotation?: number; // yaw, degrees
+  w: number; // footprint X extent (project units, pre-rotation)
+  l: number; // footprint Y extent (project units, pre-rotation)
+}
+
+// Compute a piece's plan CENTRE (x, y) from the room rect + an anchor spec whose footprint
+// is already in PROJECT UNITS. `wallT` = wall thickness (project units). The room rect edge
+// is the wall's OUTER face, so the anchor rect is inset by the FULL wall thickness to reach
+// the INNER wall face — the piece hugs the visible inside surface, not the wall centerline.
+// This is the source-agnostic core shared by GLB items and parametric furniture elements.
+export function anchorByFootprint(
   rect: RoomRect,
-  spec: AnchorSpec,
+  spec: FootprintSpec,
   wallT: number,
-  units?: { system?: string; per_unit?: number },
 ): { x: number; y: number } {
   const inset = wallT;
   const ix0 = rect.x + inset;
@@ -58,17 +70,13 @@ export function anchorItem(
   const ix1 = rect.x + rect.w - inset;
   const iy1 = rect.y + rect.l - inset;
 
-  const scale = spec.scale ?? 1;
-  const fw = metersToUnits(spec.dimensions[0], units) * scale; // footprint width (X)
-  const fd = metersToUnits(spec.dimensions[2], units) * scale; // footprint depth (Y)
-
   // Half-extents of the axis-aligned bounding box after yaw, so a rotated piece still
   // clears the wall it's anchored to.
   const th = ((spec.rotation ?? 0) * Math.PI) / 180;
   const c = Math.abs(Math.cos(th));
   const s = Math.abs(Math.sin(th));
-  const halfX = (fw / 2) * c + (fd / 2) * s;
-  const halfY = (fw / 2) * s + (fd / 2) * c;
+  const halfX = (spec.w / 2) * c + (spec.l / 2) * s;
+  const halfY = (spec.w / 2) * s + (spec.l / 2) * c;
 
   const { h, v } = parseAnchor(spec.anchor);
   const gx = spec.gapX ?? 0;
@@ -85,6 +93,25 @@ export function anchorItem(
   else y = (iy0 + iy1) / 2 + gy;
 
   return { x, y };
+}
+
+// Compute a GLB item's plan CENTRE (x, y) from the room rect + anchor spec. Thin wrapper
+// over `anchorByFootprint`: scales the asset's metric footprint into project units, then
+// defers to the shared core. `units` = house units for that metric→project scaling.
+export function anchorItem(
+  rect: RoomRect,
+  spec: AnchorSpec,
+  wallT: number,
+  units?: { system?: string; per_unit?: number },
+): { x: number; y: number } {
+  const scale = spec.scale ?? 1;
+  const w = metersToUnits(spec.dimensions[0], units) * scale; // footprint width (X)
+  const l = metersToUnits(spec.dimensions[2], units) * scale; // footprint depth (Y)
+  return anchorByFootprint(
+    rect,
+    { anchor: spec.anchor, gapX: spec.gapX, gapY: spec.gapY, rotation: spec.rotation, w, l },
+    wallT,
+  );
 }
 
 // Default facing (yaw°) implied by an anchor: a piece anchored to a wall faces

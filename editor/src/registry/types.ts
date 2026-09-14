@@ -93,6 +93,31 @@ export interface NodeFacets {
   footprintPoly?: (obj: Record<string, unknown>) => Array<Array<{ x: number; y: number }>> | null;
 }
 
+// Context for the `furniture` capability. `units` scales a metric footprint into
+// project units; `wallSpan` is the clear span (project units, net of door openings) of
+// the wall a "wall" element is anchored to, so an auto-filling run (a counter sized to
+// the wall) can default its length. Absent for free / corner pieces.
+export interface NodeFurnitureCtx {
+  units?: { system?: string; per_unit?: number };
+  wallSpan?: number;
+}
+
+// CAPABILITY — parametric furniture element (plans/parametric-furniture-elements.md).
+// A node opts into being placed-like-furniture (room `anchor_to` + 9-point `anchor` +
+// `gap`, and participation in the auto-placement engine) by exposing a plan footprint in
+// PROJECT UNITS derived from its own params. The GLB `item` derives it from
+// metersToUnits(asset.dimensions); a procedural `counter` derives it from length/depth.
+// The anchor resolver + engine read THIS, never a GLB asset — so mesh source and
+// footprint source are the only per-element specifics; anchoring, door-dodging, layout
+// rotation, locked, layers, formulas all come for free.
+export interface FurnitureElementCapability {
+  /** Plan bounding box in PROJECT UNITS (pre-rotation). Return null to skip placement. */
+  footprint: (obj: Record<string, unknown>, ctx: NodeFurnitureCtx) => { w: number; l: number } | null;
+  /** Auto-placer seed + default facing: hug a wall (sized to the span), sit in a corner,
+   *  or float. Defaults to "free". */
+  placement?: "wall" | "corner" | "free";
+}
+
 // The descriptor a primitive registers — one file owns its whole surface. Named
 // NodeDefinition for now; the plan (plans/primitive-componentization.md) renames it
 // PrimitiveDefinition at kernel-extraction (P4). The render3D / drawPlan /
@@ -126,6 +151,10 @@ export interface NodeDefinition {
   planFootprint?: (obj: Record<string, unknown>) => NodePlanFootprint | null;
   /** Geometry facets this primitive exposes to compositor stages (§2.5c). */
   facets?: NodeFacets;
+  /** CAPABILITY — parametric furniture element: makes the node placeable like a GLB
+   *  `item` (room anchor + gap + auto-placement) by exposing a project-unit footprint.
+   *  See plans/parametric-furniture-elements.md. Absent = not furniture-placeable. */
+  furniture?: FurnitureElementCapability;
   /** CAPABILITY — 2D plan: a full SVG fragment (project coords), richer than a
    *  footprint box. Consumed by the "plan" view (wired in P1d). */
   drawPlan?: (obj: Record<string, unknown>, ctx: NodePlanCtx) => string | null;

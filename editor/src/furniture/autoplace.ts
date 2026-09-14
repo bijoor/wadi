@@ -18,7 +18,7 @@
 // so a side/corner piece with implicit facing gets the SAME footprint here and at render
 // (the old rotation bug came from those two disagreeing).
 
-import { anchorItem, anchorFacing, type RoomRect } from "../svg2d/furnitureAnchor";
+import { anchorByFootprint, anchorFacing, type RoomRect } from "../svg2d/furnitureAnchor";
 import { metersToUnits } from "../three/units";
 
 const CLEAR = 2; // units of slack: a piece within CLEAR of an opening counts as overlapping
@@ -51,6 +51,13 @@ export interface Piece {
   gap_y?: number;
   rotation?: number; // explicit yaw°; absent = anchorFacing(anchor)
   scale?: number;
+  // Optional footprint override in PROJECT UNITS (pre-rotation, scale already baked in),
+  // for a PARAMETRIC furniture element (e.g. a `counter` sized from length/depth) that has
+  // no metric GLB asset. When present the engine uses it verbatim; when absent it falls
+  // back to metersToUnits(asset.dimensions) — the GLB path, byte-identical.
+  footprint?: { w: number; l: number };
+  // Auto-placer seed for a parametric element: "wall" runs hug a wall, "free" floats.
+  placement?: "wall" | "corner" | "free";
 }
 
 // A room-type layout from the template pack. `w`/`l` is the TARGET size (the smallest room
@@ -200,15 +207,22 @@ interface Box {
 function pieceBox(piece: Piece, rect: RoomRect, wallT: number, units?: Units): Box {
   const rotation = piece.rotation != null ? piece.rotation : anchorFacing(piece.anchor);
   const scale = piece.scale ?? 1;
-  const dim = piece.asset?.dimensions ?? [0, 0, 0];
-  const { x, y } = anchorItem(
+  // Footprint in project units: a parametric element supplies it directly (already
+  // scaled); a GLB item derives it from the asset's metric dimensions.
+  let fw: number, fd: number;
+  if (piece.footprint) {
+    fw = piece.footprint.w;
+    fd = piece.footprint.l;
+  } else {
+    const dim = piece.asset?.dimensions ?? [0, 0, 0];
+    fw = metersToUnits(dim[0], units) * scale;
+    fd = metersToUnits(dim[2], units) * scale;
+  }
+  const { x, y } = anchorByFootprint(
     rect,
-    { anchor: piece.anchor, gapX: piece.gap_x, gapY: piece.gap_y, rotation, scale, dimensions: dim },
+    { anchor: piece.anchor, gapX: piece.gap_x, gapY: piece.gap_y, rotation, w: fw, l: fd },
     wallT,
-    units,
   );
-  const fw = metersToUnits(dim[0], units) * scale;
-  const fd = metersToUnits(dim[2], units) * scale;
   const th = (rotation * Math.PI) / 180;
   const c = Math.abs(Math.cos(th));
   const s = Math.abs(Math.sin(th));
