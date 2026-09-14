@@ -335,7 +335,7 @@ Room:
     'room' name=NameRef
         'at' '(' x=Expr ',' y=Expr ')'
         'size' '(' w=Expr ',' l=Expr ')'
-        ( 'height' height=Expr | 'material' material=STRING | 'type' room_type=ID | CommonFields )*
+        ( 'height' height=Expr | 'material' material=STRING | 'type' room_type=NameRef | CommonFields )*
         // Inside the block, `connect`, `wall`, and `item` statements may appear in
         // ANY order (and `connect` may repeat — names accumulate). Authors don't
         // have to remember that connections come first.
@@ -352,7 +352,7 @@ Room:
 // only change when the room is re-configured; render just draws the body.
 Furniture:
     'furniture'
-    ( auto?='auto' ( 'type' auto_type=ID
+    ( auto?='auto' ( 'type' auto_type=NameRef
                    | 'room' (auto_room_module=ID '.')? auto_room=NameRef )? )?
     (locked?='locked')?
     ('{' items+=RoomItem* '}')?;

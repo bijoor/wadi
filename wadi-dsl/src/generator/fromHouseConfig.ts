@@ -132,7 +132,7 @@ function roomItemTail(it: Obj): string {
 function emitRoom(w: W, indent: number, o: Obj): void {
   let head = `room ${nameTok(o.name)} ${at(o)} ${size(o)}`;
   if (has(o, "height")) head += ` height ${fld(o, "height")}`;
-  if (typeof o.room_type === "string" && o.room_type) head += ` type ${o.room_type}`; // room CATEGORY
+  if (typeof o.room_type === "string" && o.room_type) head += ` type ${keyTok(o.room_type)}`; // room CATEGORY (quote a keyword like "kitchen")
   head += commonSuffix(o);
   const conns = Array.isArray(o.connections)
     ? (o.connections as unknown[]).filter((c): c is string => typeof c === "string")
@@ -179,7 +179,7 @@ function emitFurniture(w: W, indent: number, f: Obj): void {
   if (f.auto) {
     head += " auto";
     if (typeof f.auto_type === "string" && f.auto_type) {
-      head += ` type ${f.auto_type}`;
+      head += ` type ${keyTok(f.auto_type)}`; // quote a keyword like "kitchen"
     } else if (typeof f.auto_room === "string" && f.auto_room) {
       const mod = typeof f.auto_room_module === "string" && f.auto_room_module ? `${f.auto_room_module}.` : "";
       head += ` room ${mod}${nameTok(f.auto_room)}`;

@@ -157,7 +157,7 @@ function room(r: ast.Room): Record<string, unknown> {
   };
   const h = put("height", r.height);
   if (h !== undefined) o.height = h;
-  if (r.room_type) o.room_type = r.room_type; // room CATEGORY (WDL keyword `type`)
+  if (r.room_type) o.room_type = unquote(r.room_type); // room CATEGORY (WDL keyword `type`; ID or STRING)
   if (Object.keys(walls).length) o.walls = walls;
   if (items.length) o.items = items;
   if (r.furniture) o.furniture = furniture(r.furniture);
@@ -221,7 +221,7 @@ function roomItem(it: ast.RoomItem): Record<string, unknown> {
 function furniture(f: ast.Furniture): Record<string, unknown> {
   const o: Record<string, unknown> = {};
   if (f.auto) o.auto = true;
-  if (f.auto_type) o.auto_type = f.auto_type;
+  if (f.auto_type) o.auto_type = unquote(f.auto_type);
   if (f.auto_room) o.auto_room = unquote(f.auto_room);
   if (f.auto_room_module) o.auto_room_module = f.auto_room_module;
   if (f.locked) o.locked = true;
