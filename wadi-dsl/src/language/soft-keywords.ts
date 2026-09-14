@@ -19,7 +19,7 @@
 export const HARD_KEYWORDS = new Set<string>([
   // object types (FloorObject leaders)
   "room", "wall", "pillar", "beam", "slab", "plinth", "ground", "staircase",
-  "spiral_staircase", "kitchen", "item", "use", "roof", "raw", "door", "window",
+  "spiral_staircase", "kitchen", "counter", "item", "use", "roof", "raw", "door", "window",
   // room-block statement leader — hard so the space-separated `connect A B` name
   // list stops at the next `connect` (repeatable) instead of swallowing it.
   "connect",

@@ -385,6 +385,38 @@ function kitchen(k: ast.KitchenPlatform): Record<string, unknown> {
   return done(o, formulas);
 }
 
+// A parametric `counter` run (replaces kitchen_platform). Free form carries `at (x, y)`;
+// an anchored form (anchor_to a room) omits x/y — they are derived at expand, and an
+// omitted `length` defaults to the anchored wall's clear span there.
+function counter(c: ast.Counter): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    type: "counter",
+    depth: put("depth", c.depth, 1),
+    height: put("height", c.height, 1),
+  };
+  if (c.name) o.name = unquote(c.name);
+  const x = put("x", c.x, 0);
+  if (x !== undefined) o.x = x;
+  const y = put("y", c.y, 0);
+  if (y !== undefined) o.y = y;
+  const rot = put("rotation", c.rotation);
+  if (rot !== undefined) o.rotation = rot;
+  const len = put("length", c.length, 1);
+  if (len !== undefined) o.length = len;
+  const bz = put("base_z", c.base_z);
+  if (bz !== undefined) o.base_z = bz;
+  if (c.material) o.material = unquote(c.material);
+  if (c.anchor_to) o.anchor_to = unquote(c.anchor_to);
+  if (c.anchor) o.anchor = c.anchor;
+  const gx = put("gap_x", c.gap_x);
+  if (gx !== undefined) o.gap_x = gx;
+  const gy = put("gap_y", c.gap_y);
+  if (gy !== undefined) o.gap_y = gy;
+  applyCommon(o, formulas, c);
+  return done(o, formulas);
+}
+
 function asset(a: ast.Asset): Record<string, unknown> {
   const o: Record<string, unknown> = {
     id: unquote(a.id),
@@ -742,6 +774,8 @@ function floorObject(o: ast.FloorObject): Record<string, unknown> {
       return spiralStaircase(o);
     case "KitchenPlatform":
       return kitchen(o);
+    case "Counter":
+      return counter(o);
     case "Item":
       return item(o);
     case "GlbModel":

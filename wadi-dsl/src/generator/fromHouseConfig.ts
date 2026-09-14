@@ -502,6 +502,7 @@ function emitFloorObject(w: W, indent: number, o: Obj, emit?: EmitObjectHook): v
     case "staircase": return emitStaircase(w, indent, o);
     case "spiral_staircase": return emitBlock(w, indent, spiralStaircaseToWdl(o));
     case "kitchen_platform": return emitKitchen(w, indent, o);
+    case "counter": return emitBlock(w, indent, counterToWdl(o));
     case "item": return emitBlock(w, indent, itemToWdl(o));
     case "model": return emitBlock(w, indent, modelToWdl(o));
     case "component": return emitComponentUse(w, indent, o);

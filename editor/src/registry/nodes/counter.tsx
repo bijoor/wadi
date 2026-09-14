@@ -37,10 +37,10 @@ const counterSchema = z
     layer: z.string().optional(),
     locked: z.boolean().optional(),
     name: z.string().optional(),
-    // Plan centre (project units). DERIVED at expand time when anchored to a room;
-    // authored for a free-standing run.
-    x: z.number(),
-    y: z.number(),
+    // Plan centre (project units). Optional: DERIVED at expand time when anchored to a
+    // room (anchor_to); authored via `at (x, y)` for a free-standing run.
+    x: z.number().optional(),
+    y: z.number().optional(),
     rotation: z.number().optional(), // yaw, degrees (default = the anchor's facing)
     // Run geometry (project units). `length` is optional: when omitted it defaults to the
     // anchored wall's clear span (filled at expand), so a counter auto-fills its wall.

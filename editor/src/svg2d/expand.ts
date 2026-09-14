@@ -14,7 +14,7 @@ import { buildScope } from "../param/resolve";
 import { evalFormula } from "../param/formula";
 import { expandStaircase } from "./stairExpand";
 import { resolveOpeningAnchors } from "./openingAnchor";
-import { anchorItem, anchorFacing, type RoomRect } from "./furnitureAnchor";
+import { anchorItem, anchorByFootprint, anchorFacing, type RoomRect } from "./furnitureAnchor";
 import { getNode } from "../registry/registry";
 
 type Side = "north" | "south" | "east" | "west";
@@ -159,7 +159,7 @@ export function expandRoomWalls(
   // rotation/scale/gap/z_offset formulas here; free items are already resolved
   // top-level (re-eval is idempotent).
   const { scope: itemScope } = buildScope(houseConfig as Parameters<typeof buildScope>[0]);
-  const ITEM_FORMULA_FIELDS = ["rotation", "scale", "z_offset", "gap_x", "gap_y"] as const;
+  const ITEM_FORMULA_FIELDS = ["rotation", "scale", "z_offset", "gap_x", "gap_y", "length", "depth", "height"] as const;
   const resolveItemFormulas = (spec: Obj): Obj => {
     const fm = spec.formulas as Record<string, string> | undefined;
     if (!fm) return spec;
@@ -257,6 +257,48 @@ export function expandRoomWalls(
         layer: spec.layer,
       } as Obj;
     };
+    // Clear span (inner face to inner face) of the wall an anchor sits on — the default
+    // `length` for an auto-filling wall run (a counter). A vertical anchor component
+    // (top/bottom) means a horizontal N/S wall (span = inner width); left/right alone
+    // means a vertical E/W wall (span = inner length). Matches anchorFacing's precedence.
+    const wallSpanFor = (anchor: string | undefined, rect: RoomRect): number => {
+      const a = String(anchor ?? "center").toLowerCase();
+      const innerW = rect.w - 2 * t;
+      const innerL = rect.l - 2 * t;
+      if (a.startsWith("top") || a.startsWith("bottom")) return innerW;
+      if (a.endsWith("left") || a.endsWith("right")) return innerL;
+      return innerW;
+    };
+    // Resolve a PARAMETRIC furniture element (counter, …) anchored to a room: derive its
+    // plan x/y + facing from the node's `furniture` footprint capability (project units),
+    // exactly like a GLB item, and materialise an unauthored `length` = the wall span so
+    // the renderer (which has no room context) draws the full run. Mutates `obj`.
+    const resolveElementAnchor = (rect: RoomRect, obj: Obj): void => {
+      const cap = getNode(obj.type)?.furniture;
+      if (!cap) return;
+      const spec = resolveItemFormulas(obj);
+      const anchor = spec.anchor as string | undefined;
+      const wallSpan = wallSpanFor(anchor, rect);
+      const fp = cap.footprint(spec as Record<string, unknown>, { units, wallSpan });
+      if (!fp) return;
+      const rotation = (spec.rotation as number | undefined) ?? anchorFacing(anchor);
+      const p = anchorByFootprint(
+        rect,
+        {
+          anchor,
+          gapX: spec.gap_x as number | undefined,
+          gapY: spec.gap_y as number | undefined,
+          rotation,
+          w: fp.w,
+          l: fp.l,
+        },
+        t,
+      );
+      obj.x = p.x;
+      obj.y = p.y;
+      obj.rotation = rotation;
+      if (obj.length == null) obj.length = fp.w; // the resolved run length (authored or span)
+    };
     for (const obj of objs) {
       // Registry-driven primitives may DECOMPOSE into child objects before any
       // view runs (e.g. a future spiral_staircase → treads/landings). Consulted
@@ -340,6 +382,21 @@ export function expandRoomWalls(
             obj.rotation = (p as { rotation?: number }).rotation; // explicit, else anchor-derived
           } else if (opts?.lenient) {
             opts.onWarning?.(`item '${obj.name ?? "?"}': anchor_to room '${at}' not found`);
+          }
+        }
+        head.push(obj);
+        continue;
+      }
+      // A parametric furniture element (counter, …) placed like an item: anchor to a
+      // named room's wall, deriving x/y + length from its footprint capability. A free
+      // element (no anchor_to) keeps its authored x/y. Renders via its registry node.
+      if (obj.type !== "item" && getNode(obj.type)?.furniture) {
+        const at = (obj as { anchor_to?: string }).anchor_to;
+        if (at) {
+          const rr = roomRects.get(at);
+          if (rr) resolveElementAnchor(rr, obj);
+          else if (opts?.lenient) {
+            opts.onWarning?.(`${obj.type} '${obj.name ?? "?"}': anchor_to room '${at}' not found`);
           }
         }
         head.push(obj);

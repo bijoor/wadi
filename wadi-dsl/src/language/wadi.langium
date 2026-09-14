@@ -258,7 +258,7 @@ Floor:
 // through to it). Bespoke rules above are ergonomic *sugar* over this generic core.
 FloorObject:
       Room | Wall | Pillar | Beam | FloorSlab | Plinth | Ground
-    | Staircase | SpiralStaircase | KitchenPlatform | Item | GlbModel | Component | Roof | Raw
+    | Staircase | SpiralStaircase | KitchenPlatform | Counter | Item | GlbModel | Component | Roof | Raw
     | ObjectDecl;
 
 // ---- Model — a GLB placed at scale and manipulated by a node RIG (P1). Like `item`
@@ -456,6 +456,21 @@ KitchenPlatform:
         ( 'base_z' base_z=Expr | 'material' material=STRING | CommonFields )*;
 Pt:
     '(' x=NUMBER ',' y=NUMBER ')';
+
+// ---- Counter — a parametric furniture element (kitchen platform / vanity / utility
+//      slab), replacing the polyline KitchenPlatform. A single wall run: `length` along
+//      the wall, `depth` into the room, `height` up. Free form carries `at (x, y)`; an
+//      anchored form (room-relative, x/y derived at expand) hugs a wall via `anchor` +
+//      `gap`, with `length` defaulting to the wall's clear span. L/U = multiple runs. ----
+Counter:
+    'counter' ('name' name=STRING)?
+        ('at' '(' x=Expr ',' y=Expr ')')?
+        ( 'rotation' rotation=Expr
+        | 'length' length=Expr | 'depth' depth=Expr | 'height' height=Expr
+        | 'base_z' base_z=Expr | 'material' material=STRING
+        | 'anchor_to' anchor_to=STRING | 'anchor' anchor=Anchor
+        | 'gap' '(' gap_x=Expr ',' gap_y=Expr ')'
+        | CommonFields )*;
 
 // ---- Free-standing furniture (a GLB asset placed in plan) ----
 Item:
