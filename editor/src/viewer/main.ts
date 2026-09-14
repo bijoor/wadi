@@ -28,6 +28,8 @@ import "../index.css";
 import { createRoot } from "react-dom/client";
 import { createElement } from "react";
 import { useConfigStore } from "../state/configStore";
+import { furnishRoom as furnishRoomEngine } from "../furniture/furnish";
+import { loadRoomLayouts } from "../furniture/loadRoomLayouts";
 import { validate, CURRENT_WADI_VERSION } from "../schema/houseConfig";
 import type { HouseConfig as ValidatedHouseConfig, HouseObject } from "../schema/houseConfig";
 import type { HouseConfig } from "../svg2d/expand";
@@ -1073,6 +1075,11 @@ export interface WadiApi {
   addRoom: (input: Record<string, unknown>) => { ok: true; name: string; floor?: string };
   /** Rename / move / resize a room by name (any of new_name/x_ft/y_ft/width_ft/length_ft). */
   editRoom: (input: Record<string, unknown>) => { ok: true; name: string };
+  /** Auto-place furniture in a room from the template pack and write it into the room's
+   *  `furniture` container. `name` = the room. The layout SOURCE comes from the room's
+   *  `furniture auto` block (its `type`/`room` source) or, if none, the room's own `type`.
+   *  A locked block is left untouched. Async (compiles the pack on first use). */
+  furnishRoom: (input: Record<string, unknown>) => Promise<{ ok: boolean; name: string; template?: string | null; kept?: number; reason?: string }>;
   /** Declare that two same-floor rooms open into each other; returns whether
    *  it's physically passable yet (C11) and how to fix it if not. */
   connectRooms: (input: Record<string, unknown>) => {
@@ -3159,6 +3166,23 @@ function wireWadiApi(): void {
       // Report structural state after the edit so the agent notices immediately if
       // the move broke a connection (C11), rather than claiming "no errors".
       return { ok: true as const, name: (patch.name as string) ?? String(found.room.name), check: checkBrief(store().config, AGENT_CHECK_CAP) };
+    },
+
+    async furnishRoom(input: Record<string, unknown>) {
+      const cfg = store().config;
+      const found = findRoomSel(cfg, input.name ?? input.room);
+      if (!found) throw new Error(`wadi.furnishRoom: no room named '${String(input.name ?? input.room)}'. See describeHouse().`);
+      const name = String(found.room.name);
+      const layouts = await loadRoomLayouts();
+      const floors = floorsOf(cfg);
+      const floorNum = (floors[found.floor]?.floor_number as number | undefined) ?? found.floor + 1;
+      // furnishRoom returns a NEW config; take the target room's updated furniture container
+      // and patch it in via the store (undo-friendly, triggers the re-render).
+      const { config: nextCfg, result } = furnishRoomEngine(cfg as never, floorNum, name, layouts);
+      if (!result.furnished) return { ok: false as const, name, reason: result.reason };
+      const nextRoom = floorsOf(nextCfg)[found.floor]?.objects?.[found.object] as Record<string, unknown> | undefined;
+      store().updateObject({ floor: found.floor, object: found.object }, { furniture: nextRoom?.furniture } as Partial<HouseObject>);
+      return { ok: true as const, name, template: result.template, kept: result.kept };
     },
 
     check() {
