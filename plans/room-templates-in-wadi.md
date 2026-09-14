@@ -133,25 +133,32 @@ room bedroom_s type bedroom { … }                     // rooms.wdl template: e
   automates nothing by itself, so it does not breach the furniture-only scope; it is simply
   available (bonus: the 2D Bedrooms/Bathrooms filter grouping, quantities-by-type, and C11
   adjacency can read it later).
-- **`furniture auto` takes one of four argument forms**, all resolved to a layout that the engine
-  then re-fits to this room's size + openings:
-  - **(none)** — use the enclosing room's native `type`. The common case; the room declares its type
-    once. Requires the room to HAVE a `type` (else it is a no-op / warning).
-  - **`<type>`** — a type (a bare identifier). Both an override (furnish a room as a different type)
-    and the way to furnish a room that has NO native `type` (`type` on `room` is optional). Engine
+- **`furniture auto` takes an optional KEYWORD-tagged source** (decided 2026-09-14 — a `type` /
+  `room` keyword removes the bare-identifier ambiguity), each resolving to a layout the engine
+  re-fits to this room's size + openings:
+
+  ```
+  furniture auto                     // the enclosing room's native `type`
+  furniture auto type <type>         // an explicit type — best-fit among that type's variants
+  furniture auto room <room-id>      // a sibling room in the same house — clone/re-fit its furniture
+  furniture auto room ns."<id>"      // a room from an included module — pin that exact template
+  ```
+
+  - **(none)** — use the enclosing room's native `type`. The common case. Requires the room to HAVE
+    a `type` (else a no-op / warning).
+  - **`type <type>`** — an explicit type. Both an override (furnish a room as a different type) and
+    the way to furnish a room that has NO native `type` (`type` on `room` is optional). Engine
     best-fit pick among that type's variants.
-  - **`ns."id"`** — pin a specific template from an included room-layout module (dotted, so
-    unambiguous): `furniture auto rooms."bedroom_lb"` (std pack) or `furniture auto my."cozy_living"`
-    (a user module `import`ed as `my`). Uses that exact layout, not a best-fit pick.
-  - **`<room-id>`** — clone a SIBLING room in the same house: reuse an already-furnished room's
-    arrangement in this one. Implementation reuses the engine — the source room's furniture items
-    become the layout, re-fitted here (anchored items reflow to this room's size; the engine shifts/
-    drops for this room's doors), materialised into this room's body. Not a live link — a re-clone
-    at the next re-configure, respecting `locked`.
-  - **Disambiguation (sub-decision):** a bare `<type>` and a bare `<room-id>` both look like
-    identifiers. Options: resolve a same-house room id first (else a type), or keep them distinct in
-    syntax (a room clone via the room's reference form vs a type as a keyword/known-vocabulary
-    token). Module refs are already unambiguous (dotted). Decide when building Phase 3.
+  - **`room <ref>`** — one SPECIFIC room's layout, not a best-fit pick. The `room` keyword covers
+    two references that self-disambiguate: a plain id/name -> a SIBLING room in the same house (clone
+    its furniture — the source room's items become the layout, re-fitted here: anchored items reflow
+    to this room's size, the engine shifts/drops for this room's doors); a dotted `ns."id"` -> a
+    TEMPLATE room in an included module. Resolved via the DSL's existing cross-ref scoping (as
+    `use ns.Component` / `connect` already do). A clone is not a live link — it re-clones at the next
+    re-configure, honoring `locked`.
+
+  Semantic split: `type` = the engine picks the best-fitting variant; `room` = use this one exact
+  layout (sibling or template).
 - **Room layouts are first-class DSL MODULES, std AND user-authored.** A room-layout module is just a
   `.wdl` of typed template rooms (like `rooms.wdl`), so it rides the existing module + user-library
   system (`import "…" as ns`; the unified module cache — see [[project_dsl_modules]]). The engine's
@@ -327,7 +334,8 @@ only flattens the materialized `furniture` body as nested items.
 ## Layers touched (file-level)
 
 - Grammar: `wadi-dsl/src/language/wadi.langium` (`locked` flag DONE; a native `room type <id>`
-  property; the `furniture` container with `auto`/`locked`).
+  property; the `furniture` container with `auto`/`locked`; `auto`'s optional source
+  `type <type>` | `room <ref>`, `ref` a cross-ref to a same-house room or an imported module room).
 - Schema: `editor/src/schema/houseConfig.ts` + `schema/fields` (`locked` DONE; an additive-optional
   `type` on `room`; a `furniture` CONTAINER with `auto`/`locked` metadata + an `item` body).
   `reference/data-model.md` regenerates from it.
