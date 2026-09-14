@@ -101,9 +101,18 @@ export const counterNode: NodeDefinition = {
     // biased slightly to the front (+Z) to sit under the bowl, not the faucet.
     const hasSink = !!obj.sink;
     const sinkOff = (obj.sink_offset as number | undefined) ?? 0;
-    const holeW = metersToUnits(0.44, ctx.unitsRef);
-    const holeD = metersToUnits(0.34, ctx.unitsRef);
-    const holeCz = metersToUnits(0.05, ctx.unitsRef);
+    // The sink GLB is scaled down (SINK_SCALE) to leave a margin on the counter, and the
+    // hole is matched to its scaled bowl footprint. The rim sits AT the counter top: drop
+    // by the rim height only (~34% of the model height), so the faucet stays ABOVE the top
+    // and just the bowl sinks. The bowl is at the front of the model, faucet at the back.
+    const SINK_SCALE = 0.8;
+    const sd = furnitureAsset("kitchen_sink_bare").dimensions;
+    const sinkW = SINK_SCALE * metersToUnits(sd[0], ctx.unitsRef);
+    const sinkDp = SINK_SCALE * metersToUnits(sd[2], ctx.unitsRef);
+    const sinkDrop = 0.34 * SINK_SCALE * metersToUnits(sd[1], ctx.unitsRef);
+    const holeW = sinkW * 0.9;
+    const holeD = sinkDp * 0.72;
+    const holeCz = sinkDp * 0.12; // bias to the front (+Z), under the bowl
     // The countertop slab: one box, or four border boxes around the sink hole.
     const slab = (topY: number, thickness: number, color: string, rough: number): ReactNode[] => {
       if (!hasSink) {
@@ -164,21 +173,17 @@ export const counterNode: NodeDefinition = {
     // Fixtures (Phase C): a sink (bowl + faucet) recessed into the top, and/or a gas
     // cooktop seated on the top, at an offset along the run (local X, 0 = centred). GLBs
     // auto-scale to their catalog dims. The sink is turned so its faucet sits at the back.
-    const fixture = (id: string, offX: number, yawDeg: number, baseY: number) => {
+    const fixture = (id: string, offX: number, yawDeg: number, baseY: number, scale: number) => {
       const a = furnitureAsset(id);
       return (
         <Suspense key={id} fallback={null}>
-          <FurnitureItem src={a.src} dimensions={a.dimensions} cx={offX} cz={0} baseY={baseY} yawDeg={yawDeg} unitsScale={unitsScale} />
+          <FurnitureItem src={a.src} dimensions={a.dimensions} cx={offX} cz={0} baseY={baseY} yawDeg={yawDeg} userScale={scale} unitsScale={unitsScale} />
         </Suspense>
       );
     };
-    if (obj.sink) {
-      // Drop the sink so its bowl sinks into the hole (rim ~flush). ~45% of the sink's
-      // height is the bowl below the rim.
-      const drop = 0.45 * metersToUnits(furnitureAsset("kitchen_sink_bare").dimensions[1], ctx.unitsRef);
-      parts.push(fixture("kitchen_sink_bare", sinkOff, 180, height - drop));
-    }
-    if (obj.hob) parts.push(fixture("cooktop_hob", (obj.hob_offset as number | undefined) ?? 0, 0, height));
+    // Sink: rim at the top (drop = rim height), scaled down. Hob: sits on the top.
+    if (obj.sink) parts.push(fixture("kitchen_sink_bare", sinkOff, 180, height - sinkDrop, SINK_SCALE));
+    if (obj.hob) parts.push(fixture("cooktop_hob", (obj.hob_offset as number | undefined) ?? 0, 0, height, 1));
 
     return {
       layerId,
