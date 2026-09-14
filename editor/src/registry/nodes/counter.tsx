@@ -16,6 +16,7 @@
 // intrinsic JSX (string tags — no three import); it only executes in the browser.
 
 import { toThreePos } from "../../three/coords";
+import { defaultLayerFor } from "../../three/layers";
 import { uniqueName } from "../../state/naming";
 import { counterToWdl } from "../../../../wadi-dsl/src/generator/fromHouseConfig";
 import type { HouseObject } from "../../schema/houseConfig";
@@ -72,7 +73,9 @@ export const counterNode: NodeDefinition = {
     // depth → box local Z.
     const yaw = (-((obj.rotation as number | undefined) ?? 0) * Math.PI) / 180;
     return {
-      layerId: (obj.layer as string | undefined) ?? "structure",
+      // The 3D layer id is per-floor (`f<n>_<role>`); the literal role name is NOT a
+      // mounted group, so it must go through defaultLayerFor like item/model do.
+      layerId: (obj.layer as string | undefined) ?? defaultLayerFor("counter", ctx.floorNum),
       node: (
         <mesh
           key={ctx.key}

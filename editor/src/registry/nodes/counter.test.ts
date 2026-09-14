@@ -54,9 +54,10 @@ describe("counter.render3D", () => {
   it("returns null when the run is not fully resolved (pre-expand)", () => {
     expect(counterNode.render3D!({ ...base }, ctx)).toBeNull(); // no length
   });
-  it("renders on the structure layer once resolved", () => {
+  it("renders on the per-floor structure layer once resolved", () => {
     const out = counterNode.render3D!({ ...base, length: 120 }, ctx);
-    expect(out?.layerId).toBe("structure");
+    // per-floor layer id (f<n>_<role>) — a bare role name is not a mounted 3D group
+    expect(out?.layerId).toBe("f1_structure");
     expect(out?.node).toBeTruthy();
   });
 });
