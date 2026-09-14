@@ -15,12 +15,20 @@
 // registry), so top-level imports stay pure (no three.js). The 3D branch returns R3F
 // intrinsic JSX (string tags — no three import); it only executes in the browser.
 
+import { lazy, Suspense } from "react";
 import { toThreePos } from "../../three/coords";
 import { defaultLayerFor } from "../../three/layers";
+import { furnitureUrl } from "../../furniture/catalog";
 import { uniqueName } from "../../state/naming";
 import { counterToWdl } from "../../../../wadi-dsl/src/generator/fromHouseConfig";
 import type { HouseObject } from "../../schema/houseConfig";
 import type { NodeDefinition } from "../types";
+
+// Tiled cabinet door fronts (Phase B) — lazy so this headless-safe node never pulls
+// three/drei at module load (only when a cabinet counter actually renders in 3D).
+const CounterFronts = lazy(() =>
+  import("../../three/CounterFronts").then((m) => ({ default: m.CounterFronts })),
+);
 
 // The Zod schema (free `counterObject` + nested `roomCounter`) lives in
 // schema/houseConfig.ts, like `item`'s — the node contributes CAPABILITIES only
@@ -99,6 +107,15 @@ export const counterNode: NodeDefinition = {
               <boxGeometry args={[length, bodyH, depth]} />
               <meshStandardMaterial color="#8a8a94" roughness={0.75} />
             </mesh>
+            <Suspense fallback={null}>
+              <CounterFronts
+                src={furnitureUrl("cabinet_door")}
+                length={length}
+                bodyH={bodyH}
+                baseY={toe}
+                frontZ={-depth / 2}
+              />
+            </Suspense>
             {toe > 0 && (
               <mesh position={[0, toe / 2, 0]} castShadow receiveShadow>
                 <boxGeometry args={[length, toe, Math.max(1, depth - 2 * toeInset)]} />
