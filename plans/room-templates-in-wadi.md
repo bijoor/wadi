@@ -107,40 +107,47 @@ type) and `locked` — sits on the block header; its CHILDREN are the placed `it
 with optional metadata, not two separate forms. `auto <type>` on an empty body means "resolve at
 render"; after MATERIALIZE the engine fills the body and keeps the tag.
 
-Auto, not yet materialized (resolve at render from the room's type, size, and openings):
+Auto, not yet materialized (the engine furnishes from the room's `type`, size, and openings):
 
 ```
-room "living" {
+room "living" type living {
   // structure: walls, openings, built-ins ...
-  furniture auto bedroom
+  furniture auto              // reads the room's `type`
 }
 ```
 
-**Room type lives on the `furniture auto` statement.** WDL has no room-type facility today (a
-room's string is an id, not a type: `room "kids_bedroom"` can be a bedroom). The template engine
-needs a type to pick a layout, and furniture is the type's ONLY automated consumer (we dropped
-wall-height automation), so the type belongs where it is used rather than as a first-class room
-field. `furniture auto <type>` reads as "auto-furnish this room as a `<type>`", where `<type>`
-names a template in the pack (`rooms.wdl`). Notes:
+**Room type is a NATIVE `room` property** (revised 2026-09-14, reversing the earlier
+"type rides the `furniture auto` statement"). The reason: the TEMPLATES in `rooms.wdl` need a type
+too, and today it is implied by the room id (`bedroom_s` -> `bedroom`) — the error-prone id-parsing
+we want to drop. If a type concept is needed for the templates anyway, a native `room` property
+serves BOTH sides uniformly (authoring templates and applying them) instead of type-on-statement
+for user rooms but type-from-id for templates.
 
-- **Explicit and validated.** The type is given explicitly and checked against the template pack (a
-  lint/validation warning on an unknown type). Bare `furniture auto` MAY infer the type from the
-  room name, but only when the name matches a known template; explicit is the contract, inference is
-  a convenience.
-- **Pure metadata.** Like `locked`, the type carries no geometry and the resolver/`expandRoomWalls`
-  read it only to drive placement, so it cannot move the parity gate.
-- **Future promotion.** If a broader room-type need emerges (the 2D filter's Bedrooms/Bathrooms
-  grouping, quantities-by-type, the planned C11 adjacency constraints), the type can be promoted to
-  an optional `room` field later — cheap, since it is additive-optional metadata — and bare
-  `furniture auto` would then read the room's type. Out of scope for now.
+```
+room "master" type bedroom { … furniture auto }     // user room: declares its type once
+room bedroom_s type bedroom { … }                     // rooms.wdl template: explicit type, no id-parse
+```
+
+- **Pure metadata, like `locked`.** `type` carries no geometry; the resolver/`expandRoomWalls`
+  ignore it (the furniture engine reads it), so it is additive-optional and parity-safe. A label
+  automates nothing by itself, so it does not breach the furniture-only scope; it is simply
+  available (bonus: the 2D Bedrooms/Bathrooms filter grouping, quantities-by-type, and C11
+  adjacency can read it later).
+- **`furniture auto` derives the type from the enclosing room's `type`** — no argument in the common
+  case. Two optional overrides: `furniture auto <type>` to furnish a room as a different type, or
+  pin a specific template by id from the imported rooms module (`furniture auto rooms."bedroom_lb"`)
+  when an exact layout is wanted instead of the engine's best-fit pick among that type's variants.
+- **`rooms.wdl` becomes a module of typed template rooms** the engine reads (a std module, or an
+  explicit `import`), so template lookup is "rooms of this `type`", never id-parsing. Validate a
+  room's `type` against the available template types (a lint/validation warning on an unknown type).
 
 The SAME block, MATERIALIZED — the engine filled the body and kept the `auto bedroom` tag so it can
 refresh later. Lock the whole block (`... locked`) to freeze it, or lock a single `item` to keep it
 through a refresh:
 
 ```
-room "living" {
-  furniture auto bedroom {
+room "living" type living {
+  furniture auto {
     item f."sofa" anchor bottom-center gap (0, 6) locked   // pinned across a refresh
     item f."tv_unit" anchor top-center gap (0, 6)
   }
@@ -261,14 +268,23 @@ auto-managed section, not just furniture:
    (`applyCommon`/`commonSuffix`, RESERVED) + the convention entry, dsl.md flag, and data-model.md.
    Round-trip test added. Parity 6/6. The writers that must ENFORCE it (autoplace/furnish, planner
    export) arrive with Phase 3.
-2. **Engine port.** `roomModules` + algorithmic `furnitureFit` -> `editor/src/furniture/
-   autoplace.ts`, rewired onto `anchorItem`/`expandRoomWalls`; delete the mirror. Pure module with
-   unit tests carried over. No pipeline change, so no parity risk.
-3. **`furniture` block, explicit form + a "furnish room" command.** Grammar + schema +
-   expand-as-nested-items + decompile. A studio command runs the engine for the selected room
-   (type + size + real openings), materializes the pieces into the room's `furniture { }` block,
-   and honors `locked`. Point the planner export at the block too. Rectangular rooms only. This is
-   the low-risk MVP that delivers most of the value: pick a room type, furnish it, then hand-tune.
+2. **Engine port. DONE (2026-09-14, commit 416b24c).** `furnitureFit` + `roomModules` ->
+   `editor/src/furniture/autoplace.ts`, rewired onto the real `anchorItem` + `metersToUnits`
+   (mirror not reproduced) with the rotation resolved as `rotation ?? anchorFacing` (the mirror
+   bug fixed), standardised on `RoomRect {x,y,w,l}`. Ports the four-rotation fit, door shift/drop,
+   maximise-kept, and soft-gaps; adds `openingIntervals()` (per-side door/gap intervals from
+   expanded openings) + `pieceFootprint()`. 13 unit tests. Pure module, parity 6/6. NOTE the port
+   takes typed `Layout[]` and `pickLayout(layouts, roomType, ctx)`; `roomType` will come from the
+   room's native `type` (Phase 3 loader), not id-parsing.
+3. **Native room `type` + the `furniture` container + a "furnish room" command.** Schema + grammar:
+   an additive-optional `type` on `room` (parity-safe metadata) and the `furniture` CONTAINER
+   (`auto`/`locked` header + `item` body); expand flattens the body as nested items; decompile
+   emits both. Load `rooms.wdl` as a module of TYPED template rooms (read each template's native
+   `type`, retire id-parsing) into `Layout[]`, and derive door/gap intervals from the room's
+   expanded openings (`openingIntervals`). A studio "furnish room" command runs `autoplaceRoom` for
+   the selected room (its `type` + size + real openings), materialises the pieces into the room's
+   `furniture` body, and honors `locked`. Point the planner export at the container too.
+   Rectangular rooms only. The low-risk MVP that delivers most of the value.
 4. **`furniture auto` + the configurator.** Wire `auto <type>` so its re-place runs as part of the
    owner re-derive (re-configure), and auto-surface a furniture configuration option from any
    `furniture auto` (at minimum a furnish/re-place action; a layout CHOICE when the pack has
@@ -286,10 +302,13 @@ only flattens the materialized `furniture` body as nested items.
 
 ## Layers touched (file-level)
 
-- Grammar: `wadi-dsl/src/language/wadi.langium` (the `furniture` block, `auto`, the `locked` flag).
-- Schema: `editor/src/schema/houseConfig.ts` + `schema/fields` (`locked` DONE; a `furniture`
-  CONTAINER with `auto`/type/`locked` metadata + an `item` body). `reference/data-model.md`
-  regenerates from it.
+- Grammar: `wadi-dsl/src/language/wadi.langium` (`locked` flag DONE; a native `room type <id>`
+  property; the `furniture` container with `auto`/`locked`).
+- Schema: `editor/src/schema/houseConfig.ts` + `schema/fields` (`locked` DONE; an additive-optional
+  `type` on `room`; a `furniture` CONTAINER with `auto`/`locked` metadata + an `item` body).
+  `reference/data-model.md` regenerates from it.
+- Template pack: `wadi-dsl/std-modules/rooms.wdl` gains explicit `type` on each template room
+  (retire id-parsing) + a loader that compiles it to `Layout[]` for `autoplace.ts`.
 - Expand: `editor/src/svg2d/expand.ts` (flatten a `furniture` body as nested items ONLY — the engine
   is NOT run here; placement happens at re-configure, so no version gate).
 - Engine: new `editor/src/furniture/autoplace.ts` (+ tests) built on `svg2d/furnitureAnchor.ts`.
@@ -312,11 +331,13 @@ only flattens the materialized `furniture` body as nested items.
 - **Where the template pack lives** for the main app: resolve `rooms.wdl` through the existing
   module resolver, or ship the compiled `roomLayouts.json` equivalent. The module path keeps one
   source of truth.
-- **Room type home**: on the `furniture auto <type>` statement (decided, MVP) vs a first-class
-  optional `room` field. Start on the statement; promote to a room field only if the
-  Bedrooms/Bathrooms filter grouping, quantities-by-type, or C11 adjacency start needing it.
-- **Bare `furniture auto`**: require an explicit type vs infer from the room name when it matches a
-  known template. Decided: explicit is the contract; name-inference is an optional convenience.
+- **Room type home**: DECIDED (revised 2026-09-14) — a NATIVE optional `room` property `type`, not
+  the `furniture auto` statement. The templates in `rooms.wdl` need a type too (today id-parsed,
+  which is error-prone), so one native property serves both. `furniture auto` reads the room's
+  `type`; `furniture auto <type>` / `furniture auto rooms."<id>"` are optional overrides.
+- **Type source for templates**: DECIDED — an explicit native `type` on each template room in
+  `rooms.wdl`, retiring the `<type>_<variant>` id-parsing. `rooms.wdl` is loaded as a module of
+  typed template rooms.
 
 ## Non-goals / risks
 
