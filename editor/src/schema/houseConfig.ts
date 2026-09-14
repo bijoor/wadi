@@ -234,6 +234,32 @@ const roomItem = z
   .strict();
 export type RoomItem = z.infer<typeof roomItem>;
 
+// A room-nested COUNTER — a parametric furniture element (kitchen platform / vanity /
+// utility slab) placed alongside `item`s inside a room (directly or in the `furniture`
+// container). No x/y: it hugs a wall via `anchor` + `gap`, `length` defaults to the wall
+// clear span, and it is expanded into a top-level `counter` object at render time. Mirrors
+// `roomItem`. (`counter`'s free form with x/y is the `counterObject` in the union below.)
+const roomCounter = z
+  .object({
+    name: z.string().optional(),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    locked: z.boolean().optional(),
+    anchor: itemAnchor.optional(), // default "center-right"
+    gap_x: z.number().optional(),
+    gap_y: z.number().optional(),
+    rotation: z.number().optional(), // yaw, degrees (default = the anchor's facing)
+    length: positive().optional(),   // along the wall (default = wall clear span)
+    depth: positive(),               // into the room
+    height: positive(),
+    z_offset: z.number().optional(),
+    base_z: z.number().optional(),
+    material: z.string().optional(),
+  })
+  .strict();
+export type RoomCounter = z.infer<typeof roomCounter>;
+
 // A room's `furniture` CONTAINER — its owned, tool-managed furniture region. The
 // body (`items`) is the same `item` primitive; the block header carries metadata:
 // `auto` (engine-managed) + its layout SOURCE (`auto_type` = a type, or
@@ -248,6 +274,8 @@ const furnitureBlock = z
     auto_room_module: z.string().optional(),
     locked: z.boolean().optional(),
     items: z.array(roomItem).optional(),
+    // Parametric furniture elements (counters) in the container, alongside `items`.
+    counters: z.array(roomCounter).optional(),
   })
   .strict();
 export type FurnitureBlock = z.infer<typeof furnitureBlock>;
@@ -310,6 +338,9 @@ const room = z
     // footprint (see roomItem), so it reflows when the room resizes. Expanded into
     // top-level `item` objects at render time.
     items: z.array(roomItem).optional(),
+    // Parametric furniture elements (counters) nested directly in the room, alongside
+    // `items`. Anchored + expanded exactly like `items` (also allowed in `furniture`).
+    counters: z.array(roomCounter).optional(),
     // The room's tool-managed furniture CONTAINER (auto-placement region). Its body
     // is expanded exactly like `items`; the header metadata (auto/source/locked)
     // drives the furnish command. Distinct from `items` so a tool owns only this
@@ -622,11 +653,39 @@ const modelObject = z
   })
   .strict();
 
+// A free-standing / resolved `counter` run (parametric furniture element). Carries x/y
+// (authored via `at (x, y)`, or DERIVED at expand from `anchor_to` a room). The
+// room-nested authoring form is `roomCounter` (in room.counters / furniture.counters).
+const counterObject = z
+  .object({
+    type: z.literal("counter"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    locked: z.boolean().optional(),
+    name: z.string().optional(),
+    x: z.number().optional(),
+    y: z.number().optional(),
+    rotation: z.number().optional(),
+    length: positive().optional(),
+    depth: positive(),
+    height: positive(),
+    z_offset: z.number().optional(),
+    base_z: z.number().optional(),
+    material: z.string().optional(),
+    anchor_to: z.string().optional(), // room name on this floor
+    anchor: itemAnchor.optional(),
+    gap_x: z.number().optional(),
+    gap_y: z.number().optional(),
+  })
+  .strict();
+
 export const object = z.discriminatedUnion("type", [
   plinthObject,
   groundObject,
   componentObject,
   itemObject,
+  counterObject,
   modelObject,
   floorSlab,
   pillar,

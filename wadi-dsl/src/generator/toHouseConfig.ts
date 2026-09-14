@@ -147,6 +147,7 @@ function room(r: ast.Room): Record<string, unknown> {
     for (const side of w.sides) walls[side] = wc;
   }
   const items = r.items.map(roomItem);
+  const counters = r.counters.map(roomCounter);
   const o: Record<string, unknown> = {
     type: "room",
     name: unquote(r.name),
@@ -160,6 +161,7 @@ function room(r: ast.Room): Record<string, unknown> {
   if (r.room_type) o.room_type = unquote(r.room_type); // room CATEGORY (WDL keyword `type`; ID or STRING)
   if (Object.keys(walls).length) o.walls = walls;
   if (items.length) o.items = items;
+  if (counters.length) o.counters = counters;
   if (r.furniture) o.furniture = furniture(r.furniture);
   if (r.connections.length) {
     // De-dupe; keep author order. Names may be ID or STRING → unquote.
@@ -216,8 +218,32 @@ function roomItem(it: ast.RoomItem): Record<string, unknown> {
   return done(o, formulas);
 }
 
+// A room-nested counter (no x/y — anchored). Mirrors roomItem for the counter fields.
+function roomCounter(c: ast.RoomCounter): Record<string, unknown> {
+  const { formulas, put } = geom();
+  const o: Record<string, unknown> = {
+    depth: put("depth", c.depth, 1),
+    height: put("height", c.height, 1),
+  };
+  if (c.name) o.name = unquote(c.name);
+  if (c.anchor) o.anchor = c.anchor;
+  const gx = put("gap_x", c.gap_x);
+  if (gx !== undefined) o.gap_x = gx;
+  const gy = put("gap_y", c.gap_y);
+  if (gy !== undefined) o.gap_y = gy;
+  const rot = put("rotation", c.rotation);
+  if (rot !== undefined) o.rotation = rot;
+  const len = put("length", c.length, 1);
+  if (len !== undefined) o.length = len;
+  const bz = put("base_z", c.base_z);
+  if (bz !== undefined) o.base_z = bz;
+  if (c.material) o.material = unquote(c.material);
+  applyCommon(o, formulas, c);
+  return done(o, formulas);
+}
+
 // The `furniture` container: header metadata (auto + its layout source + locked)
-// plus the item body. Pure passthrough — no geometry.
+// plus the item + counter body. Pure passthrough — no geometry.
 function furniture(f: ast.Furniture): Record<string, unknown> {
   const o: Record<string, unknown> = {};
   if (f.auto) o.auto = true;
@@ -227,6 +253,8 @@ function furniture(f: ast.Furniture): Record<string, unknown> {
   if (f.locked) o.locked = true;
   const items = (f.items ?? []).map(roomItem);
   if (items.length) o.items = items;
+  const counters = (f.counters ?? []).map(roomCounter);
+  if (counters.length) o.counters = counters;
   return o;
 }
 

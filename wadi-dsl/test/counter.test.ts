@@ -15,8 +15,13 @@ const SRC = `house Ctr {
   site { plot (500, 500) }
   defaults { floor_height 120 wall_height 108 slab_thickness 8 wall_thickness 8 }
   floor 1 "Ground" slab_thickness 0 {
-    room K at (4, 4) size (200, 160) type "kitchen" { wall east west north south }
-    counter name "Otta" anchor_to "K" anchor center-right depth 22 height 36 material "granite"
+    room K at (4, 4) size (200, 160) type "kitchen" {
+      wall east west north south
+      counter name "Direct" anchor center-right depth 22 height 36 material "granite"
+      furniture {
+        counter name "InContainer" anchor top-center depth 24 height 36
+      }
+    }
     counter name "Free" at (300, 60) rotation 0 length 120 depth 24 height 36 locked
   }
 }`;
@@ -29,16 +34,23 @@ const byName = (cfg: Record<string, unknown>, n: string) => objs(cfg).find((o) =
 
 describe("counter compile + round-trip", () => {
   const cfg = compileDsl(SRC) as Record<string, unknown>;
+  const K = () => byName(cfg, "K");
 
-  it("compiles an anchored run (no x/y) and a free run (with x/y)", () => {
-    const otta = byName(cfg, "Otta");
-    expect(otta.type).toBe("counter");
-    expect(otta.anchor_to).toBe("K");
-    expect(otta.anchor).toBe("center-right");
-    expect(otta.depth).toBe(22);
-    expect(otta.material).toBe("granite");
-    expect(otta.x).toBeUndefined(); // derived at expand
+  it("compiles counters nested in a room (direct) and in its furniture container", () => {
+    const direct = (K().counters as Record<string, unknown>[])[0];
+    expect(direct.name).toBe("Direct");
+    expect(direct.anchor).toBe("center-right");
+    expect(direct.depth).toBe(22);
+    expect(direct.material).toBe("granite");
+    expect(direct.x).toBeUndefined(); // no x/y — anchored, derived at expand
+    const inC = ((K().furniture as Record<string, unknown>).counters as Record<string, unknown>[])[0];
+    expect(inC.name).toBe("InContainer");
+    expect(inC.anchor).toBe("top-center");
+  });
+
+  it("compiles a free run (with x/y) at floor level", () => {
     const free = byName(cfg, "Free");
+    expect(free.type).toBe("counter");
     expect(free.x).toBe(300);
     expect(free.length).toBe(120);
     expect(free.locked).toBe(true);
@@ -46,8 +58,8 @@ describe("counter compile + round-trip", () => {
 
   it("round-trips byte-stable through emit -> compile", () => {
     const wdl = emitWdl(cfg as never);
-    expect(wdl).toContain('counter name "Otta"');
-    expect(wdl).toContain("anchor_to \"K\" anchor center-right");
+    expect(wdl).toContain('counter name "Direct" depth 22 height 36 anchor center-right');
+    expect(wdl).toMatch(/furniture \{[\s\S]*counter name "InContainer"/);
     expect(wdl).toContain("counter name \"Free\" at (300, 60)");
     const cfg2 = compileDsl(wdl) as Record<string, unknown>;
     expect(emitWdl(cfg2 as never)).toBe(wdl); // stable second pass
@@ -65,14 +77,21 @@ describe("counter compile + round-trip", () => {
 describe("counter expand-time anchoring", () => {
   const expanded = expandRoomWalls(compileDsl(SRC) as never) as unknown as Record<string, unknown>;
 
-  it("an anchored counter derives x/y, faces off its wall, and fills the wall span", () => {
-    const otta = byName(expanded, "Otta");
-    expect(otta.x).toBeTypeOf("number"); // derived
-    expect(otta.y).toBeTypeOf("number");
-    expect(otta.rotation).toBe(270); // center-right → faces west off the east wall
+  it("a room-nested counter flattens to a top-level counter, faces off its wall, fills the span", () => {
+    const direct = byName(expanded, "Direct");
+    expect(direct.type).toBe("counter");
+    expect(direct.x).toBeTypeOf("number"); // derived from the room's east wall
+    expect(direct.rotation).toBe(270); // center-right → faces west off the east wall
     // length defaulted to the inner span of the east wall (room length 160, wallT 8)
-    expect(otta.length as number).toBeGreaterThan(140);
-    expect(otta.length as number).toBeLessThan(160);
+    expect(direct.length as number).toBeGreaterThan(140);
+    expect(direct.length as number).toBeLessThan(160);
+  });
+
+  it("a counter in the furniture container flattens the same way (north wall)", () => {
+    const inC = byName(expanded, "InContainer");
+    expect(inC.type).toBe("counter");
+    expect(inC.rotation).toBe(0); // top-center → faces south off the north wall
+    expect(inC.length as number).toBeGreaterThan(180); // inner width span (room width 200)
   });
 
   it("a free counter keeps its authored x/y and length", () => {

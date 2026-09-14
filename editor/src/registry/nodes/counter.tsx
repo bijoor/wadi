@@ -15,61 +15,24 @@
 // registry), so top-level imports stay pure (no three.js). The 3D branch returns R3F
 // intrinsic JSX (string tags — no three import); it only executes in the browser.
 
-import { z } from "zod";
 import { toThreePos } from "../../three/coords";
 import { uniqueName } from "../../state/naming";
 import { counterToWdl } from "../../../../wadi-dsl/src/generator/fromHouseConfig";
 import type { HouseObject } from "../../schema/houseConfig";
 import type { NodeDefinition } from "../types";
 
-const counterAnchor = z.enum([
-  "top-left", "top-center", "top-right",
-  "center-left", "center", "center-right",
-  "bottom-left", "bottom-center", "bottom-right",
-]);
-
-// Zod schema — pushed into the config union via registerNode (registration-push).
-const counterSchema = z
-  .object({
-    type: z.literal("counter"),
-    formulas: z.record(z.string(), z.string()).optional(),
-    enabled: z.union([z.boolean(), z.number()]).optional(),
-    layer: z.string().optional(),
-    locked: z.boolean().optional(),
-    name: z.string().optional(),
-    // Plan centre (project units). Optional: DERIVED at expand time when anchored to a
-    // room (anchor_to); authored via `at (x, y)` for a free-standing run.
-    x: z.number().optional(),
-    y: z.number().optional(),
-    rotation: z.number().optional(), // yaw, degrees (default = the anchor's facing)
-    // Run geometry (project units). `length` is optional: when omitted it defaults to the
-    // anchored wall's clear span (filled at expand), so a counter auto-fills its wall.
-    length: z.number().positive().optional(),
-    depth: z.number().positive(),
-    height: z.number().positive(),
-    z_offset: z.number().optional(), // lift above the floor base (default = slab thickness)
-    base_z: z.number().optional(),   // ABSOLUTE base Z override (wins over z_offset)
-    material: z.string().optional(),
-    // Room-relative anchoring (mirrors item): follow a named room's wall.
-    anchor_to: z.string().optional(),
-    anchor: counterAnchor.optional(),
-    gap_x: z.number().optional(),
-    gap_y: z.number().optional(),
-  })
-  .strict();
-
+// The Zod schema (free `counterObject` + nested `roomCounter`) lives in
+// schema/houseConfig.ts, like `item`'s — the node contributes CAPABILITIES only
+// (render/footprint/emit), so it registers no `schema` of its own.
 export const counterNode: NodeDefinition = {
   type: "counter",
   label: "Counter",
   addable: true,
-  schema: counterSchema,
   layerRole: "structure",
   defaultLayerId: "structure",
 
   emitWdl: (obj) => counterToWdl(obj),
 
-  // `counter` is a registry-only type (not in the built-in HouseObject union — it
-  // self-registers via registerObjectSchema), so cast through unknown.
   makeDefault: (cfg, existing) =>
     ({
       type: "counter",
@@ -79,7 +42,7 @@ export const counterNode: NodeDefinition = {
       length: 100,
       depth: 22,
       height: 36,
-    }) as unknown as HouseObject,
+    }) as HouseObject,
 
   // Parametric furniture element: footprint in PROJECT UNITS, local frame (length = X,
   // depth = Y). A wall run whose length auto-fills the wall span when not authored.

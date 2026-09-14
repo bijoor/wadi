@@ -425,9 +425,14 @@ export function expandRoomWalls(
       if (obj.type === "room") {
         const rawItems = (obj as { items?: Obj[] }).items;
         const roomItems = Array.isArray(rawItems) ? rawItems : [];
-        const furn = (obj as { furniture?: { items?: Obj[] } }).furniture;
+        const furn = (obj as { furniture?: { items?: Obj[]; counters?: Obj[] } }).furniture;
         const furnItems = furn && Array.isArray(furn.items) ? furn.items : [];
-        if (roomItems.length || furnItems.length) {
+        // Counters (parametric furniture elements) nested directly in the room or in its
+        // furniture container — flattened alongside items into absolute `counter` objects.
+        const rawCounters = (obj as { counters?: Obj[] }).counters;
+        const roomCounters = Array.isArray(rawCounters) ? rawCounters : [];
+        const furnCounters = furn && Array.isArray(furn.counters) ? furn.counters : [];
+        if (roomItems.length || furnItems.length || roomCounters.length || furnCounters.length) {
           const rr: RoomRect = {
             x: obj.x as number,
             y: obj.y as number,
@@ -437,8 +442,14 @@ export function expandRoomWalls(
           for (const it of activeObjects([...roomItems, ...furnItems])) {
             head.push(anchoredItem(rr, it));
           }
+          for (const rc of activeObjects([...roomCounters, ...furnCounters])) {
+            const c = { ...rc, type: "counter" } as Obj; // nested form → flat counter
+            resolveElementAnchor(rr, c);
+            head.push(c);
+          }
         }
         delete (first as { items?: unknown }).items; // strip from the expanded room
+        delete (first as { counters?: unknown }).counters;
         delete (first as { furniture?: unknown }).furniture;
       }
     }

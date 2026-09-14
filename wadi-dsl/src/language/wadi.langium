@@ -342,6 +342,7 @@ Room:
         ('{' ( ('connect' connections+=NameRef (connections+=NameRef)*)
              | walls+=RoomWall
              | items+=RoomItem
+             | counters+=RoomCounter
              | furniture=Furniture )* '}')?;
 // The `furniture` CONTAINER — a room's owned, tool-managed furniture region
 // (plans/room-templates-in-wadi.md, Part 2). `auto` marks it engine-managed and
@@ -355,7 +356,7 @@ Furniture:
     ( auto?='auto' ( 'type' auto_type=NameRef
                    | 'room' (auto_room_module=ID '.')? auto_room=NameRef )? )?
     (locked?='locked')?
-    ('{' items+=RoomItem* '}')?;
+    ('{' ( items+=RoomItem | counters+=RoomCounter )* '}')?;
 // One or more sides in a single statement: plain walls read `wall east west
 // north`; a wall that carries openings is declared on its own side with a block.
 RoomWall:
@@ -470,6 +471,15 @@ Counter:
         | 'base_z' base_z=Expr | 'material' material=STRING
         | 'anchor_to' anchor_to=STRING | 'anchor' anchor=Anchor
         | 'gap' '(' gap_x=Expr ',' gap_y=Expr ')'
+        | CommonFields )*;
+// A counter nested inside a room (or its `furniture` container) — like RoomItem, no x/y:
+// it hugs a wall via `anchor` + `gap`, `length` defaults to the wall span.
+RoomCounter:
+    'counter' ('name' name=STRING)?
+        ( 'anchor' anchor=Anchor | 'gap' '(' gap_x=Expr ',' gap_y=Expr ')'
+        | 'rotation' rotation=Expr
+        | 'length' length=Expr | 'depth' depth=Expr | 'height' height=Expr
+        | 'base_z' base_z=Expr | 'material' material=STRING
         | CommonFields )*;
 
 // ---- Free-standing furniture (a GLB asset placed in plan) ----

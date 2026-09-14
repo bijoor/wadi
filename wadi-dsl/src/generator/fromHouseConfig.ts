@@ -139,9 +139,10 @@ function emitRoom(w: W, indent: number, o: Obj): void {
     : [];
   const walls = o.walls && !Array.isArray(o.walls) ? (o.walls as Record<string, Obj>) : {};
   const items = Array.isArray(o.items) ? (o.items as Obj[]) : [];
+  const counters = Array.isArray(o.counters) ? (o.counters as Obj[]) : [];
   const wallSides = Object.entries(walls);
   const furn = o.furniture && typeof o.furniture === "object" ? (o.furniture as Obj) : null;
-  const hasBody = wallSides.length > 0 || items.length > 0 || conns.length > 0 || !!furn;
+  const hasBody = wallSides.length > 0 || items.length > 0 || counters.length > 0 || conns.length > 0 || !!furn;
   if (!hasBody) {
     w.line(indent, head);
     return;
@@ -169,6 +170,7 @@ function emitRoom(w: W, indent: number, o: Obj): void {
   }
   flush();
   for (const it of items) emitRoomItem(w, indent + 1, it);
+  for (const c of counters) w.line(indent + 1, counterToWdl(c));
   if (furn) emitFurniture(w, indent + 1, furn);
   w.line(indent, "}");
 }
@@ -187,12 +189,14 @@ function emitFurniture(w: W, indent: number, f: Obj): void {
   }
   if (f.locked) head += " locked";
   const items = Array.isArray(f.items) ? (f.items as Obj[]) : [];
-  if (!items.length) {
+  const counters = Array.isArray(f.counters) ? (f.counters as Obj[]) : [];
+  if (!items.length && !counters.length) {
     w.line(indent, head);
     return;
   }
   w.line(indent, head + " {");
   for (const it of items) emitRoomItem(w, indent + 1, it);
+  for (const c of counters) w.line(indent + 1, counterToWdl(c));
   w.line(indent, "}");
 }
 
