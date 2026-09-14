@@ -113,7 +113,7 @@ export const counterNode: NodeDefinition = {
                 length={length}
                 bodyH={bodyH}
                 baseY={toe}
-                frontZ={-depth / 2}
+                frontZ={depth / 2}
               />
             </Suspense>
             {toe > 0 && (

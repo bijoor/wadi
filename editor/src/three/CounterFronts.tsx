@@ -49,12 +49,13 @@ function FrontsGLB({ src, length, bodyH, baseY, frontZ, gap = 1.5 }: CounterFron
   const s = Math.min((slotW - gap) / nw, bodyH / nh);
   const halfT = (nt * s) / 2;
 
+  // The room-facing front is +Z local; the door protrudes outward from that face.
+  const out = Math.sign(frontZ) || 1;
   const doors: ReactNode[] = [];
   for (let i = 0; i < count; i++) {
     const lx = -length / 2 + slotW * (i + 0.5);
     doors.push(
-      // Seat the front: its outer face flush at frontZ, protruding into the room (-Z).
-      <group key={i} position={[lx, baseY + bodyH / 2, frontZ - halfT]}>
+      <group key={i} position={[lx, baseY + bodyH / 2, frontZ + out * halfT]}>
         <group scale={s} position={[-cx * s, -cy * s, -cz * s] as [number, number, number]}>
           <primitive object={node.clone(true)} />
         </group>
