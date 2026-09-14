@@ -273,6 +273,24 @@ export function itemToWdl(o: Obj): string {
   return s + commonSuffix(o, false);
 }
 
+// A parametric `counter` run (kitchen platform / vanity / utility slab). A free/resolved
+// run carries `at (x, y)`; an anchored run (room-relative, x/y derived at expand) omits it
+// and hugs a wall via `anchor` + `gap`. `length` is optional (defaults to the wall span).
+// z_offset / layer / locked / material come from the shared commonSuffix.
+export function counterToWdl(o: Obj): string {
+  let s = "counter";
+  if (o.name !== undefined) s += ` name ${str(o.name)}`;
+  if (has(o, "x") && has(o, "y")) s += ` ${at(o)}`;
+  if (has(o, "rotation")) s += ` rotation ${fld(o, "rotation")}`;
+  if (has(o, "length")) s += ` length ${fld(o, "length")}`;
+  s += ` depth ${fld(o, "depth")} height ${fld(o, "height")}`;
+  if (has(o, "base_z")) s += ` base_z ${fld(o, "base_z")}`;
+  if (o.anchor_to !== undefined) s += ` anchor_to ${str(o.anchor_to)}`;
+  if (o.anchor !== undefined) s += ` anchor ${o.anchor}`;
+  if (has(o, "gap_x") || has(o, "gap_y")) s += ` gap (${fld(o, "gap_x")}, ${fld(o, "gap_y")})`;
+  return s + commonSuffix(o);
+}
+
 function emitRigOp(o: Obj): string {
   const n = str(o.node);
   const v3 = (a: unknown) => {

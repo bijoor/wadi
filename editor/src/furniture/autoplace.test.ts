@@ -76,6 +76,37 @@ describe("geometry-aware placement works WITHOUT explicit units (regression)", (
   });
 });
 
+describe("footprint seam — a parametric (assetless) piece places by its own footprint", () => {
+  // A counter-style piece carries no metric GLB asset; it supplies a project-unit
+  // footprint directly. pieceFootprint must honour it verbatim (scale already baked in),
+  // proving the engine is source-agnostic (GLB vs procedural).
+  it("pieceFootprint uses piece.footprint over asset.dimensions", () => {
+    const counter: Piece = {
+      asset: asset("counter", 0, 0), // no real dimensions
+      anchor: "top-center",
+      footprint: { w: 120, l: 22 }, // project units
+    };
+    const fp = pieceFootprint(counter, ROOM, WALL_T, UNITS);
+    // top-center → facing 0 (no rotation): w spans X, l spans Y
+    expect(fp.halfX).toBeCloseTo(120 / 2, 6);
+    expect(fp.halfY).toBeCloseTo(22 / 2, 6);
+    // hugs the north inner face: near edge at wallT, projecting depth into the room
+    expect(fp.y0).toBeCloseTo(WALL_T, 6);
+  });
+
+  it("a wall footprint rotates with the anchor's facing (east wall)", () => {
+    const counter: Piece = {
+      asset: asset("counter", 0, 0),
+      anchor: "center-right", // east wall → anchorFacing 270
+      footprint: { w: 120, l: 22 },
+    };
+    const fp = pieceFootprint(counter, ROOM, WALL_T, UNITS);
+    // after the 270° facing the run lies along Y: depth spans X, length spans Y
+    expect(fp.halfX).toBeCloseTo(22 / 2, 6);
+    expect(fp.halfY).toBeCloseTo(120 / 2, 6);
+  });
+});
+
 describe("placePieces — door shift / drop", () => {
   it("slides a piece off a door it overlaps and KEEPS it", () => {
     const doors = { north: [[90, 130]] as [number, number][] };

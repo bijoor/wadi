@@ -7,6 +7,7 @@ import { registerBuiltinRole } from "../state/layerDefaults";
 import { itemNode } from "./nodes/item";
 import { modelNode } from "./nodes/model";
 import { spiralStaircaseNode } from "./nodes/spiralStaircase";
+import { counterNode } from "./nodes/counter";
 
 const REGISTRY = new Map<string, NodeDefinition>();
 
@@ -60,3 +61,7 @@ registerNode(modelNode);
 // already in the codegen union (schema/fields/spiralStaircase → objects.generated),
 // so the node contributes capabilities + layer role + add-menu, not a schema.
 registerNode(spiralStaircaseNode);
+// First PARAMETRIC furniture element (plans/parametric-furniture-elements.md): a
+// procedural counter run, placed like furniture via the shared `furniture` capability.
+// Replaces the ad-hoc kitchen_platform primitive.
+registerNode(counterNode);

@@ -99,4 +99,24 @@ export const itemNode: NodeDefinition = {
       label: (obj.name as string | undefined) ?? asset.name,
     };
   },
+
+  // Parametric-furniture capability (plans/parametric-furniture-elements.md): a GLB item
+  // is a free-floating element whose footprint is its metric asset size scaled to project
+  // units. Same contract a procedural `counter` implements, so the anchor resolver + the
+  // auto-placement engine treat both identically — GLB vs procedural is only a mesh detail.
+  furniture: {
+    placement: "free",
+    footprint: (obj, ctx) => {
+      const asset = obj.asset as ItemAssetShape | undefined;
+      if (!asset?.dimensions) return null;
+      const scale = (obj.scale as number | undefined) ?? 1;
+      // three/units metersToUnits (explicit units) — the SAME scaling the engine's
+      // pieceBox uses in its GLB fallback, so routing item through this capability is
+      // byte-identical to the fallback.
+      return {
+        w: metersToUnits3D(asset.dimensions[0], ctx.units) * scale,
+        l: metersToUnits3D(asset.dimensions[2], ctx.units) * scale,
+      };
+    },
+  },
 };
