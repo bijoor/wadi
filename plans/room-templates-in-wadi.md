@@ -133,11 +133,25 @@ room bedroom_s type bedroom { … }                     // rooms.wdl template: e
   automates nothing by itself, so it does not breach the furniture-only scope; it is simply
   available (bonus: the 2D Bedrooms/Bathrooms filter grouping, quantities-by-type, and C11
   adjacency can read it later).
-- **`furniture auto` derives the type from the enclosing room's `type`** — no argument in the common
-  case. Overrides: `furniture auto <type>` to furnish a room as a different type, or **pin a specific
-  template by referencing it from an included room-layout module** — `furniture auto rooms."bedroom_lb"`
-  (the std pack) or `furniture auto my."cozy_living"` (a user module `import`ed as `my`) — when an
-  exact layout is wanted instead of the engine's best-fit pick among that type's variants.
+- **`furniture auto` takes one of four argument forms**, all resolved to a layout that the engine
+  then re-fits to this room's size + openings:
+  - **(none)** — use the enclosing room's native `type`. The common case; the room declares its type
+    once. Requires the room to HAVE a `type` (else it is a no-op / warning).
+  - **`<type>`** — a type (a bare identifier). Both an override (furnish a room as a different type)
+    and the way to furnish a room that has NO native `type` (`type` on `room` is optional). Engine
+    best-fit pick among that type's variants.
+  - **`ns."id"`** — pin a specific template from an included room-layout module (dotted, so
+    unambiguous): `furniture auto rooms."bedroom_lb"` (std pack) or `furniture auto my."cozy_living"`
+    (a user module `import`ed as `my`). Uses that exact layout, not a best-fit pick.
+  - **`<room-id>`** — clone a SIBLING room in the same house: reuse an already-furnished room's
+    arrangement in this one. Implementation reuses the engine — the source room's furniture items
+    become the layout, re-fitted here (anchored items reflow to this room's size; the engine shifts/
+    drops for this room's doors), materialised into this room's body. Not a live link — a re-clone
+    at the next re-configure, respecting `locked`.
+  - **Disambiguation (sub-decision):** a bare `<type>` and a bare `<room-id>` both look like
+    identifiers. Options: resolve a same-house room id first (else a type), or keep them distinct in
+    syntax (a room clone via the room's reference form vs a type as a keyword/known-vocabulary
+    token). Module refs are already unambiguous (dotted). Decide when building Phase 3.
 - **Room layouts are first-class DSL MODULES, std AND user-authored.** A room-layout module is just a
   `.wdl` of typed template rooms (like `rooms.wdl`), so it rides the existing module + user-library
   system (`import "…" as ns`; the unified module cache — see [[project_dsl_modules]]). The engine's
