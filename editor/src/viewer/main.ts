@@ -3888,6 +3888,19 @@ function buildWadiMcpTools(): WebMcpTool[] {
       execute(input) { return text(api().editRoom(input)); },
     },
     {
+      name: "wadi_furnish_room",
+      description:
+        "Auto-place furniture in a room (by name) from the template pack, writing it into the room's `furniture` container. The layout comes from the room's `furniture auto` source (an explicit type, or a `room` reference), or the room's own `type` when it has no furniture block. The engine avoids the room's doors — sliding or rotating pieces and dropping any it cannot fit — so a room needs a `type` (e.g. bedroom, living, kitchen, bath, study, dining) for this to do anything. A furniture-`locked` block is left untouched. Returns the chosen template and how many pieces were kept.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "the room to furnish" },
+        },
+        required: ["name"],
+      },
+      async execute(input) { return text(await api().furnishRoom(input)); },
+    },
+    {
       name: "wadi_connect_rooms",
       description:
         "Declare that two rooms (by name, same floor) open into each other. Returns whether the connection is physically passable yet, and if not, how to fix it (add a door on the shared wall, or leave that wall off both rooms).",

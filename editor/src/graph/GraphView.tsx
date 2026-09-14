@@ -14,12 +14,14 @@
 // so there we show EVERY floor stacked — otherwise a multi-floor house would be
 // stuck on floor 0 with no way to see the rest.
 
-import { useMemo } from "react";
-import type { HouseConfig } from "../schema/houseConfig";
+import { useMemo, useState } from "react";
+import type { HouseConfig, HouseObject } from "../schema/houseConfig";
 import { useConfigStore } from "../state/configStore";
 import { buildRefsView } from "../param/refsView";
 import { resolvedGeneratedGuidesForConfig } from "../param/resolve";
 import { roomBlocksOf, connectionSatisfied, edgeList, center } from "./graphModel";
+import { furnishRoom } from "../furniture/furnish";
+import { loadRoomLayouts } from "../furniture/loadRoomLayouts";
 
 type RefsView = ReturnType<typeof buildRefsView>;
 type GenGuides = ReturnType<typeof resolvedGeneratedGuidesForConfig>;
@@ -126,11 +128,30 @@ function FloorGraphSvg({
   );
 }
 
+// A room can be auto-furnished when it declares a category (`type`) or carries a
+// `furniture auto` source.
+function isFurnishable(o: Record<string, unknown>): boolean {
+  if (o.type !== "room") return false;
+  if (typeof o.room_type === "string" && o.room_type) return true;
+  const f = o.furniture as Record<string, unknown> | undefined;
+  return !!(f && (f.auto || f.auto_type || f.auto_room));
+}
+function countFurnishable(config: HouseConfig): number {
+  let n = 0;
+  for (const fl of config.floors ?? []) {
+    for (const o of ((fl as { objects?: Record<string, unknown>[] }).objects ?? [])) if (isFurnishable(o)) n++;
+  }
+  return n;
+}
+
 export function GraphView() {
   const config = useConfigStore((s) => s.config);
   const selection = useConfigStore((s) => s.selection);
   const select = useConfigStore((s) => s.select);
+  const updateObject = useConfigStore((s) => s.updateObject);
   const activeFloor = useConfigStore((s) => s.activeFloorIdx);
+  const [furnishing, setFurnishing] = useState(false);
+  const [furnishMsg, setFurnishMsg] = useState<string | null>(null);
 
   const refs = useMemo(() => buildRefsView(config), [config]);
   const genGuides = useMemo(() => resolvedGeneratedGuidesForConfig(config), [config]);
@@ -138,6 +159,46 @@ export function GraphView() {
   if (!config || !config.floors?.length) return <div className="graph-empty">No model loaded.</div>;
 
   const selectable = graphSelectable();
+
+  // Auto-furnish every room that has a native `type` or a `furniture auto` source, from
+  // the template pack, writing into each room's `furniture` container. (The graph is
+  // read-only — no per-room selection — so this furnishes all applicable rooms at once.)
+  const furnishableCount = countFurnishable(config);
+  async function furnishAll(): Promise<void> {
+    if (!config) return;
+    setFurnishing(true);
+    setFurnishMsg(null);
+    try {
+      const layouts = await loadRoomLayouts();
+      let done = 0;
+      let total = 0;
+      const floors = (config.floors ?? []) as Array<{ floor_number?: number; objects?: Record<string, unknown>[] }>;
+      for (let fi = 0; fi < floors.length; fi++) {
+        const objs = floors[fi].objects ?? [];
+        for (let oi = 0; oi < objs.length; oi++) {
+          if (!isFurnishable(objs[oi])) continue;
+          total++;
+          // Re-read the live config each time so a room that clones a sibling sees the
+          // sibling's furniture placed earlier in this pass.
+          const cur = useConfigStore.getState().config;
+          if (!cur) continue;
+          const name = String(objs[oi].name);
+          const floorNum = floors[fi].floor_number ?? fi + 1;
+          const { config: next, result } = furnishRoom(cur as never, floorNum, name, layouts);
+          if (result.furnished) {
+            const nextRoom = (next.floors as Array<{ objects: Record<string, unknown>[] }>)[fi].objects[oi];
+            updateObject({ floor: fi, object: oi }, { furniture: nextRoom.furniture } as Partial<HouseObject>);
+            done++;
+          }
+        }
+      }
+      setFurnishMsg(total ? `Furnished ${done}/${total} room${total === 1 ? "" : "s"}` : "No rooms have a type to furnish");
+    } catch {
+      setFurnishMsg("Furnish failed");
+    } finally {
+      setFurnishing(false);
+    }
+  }
   const floorName = (fi: number): string => (config.floors[fi] as { name?: string }).name ?? `Floor ${fi}`;
 
   // In the studio the left panel switches floors, so show the active one. In view
@@ -156,6 +217,25 @@ export function GraphView() {
           <span className="graph-floor" title={showAll ? "All floors" : "Switch floors in the left panel"}>
             {showAll ? "All floors" : floorName(Math.min(activeFloor, config.floors.length - 1))}
           </span>
+        )}
+        {furnishableCount > 0 && (
+          <button
+            type="button"
+            className="graph-furnish-btn"
+            onClick={() => { void furnishAll(); }}
+            disabled={furnishing}
+            title="Auto-place furniture in every room that has a type, from the template pack"
+            style={{
+              marginLeft: "auto", padding: "3px 10px", fontSize: 12, fontWeight: 600,
+              color: "#0f1729", background: furnishing ? "#94a3b8" : "#f5c451",
+              border: "none", borderRadius: 5, cursor: furnishing ? "default" : "pointer",
+            }}
+          >
+            {furnishing ? "Furnishing…" : `🛋 Furnish room${furnishableCount === 1 ? "" : "s"}`}
+          </button>
+        )}
+        {furnishMsg && (
+          <span className="graph-furnish-msg" style={{ marginLeft: 8, fontSize: 11, color: "#94a3b8" }}>{furnishMsg}</span>
         )}
       </div>
 
