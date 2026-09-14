@@ -102,7 +102,12 @@ The engine needs a declared place to write, so its edits are localized and idemp
 
 ### Syntax
 
-Dynamic (resolve-time placement from the room's type, size, and openings):
+`furniture` is a CONTAINER primitive. Its metadata — `auto <type>` (engine-managed, of this room
+type) and `locked` — sits on the block header; its CHILDREN are the placed `item`s. It is one form
+with optional metadata, not two separate forms. `auto <type>` on an empty body means "resolve at
+render"; after MATERIALIZE the engine fills the body and keeps the tag.
+
+Auto, not yet materialized (resolve at render from the room's type, size, and openings):
 
 ```
 room "living" {
@@ -129,30 +134,49 @@ names a template in the pack (`rooms.wdl`). Notes:
   an optional `room` field later — cheap, since it is additive-optional metadata — and bare
   `furniture auto` would then read the room's type. Out of scope for now.
 
-Explicit (materialized or hand-authored pieces):
+The SAME block, MATERIALIZED — the engine filled the body and kept the `auto bedroom` tag so it can
+refresh later. Lock the whole block (`... locked`) to freeze it, or lock a single `item` to keep it
+through a refresh:
 
 ```
 room "living" {
-  furniture {
-    item f."sofa" anchor bottom-center gap (0, 6)
+  furniture auto bedroom {
+    item f."sofa" anchor bottom-center gap (0, 6) locked   // pinned across a refresh
     item f."tv_unit" anchor top-center gap (0, 6)
   }
 }
 ```
 
-`furniture auto` and an explicit block are two ends of one spectrum. "Materialize" is the operation
-that turns `auto` into an explicit block: the engine runs once and writes its result inside the
-same block. Same region, same owner.
+Plain hand-authored furniture the engine never touches (no `auto`):
+
+```
+room "living" {
+  furniture {
+    item f."sofa" anchor bottom-center gap (0, 6)
+  }
+}
+```
+
+"Materialize" fills an `auto` block's body from the room's type, size, and openings; the block keeps
+its `auto <type>` tag and stays the same owned region.
 
 ### Semantics
 
-- The contents are the **same `item` primitive**. The block is scope and ownership, not a new type.
-- Flattening is unchanged: `furniture { items }` expands like a room's nested items today, so 2D/3D
-  rendering and the parity gate are unaffected.
-- `furniture auto` resolves at expand time via the engine, **version-gated** so existing configs
-  stay byte-identical (the 6/6 parity gate must hold).
-- **Ownership contract:** a tool may replace the whole `furniture auto` / generated block and may
-  write only inside a `furniture` block. It never touches anything outside it.
+- The children are the **same `item` primitive**. `furniture` is a CONTAINER (scope + ownership + the
+  `auto`/type/`locked` metadata), not a new item type. This resolves the "container vs role-tag" open
+  decision toward a container: block-level `auto <type>` and block-level `locked` need a home a
+  role-tag on items cannot give them.
+- Flattening is unchanged: a `furniture { items }` body expands like a room's nested items today, so
+  2D/3D rendering and the parity gate are unaffected.
+- **Expand runs the engine ONLY for an empty `furniture auto`** (the dynamic case), **version-gated**
+  so existing configs stay byte-identical. A materialized body (`furniture auto <type> { items }`)
+  renders its items as-is — expand never re-runs the engine for it, so it is parity-safe. Re-placing
+  a materialized block is an explicit "furnish/refresh" command, never a render side effect.
+- **Locking, two granularities:** `furniture … locked { }` freezes the whole block (never
+  regenerated); `item … locked` inside pins one piece (a refresh preserves it and routes the rest
+  around it). See Part 3.
+- **Ownership contract:** a tool writes only inside a `furniture` block, may replace an unlocked
+  `auto` block's generated body, and never touches anything outside it.
 
 ---
 
@@ -263,9 +287,9 @@ held to 6/6 byte-identical.
 
 - **Syntax placement of `locked`**: trailing flag on the object header (shown) vs a property. Flag
   reads best and matches other modifiers.
-- **Furniture in the schema**: a `role: "furniture"` tag on items (lighter, uniform) vs a distinct
-  container (more explicit for round-tripping). Lean tag unless round-trip fidelity needs the
-  container.
+- **Furniture in the schema**: DECIDED — a distinct `furniture` CONTAINER, because block-level
+  `auto <type>` and block-level `locked` metadata need a home a `role: "furniture"` tag on items
+  cannot provide. The body is a list of the same `item` primitive.
 - **Agent enforcement strength**: convention-only vs a pre-write check in the MCP editing tools.
   Start convention-only; add a check if a tool is observed crossing a lock.
 - **Where the template pack lives** for the main app: resolve `rooms.wdl` through the existing
