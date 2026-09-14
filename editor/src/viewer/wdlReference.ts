@@ -147,7 +147,7 @@ spiral_staircase [name "N"] at (x, y) radius &lt;r&gt; total_height &lt;h&gt;
   [turns &lt;t&gt;] [steps &lt;n&gt;] [tread_thickness &lt;tt&gt;] [pole_radius &lt;pr&gt;]
                                 //  helix of treads winding a central pole (a PROMOTED generic primitive)
 kitchen [name "N"] path ((x,y), (x,y), …) side left|right depth &lt;d&gt; height &lt;h&gt; [base_z …]
-                                //  LEGACY polyline platform — prefer `counter` below
+                                //  LEGACY polyline platform — prefer counter (below)
 counter [name "N"] depth &lt;d&gt; height &lt;h&gt; [length &lt;l&gt;] [anchor_to "Room" anchor center-right gap (gx,gy)] [at (x,y) rotation &lt;deg&gt;] [base_z …] [material "…"]
                                 //  a parametric run (kitchen platform / vanity / utility slab); length defaults to the wall span; L/U = multiple runs
 item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }

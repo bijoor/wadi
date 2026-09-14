@@ -68,6 +68,8 @@ export const counterNode: NodeDefinition = {
 
   emitWdl: (obj) => counterToWdl(obj),
 
+  // `counter` is a registry-only type (not in the built-in HouseObject union — it
+  // self-registers via registerObjectSchema), so cast through unknown.
   makeDefault: (cfg, existing) =>
     ({
       type: "counter",
@@ -77,7 +79,7 @@ export const counterNode: NodeDefinition = {
       length: 100,
       depth: 22,
       height: 36,
-    }) as HouseObject,
+    }) as unknown as HouseObject,
 
   // Parametric furniture element: footprint in PROJECT UNITS, local frame (length = X,
   // depth = Y). A wall run whose length auto-fills the wall span when not authored.
