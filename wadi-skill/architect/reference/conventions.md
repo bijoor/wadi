@@ -428,6 +428,29 @@ list); the model still renders so you can see the problem.
 
 ---
 
+## Managed regions and `locked` (tool contract)
+
+Wadi's core invariant is that the `.wdl` is the source of truth and stays fully
+hand-editable. Automated writers (an auto-furnish command, the configurator
+emitter, a planner export, a refactor, or a coding agent acting as a tool) must
+respect that:
+
+- **Edit only inside explicit, named, owned regions.** A tool writes to a region
+  it owns (e.g. a room's `furniture` block, the `configurator`) and never scatters
+  edits through the rest of the file.
+- **Never touch a `locked` element.** `locked` is an optional bare flag any object
+  (or opening) may carry. It is pure metadata — the resolver and geometry pipeline
+  ignore it, so it moves no geometry — and it means: no automated tool may modify,
+  move, delete, or regenerate this element. When a tool regenerates a region that
+  is not itself locked, it preserves any `locked` descendants in place and routes
+  generated content around them.
+- **Locking is a tool boundary, not a human one.** A person or agent editing by
+  hand may still change a locked element or remove the flag. As a hand author,
+  honor `locked` you did not place: treat it as "the owner wants this exactly as
+  written."
+- **Output stays plain, hand-editable WDL.** Nothing a tool writes may require a
+  tool to read back.
+
 ## Design guidelines (advisory — NOT linted)
 
 Good-practice guidance the linter does not check. Apply your judgement; these are

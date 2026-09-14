@@ -320,7 +320,10 @@ Value infers Value:
 fragment CommonFields:
       'z_offset' z_offset=Expr
     | 'enabled' enabled=Expr
-    | 'layer' layer=STRING;
+    | 'layer' layer=STRING
+    // Pure metadata: no automated tool may edit/move/delete this element. A bare
+    // trailing flag (like `open` on an opening); carries no geometry.
+    | locked?='locked';
 
 // ---- Rooms + their walls / openings / anchored furniture ----
 // An object name: a bare identifier, or a quoted string when it has hyphens/
@@ -348,7 +351,7 @@ RoomWall:
 Opening:
     kind=('door' | 'window' | 'gap') name=NameRef
     'at' offset=Expr ('from' anchor=OpeningAnchor)? 'size' '(' width=Expr ',' height=Expr ')'
-    ('sill' sill=Expr)? (open?='open')? ('direction' direction=Side)?;
+    ('sill' sill=Expr)? (open?='open')? ('direction' direction=Side)? (locked?='locked')?;
 OpeningAnchor returns string:
     'start' | 'center' | 'end';
 Side returns string:

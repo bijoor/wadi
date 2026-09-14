@@ -119,6 +119,9 @@ export const COMMON_SOURCE_LINES = [
   "formulas: z.record(z.string(), z.string()).optional(),",
   "enabled: z.union([z.boolean(), z.number()]).optional(),",
   "layer: z.string().optional(),",
+  // Pure metadata: no automated tool may edit/move/delete this element. The
+  // resolver + expandRoomWalls ignore it, so it carries no geometry.
+  "locked: z.boolean().optional(),",
 ];
 
 /** Emit the TS SOURCE for a primitive's strict Zod object schema (discriminated on

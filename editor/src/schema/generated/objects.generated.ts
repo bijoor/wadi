@@ -9,6 +9,7 @@ export const beam = z.object({
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  locked: z.boolean().optional(),
   // Label
   name: z.string().optional(),
   // Top-left X (project units)
@@ -30,6 +31,7 @@ export const floor_slab = z.object({
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  locked: z.boolean().optional(),
   // Label
   name: z.string().optional(),
   // Top-left X (project units)
@@ -51,6 +53,7 @@ export const pillar = z.object({
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  locked: z.boolean().optional(),
   // Label
   name: z.string(),
   // Top-left corner X (project units)
@@ -73,6 +76,7 @@ export const plinth = z.object({
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  locked: z.boolean().optional(),
   // Label
   name: z.string().optional(),
   // Material key
@@ -97,6 +101,7 @@ export const ground = z.object({
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  locked: z.boolean().optional(),
   // Label
   name: z.string().optional(),
   // Material key
@@ -121,6 +126,7 @@ export const spiral_staircase = z.object({
   formulas: z.record(z.string(), z.string()).optional(),
   enabled: z.union([z.boolean(), z.number()]).optional(),
   layer: z.string().optional(),
+  locked: z.boolean().optional(),
   // Label
   name: z.string().optional(),
   // Centre X (project units)

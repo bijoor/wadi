@@ -99,6 +99,7 @@ const site = z
     plot_width: positive(),
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
+    locked: z.boolean().optional(),
   })
   .strict();
 
@@ -140,6 +141,8 @@ const opening = z
     // When true, a `door`/`window` is left BARE (just a hole) — no leaf/glazing,
     // e.g. an unglazed vent. A `gap` is always bare, so this is redundant there.
     open: z.boolean().optional(),
+    // Pure metadata: no automated tool may edit/move/delete this opening.
+    locked: z.boolean().optional(),
   })
   .strict();
 export type Opening = z.infer<typeof opening>;
@@ -219,6 +222,7 @@ const roomItem = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     asset: itemAsset,
     anchor: itemAnchor.optional(), // default "center"
     gap_x: z.number().optional(),
@@ -236,6 +240,7 @@ const room = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -291,6 +296,7 @@ const wall = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string(),
     start_x: z.number(),
     start_y: z.number(),
@@ -315,6 +321,7 @@ const staircase = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string().optional(),
     // `climb` picks which end (start_x, start_y) is and which way the flight runs
     // in z as it extends into `direction`:
@@ -391,6 +398,7 @@ const door = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -409,6 +417,7 @@ const windowObj = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -431,6 +440,7 @@ const gapObj = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -451,6 +461,7 @@ const roofV2 = z
     type: z.literal("roof"),
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
+    locked: z.boolean().optional(),
   })
   .catchall(z.unknown());
 
@@ -465,6 +476,7 @@ const kitchenPlatform = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string().optional(),
     path: z.array(z.tuple([z.number(), z.number()])).min(2),
     side: z.enum(["left", "right"]),
@@ -491,6 +503,7 @@ const componentObject = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string().optional(),
     ref: z.string(),
     // Overrides for the component's declared input variables. A string starting
@@ -520,6 +533,7 @@ const itemObject = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string().optional(),
     asset: itemAsset,
     x: z.number(),
@@ -567,6 +581,7 @@ const modelObject = z
     formulas: formulaMap.optional(),
     enabled: enabledField.optional(),
     layer: z.string().optional(),
+    locked: z.boolean().optional(),
     name: z.string().optional(),
     asset: itemAsset,
     x: z.number(),

@@ -73,6 +73,7 @@ function commonSuffix(o: Obj, withMaterial = true): string {
   if (has(o, "z_offset")) parts.push(`z_offset ${fld(o, "z_offset")}`);
   if (has(o, "enabled")) parts.push(`enabled ${fld(o, "enabled")}`);
   if (o.layer !== undefined) parts.push(`layer ${str(o.layer)}`);
+  if (o.locked) parts.push("locked"); // bare metadata flag
   if (withMaterial && o.material !== undefined) parts.push(`material ${str(o.material)}`);
   return parts.length ? " " + parts.join(" ") : "";
 }
@@ -90,6 +91,7 @@ function emitOpening(op: Obj): string {
   else if (has(op, "sill")) s += ` sill ${fld(op, "sill")}`;
   if (op.open) s += " open";
   if (op.direction !== undefined) s += ` direction ${op.direction}`;
+  if (op.locked) s += " locked"; // bare metadata flag (matches grammar order)
   return s;
 }
 
@@ -392,7 +394,7 @@ function genFieldVal(o: Obj, key: string, v: unknown): string {
 // Only SCALAR (string/number) fields are expressible; anything nested (arrays /
 // objects, e.g. roof segments) falls back to the raw JSON escape.
 function emitObjectDecl(w: W, indent: number, o: Obj): void {
-  const RESERVED = new Set(["type", "name", "formulas", "z_offset", "enabled", "layer"]);
+  const RESERVED = new Set(["type", "name", "formulas", "z_offset", "enabled", "layer", "locked"]);
   const entries = Object.entries(o).filter(([k]) => !RESERVED.has(k));
   const scalar = entries.every(
     ([, v]) => v === null || typeof v === "string" || typeof v === "number",

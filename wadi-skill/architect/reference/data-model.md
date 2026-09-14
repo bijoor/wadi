@@ -40,6 +40,7 @@ These appear on most object types; documented once here, marked *(cross-cutting)
 
 | field | type | req | notes |
 |---|---|---|---|
+| `wadi_version` | integer |  | The .wadi format version (see CURRENT_WADI_VERSION). Absent ⇒ legacy (v1): behavioural changes are gated on this so old files render unchanged. |
 | `coord_convention` | enum: `outer` `center` |  | How a rectangular object's x/y/width/length relate to its walls (plans/grid-convention.md). "center" (new/canonical): coordinates are wall CENTRELINES — adjacent rooms ABUT on a shared line (no overlap), walls are centred on the boundary, and expandRoomWalls grows each footprint by wall_thickness/2 to the outer face. "outer" / absent (legacy): coordinates are the OUTER wall face and adjacent rooms must overlap by wall_thickness. |
 | `plinth` | any (freeform) |  | Legacy top-level plinth (pre-"Plinth floor"). Tolerated but IGNORED so an un-migrated file still loads (it just renders without a plinth/ground) instead of failing .strict() validation. New configs put the plinth on the Plinth floor as a `plinth` object. |
 | `defaults` | [houseDefaults](#housedefaults) |  |  |
@@ -86,6 +87,7 @@ The plinth is now a normal object placed on the "Plinth" floor (the first floor,
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  | Label |
 | `material` | string |  | Material key |
 | `x` | number | **yes** | Top-left X (project units) |
@@ -106,6 +108,7 @@ The ground plane, also on the Plinth floor. Extent defaults to the site plot whe
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  | Label |
 | `material` | string |  | Material key |
 | `x` | number | **yes** | Top-left X (project units) |
@@ -126,6 +129,7 @@ An INSTANCE of a reusable component from the in-file `components` library. It re
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  |  |
 | `ref` | string | **yes** |  |
 | `params` | map: string → union — see notes |  | Overrides for the component's declared input variables. A string starting with "=" is a formula evaluated in the HOST scope (so it can reference the host's variables/points); a number is used directly. |
@@ -145,6 +149,7 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  |  |
 | `asset` | [ItemAsset](#itemasset) | **yes** |  |
 | `x` | number | **yes** |  |
@@ -168,6 +173,7 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  |  |
 | `asset` | [ItemAsset](#itemasset) | **yes** |  |
 | `x` | number | **yes** |  |
@@ -185,6 +191,7 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  | Label |
 | `x` | number | **yes** | Top-left X (project units) |
 | `y` | number | **yes** | Top-left Y (project units) |
@@ -201,6 +208,7 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string | **yes** | Label |
 | `x` | number | **yes** | Top-left corner X (project units) |
 | `y` | number | **yes** | Top-left corner Y (project units) |
@@ -217,6 +225,7 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  | Label |
 | `x` | number | **yes** | Top-left X (project units) |
 | `y` | number | **yes** | Top-left Y (project units) |
@@ -233,6 +242,7 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string | **yes** |  |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
@@ -254,6 +264,7 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string | **yes** |  |
 | `start_x` | number | **yes** |  |
 | `start_y` | number | **yes** |  |
@@ -274,6 +285,7 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  |  |
 | `climb` | enum: `up` `down` |  | `climb` picks which end (start_x, start_y) is and which way the flight runs in z as it extends into `direction`: • "up" (recommended): BOTTOM-anchored. Put the stair on the LOWER floor it rises FROM; (start_x, start_y) is the bottom step's near corner on that floor and the flight ASCENDS into `direction`. `rise_height` defaults to THIS floor's height (climb to the next level). The intuitive way. • "down" (DEFAULT, kept for older configs): TOP-anchored. Put the stair on the upper DESTINATION floor; (start_x, start_y) is the top connection and the flight DESCENDS into `direction`. `rise_height` defaults to the floor immediately BELOW this one. Either way the body + landings fill the box [start, start + max_run] along `direction`, and `z_offset` is the ANCHORED end's height above the floor base (omitted → this floor's slab thickness, flush with the walking surface). |
 | `start_x` | number | **yes** |  |
@@ -304,6 +316,7 @@ A helical staircase: `steps` treads winding `turns` revolutions around a central
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  | Label |
 | `x` | number | **yes** | Centre X (project units) |
 | `y` | number | **yes** | Centre Y (project units) |
@@ -326,6 +339,7 @@ Flat door/window remain valid as a legacy schema — new configs nest them insid
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string | **yes** |  |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
@@ -344,6 +358,7 @@ Flat door/window remain valid as a legacy schema — new configs nest them insid
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string | **yes** |  |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
@@ -366,6 +381,7 @@ A flat `gap` — the frameless-void counterpart of the flat door/window, produce
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string | **yes** |  |
 | `x` | number | **yes** |  |
 | `y` | number | **yes** |  |
@@ -387,6 +403,7 @@ Kitchen platform — a polyline countertop / cooking slab that runs along the ba
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
 | `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 | `name` | string |  |  |
 | `path` | array of tuple `[n,n]` | **yes** |  |
 | `side` | enum: `left` `right` | **yes** |  |
@@ -409,6 +426,7 @@ v2 roof — unified segment-based type that replaces hip/gable/flat/shed. Schema
 | `type` | literal `roof` | **yes** |  |
 | `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
 
 
 ## Shared & nested schemas
@@ -425,6 +443,7 @@ Objects don't bind to the grid with a special field — a grid line's position i
 | `plot_width` | number > 0 | **yes** |  |
 | `formulas` | map: field name → `"= formula"` string |  |  |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  |  |
+| `locked` | boolean |  |  |
 
 
 ### houseDefaults
@@ -469,6 +488,7 @@ The plinth is now a normal object placed on the "Plinth" floor (the first floor,
 | `direction` | enum: `north` `south` `east` `west` |  |  |
 | `facing` | enum: `north` `south` `east` `west` |  |  |
 | `open` | boolean |  | When true, a `door`/`window` is left BARE (just a hole) — no leaf/glazing, e.g. an unglazed vent. A `gap` is always bare, so this is redundant there. |
+| `locked` | boolean |  | Pure metadata: no automated tool may edit/move/delete this opening. |
 
 
 ### RoomWallSide
@@ -489,6 +509,7 @@ A furniture piece nested INSIDE a room (room.items[]). It has NO x/y — its pla
 | `formulas` | map: field name → `"= formula"` string |  |  |
 | `enabled` | boolean or number (`false`/`0` = hidden) |  |  |
 | `layer` | string |  |  |
+| `locked` | boolean |  |  |
 | `asset` | [ItemAsset](#itemasset) | **yes** |  |
 | `anchor` | [ItemAnchor](#itemanchor) |  |  |
 | `gap_x` | number |  |  |

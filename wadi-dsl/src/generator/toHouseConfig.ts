@@ -111,6 +111,7 @@ interface CommonNode {
   enabled?: ast.Expr;
   layer?: string;
   material?: string;
+  locked?: boolean;
 }
 function applyCommon(o: Record<string, unknown>, formulas: Record<string, string>, n: CommonNode): void {
   if (n.z_offset !== undefined) {
@@ -127,6 +128,7 @@ function applyCommon(o: Record<string, unknown>, formulas: Record<string, string
   }
   if (n.layer) o.layer = unquote(n.layer);
   if (n.material) o.material = unquote(n.material);
+  if (n.locked) o.locked = true; // pure metadata flag
 }
 // Finish an object: attach the formula map iff it has entries.
 function done(o: Record<string, unknown>, formulas: Record<string, string>): Record<string, unknown> {
@@ -191,6 +193,7 @@ function opening(o: ast.Opening): Record<string, unknown> {
   if (o.anchor) obj.anchor = o.anchor;
   if (o.open) obj.open = true;
   if (o.direction) obj.direction = o.direction;
+  if (o.locked) obj.locked = true; // pure metadata flag
   return done(obj, formulas);
 }
 

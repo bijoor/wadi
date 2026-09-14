@@ -109,7 +109,7 @@ things with the `min/abs` idiom (see `enabled` below).
 After an object's geometry, in THIS order, any of:
 
 ```
-… z_offset <expr>   enabled <expr>   layer "id"   [material "id"]
+… z_offset <expr>   enabled <expr>   layer "id"   [material "id"]   [locked]
 ```
 
 - `enabled <expr>` — the on/off switch. A `0`/`false` value hides the object. To
@@ -120,6 +120,12 @@ After an object's geometry, in THIS order, any of:
 - `z_offset <expr>` — lift above the floor base (split levels).
 - `material "id"` — only on plinth / ground / room / wall / staircase / kitchen /
   roof.
+- `locked` — a bare metadata flag. It carries NO geometry (the resolver and
+  geometry pipeline ignore it), and it means **no automated tool may edit, move,
+  or delete this element**. A person or agent editing by hand may still change a
+  locked element or remove the flag — locking is a tool boundary, not a human one.
+  Use it to keep a hand-tuned object exactly as written when a tool (auto-furnish,
+  a planner export, a refactor) would otherwise regenerate the surrounding region.
 
 ## Objects — structure & envelope
 
@@ -149,8 +155,8 @@ only when it carries a door/window; omit a side to leave it open (verandah).
 room Name at (x,y) size (w,l) [height <h>] [material "…"] {
   connect Kitchen Hall                 // rooms this room opens into (same floor)
   wall east west north                 // plain walls — several in one statement
-  wall south { door Main at <offset> [from start|center|end] size (w,h) [open] }   // wall WITH openings
-  wall west  { window W at <offset> [from start|center|end] size (w,h) [sill <s>] [open] }
+  wall south { door Main at <offset> [from start|center|end] size (w,h) [open] [locked] }   // wall WITH openings
+  wall west  { window W at <offset> [from start|center|end] size (w,h) [sill <s>] [open] [locked] }
   item asset { … } anchor center [gap (gx,gy)]   // furniture anchored inside the room
 }
 ```
