@@ -110,9 +110,12 @@ export const counterNode: NodeDefinition = {
     const sinkW = SINK_SCALE * metersToUnits(sd[0], ctx.unitsRef);
     const sinkDp = SINK_SCALE * metersToUnits(sd[2], ctx.unitsRef);
     const sinkDrop = 0.34 * SINK_SCALE * metersToUnits(sd[1], ctx.unitsRef);
-    const holeW = sinkW * 0.9;
+    // The bowl spans nearly the full sink width, so the hole matches the full footprint
+    // width. In the placed sink the BOWL is on the -Z side and the FAUCET on +Z, so the
+    // hole is biased to -Z (under the bowl) and the faucet keeps counter under it.
+    const holeW = sinkW * 1.0;
     const holeD = sinkDp * 0.72;
-    const holeCz = sinkDp * 0.12; // bias to the front (+Z), under the bowl
+    const holeCz = -sinkDp * 0.15; // bias toward the bowl (−Z), away from the faucet
     // The countertop slab: one box, or four border boxes around the sink hole.
     const slab = (topY: number, thickness: number, color: string, rough: number): ReactNode[] => {
       if (!hasSink) {
