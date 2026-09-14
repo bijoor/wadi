@@ -357,8 +357,13 @@ export function placePieces(pieces: Piece[], rect: RoomRect, wallT: number, unit
 }
 
 // True when we have enough context to score/carve by real geometry (else the coarse fallback).
+// `units` is INTENTIONALLY not required — it is optional metadata (a config with no `units`
+// defaults to feet_inches / per_unit 10, and metersToUnits applies that default), so requiring
+// it here silently disabled door-aware placement for any unit-less config: the furniture was
+// dropped in raw, overlapping the doors. Geometry needs the rect, the wall thickness, and the
+// door intervals; the footprint scale comes from `units` OR its default.
 export function canPlaceByGeometry(ctx: PlaceContext): boolean {
-  return !!(ctx && ctx.rect && ctx.units && ctx.wallT != null && ctx.doorIntervals);
+  return !!(ctx && ctx.rect && ctx.wallT != null && ctx.doorIntervals);
 }
 
 // ---- layout selection --------------------------------------------------------------

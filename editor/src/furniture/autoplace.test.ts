@@ -11,6 +11,7 @@ import {
   autoplaceRoom,
   pickLayout,
   placePieces,
+  canPlaceByGeometry,
   rotatePieceCW,
   rotateLayoutCW,
   pieceFootprint,
@@ -50,6 +51,28 @@ describe("pieceFootprint — rotation resolves to anchorFacing (the mirror bug)"
     const explicit = pieceFootprint({ asset: asset("shelf", 1, 3), anchor: "center-left", rotation: 0 }, ROOM, WALL_T, UNITS);
     expect(explicit.halfX).toBeCloseTo((1 / 2) * upm, 3); // rotation 0 → width spans X
     expect(explicit.halfX).not.toBeCloseTo(implicit.halfX, 1);
+  });
+});
+
+describe("geometry-aware placement works WITHOUT explicit units (regression)", () => {
+  // A config with no `units` line has units === undefined (it defaults to feet_inches /
+  // per_unit 10). Door-aware placement must still run — requiring units in
+  // canPlaceByGeometry silently dropped furniture onto the doors for any unit-less config.
+  it("canPlaceByGeometry does not require units", () => {
+    expect(canPlaceByGeometry({ rect: ROOM, wallT: WALL_T, doorIntervals: {} })).toBe(true);
+  });
+
+  it("autoplaceRoom shifts a piece off a door even when units is undefined", () => {
+    const doors = { north: [[85, 115]] as [number, number][] }; // centred on the north wall
+    const layout: Layout = { id: "b", type: "bedroom", w: 100, l: 100, pieces: [bed()] };
+    // NOTE: no `units` in the context — mirrors a config that declares none.
+    const res = autoplaceRoom([layout], "bedroom", { rect: ROOM, wallT: WALL_T, doorIntervals: doors });
+    expect(res.items).toHaveLength(1);
+    const bedItem = res.items[0];
+    // it was moved off centre (placement ran); its footprint clears the door span
+    expect(bedItem.gap_x ?? 0).not.toBe(0);
+    const fp = pieceFootprint(bedItem, ROOM, WALL_T, undefined);
+    expect(fp.x1 <= 85 + 2 || fp.x0 >= 115 - 2).toBe(true);
   });
 });
 
