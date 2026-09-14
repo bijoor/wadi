@@ -463,6 +463,7 @@ Counter:
         | 'anchor_to' anchor_to=STRING | 'anchor' anchor=Anchor
         | 'gap' '(' gap_x=Expr ',' gap_y=Expr ')'
         | cabinet?='cabinet' | 'top_thickness' top_thickness=Expr | 'toe_kick' toe_kick=Expr
+        | sink?='sink' (sink_offset=Expr)? | hob?='hob' (hob_offset=Expr)?
         | CommonFields )*;
 // A counter nested inside a room (or its `furniture` container) — like RoomItem, no x/y:
 // it hugs a wall via `anchor` + `gap`, `length` defaults to the wall span.
@@ -473,6 +474,7 @@ RoomCounter:
         | 'length' length=Expr | 'depth' depth=Expr | 'height' height=Expr
         | 'base_z' base_z=Expr | 'material' material=STRING
         | cabinet?='cabinet' | 'top_thickness' top_thickness=Expr | 'toe_kick' toe_kick=Expr
+        | sink?='sink' (sink_offset=Expr)? | hob?='hob' (hob_offset=Expr)?
         | CommonFields )*;
 
 // ---- Free-standing furniture (a GLB asset placed in plan) ----

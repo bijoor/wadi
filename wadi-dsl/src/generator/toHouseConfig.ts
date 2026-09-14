@@ -243,6 +243,16 @@ function roomCounter(c: ast.RoomCounter): Record<string, unknown> {
   if (tt !== undefined) o.top_thickness = tt;
   const tk = put("toe_kick", c.toe_kick);
   if (tk !== undefined) o.toe_kick = tk;
+  if (c.sink) {
+    o.sink = true;
+    const so = put("sink_offset", c.sink_offset);
+    if (so !== undefined) o.sink_offset = so;
+  }
+  if (c.hob) {
+    o.hob = true;
+    const ho = put("hob_offset", c.hob_offset);
+    if (ho !== undefined) o.hob_offset = ho;
+  }
   applyCommon(o, formulas, c);
   return done(o, formulas);
 }
@@ -435,6 +445,16 @@ function counter(c: ast.Counter): Record<string, unknown> {
   if (tt !== undefined) o.top_thickness = tt;
   const tk = put("toe_kick", c.toe_kick);
   if (tk !== undefined) o.toe_kick = tk;
+  if (c.sink) {
+    o.sink = true;
+    const so = put("sink_offset", c.sink_offset);
+    if (so !== undefined) o.sink_offset = so;
+  }
+  if (c.hob) {
+    o.hob = true;
+    const ho = put("hob_offset", c.hob_offset);
+    if (ho !== undefined) o.hob_offset = ho;
+  }
   applyCommon(o, formulas, c);
   return done(o, formulas);
 }

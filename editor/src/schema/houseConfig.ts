@@ -261,6 +261,12 @@ const roomCounter = z
     cabinet: z.boolean().optional(),
     top_thickness: positive().optional(), // countertop slab thickness (default derived)
     toe_kick: z.number().nonnegative().optional(), // recessed plinth height (default derived)
+    // Fixtures seated on the counter top at an offset along the run (0 = centred):
+    // a sink (bowl + faucet) and/or a gas cooktop.
+    sink: z.boolean().optional(),
+    sink_offset: z.number().optional(),
+    hob: z.boolean().optional(),
+    hob_offset: z.number().optional(),
   })
   .strict();
 export type RoomCounter = z.infer<typeof roomCounter>;
@@ -660,6 +666,11 @@ const counterObject = z
     cabinet: z.boolean().optional(),
     top_thickness: positive().optional(),
     toe_kick: z.number().nonnegative().optional(),
+    // Fixtures seated on the counter top (see roomCounter).
+    sink: z.boolean().optional(),
+    sink_offset: z.number().optional(),
+    hob: z.boolean().optional(),
+    hob_offset: z.number().optional(),
   })
   .strict();
 

@@ -15,19 +15,24 @@
 // registry), so top-level imports stay pure (no three.js). The 3D branch returns R3F
 // intrinsic JSX (string tags — no three import); it only executes in the browser.
 
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { toThreePos } from "../../three/coords";
 import { defaultLayerFor } from "../../three/layers";
-import { furnitureUrl } from "../../furniture/catalog";
+import { metersToUnits } from "../../three/units";
+import { furnitureUrl, furnitureAsset } from "../../furniture/catalog";
 import { uniqueName } from "../../state/naming";
 import { counterToWdl } from "../../../../wadi-dsl/src/generator/fromHouseConfig";
 import type { HouseObject } from "../../schema/houseConfig";
 import type { NodeDefinition } from "../types";
 
-// Tiled cabinet door fronts (Phase B) — lazy so this headless-safe node never pulls
-// three/drei at module load (only when a cabinet counter actually renders in 3D).
+// Tiled cabinet door fronts (Phase B) + the GLB fixture renderer (Phase C, a sink/hob
+// seated on the top) — lazy so this headless-safe node never pulls three/drei at module
+// load (only when a counter actually renders in 3D).
 const CounterFronts = lazy(() =>
   import("../../three/CounterFronts").then((m) => ({ default: m.CounterFronts })),
+);
+const FurnitureItem = lazy(() =>
+  import("../../three/FurnitureItem").then((m) => ({ default: m.FurnitureItem })),
 );
 
 // The Zod schema (free `counterObject` + nested `roomCounter`) lives in
@@ -85,62 +90,79 @@ export const counterNode: NodeDefinition = {
     const layerId = (obj.layer as string | undefined) ?? defaultLayerFor("counter", ctx.floorNum);
     const GRANITE = "#3f3f46";
 
-    // Base-cabinet treatment: a distinct countertop slab + carcass body + a recessed
-    // toe-kick plinth, instead of one solid block. Sized from the run's height/depth,
-    // with optional overrides. Local frame (group at the floor base): Y up, length → X,
-    // depth → Z. The plinth is inset on both depth faces (the back one hides in the wall,
-    // the front one reads as the toe-kick), so it needs no front-direction detection.
+    // Everything lives in ONE group at the run's floor base (Y up, length → local X,
+    // depth → local Z, front/room face = +local Z). Children are placed in that frame.
+    const parts: ReactNode[] = [];
+
+    // Base geometry: either the base-cabinet treatment (countertop slab + carcass body +
+    // recessed toe-kick plinth) or a single solid block (the masonry otta). The plinth is
+    // inset on both depth faces (the back one hides in the wall, the front reads as the
+    // toe-kick), so it needs no front-direction detection.
     if (obj.cabinet) {
       const topT = Math.max(1, (obj.top_thickness as number | undefined) ?? Math.min(4, height * 0.15));
       const toe = Math.max(0, (obj.toe_kick as number | undefined) ?? Math.min(8, height * 0.22));
       const toeInset = Math.min(5, depth * 0.25);
       const bodyH = Math.max(0.5, height - topT - toe);
-      return {
-        layerId,
-        node: (
-          <group key={ctx.key} position={[c.x, baseZ, c.z]} rotation={[0, yaw, 0]}>
-            <mesh position={[0, height - topT / 2, 0]} castShadow receiveShadow>
-              <boxGeometry args={[length, topT, depth]} />
-              <meshStandardMaterial color={GRANITE} roughness={0.6} />
-            </mesh>
-            <mesh position={[0, toe + bodyH / 2, 0]} castShadow receiveShadow>
-              <boxGeometry args={[length, bodyH, depth]} />
-              <meshStandardMaterial color="#8a8a94" roughness={0.75} />
-            </mesh>
-            <Suspense fallback={null}>
-              <CounterFronts
-                src={furnitureUrl("cabinet_door")}
-                length={length}
-                bodyH={bodyH}
-                baseY={toe}
-                frontZ={depth / 2}
-              />
-            </Suspense>
-            {toe > 0 && (
-              <mesh position={[0, toe / 2, 0]} castShadow receiveShadow>
-                <boxGeometry args={[length, toe, Math.max(1, depth - 2 * toeInset)]} />
-                <meshStandardMaterial color="#2a2a30" roughness={0.85} />
-              </mesh>
-            )}
-          </group>
-        ),
-      };
+      parts.push(
+        <mesh key="top" position={[0, height - topT / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[length, topT, depth]} />
+          <meshStandardMaterial color={GRANITE} roughness={0.6} />
+        </mesh>,
+        <mesh key="body" position={[0, toe + bodyH / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[length, bodyH, depth]} />
+          <meshStandardMaterial color="#8a8a94" roughness={0.75} />
+        </mesh>,
+        <Suspense key="fronts" fallback={null}>
+          <CounterFronts src={furnitureUrl("cabinet_door")} length={length} bodyH={bodyH} baseY={toe} frontZ={depth / 2} />
+        </Suspense>,
+      );
+      if (toe > 0) {
+        parts.push(
+          <mesh key="toe" position={[0, toe / 2, 0]} castShadow receiveShadow>
+            <boxGeometry args={[length, toe, Math.max(1, depth - 2 * toeInset)]} />
+            <meshStandardMaterial color="#2a2a30" roughness={0.85} />
+          </mesh>,
+        );
+      }
+    } else {
+      parts.push(
+        <mesh key="slab" position={[0, height / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[length, height, depth]} />
+          <meshStandardMaterial color={GRANITE} roughness={0.7} />
+        </mesh>,
+      );
     }
 
-    // Solid platform (default) — a single block, the masonry otta.
+    // Fixtures (Phase C): a sink (bowl + faucet) and/or a gas cooktop seated ON the top,
+    // at an offset along the run (local X, 0 = centred). GLBs auto-scale to their catalog
+    // dims; base seats on the counter top (local Y = height). The sink is turned so its
+    // faucet sits toward the back (wall) rather than the room.
+    const unitsScale = metersToUnits(1, ctx.unitsRef);
+    const fixture = (id: string, offX: number, yawDeg: number) => {
+      const a = furnitureAsset(id);
+      return (
+        <Suspense key={id} fallback={null}>
+          <FurnitureItem
+            src={a.src}
+            dimensions={a.dimensions}
+            cx={offX}
+            cz={0}
+            baseY={height}
+            yawDeg={yawDeg}
+            unitsScale={unitsScale}
+          />
+        </Suspense>
+      );
+    };
+    if (obj.sink) parts.push(fixture("kitchen_sink_bare", (obj.sink_offset as number | undefined) ?? 0, 180));
+    if (obj.hob) parts.push(fixture("cooktop_hob", (obj.hob_offset as number | undefined) ?? 0, 0));
+
     return {
       layerId,
       node: (
-        <mesh
-          key={ctx.key}
-          position={[c.x, baseZ + height / 2, c.z]}
-          rotation={[0, yaw, 0]}
-          castShadow
-          receiveShadow
-        >
-          <boxGeometry args={[length, height, depth]} />
-          <meshStandardMaterial color={GRANITE} roughness={0.7} />
-        </mesh>
+        <group key={ctx.key} position={[c.x, baseZ, c.z]} rotation={[0, yaw, 0]}>
+          {parts}
+        </group>
       ),
     };
   },

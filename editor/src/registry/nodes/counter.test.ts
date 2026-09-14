@@ -61,15 +61,26 @@ describe("counter.render3D", () => {
     expect(out?.node).toBeTruthy();
   });
 
-  it("a plain counter renders a single mesh; cabinet renders a multi-part group", () => {
-    const plain = counterNode.render3D!({ ...base, length: 120 }, ctx) as { node: { type: unknown } };
+  it("a plain counter is a group with one slab; cabinet adds slab+body+fronts+toe", () => {
+    const plain = counterNode.render3D!({ ...base, length: 120 }, ctx) as {
+      node: { props: { children: unknown[] } };
+    };
     const cab = counterNode.render3D!({ ...base, length: 120, cabinet: true }, ctx) as {
       node: { props: { children: unknown[] } };
     };
-    // plain = one <mesh>; cabinet = a <group> with top slab + body (+ toe-kick) children
-    expect(String(plain.node.type)).toBe("mesh");
-    const kids = (cab.node.props.children as unknown[]).flat().filter(Boolean);
-    expect(kids.length).toBeGreaterThanOrEqual(2);
+    const plainKids = (plain.node.props.children as unknown[]).flat().filter(Boolean);
+    const cabKids = (cab.node.props.children as unknown[]).flat().filter(Boolean);
+    expect(plainKids.length).toBe(1); // one solid block
+    expect(cabKids.length).toBeGreaterThanOrEqual(3); // countertop + body + fronts (+ toe)
+  });
+
+  it("sink/hob add fixture children on top", () => {
+    const withFix = counterNode.render3D!({ ...base, length: 120, sink: true, hob: true }, ctx) as {
+      node: { props: { children: unknown[] } };
+    };
+    const kids = (withFix.node.props.children as unknown[]).flat().filter(Boolean);
+    // one solid block + a sink + a hob
+    expect(kids.length).toBe(3);
   });
 });
 

@@ -191,6 +191,10 @@ A free-standing / resolved `counter` run (parametric furniture element). Carries
 | `cabinet` | boolean |  | Base-cabinet treatment (see roomCounter): countertop slab + carcass + toe-kick. |
 | `top_thickness` | number > 0 |  |  |
 | `toe_kick` | number ≥ 0 |  |  |
+| `sink` | boolean |  | Fixtures seated on the counter top (see roomCounter). |
+| `sink_offset` | number |  |  |
+| `hob` | boolean |  |  |
+| `hob_offset` | number |  |  |
 
 
 ### `model`

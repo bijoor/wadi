@@ -287,6 +287,8 @@ export function counterToWdl(o: Obj): string {
   if (o.cabinet) s += " cabinet";
   if (has(o, "top_thickness")) s += ` top_thickness ${fld(o, "top_thickness")}`;
   if (has(o, "toe_kick")) s += ` toe_kick ${fld(o, "toe_kick")}`;
+  if (o.sink) s += has(o, "sink_offset") ? ` sink ${fld(o, "sink_offset")}` : " sink";
+  if (o.hob) s += has(o, "hob_offset") ? ` hob ${fld(o, "hob_offset")}` : " hob";
   return s + commonSuffix(o);
 }
 
