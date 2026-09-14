@@ -146,8 +146,8 @@ fill the corner. Room walls handle their own corners.</p>
 spiral_staircase [name "N"] at (x, y) radius &lt;r&gt; total_height &lt;h&gt;
   [turns &lt;t&gt;] [steps &lt;n&gt;] [tread_thickness &lt;tt&gt;] [pole_radius &lt;pr&gt;]
                                 //  helix of treads winding a central pole (a PROMOTED generic primitive)
-counter [name "N"] depth &lt;d&gt; height &lt;h&gt; [length &lt;l&gt;] [anchor_to "Room" anchor center-right gap (gx,gy)] [at (x,y) rotation &lt;deg&gt;] [base_z …] [material "…"]
-                                //  a parametric run (kitchen platform / vanity / utility slab); length defaults to the wall span; L/U = multiple runs; also authorable INSIDE a room or its furniture block
+counter [name "N"] depth &lt;d&gt; height &lt;h&gt; [length &lt;l&gt;] [anchor_to "Room" anchor center-right gap (gx,gy)] [at (x,y) rotation &lt;deg&gt;] [base_z …] [material "…"] [cabinet [top_thickness &lt;t&gt;] [toe_kick &lt;k&gt;]]
+                                //  a parametric run (kitchen platform / vanity / utility slab); length defaults to the wall span; L/U = multiple runs; authorable INSIDE a room or its furniture block; cabinet = countertop slab + carcass + recessed toe-kick (else a solid platform)
 item [name "N"] asset { id "…" src "…glb" dims (w,h,d) [category "…"] }
   at (x,y) [rotation &lt;deg&gt;] [scale &lt;s&gt;] [anchor_to "Room" anchor center gap (gx,gy)]</pre>
 

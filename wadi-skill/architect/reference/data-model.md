@@ -188,6 +188,9 @@ A free-standing / resolved `counter` run (parametric furniture element). Carries
 | `anchor` | [ItemAnchor](#itemanchor) |  |  |
 | `gap_x` | number |  |  |
 | `gap_y` | number |  |  |
+| `cabinet` | boolean |  | Base-cabinet treatment (see roomCounter): countertop slab + carcass + toe-kick. |
+| `top_thickness` | number > 0 |  |  |
+| `toe_kick` | number ≥ 0 |  |  |
 
 
 ### `model`

@@ -284,6 +284,9 @@ export function counterToWdl(o: Obj): string {
   if (o.anchor_to !== undefined) s += ` anchor_to ${str(o.anchor_to)}`;
   if (o.anchor !== undefined) s += ` anchor ${o.anchor}`;
   if (has(o, "gap_x") || has(o, "gap_y")) s += ` gap (${fld(o, "gap_x")}, ${fld(o, "gap_y")})`;
+  if (o.cabinet) s += " cabinet";
+  if (has(o, "top_thickness")) s += ` top_thickness ${fld(o, "top_thickness")}`;
+  if (has(o, "toe_kick")) s += ` toe_kick ${fld(o, "toe_kick")}`;
   return s + commonSuffix(o);
 }
 

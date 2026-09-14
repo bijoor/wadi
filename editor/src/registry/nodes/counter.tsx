@@ -72,10 +72,47 @@ export const counterNode: NodeDefinition = {
     // world yaw of `r` degrees is -r radians about the three Y axis. length → box local X,
     // depth → box local Z.
     const yaw = (-((obj.rotation as number | undefined) ?? 0) * Math.PI) / 180;
+    // The 3D layer id is per-floor (`f<n>_<role>`); the literal role name is NOT a
+    // mounted group, so it must go through defaultLayerFor like item/model do.
+    const layerId = (obj.layer as string | undefined) ?? defaultLayerFor("counter", ctx.floorNum);
+    const GRANITE = "#3f3f46";
+
+    // Base-cabinet treatment: a distinct countertop slab + carcass body + a recessed
+    // toe-kick plinth, instead of one solid block. Sized from the run's height/depth,
+    // with optional overrides. Local frame (group at the floor base): Y up, length → X,
+    // depth → Z. The plinth is inset on both depth faces (the back one hides in the wall,
+    // the front one reads as the toe-kick), so it needs no front-direction detection.
+    if (obj.cabinet) {
+      const topT = Math.max(1, (obj.top_thickness as number | undefined) ?? Math.min(4, height * 0.15));
+      const toe = Math.max(0, (obj.toe_kick as number | undefined) ?? Math.min(8, height * 0.22));
+      const toeInset = Math.min(5, depth * 0.25);
+      const bodyH = Math.max(0.5, height - topT - toe);
+      return {
+        layerId,
+        node: (
+          <group key={ctx.key} position={[c.x, baseZ, c.z]} rotation={[0, yaw, 0]}>
+            <mesh position={[0, height - topT / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[length, topT, depth]} />
+              <meshStandardMaterial color={GRANITE} roughness={0.6} />
+            </mesh>
+            <mesh position={[0, toe + bodyH / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[length, bodyH, depth]} />
+              <meshStandardMaterial color="#8a8a94" roughness={0.75} />
+            </mesh>
+            {toe > 0 && (
+              <mesh position={[0, toe / 2, 0]} castShadow receiveShadow>
+                <boxGeometry args={[length, toe, Math.max(1, depth - 2 * toeInset)]} />
+                <meshStandardMaterial color="#2a2a30" roughness={0.85} />
+              </mesh>
+            )}
+          </group>
+        ),
+      };
+    }
+
+    // Solid platform (default) — a single block, the masonry otta.
     return {
-      // The 3D layer id is per-floor (`f<n>_<role>`); the literal role name is NOT a
-      // mounted group, so it must go through defaultLayerFor like item/model do.
-      layerId: (obj.layer as string | undefined) ?? defaultLayerFor("counter", ctx.floorNum),
+      layerId,
       node: (
         <mesh
           key={ctx.key}
@@ -85,7 +122,7 @@ export const counterNode: NodeDefinition = {
           receiveShadow
         >
           <boxGeometry args={[length, height, depth]} />
-          <meshStandardMaterial color="#3f3f46" roughness={0.7} />
+          <meshStandardMaterial color={GRANITE} roughness={0.7} />
         </mesh>
       ),
     };

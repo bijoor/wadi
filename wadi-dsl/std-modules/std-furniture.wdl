@@ -36,6 +36,10 @@ asset "range_hood" src "https://templates.wadi.house/furniture/range_hood.glb" d
 asset "fridge" src "https://templates.wadi.house/furniture/fridge.glb" dims (0.7, 1.8, 0.7) name "Fridge" category "Kitchen"
 asset "microwave" src "https://templates.wadi.house/furniture/microwave.glb" dims (0.5, 0.3, 0.4) name "Microwave" category "Kitchen"
 asset "coffee_machine" src "https://templates.wadi.house/furniture/coffee_machine.glb" dims (0.25, 0.35, 0.3) name "Coffee machine" category "Kitchen"
+asset "kitchen_sink_bare" src "https://templates.wadi.house/furniture/kitchen_sink_bare.glb" dims (0.55, 0.43, 0.48) name "Sink insert (bowl + faucet)" category "Kitchen"
+asset "cooktop_hob" src "https://templates.wadi.house/furniture/cooktop_hob.glb" dims (0.58, 0.09, 0.58) name "Gas cooktop" category "Kitchen"
+asset "cabinet_door" src "https://templates.wadi.house/furniture/cabinet_door.glb" dims (0.4, 0.3, 0.04) name "Cabinet door front" category "Kitchen"
+asset "cabinet_drawer" src "https://templates.wadi.house/furniture/cabinet_drawer.glb" dims (0.47, 0.11, 0.5) name "Cabinet drawer" category "Kitchen"
 // Bathroom
 asset "toilet" src "https://templates.wadi.house/furniture/toilet.glb" dims (0.5, 0.8, 0.7) name "Toilet" category "Bathroom"
 asset "bathtub" src "https://templates.wadi.house/furniture/bathtub.glb" dims (0.75, 0.6, 1.6) name "Bathtub" category "Bathroom"

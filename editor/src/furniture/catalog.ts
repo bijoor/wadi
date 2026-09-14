@@ -93,6 +93,13 @@ export const FURNITURE_CATALOG: FurnitureSpec[] = [
   { id: "fridge", name: "Fridge", category: "Kitchen", dimensions: [0.7, 1.8, 0.7] },
   { id: "microwave", name: "Microwave", category: "Kitchen", dimensions: [0.5, 0.3, 0.4] },
   { id: "coffee_machine", name: "Coffee machine", category: "Kitchen", dimensions: [0.25, 0.35, 0.3] },
+  // Counter INSERTS — bare fixtures (no cabinet/top of their own) that embed into a
+  // `counter` run: sink bowl + faucet, and a gas cooktop drop in; door/drawer fronts
+  // tile the carcass. (KayKit sink/cooktop + Kenney door/drawer, all CC0.)
+  { id: "kitchen_sink_bare", name: "Sink insert (bowl + faucet)", category: "Kitchen", dimensions: [0.55, 0.43, 0.48] },
+  { id: "cooktop_hob", name: "Gas cooktop", category: "Kitchen", dimensions: [0.58, 0.09, 0.58] },
+  { id: "cabinet_door", name: "Cabinet door front", category: "Kitchen", dimensions: [0.4, 0.3, 0.04] },
+  { id: "cabinet_drawer", name: "Cabinet drawer", category: "Kitchen", dimensions: [0.47, 0.11, 0.5] },
   // Bathroom
   { id: "toilet", name: "Toilet", category: "Bathroom", dimensions: [0.5, 0.8, 0.7] },
   { id: "bathtub", name: "Bathtub", category: "Bathroom", dimensions: [0.75, 0.6, 1.6] },

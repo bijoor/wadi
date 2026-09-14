@@ -21,3 +21,20 @@
 
 	Follow on Twitter for updates:
 	http://twitter.com/KenneyNL
+
+	============================================================
+
+	KayKit (kitchen_sink_bare, cooktop_hob)
+
+	Created/distributed by Kay Lousberg (kaylousberg.com / poly.pizza)
+	Source: "Kitchentable Sink" and "Stove" (KayKit-style, CC0)
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	Free for personal, educational and commercial use; crediting optional.
+	kitchen_sink_bare + cooktop_hob were derived (legs/deck stripped in Blender)
+	from these CC0 models for embedding into the Wadi `counter` primitive.
+
+	(cabinet_door + cabinet_drawer are extracted from the Kenney Furniture Kit
+	above — same CC0 license.)

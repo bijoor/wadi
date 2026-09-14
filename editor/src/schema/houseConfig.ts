@@ -256,6 +256,11 @@ const roomCounter = z
     z_offset: z.number().optional(),
     base_z: z.number().optional(),
     material: z.string().optional(),
+    // Base-cabinet treatment: render a distinct countertop slab + carcass + recessed
+    // toe-kick plinth instead of one solid block. Off = a solid masonry platform (otta).
+    cabinet: z.boolean().optional(),
+    top_thickness: positive().optional(), // countertop slab thickness (default derived)
+    toe_kick: z.number().nonnegative().optional(), // recessed plinth height (default derived)
   })
   .strict();
 export type RoomCounter = z.infer<typeof roomCounter>;
@@ -651,6 +656,10 @@ const counterObject = z
     anchor: itemAnchor.optional(),
     gap_x: z.number().optional(),
     gap_y: z.number().optional(),
+    // Base-cabinet treatment (see roomCounter): countertop slab + carcass + toe-kick.
+    cabinet: z.boolean().optional(),
+    top_thickness: positive().optional(),
+    toe_kick: z.number().nonnegative().optional(),
   })
   .strict();
 

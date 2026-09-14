@@ -60,6 +60,17 @@ describe("counter.render3D", () => {
     expect(out?.layerId).toBe("f1_structure");
     expect(out?.node).toBeTruthy();
   });
+
+  it("a plain counter renders a single mesh; cabinet renders a multi-part group", () => {
+    const plain = counterNode.render3D!({ ...base, length: 120 }, ctx) as { node: { type: unknown } };
+    const cab = counterNode.render3D!({ ...base, length: 120, cabinet: true }, ctx) as {
+      node: { props: { children: unknown[] } };
+    };
+    // plain = one <mesh>; cabinet = a <group> with top slab + body (+ toe-kick) children
+    expect(String(plain.node.type)).toBe("mesh");
+    const kids = (cab.node.props.children as unknown[]).flat().filter(Boolean);
+    expect(kids.length).toBeGreaterThanOrEqual(2);
+  });
 });
 
 describe("counter.emitWdl", () => {
