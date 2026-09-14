@@ -63,7 +63,9 @@ function gapVal(it: RawItem, axis: "x" | "y"): number | undefined {
 function itemToPiece(it: RawItem): Piece | null {
   const dims = it.asset?.dimensions;
   if (!it.asset || !Array.isArray(dims)) return null; // skip a malformed/asset-less item
-  const asset: FurnitureAsset = { id: it.asset.id ?? "", name: it.asset.name, dimensions: dims };
+  // Preserve the WHOLE asset (src + correction fields), not a subset — the 3D renderer
+  // needs `src` (the GLB URL) to draw the real mesh instead of a bounding-box placeholder.
+  const asset = { ...it.asset, id: it.asset.id ?? "", dimensions: dims } as unknown as FurnitureAsset;
   const p: Piece = { asset, anchor: it.anchor ?? "center" };
   const gx = gapVal(it, "x");
   const gy = gapVal(it, "y");

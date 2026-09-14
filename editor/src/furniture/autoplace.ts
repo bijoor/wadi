@@ -28,12 +28,18 @@ export type Interval = [number, number];
 export type SideIntervals = Partial<Record<Side, Interval[]>>;
 export type Units = { system?: string; per_unit?: number };
 
-// A furniture asset (metric dimensions [w, h, d]); a structural subset of the schema's
-// itemAsset — the engine reads only the footprint.
+// A furniture asset. The engine reads only `dimensions` (the footprint), but the WHOLE
+// asset must survive placement into the config — `src` (the GLB URL) and the correction
+// fields (offset/corrRotation/corrScale) are what the 3D renderer needs to draw the real
+// mesh; dropping them leaves only a bounding-box placeholder. So this carries the known
+// fields plus an index signature for the rest, and the loader passes the asset through
+// verbatim rather than rebuilding a subset.
 export interface FurnitureAsset {
   id: string;
   name?: string;
+  src?: string;
   dimensions: [number, number, number]; // metres
+  [key: string]: unknown;
 }
 
 // A furniture piece in a layout, and the shape emitted into a room's furniture body.
