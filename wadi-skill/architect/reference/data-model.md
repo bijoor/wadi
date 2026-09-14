@@ -26,14 +26,14 @@ These appear on most object types; documented once here, marked *(cross-cutting)
 | `layer` | string |  |  |
 | `name` | string | **yes** |  |
 | `material` | string |  |  |
-| `z_offset` | number |  | Vertical position of the room (its floor + walls), as a lift above the FLOOR BASE (slabZ = plinth top for floor 0, else the floor below's top; project units, 10 = 1 ft). This is the UNIFIED z_offset convention: every object is placed at `slabZ + z_offset`. When OMITTED, on-slab objects (room, wall, staircase, kitchen_platform) default z_offset to the floor's resolved slab thickness (floor.slab_thickness → house.defaults.slab_thickness → code default), so by default they sit on top of the slab, exactly as before. Set it explicitly for split-level floors — e.g. a room raised onto a thicker slab uses the same value the raised slab's top sits at. |
+| `z_offset` | number |  | Vertical position of the room (its floor + walls), as a lift above the FLOOR BASE (slabZ = plinth top for floor 0, else the floor below's top; project units, 10 = 1 ft). This is the UNIFIED z_offset convention: every object is placed at `slabZ + z_offset`. When OMITTED, on-slab objects (room, wall, staircase, counter) default z_offset to the floor's resolved slab thickness (floor.slab_thickness → house.defaults.slab_thickness → code default), so by default they sit on top of the slab, exactly as before. Set it explicitly for split-level floors — e.g. a room raised onto a thicker slab uses the same value the raised slab's top sits at. |
 
 
 - `type` — the discriminated-union tag; selects the object shape (values below).
 - `formulas` — per-field `"= expression"` overrides; the resolver evaluates each into the
   matching numeric field. See `parametric-conventions.md`.
 - `z_offset` — vertical lift above the floor base (slab top). On-slab objects (room, wall,
-  staircase, kitchen_platform) default it to the floor's slab thickness; slab/beam/pillar/
+  staircase, counter) default it to the floor's slab thickness; slab/beam/pillar/
   roof default to 0.
 
 ## Top level — HouseConfig
@@ -163,6 +163,33 @@ A free-standing GLB furniture / decor instance placed directly on a floor (for p
 | `gap_y` | number |  |  |
 
 
+### `counter`
+
+A free-standing / resolved `counter` run (parametric furniture element). Carries x/y (authored via `at (x, y)`, or DERIVED at expand from `anchor_to` a room). The room-nested authoring form is `roomCounter` (in room.counters / furniture.counters).
+
+| field | type | req | notes |
+|---|---|---|---|
+| `type` | literal `counter` | **yes** |  |
+| `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
+| `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
+| `layer` | string |  | *(shared — see top)* |
+| `locked` | boolean |  |  |
+| `name` | string |  |  |
+| `x` | number |  |  |
+| `y` | number |  |  |
+| `rotation` | number |  |  |
+| `length` | number > 0 |  |  |
+| `depth` | number > 0 | **yes** |  |
+| `height` | number > 0 | **yes** |  |
+| `z_offset` | number |  |  |
+| `base_z` | number |  |  |
+| `material` | string |  |  |
+| `anchor_to` | string |  |  |
+| `anchor` | [ItemAnchor](#itemanchor) |  |  |
+| `gap_x` | number |  |  |
+| `gap_y` | number |  |  |
+
+
 ### `model`
 
 A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinct from `item` (furniture, catalog + anchoring): `model` is a rigged structural asset. `asset.dimensions` is the real metre size, used for the 2D footprint and the scale.
@@ -252,10 +279,11 @@ A GLB placed at real scale and manipulated by a `rig` of named-node ops. Distinc
 | `height` | number ≥ 0 |  | 0 accepted — semantically the same as absent ("use floor default"). Old configs that accidentally saved height: 0 keep loading; the form treats 0 as "no override" and doesn't write it back. |
 | `material` | string |  |  |
 | `connections` | array of string |  | Rooms this room connects to, by name (same floor). Design intent + a functional test (constraint C11): a declared connection must be adjacent AND joined by a door. Symmetric and deduped; NOT geometry — it never moves or sizes anything, and the renderer ignores it. |
-| `z_offset` | number |  | Vertical position of the room (its floor + walls), as a lift above the FLOOR BASE (slabZ = plinth top for floor 0, else the floor below's top; project units, 10 = 1 ft). This is the UNIFIED z_offset convention: every object is placed at `slabZ + z_offset`. When OMITTED, on-slab objects (room, wall, staircase, kitchen_platform) default z_offset to the floor's resolved slab thickness (floor.slab_thickness → house.defaults.slab_thickness → code default), so by default they sit on top of the slab, exactly as before. Set it explicitly for split-level floors — e.g. a room raised onto a thicker slab uses the same value the raised slab's top sits at. |
+| `z_offset` | number |  | Vertical position of the room (its floor + walls), as a lift above the FLOOR BASE (slabZ = plinth top for floor 0, else the floor below's top; project units, 10 = 1 ft). This is the UNIFIED z_offset convention: every object is placed at `slabZ + z_offset`. When OMITTED, on-slab objects (room, wall, staircase, counter) default z_offset to the floor's resolved slab thickness (floor.slab_thickness → house.defaults.slab_thickness → code default), so by default they sit on top of the slab, exactly as before. Set it explicitly for split-level floors — e.g. a room raised onto a thicker slab uses the same value the raised slab's top sits at. |
 | `walls` | union — see notes |  |  |
 | `wall_heights` | map: string → [wall_heights entry](#wall-heights-entry) |  |  |
 | `items` | array of [RoomItem](#roomitem) |  | Furniture nested in this room. Each piece is anchored to the room's inner footprint (see roomItem), so it reflows when the room resizes. Expanded into top-level `item` objects at render time. |
+| `counters` | array of `roomCounter` |  | Parametric furniture elements (counters) nested directly in the room, alongside `items`. Anchored + expanded exactly like `items` (also allowed in `furniture`). |
 | `furniture` | `furnitureBlock` |  | The room's tool-managed furniture CONTAINER (auto-placement region). Its body is expanded exactly like `items`; the header metadata (auto/source/locked) drives the furnish command. Distinct from `items` so a tool owns only this region and never touches hand-authored `items`. |
 
 
@@ -393,27 +421,6 @@ A flat `gap` — the frameless-void counterpart of the flat door/window, produce
 | `direction` | enum: `north` `south` `east` `west` | **yes** |  |
 | `room` | string |  |  |
 | `wall` | string |  |  |
-
-
-### `kitchen_platform`
-
-Kitchen platform — a polyline countertop / cooking slab that runs along the base of walls. Path is the wall-side edge; the platform extends `depth` units perpendicular to each segment on the given `side`. Renders as one box per path segment; corners meet at the shared point (no fancy mitering in v1).
-
-| field | type | req | notes |
-|---|---|---|---|
-| `type` | literal `kitchen_platform` | **yes** |  |
-| `formulas` | map: field name → `"= formula"` string |  | *(shared — see top)* |
-| `enabled` | boolean or number (`false`/`0` = hidden) |  | *(shared — see top)* |
-| `layer` | string |  | *(shared — see top)* |
-| `locked` | boolean |  |  |
-| `name` | string |  |  |
-| `path` | array of tuple `[n,n]` | **yes** |  |
-| `side` | enum: `left` `right` | **yes** |  |
-| `depth` | number > 0 | **yes** |  |
-| `height` | number > 0 | **yes** |  |
-| `z_offset` | number |  | Lift above the FLOOR BASE (slabZ), project units. Omitted → defaults to the floor's resolved slab thickness (sits on the slab top, as before). Same convention as `room`. |
-| `base_z` | number |  |  |
-| `material` | string |  |  |
 
 
 ### `roof`

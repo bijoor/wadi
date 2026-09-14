@@ -1255,7 +1255,7 @@ const TYPE_LABELS: Record<string, string> = {
   wall: "Walls",
   pillar: "Pillars",
   staircase: "Staircases",
-  kitchen: "Kitchens",
+  counter: "Counters",
   roof: "Roofs",
   openings: "Doors & windows",
 };
@@ -1320,7 +1320,7 @@ function wireLayoutApi(): void {
 
     // Preserve a sensible type order; unknown types go last alphabetically.
     const typeOrder = [
-      "floor_slab", "beam", "room", "wall", "staircase", "kitchen",
+      "floor_slab", "beam", "room", "wall", "staircase", "counter",
       "pillar", "roof", "openings",
     ];
     const types = [...typeIds]
@@ -3460,7 +3460,7 @@ const WDL_PRIMER = [
   "",
   "KEY RULES:",
   "- Names are BARE identifiers (room Living, door D1) — NOT quoted. \"strings\" are only for titles/materials.",
-  "- Object types inside a floor: room, wall, pillar, beam, slab, roof, staircase, kitchen_platform, item (furniture GLB), component (reusable).",
+  "- Object types inside a floor: room, wall, pillar, beam, slab, roof, staircase, counter (kitchen platform / vanity), item (furniture GLB), component (reusable).",
   "- Floor-level fields (`height`, `wall_height`, `slab_thickness`, `enabled`) go in the floor HEADER, before the `{` — e.g. `floor 1 \"Ground\" height 92 slab_thickness 0 { … }`. Only OBJECT declarations go inside the `{ }` body; putting `slab_thickness 0` inside the body is a parse error.",
   "- A ROOF goes on its OWN floor stacked ABOVE the rooms' floor (add a top `floor N \"Roof\"` and put the `roof` there). A roof on the SAME floor as the walls renders at floor level, not on top. A `roof` holds one or more `segment` lines (ridge centreline `from`→`to`, `width` = the span). Endpoint style: `pitched endpoint closed` = hip, `pitched endpoint open` = gable, `shed`, `flat`.",
   "- Openings live inside `wall SIDE { ... }`: `door NAME at OFFSET size (w,h) [open]`, `window NAME at OFFSET size (w,h) [sill N]`. `open` = open passage.",

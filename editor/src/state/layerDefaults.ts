@@ -16,7 +16,7 @@ export const BUILTIN_ROLE: Record<string, LayerRole> = {
   beam: "structure",
   floor_slab: "structure",
   staircase: "structure",
-  kitchen_platform: "structure",
+  counter: "structure",
   item: "furniture",
   door: "openings",
   window: "openings",

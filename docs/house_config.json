@@ -436,46 +436,43 @@
           "material": "bathroom"
         },
         {
-          "type": "kitchen_platform",
-          "name": "Kitchen_Counter",
-          "path": [
-            [
-              262,
-              370
-            ],
-            [
-              262,
-              300
-            ],
-            [
-              192,
-              300
-            ]
-          ],
-          "side": "right",
+          "type": "counter",
+          "x": 251.25,
+          "y": 335,
+          "length": 70,
           "depth": 21.5,
-          "height": 26.67
+          "height": 26.67,
+          "rotation": 270,
+          "name": "Kitchen_Counter_1"
         },
         {
-          "type": "kitchen_platform",
-          "name": "KitchenPlatform_1",
-          "path": [
-            [
-              8,
-              274
-            ],
-            [
-              8,
-              204
-            ],
-            [
-              78,
-              204
-            ]
-          ],
-          "side": "left",
+          "type": "counter",
+          "x": 227,
+          "y": 310.75,
+          "length": 70,
+          "depth": 21.5,
+          "height": 26.67,
+          "rotation": 180,
+          "name": "Kitchen_Counter_2"
+        },
+        {
+          "type": "counter",
+          "x": 20,
+          "y": 239,
+          "length": 70,
           "depth": 24,
-          "height": 32
+          "height": 32,
+          "rotation": 270,
+          "name": "KitchenPlatform_1_1"
+        },
+        {
+          "type": "counter",
+          "x": 43,
+          "y": 216,
+          "length": 70,
+          "depth": 24,
+          "height": 32,
+          "name": "KitchenPlatform_1_2"
         }
       ]
     },

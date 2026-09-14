@@ -252,14 +252,6 @@ function emitStaircase(w: W, indent: number, o: Obj): void {
   w.line(indent, s + commonSuffix(o));
 }
 
-function emitKitchen(w: W, indent: number, o: Obj): void {
-  let s = "kitchen";
-  if (o.name !== undefined) s += ` name ${str(o.name)}`;
-  const path = (o.path ?? []).map((p: number[]) => `(${num(p[0])}, ${num(p[1])})`).join(", ");
-  s += ` path (${path}) side ${o.side} depth ${fld(o, "depth")} height ${fld(o, "height")}`;
-  if (has(o, "base_z")) s += ` base_z ${fld(o, "base_z")}`;
-  w.line(indent, s + commonSuffix(o));
-}
 
 // Per-primitive `.wdl` emitters, exported as PURE string builders so a registry
 // primitive's NodeDefinition.emitWdl can own its decompile by delegating here (the
@@ -505,7 +497,6 @@ function emitFloorObject(w: W, indent: number, o: Obj, emit?: EmitObjectHook): v
     case "ground": return emitNamedBox(w, indent, "ground", o, { height: true, material: true });
     case "staircase": return emitStaircase(w, indent, o);
     case "spiral_staircase": return emitBlock(w, indent, spiralStaircaseToWdl(o));
-    case "kitchen_platform": return emitKitchen(w, indent, o);
     case "counter": return emitBlock(w, indent, counterToWdl(o));
     case "item": return emitBlock(w, indent, itemToWdl(o));
     case "model": return emitBlock(w, indent, modelToWdl(o));

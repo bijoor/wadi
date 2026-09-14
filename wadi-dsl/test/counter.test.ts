@@ -65,12 +65,22 @@ describe("counter compile + round-trip", () => {
     expect(emitWdl(cfg2 as never)).toBe(wdl); // stable second pass
   });
 
-  it("the legacy kitchen platform still parses", () => {
-    const legacy = compileDsl(`house L {
-      site { plot (300, 300) }
-      floor 1 "G" { kitchen name "C" path ((10,10),(110,10)) side right depth 22 height 36 }
-    }`) as Record<string, unknown>;
-    expect(byName(legacy, "C").type).toBe("kitchen_platform");
+  it("the retired `kitchen` platform keyword no longer produces a kitchen_platform", () => {
+    // kitchen_platform was retired (P4); `kitchen` is no longer a grammar leader. The old
+    // statement either fails to compile or parses as a generic name — never the retired
+    // type. Legacy JSON configs are migrated on load (editor/src/io/migrateLegacyTypes.ts).
+    let hasKp = false;
+    try {
+      const res = compileDsl(`house L {
+        site { plot (300, 300) }
+        floor 1 "G" { kitchen name "C" path ((10,10),(110,10)) side right depth 22 height 36 }
+      }`) as Record<string, unknown>;
+      const objs2 = (res.floors as Array<{ objects?: Record<string, unknown>[] }> | undefined)?.[0]?.objects ?? [];
+      hasKp = objs2.some((o) => o.type === "kitchen_platform");
+    } catch {
+      hasKp = false; // a parse error is an acceptable outcome for the retired keyword
+    }
+    expect(hasKp).toBe(false);
   });
 });
 

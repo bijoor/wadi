@@ -29,7 +29,7 @@ export type AddableObjectType =
   | "staircase"
   | "door"
   | "window"
-  | "kitchen_platform"
+  | "counter"
   | "roof";
 
 export const ADDABLE_TYPES: AddableObjectType[] = [
@@ -44,7 +44,7 @@ export const ADDABLE_TYPES: AddableObjectType[] = [
   "staircase",
   "door",
   "window",
-  "kitchen_platform",
+  "counter",
   "roof",         // v2 unified — the ONLY roof type
 ];
 
@@ -60,7 +60,7 @@ export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
   staircase: "Staircase",
   door: "Door",
   window: "Window",
-  kitchen_platform: "Kitchen platform",
+  counter: "Counter",
   roof: "Roof",   // v2 unified — the ONLY roof type for new configs
 };
 
@@ -207,19 +207,6 @@ export function makeDefault(
         slope: { by: "height", ridge_h: 70 },  // 7 ft rise
         min_overhang: 25,                       // 2.5 ft
       } as unknown as HouseObject;
-    case "kitchen_platform":
-      // Simple straight run near the plot's NW corner as a starting
-      // point — user picks it up in the property panel and drags the
-      // path to fit their walls. Depth 24u (~2ft) + height 32u
-      // (~3.2ft) are typical counter dimensions.
-      return {
-        type: "kitchen_platform",
-        name: uniqueName(existing, "KitchenPlatform"),
-        path: [[10, 10], [Math.min(150, plotW - 10), 10]],
-        side: "right",
-        depth: 24,
-        height: 32,
-      };
     default:
       throw new Error(`makeDefault: unknown object type "${type}"`);
   }

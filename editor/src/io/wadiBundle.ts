@@ -25,6 +25,7 @@
 
 import { validate, type HouseConfig } from "../schema/houseConfig";
 import { wdlToConfig } from "./wdl";
+import { migrateLegacyTypes } from "./migrateLegacyTypes";
 
 export interface LoadedWadi {
   config: HouseConfig;
@@ -306,6 +307,9 @@ async function parseLegacyJson(
       `Not a Wadi bundle, and not valid JSON: ${e instanceof Error ? e.message : String(e)}`,
     );
   }
+  // Retired object types (kitchen_platform → counter) are rewritten BEFORE schema
+  // validation, so a legacy JSON config still loads after the type is removed.
+  if (parsed && typeof parsed === "object") migrateLegacyTypes(parsed as Record<string, unknown>);
   const result = validate(parsed);
   if (!result.ok || !result.data) {
     const errList = (result.errors ?? []).slice(0, 5);

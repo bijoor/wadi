@@ -13,7 +13,7 @@ import { floorBuiltUpAreaUnits } from "./area";
 import { getNode } from "../registry/registry";
 import {
   svgDrawDoor, svgDrawWindow, svgDrawGap, svgDrawFloorSlab,
-  svgDrawPillar, svgDrawBeam, svgDrawStaircase, svgDrawKitchenPlatform,
+  svgDrawPillar, svgDrawBeam, svgDrawStaircase,
   svgDrawGround, svgDrawPlinth, svgDrawItem,
 } from "./shapes";
 import {
@@ -265,15 +265,6 @@ export function generateFloorPlanSvg(
         obj.width as number, obj.length as number,
       );
     }
-  }
-  // Kitchen platforms — one polygon per polyline segment.
-  for (const obj of objects) {
-    if (obj.type !== "kitchen_platform") continue;
-    const path = obj.path as [number, number][];
-    if (!Array.isArray(path) || path.length < 2) continue;
-    const depth = obj.depth as number;
-    const side = ((obj.side as string) ?? "right") as "left" | "right";
-    svg += svgDrawKitchenPlatform(path, depth, side);
   }
   // Python's `generate_floor_plan_svg` has a variable-shadowing quirk:
   // the local `width` used for the SVG canvas dimensions gets rebound

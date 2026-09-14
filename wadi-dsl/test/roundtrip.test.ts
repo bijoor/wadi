@@ -70,7 +70,7 @@ describe("Wadi DSL round-trip", () => {
     const types = new Set(cfg.floors.flatMap((f) => f.objects.map((o) => o.type)));
     for (const t of [
       "ground", "plinth", "floor_slab", "beam", "room", "wall",
-      "kitchen_platform", "item", "pillar", "component", "roof",
+      "counter", "item", "pillar", "component", "roof",
     ]) {
       expect(types.has(t)).toBe(true);
     }

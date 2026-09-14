@@ -115,7 +115,7 @@ export const nonParamFields = PLACEMENT_NAMES;
 // `object` discriminatedUnion in schema/houseConfig.ts; a guard test asserts it.
 export const CORE_OBJECT_TYPES = new Set<string>([
   "plinth", "ground", "component", "item", "counter", "model", "floor_slab", "pillar", "beam",
-  "room", "wall", "staircase", "spiral_staircase", "door", "window", "gap", "kitchen_platform",
+  "room", "wall", "staircase", "spiral_staircase", "door", "window", "gap",
   "roof",
 ]);
 

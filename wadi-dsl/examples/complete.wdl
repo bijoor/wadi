@@ -66,8 +66,9 @@ house CompleteShowcase {
     wall Partition from (main.x1 + 100, main.yA) to (main.x1 + 100, main.yB - 150)
       height 108 facing east layer "structure"
 
-    // An L-shaped kitchen counter (polyline path).
-    kitchen name "Counter" path ((40, 40), (140, 40), (140, 120)) side right depth 24 height 36 layer "structure"
+    // An L-shaped kitchen counter — two `counter` runs (one per leg of the L).
+    counter name "Counter_1" at (90, 28) length 100 depth 24 height 36 layer "structure"
+    counter name "Counter_2" at (152, 80) rotation 90 length 80 depth 24 height 36 layer "structure"
 
     // Free furniture placed by absolute plan coordinates. The inline `asset {…}`
     // form still works for a one-off GLB not in any pack.

@@ -312,7 +312,7 @@ const room = z
     // FLOOR BASE (slabZ = plinth top for floor 0, else the floor below's
     // top; project units, 10 = 1 ft). This is the UNIFIED z_offset
     // convention: every object is placed at `slabZ + z_offset`. When
-    // OMITTED, on-slab objects (room, wall, staircase, kitchen_platform)
+    // OMITTED, on-slab objects (room, wall, staircase, counter)
     // default z_offset to the floor's resolved slab thickness
     // (floor.slab_thickness → house.defaults.slab_thickness → code default),
     // so by default they sit on top of the slab, exactly as before. Set it
@@ -525,32 +525,6 @@ const roofV2 = z
   })
   .catchall(z.unknown());
 
-// Kitchen platform — a polyline countertop / cooking slab that runs
-// along the base of walls. Path is the wall-side edge; the platform
-// extends `depth` units perpendicular to each segment on the given
-// `side`. Renders as one box per path segment; corners meet at the
-// shared point (no fancy mitering in v1).
-const kitchenPlatform = z
-  .object({
-    type: z.literal("kitchen_platform"),
-    formulas: formulaMap.optional(),
-    enabled: enabledField.optional(),
-    layer: z.string().optional(),
-    locked: z.boolean().optional(),
-    name: z.string().optional(),
-    path: z.array(z.tuple([z.number(), z.number()])).min(2),
-    side: z.enum(["left", "right"]),
-    depth: positive(),           // horizontal extent from path (project units)
-    height: positive(),          // vertical extent above its base (project units)
-    // Lift above the FLOOR BASE (slabZ), project units. Omitted → defaults
-    // to the floor's resolved slab thickness (sits on the slab top, as
-    // before). Same convention as `room`.
-    z_offset: z.number().optional(),
-    base_z: z.number().optional(),   // ABSOLUTE base Z override (world units); wins over z_offset. Prefer z_offset.
-    material: z.string().optional(),
-  })
-  .strict();
-
 // An INSTANCE of a reusable component from the in-file `components` library.
 // It references a component by id (`ref`), overrides the component's input
 // variables via `params`, and places it at (x, y) with a `z_offset` lift on its
@@ -697,7 +671,6 @@ export const object = z.discriminatedUnion("type", [
   door,
   windowObj,
   gapObj,
-  kitchenPlatform,
   roofV2,
 ]);
 export type HouseObject = z.infer<typeof object>;

@@ -397,23 +397,7 @@ function staircase(s: ast.Staircase): Record<string, unknown> {
   return done(o, formulas);
 }
 
-function kitchen(k: ast.KitchenPlatform): Record<string, unknown> {
-  const { formulas, put } = geom();
-  const o: Record<string, unknown> = {
-    type: "kitchen_platform",
-    path: k.pts.map((p) => [p.x, p.y]),
-    side: k.side,
-    depth: put("depth", k.depth, 1),
-    height: put("height", k.height, 1),
-  };
-  if (k.name) o.name = unquote(k.name);
-  const bz = put("base_z", k.base_z);
-  if (bz !== undefined) o.base_z = bz;
-  applyCommon(o, formulas, k);
-  return done(o, formulas);
-}
-
-// A parametric `counter` run (replaces kitchen_platform). Free form carries `at (x, y)`;
+// A parametric `counter` run (replaces the retired kitchen_platform). Free form carries `at (x, y)`;
 // an anchored form (anchor_to a room) omits x/y — they are derived at expand, and an
 // omitted `length` defaults to the anchored wall's clear span there.
 function counter(c: ast.Counter): Record<string, unknown> {
@@ -800,8 +784,6 @@ function floorObject(o: ast.FloorObject): Record<string, unknown> {
       return staircase(o);
     case "SpiralStaircase":
       return spiralStaircase(o);
-    case "KitchenPlatform":
-      return kitchen(o);
     case "Counter":
       return counter(o);
     case "Item":

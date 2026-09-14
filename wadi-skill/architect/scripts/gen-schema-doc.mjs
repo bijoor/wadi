@@ -369,7 +369,7 @@ p("- `type` — the discriminated-union tag; selects the object shape (values be
 p("- `formulas` — per-field `\"= expression\"` overrides; the resolver evaluates each into the");
 p("  matching numeric field. See `parametric-conventions.md`.");
 p("- `z_offset` — vertical lift above the floor base (slab top). On-slab objects (room, wall,");
-p("  staircase, kitchen_platform) default it to the floor's slab thickness; slab/beam/pillar/");
+p("  staircase, counter) default it to the floor's slab thickness; slab/beam/pillar/");
 p("  roof default to 0.");
 p();
 

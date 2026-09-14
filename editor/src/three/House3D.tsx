@@ -436,55 +436,6 @@ export function House3D({ config }: { config: HouseConfig }) {
               plotLength={plot.length}
             />,
           );
-        } else if (obj.type === "kitchen_platform") {
-          // Path-based platform — render one box per polyline segment.
-          // Each segment extrudes a rectangle of `depth` × segment-length
-          // in XY, from base_z (default = floor slab top) up by `height`.
-          // The `side` picks which side of segment direction the platform
-          // extends: "left" = +90° CCW from start→end, "right" = -90°.
-          const path = obj.path as [number, number][];
-          const depth = obj.depth as number;
-          const height = obj.height as number;
-          const side = (obj.side as "left" | "right" | undefined) ?? "right";
-          // Absolute `base_z` still wins; otherwise unified z_offset from the
-          // floor base (default = slab thickness → sits on the slab top).
-          const baseZ =
-            (obj.base_z as number | undefined) ??
-            band.slabZ + ((obj.z_offset as number | undefined) ?? band.slabThickness);
-          for (let i = 0; i < path.length - 1; i++) {
-            const a = path[i], b = path[i + 1];
-            const dx = b[0] - a[0], dy = b[1] - a[1];
-            const segLen = Math.hypot(dx, dy);
-            if (segLen < 1e-6) continue;
-            const ux = dx / segLen, uy = dy / segLen;
-            // Perpendicular: +90° CCW (leftN) = (-uy, ux)
-            const perpX = side === "left" ? -uy : uy;
-            const perpY = side === "left" ? ux : -ux;
-            // Rectangle corners in XY: back edge on path, front edge
-            // offset by depth in the perp direction. Centre = midpoint
-            // between them.
-            const midAlongX = (a[0] + b[0]) / 2;
-            const midAlongY = (a[1] + b[1]) / 2;
-            const cxWorld = midAlongX + perpX * (depth / 2);
-            const cyWorld = midAlongY + perpY * (depth / 2);
-            const centre = toThreePos(cxWorld, cyWorld, 0, plot.width, plot.length);
-            // Orientation: box's local X = segment direction, local Z =
-            // depth direction (into room), local Y = up.
-            const angleY = Math.atan2(-uy, ux);   // three.js z inverted from world y
-            push(
-              (obj.layer as string | undefined) ?? slabLayer,
-              <mesh
-                key={`${key}-${i}`}
-                position={[centre.x, baseZ + height / 2, centre.z]}
-                rotation={[0, angleY, 0]}
-                castShadow
-                receiveShadow
-              >
-                <boxGeometry args={[segLen, height, depth]} />
-                <meshStandardMaterial color="#3f3f46" roughness={0.7} />
-              </mesh>,
-            );
-          }
         }
         // door/window: emitted alongside their wall via WallWithOpenings +
         // OpeningPane. No standalone rendering.

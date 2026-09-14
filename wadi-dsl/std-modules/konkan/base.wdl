@@ -53,8 +53,11 @@ component Bathroom goal "a compact enclosed wet area (bathroom / WC)" {
 component Kitchen goal "a cooking area with an L-shaped counter platform" {
   room Kitchen at (0, 0) size (150, 120) {
     wall north east south west
+    // L-shaped platform: one counter run per wall (north + east), each auto-filling
+    // its wall span. Replaces the old polyline `kitchen` primitive.
+    counter name "Counter_North" anchor top-center depth 22 height 36
+    counter name "Counter_East" anchor center-right depth 22 height 36
   }
-  kitchen name "Counter" path ((8, 8), (130, 8), (130, 100)) side right depth 22 height 36
 }
 
 // A tulsi vrindavan — the raised masonry planter for the sacred basil that stands

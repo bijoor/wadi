@@ -151,31 +151,6 @@ export function svgDrawBeam(
   return `<rect x="${f(x)}" y="${f(y)}" width="${f(width)}" height="${f(length)}" fill="#8B4513" stroke="#654321" stroke-width="1" opacity="0.8"/>\n`;
 }
 
-// Kitchen platform footprint on the floor plan — one polygon per
-// polyline segment, offset from the path by `depth` on the given
-// side.
-export function svgDrawKitchenPlatform(
-  path: ReadonlyArray<readonly [number, number]>,
-  depth: number,
-  side: "left" | "right",
-): string {
-  const parts: string[] = [];
-  for (let i = 0; i < path.length - 1; i++) {
-    const a = path[i], b = path[i + 1];
-    const dx = b[0] - a[0], dy = b[1] - a[1];
-    const len = Math.hypot(dx, dy);
-    if (len < 1e-6) continue;
-    const ux = dx / len, uy = dy / len;
-    const perpX = side === "left" ? -uy : uy;
-    const perpY = side === "left" ? ux : -ux;
-    const a2: [number, number] = [a[0] + perpX * depth, a[1] + perpY * depth];
-    const b2: [number, number] = [b[0] + perpX * depth, b[1] + perpY * depth];
-    const pts = `${f(a[0])},${f(a[1])} ${f(b[0])},${f(b[1])} ${f(b2[0])},${f(b2[1])} ${f(a2[0])},${f(a2[1])}`;
-    parts.push(`<polygon points="${pts}" fill="#3f3f46" stroke="#18181b" stroke-width="1" fill-opacity="0.85"/>`);
-  }
-  return parts.join("\n") + "\n";
-}
-
 export function svgDrawStaircase(
   x: number,
   y: number,

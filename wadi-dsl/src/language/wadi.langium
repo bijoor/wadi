@@ -258,7 +258,7 @@ Floor:
 // through to it). Bespoke rules above are ergonomic *sugar* over this generic core.
 FloorObject:
       Room | Wall | Pillar | Beam | FloorSlab | Plinth | Ground
-    | Staircase | SpiralStaircase | KitchenPlatform | Counter | Item | GlbModel | Component | Roof | Raw
+    | Staircase | SpiralStaircase | Counter | Item | GlbModel | Component | Roof | Raw
     | ObjectDecl;
 
 // ---- Model — a GLB placed at scale and manipulated by a node RIG (P1). Like `item`
@@ -448,15 +448,6 @@ SpiralStaircase:
         'total_height' total_height=Expr
         ( 'turns' turns=Expr | 'steps' steps=Expr | 'tread_thickness' tread_thickness=Expr
         | 'pole_radius' pole_radius=Expr | CommonFields )*;
-
-KitchenPlatform:
-    'kitchen' ('name' name=STRING)?
-        'path' '(' pts+=Pt (',' pts+=Pt)* ')'
-        'side' side=('left' | 'right')
-        'depth' depth=Expr 'height' height=Expr
-        ( 'base_z' base_z=Expr | 'material' material=STRING | CommonFields )*;
-Pt:
-    '(' x=NUMBER ',' y=NUMBER ')';
 
 // ---- Counter — a parametric furniture element (kitchen platform / vanity / utility
 //      slab), replacing the polyline KitchenPlatform. A single wall run: `length` along
