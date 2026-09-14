@@ -3,12 +3,32 @@
 // straight into the shared store (updateVariables/updatePoints) — the model
 // re-resolves and re-renders live via subscribeConfig. Vanilla-TS, mirrors the
 // existing floating panels (Show layers / Lighting).
-import type { HouseConfig } from "../schema/houseConfig";
+import type { HouseConfig, HouseObject } from "../schema/houseConfig";
 import { resolveInputs, writeValue, type ResolvedConfigurator, type ResolvedInput } from "../configurator/spec";
 import { useConfigStore } from "../state/configStore";
+import { furnishRoom } from "../furniture/furnish";
+import { loadRoomLayouts } from "../furniture/loadRoomLayouts";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const fmtVal = (n: number, suffix: string) => (suffix ? `${round2(n)} ${suffix}` : String(round2(n)));
+
+// A room can be auto-furnished when it declares a category (`type`) or carries a
+// `furniture auto` source — realising the "furniture auto implies a config option"
+// decision (plans/room-templates-in-wadi.md): the configurator surfaces a Furnish
+// action for any such model.
+function isFurnishable(o: Record<string, unknown>): boolean {
+  if (o.type !== "room") return false;
+  if (typeof o.room_type === "string" && o.room_type) return true;
+  const f = o.furniture as Record<string, unknown> | undefined;
+  return !!(f && (f.auto || f.auto_type || f.auto_room));
+}
+function countFurnishable(cfg: HouseConfig): number {
+  let n = 0;
+  for (const fl of (cfg.floors ?? []) as Array<{ objects?: Record<string, unknown>[] }>) {
+    for (const o of fl.objects ?? []) if (isFurnishable(o)) n++;
+  }
+  return n;
+}
 
 export function mountConfiguratorPanel(): void {
   const list = document.getElementById("viewer-config-list");
@@ -29,6 +49,72 @@ export function mountConfiguratorPanel(): void {
     const patch = writeValue(cfg, target, raw);
     if ("variables" in patch && patch.variables) store().updateVariables(patch.variables);
     else if ("points" in patch && patch.points) store().updatePoints(patch.points);
+  }
+
+  // Auto-place furniture in every furnishable room (a native `type` or a `furniture
+  // auto` source) from the template pack, writing into each room's `furniture`
+  // container. Re-reads the live config between rooms so a room that clones a sibling
+  // sees the sibling's furniture placed earlier in this pass.
+  async function furnishAll(btn: HTMLButtonElement, status: HTMLElement): Promise<void> {
+    const cfg0 = store().config as HouseConfig | null;
+    if (!cfg0) return;
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Furnishing…";
+    status.textContent = "";
+    try {
+      const layouts = await loadRoomLayouts();
+      let done = 0;
+      let total = 0;
+      const floors = (cfg0.floors ?? []) as Array<{ floor_number?: number; objects?: Record<string, unknown>[] }>;
+      for (let fi = 0; fi < floors.length; fi++) {
+        const objs = floors[fi].objects ?? [];
+        for (let oi = 0; oi < objs.length; oi++) {
+          if (!isFurnishable(objs[oi])) continue;
+          total++;
+          const cur = store().config as HouseConfig | null;
+          if (!cur) continue;
+          const name = String(objs[oi].name);
+          const floorNum = floors[fi].floor_number ?? fi + 1;
+          const { config: next, result } = furnishRoom(cur as never, floorNum, name, layouts);
+          if (result.furnished) {
+            const nextRoom = (next.floors as Array<{ objects: Record<string, unknown>[] }>)[fi].objects[oi];
+            store().updateObject({ floor: fi, object: oi }, { furniture: nextRoom.furniture } as Partial<HouseObject>);
+            done++;
+          }
+        }
+      }
+      status.textContent = total ? `Furnished ${done}/${total} room${total === 1 ? "" : "s"}` : "No rooms have a type to furnish";
+    } catch {
+      status.textContent = "Furnish failed";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  }
+
+  // The "Furniture" section: a Furnish button + a status line. Built once (in build)
+  // and updated in place, so a furnish doesn't force a panel rebuild.
+  function buildFurnishSection(count: number): void {
+    const gh = document.createElement("div");
+    gh.className = "cfg-group";
+    gh.textContent = "Furniture";
+    list!.appendChild(gh);
+    const row = document.createElement("div");
+    row.className = "cfg-furnish-row";
+    row.style.cssText = "display:flex;align-items:center;gap:8px;padding:4px 0;";
+    const btn = document.createElement("button");
+    btn.className = "cfg-furnish";
+    btn.textContent = `🛋 Furnish room${count === 1 ? "" : "s"}`;
+    btn.title = "Auto-place furniture in every room that has a type, from the template pack";
+    btn.style.cssText = "padding:4px 12px;font-size:13px;font-weight:600;color:#0f1729;background:#f5c451;border:none;border-radius:5px;cursor:pointer;";
+    const status = document.createElement("span");
+    status.className = "cfg-furnish-msg";
+    status.style.cssText = "font-size:11px;color:#94a3b8;";
+    btn.addEventListener("click", () => { void furnishAll(btn, status); });
+    row.appendChild(btn);
+    row.appendChild(status);
+    list!.appendChild(row);
   }
 
   function buildRow(ri: ResolvedInput): void {
@@ -167,13 +253,20 @@ export function mountConfiguratorPanel(): void {
       }
       for (const ri of items) buildRow(ri);
     }
-    const reset = document.createElement("button");
-    reset.className = "cfg-reset";
-    reset.textContent = "Reset to defaults";
-    reset.addEventListener("click", () => {
-      for (const [t, raw] of defaults) applyRaw(t, raw);
-    });
-    list!.appendChild(reset);
+    // The Furnish action — auto-surfaced for any model with furnishable rooms.
+    const cfg = store().config as HouseConfig | null;
+    const fCount = cfg ? countFurnishable(cfg) : 0;
+    if (fCount > 0) buildFurnishSection(fCount);
+    // Reset only makes sense when there are configurator inputs to reset.
+    if (r.inputs.length > 0) {
+      const reset = document.createElement("button");
+      reset.className = "cfg-reset";
+      reset.textContent = "Reset to defaults";
+      reset.addEventListener("click", () => {
+        for (const [t, raw] of defaults) applyRaw(t, raw);
+      });
+      list!.appendChild(reset);
+    }
   }
 
   function sync(r: ResolvedConfigurator): void {
@@ -202,9 +295,11 @@ export function mountConfiguratorPanel(): void {
     const r = cfg
       ? resolveInputs(cfg)
       : ({ section: undefined, groups: [], inputs: [] } as ResolvedConfigurator);
-    // Shown for ANY model that declares configurator inputs — the configurator is
+    // Shown for ANY model that declares configurator inputs, OR that has furnishable
+    // rooms (the Furnish action is an auto-surfaced config option). The configurator is
     // the simple no-WDL edit surface (the left panel; the WDL editor is the right).
-    const has = r.inputs.length > 0;
+    const furnishable = cfg ? countFurnishable(cfg) : 0;
+    const has = r.inputs.length > 0 || furnishable > 0;
     // The dock shows via CSS on body[data-config="on"][data-left="open"]; the
     // header ☰ collapses it. Independent of the layers/camera popups.
     document.body.dataset.config = has ? "on" : "off";
@@ -213,7 +308,8 @@ export function mountConfiguratorPanel(): void {
       lastSig = "";
       return;
     }
-    const sig = JSON.stringify(r.section ?? null);
+    // Include the furnishable count so adding/removing a typed room rebuilds the panel.
+    const sig = JSON.stringify({ section: r.section ?? null, furnishable });
     if (sig !== lastSig) {
       lastSig = sig;
       build(r);
