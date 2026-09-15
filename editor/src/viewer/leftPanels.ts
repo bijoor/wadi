@@ -42,6 +42,15 @@ function isOpen(): boolean {
   return document.body.dataset.left === "open";
 }
 
+// Pin the fixed tab rail to the panel's live right edge so the tabs always hang just
+// OUTSIDE the panel, whatever its width (288 desktop, up to 320 on the mobile overlay).
+function positionRail(): void {
+  const dock = document.getElementById("viewer-left-dock");
+  if (!dock || !isOpen() || document.body.dataset.lefttools !== "on") return;
+  const w = dock.getBoundingClientRect().width;
+  if (w > 0) document.documentElement.style.setProperty("--left-rail-x", `${Math.round(w)}px`);
+}
+
 function setOpen(open: boolean): void {
   document.body.dataset.left = open ? "open" : "closed";
   try { localStorage.setItem(OPEN_KEY, open ? "open" : "closed"); } catch { /* ignore */ }
@@ -82,6 +91,7 @@ function renderRail(): void {
       if (activeId === t.id && isOpen()) setOpen(false);
       else { applyActive(t.id); setOpen(true); }
       refreshLeftDock();
+      positionRail();
     });
     railEl.appendChild(b);
   }
@@ -96,6 +106,7 @@ export function refreshLeftDock(): void {
   const keep = activeId && avail.some((t) => t.id === activeId) ? activeId : (avail[0]?.id ?? null);
   applyActive(keep);
   renderRail();
+  positionRail();
 }
 
 export function mountLeftDock(): void {
@@ -106,4 +117,11 @@ export function mountLeftDock(): void {
   try { openPref = localStorage.getItem(OPEN_KEY); } catch { /* ignore */ }
   document.body.dataset.left = openPref === "closed" ? "closed" : "open";
   refreshLeftDock();
+  // Keep the rail glued to the panel's edge as its width changes (viewport resize,
+  // crossing the mobile breakpoint where the overlay panel widens).
+  const dock = document.getElementById("viewer-left-dock");
+  if (dock && typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(() => positionRail()).observe(dock);
+  }
+  window.addEventListener("resize", positionRail);
 }
