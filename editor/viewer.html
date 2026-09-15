@@ -673,6 +673,18 @@
         .fc-root, .fc-empty { color: #1e293b; }
         .lt-h { margin: 0 0 0.5rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
         .fc-hint { font-size: 0.82rem; color: #64748b; line-height: 1.4; }
+        .fc-mode { display: inline-flex; margin: 0 0 0.6rem; border: 1px solid #d8c9ba; border-radius: 6px; overflow: hidden; }
+        .fc-mode-btn { border: none; background: #fff; color: #475569; font-size: 0.78rem; font-weight: 600;
+            padding: 5px 14px; cursor: pointer; }
+        .fc-mode-btn + .fc-mode-btn { border-left: 1px solid #d8c9ba; }
+        .fc-mode-btn.on { background: #B85028; color: #fff; }
+        .fc-auto { border: 1px solid #e6ddd4; border-radius: 6px; padding: 0.5rem 0.6rem; margin: 0.5rem 0; background: #fbf8f5; }
+        .fc-auto-row { display: flex; gap: 6px; align-items: center; }
+        .fc-auto-row select { flex: 1; font-size: 0.8rem; padding: 4px 6px; border: 1px solid #d8c9ba; border-radius: 4px; background: #fff; }
+        .fc-refurnish { font-size: 0.78rem; padding: 5px 10px; border: 1px solid #d8c9ba; border-radius: 6px;
+            background: #fff; color: #334155; cursor: pointer; white-space: nowrap; }
+        .fc-refurnish:hover:not(:disabled) { border-color: #B85028; }
+        .fc-refurnish:disabled { opacity: 0.6; cursor: default; }
         .fc-canvas { width: 100%; height: auto; max-height: 230px; background: #fbf8f5;
             border: 1px solid #e6ddd4; border-radius: 6px; display: block; }
         .fc-room { fill: #fff; stroke: #94745d; stroke-width: 2; }

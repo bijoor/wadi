@@ -14,6 +14,8 @@ import { FURNITURE_CATALOG, FURNITURE_CATEGORIES, furnitureAsset } from "../furn
 import { validateLayout, type Piece } from "../furniture/autoplace";
 import { anchorPoints, anchorFacing, gapForCenter } from "../svg2d/furnitureAnchor";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
+import { furnishRoom } from "../furniture/furnish";
+import { loadRoomLayouts } from "../furniture/loadRoomLayouts";
 import type { ItemAsset } from "../schema/houseConfig";
 
 // deno-lint-ignore no-explicit-any
@@ -43,6 +45,7 @@ const newKey = () => `fp${++pieceSeq}`;
 interface SelectedRoom {
   floor: number;
   object: number;
+  floorNum: number;
   name: string;
   w: number;
   l: number;
@@ -55,7 +58,8 @@ function readSelectedRoom(state: Any): SelectedRoom | null {
   const sel = state.selection;
   const cfg = state.config;
   if (!sel || !cfg) return null;
-  const room = cfg.floors?.[sel.floor]?.objects?.[sel.object];
+  const floor = cfg.floors?.[sel.floor];
+  const room = floor?.objects?.[sel.object];
   if (!room || room.type !== "room") return null;
   const w = Number(room.width), l = Number(room.length);
   if (!isFinite(w) || !isFinite(l) || w <= 0 || l <= 0) return null;
@@ -64,6 +68,7 @@ function readSelectedRoom(state: Any): SelectedRoom | null {
   );
   return {
     floor: sel.floor, object: sel.object,
+    floorNum: (floor.floor_number as number | undefined) ?? sel.floor + 1,
     name: (room.name as string) ?? "Room",
     w, l, wallT: isFinite(wallT) ? wallT : DEFAULT_GLOBAL_CONFIG.wall_thickness,
     units: cfg.units, room,
@@ -88,6 +93,26 @@ function seedDraft(room: Any): DraftPiece[] {
     }));
 }
 
+// Best-guess furnish type for a room: its explicit room_type / auto_type, else
+// inferred from the room name (Bedroom → bedroom, Verandah → balcony, …).
+const NAME_TYPE_ALIASES: Record<string, string[]> = {
+  bedroom: ["bed"], bath: ["bath", "toilet", "wc", "washroom"], kitchen: ["kitchen", "cook"],
+  living: ["living", "hall", "lounge", "family"], dining: ["dining", "diner"],
+  study: ["study", "office", "work"], terrace: ["terrace", "deck"],
+  balcony: ["balcony", "verandah", "veranda", "porch", "sit"],
+};
+function guessRoomType(room: Any, roomTypes: string[]): string {
+  const explicit = (room?.furniture?.auto_type as string | undefined) ?? (room?.room_type as string | undefined);
+  if (explicit) return explicit;
+  const name = String(room?.name ?? "").toLowerCase();
+  const direct = roomTypes.find((t) => name.includes(t));
+  if (direct) return direct;
+  for (const [t, keys] of Object.entries(NAME_TYPE_ALIASES)) {
+    if (roomTypes.includes(t) && keys.some((k) => name.includes(k))) return t;
+  }
+  return roomTypes[0] ?? "";
+}
+
 function draftToPieces(draft: DraftPiece[]): Piece[] {
   return draft.map((d) => ({
     name: d.asset.name,
@@ -110,6 +135,12 @@ function FurnitureCatalogPanel() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [category, setCategory] = useState<string>(FURNITURE_CATEGORIES[0] ?? "");
+  // Auto-furnish: whether THIS room is engine-managed (auto + unlocked). Manual is the
+  // default; a hand-composed set stays locked until the user switches it to Auto here.
+  const [auto, setAuto] = useState(false);
+  const [autoType, setAutoType] = useState<string>("");
+  const [roomTypes, setRoomTypes] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   // Active drag: the piece being dragged + its anchor and half-extents + the pointer
   // and footprint-centre origin, so pointermove can map pixels → a new centre → gaps.
@@ -118,15 +149,35 @@ function FurnitureCatalogPanel() {
   >(null);
   const roomKey = sel ? `${sel.floor}:${sel.object}` : null;
 
-  // Re-seed the draft whenever the selected room changes (not on every edit).
+  // Load the available room-layout types once (for the Auto "furnish as" picker).
+  useEffect(() => {
+    let live = true;
+    loadRoomLayouts().then((layouts) => {
+      if (!live) return;
+      const types = [...new Set(layouts.map((l) => String((l as Any).type)).filter(Boolean))].sort();
+      setRoomTypes(types);
+    }).catch(() => { /* no layouts — Auto picker stays empty */ });
+    return () => { live = false; };
+  }, []);
+
+  // Re-seed the draft + Auto state whenever the selected room changes (not on every edit).
   useEffect(() => {
     if (sel) {
+      const fb = sel.room.furniture ?? {};
       setDraft(seedDraft(sel.room));
       setSelectedKey(null);
       setDirty(false);
+      setAuto(!!fb.auto && !fb.locked);
+      setAutoType(String(fb.auto_type ?? sel.room.room_type ?? ""));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomKey]);
+
+  // Once layouts load, fill a still-empty Auto type by inferring from the room name.
+  useEffect(() => {
+    if (auto && !autoType && roomTypes.length && sel) setAutoType(guessRoomType(sel.room, roomTypes));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, autoType, roomTypes]);
 
   if (!sel) {
     return (
@@ -138,7 +189,10 @@ function FurnitureCatalogPanel() {
   }
 
   const rect = { x: 0, y: 0, w: sel.w, l: sel.l };
-  const pieces = draftToPieces(draft);
+  // In Auto mode the container is engine-managed, so render its LIVE items (read-only);
+  // in Manual mode render the editable draft.
+  const activeDraft = auto ? seedDraft(sel.room) : draft;
+  const pieces = draftToPieces(activeDraft);
   const validation = validateLayout(pieces, rect, sel.wallT, sel.units);
   const anchors = anchorPoints(rect, sel.wallT);
   const issues = validation.overlaps.length + validation.oob.length;
@@ -209,6 +263,57 @@ function FurnitureCatalogPanel() {
   };
   const reset = () => { setDraft(seedDraft(sel.room)); setSelectedKey(null); setDirty(false); };
 
+  // Furnish JUST this room from the current config (the one-room version of the
+  // configurator's furnishNow), writing its container back.
+  const furnishThisRoom = async (): Promise<void> => {
+    const layouts = await loadRoomLayouts();
+    const cur = useConfigStore.getState().config as Any;
+    if (!cur) return;
+    const { config: next, result } = furnishRoom(cur, sel.floorNum, sel.name, layouts as Any);
+    if (result.furnished) {
+      const nextRoom = (next as Any).floors[sel.floor].objects[sel.object];
+      useConfigStore.getState().updateObject({ floor: sel.floor, object: sel.object }, { furniture: nextRoom.furniture });
+    }
+  };
+  // Switch the room to engine-managed (auto + unlocked) with an explicit type source,
+  // and furnish it now — unless the config auto-furnish already populated it.
+  const enableAuto = async (): Promise<void> => {
+    const type = autoType || guessRoomType(sel.room, roomTypes);
+    const prev = sel.room.furniture ?? {};
+    const alreadyAuto = !!(prev.auto && Array.isArray(prev.items) && prev.items.length);
+    useConfigStore.getState().updateObject(
+      { floor: sel.floor, object: sel.object },
+      { furniture: { ...prev, auto: true, locked: false, auto_type: type }, items: [] },
+    );
+    setAuto(true); setAutoType(type);
+    if (!alreadyAuto) { setBusy(true); try { await furnishThisRoom(); } finally { setBusy(false); } }
+  };
+  // Switch back to a locked, hand-composed set (freezing whatever is there now).
+  const disableAuto = (): void => {
+    const cur = seedDraft(sel.room);
+    const items = cur.map((d) => ({
+      asset: d.asset, anchor: d.anchor,
+      ...(d.gap_x ? { gap_x: d.gap_x } : {}), ...(d.gap_y ? { gap_y: d.gap_y } : {}),
+      ...(typeof d.rotation === "number" ? { rotation: d.rotation } : {}),
+    }));
+    const prev = sel.room.furniture ?? {};
+    useConfigStore.getState().updateObject(
+      { floor: sel.floor, object: sel.object },
+      { furniture: { ...prev, auto: false, locked: true, items }, items: [] },
+    );
+    setAuto(false);
+    setDraft(seedDraft(sel.room));
+  };
+  const changeAutoType = async (type: string): Promise<void> => {
+    setAutoType(type);
+    const prev = sel.room.furniture ?? {};
+    useConfigStore.getState().updateObject(
+      { floor: sel.floor, object: sel.object },
+      { furniture: { ...prev, auto: true, locked: false, auto_type: type } },
+    );
+    setBusy(true); try { await furnishThisRoom(); } finally { setBusy(false); }
+  };
+
   // Canvas scale: draw in project units, let the SVG box scale to the panel width.
   const pad = Math.max(sel.w, sel.l) * 0.04;
   const vb = `${-pad} ${-pad} ${sel.w + 2 * pad} ${sel.l + 2 * pad}`;
@@ -227,13 +332,19 @@ function FurnitureCatalogPanel() {
     <div className="fc-root">
       <h4 className="lt-h">Furniture · {sel.name}</h4>
 
-      {/* Room composition canvas */}
+      {/* Mode: Manual (hand-composed, locked) vs Auto (engine-managed by type). */}
+      <div className="fc-mode">
+        <button className={`fc-mode-btn${!auto ? " on" : ""}`} onClick={() => { if (auto) disableAuto(); }}>Manual</button>
+        <button className={`fc-mode-btn${auto ? " on" : ""}`} onClick={() => { if (!auto) void enableAuto(); }}>Auto</button>
+      </div>
+
+      {/* Room composition canvas (interactive in Manual, read-only preview in Auto). */}
       <svg ref={svgRef} className="fc-canvas" viewBox={vb} preserveAspectRatio="xMidYMid meet">
         <rect x={0} y={0} width={sel.w} height={sel.l} className="fc-room" vectorEffect="non-scaling-stroke" />
         <rect x={sel.wallT} y={sel.wallT} width={sel.w - 2 * sel.wallT} height={sel.l - 2 * sel.wallT}
           className="fc-inner" vectorEffect="non-scaling-stroke" />
-        {/* Anchor snap points — click to move the selected piece there */}
-        {ANCHORS.map((a) => {
+        {/* Anchor snap points — click to move the selected piece there (Manual only) */}
+        {!auto && ANCHORS.map((a) => {
           const p = anchors[a];
           if (!p) return null;
           return (
@@ -244,7 +355,7 @@ function FurnitureCatalogPanel() {
           );
         })}
         {/* Piece footprints */}
-        {draft.map((d, i) => {
+        {activeDraft.map((d, i) => {
           const r = validation.rects[i];
           if (!r) return null;
           const bad = validation.flags[i]?.overlap || (validation.flags[i]?.oob?.length ?? 0) > 0;
@@ -253,12 +364,12 @@ function FurnitureCatalogPanel() {
           // facing tick: (sin, cos) points the "front" like the LayoutEditor
           const fx = cx + Math.sin((rot * Math.PI) / 180) * (r.halfY || dot * 2);
           const fy = cy + Math.cos((rot * Math.PI) / 180) * (r.halfY || dot * 2);
-          const on = d.key === selectedKey;
+          const on = !auto && d.key === selectedKey;
           return (
             <g key={d.key} className="fc-piece-g">
               <rect x={r.x0} y={r.y0} width={r.x1 - r.x0} height={r.y1 - r.y0}
                 className={`fc-piece${bad ? " bad" : ""}${on ? " sel" : ""}`} vectorEffect="non-scaling-stroke"
-                onPointerDown={(e) => onPieceDown(e, d, r)} onPointerMove={onPieceMove} onPointerUp={onPieceUp} />
+                {...(auto ? {} : { onPointerDown: (e: React.PointerEvent) => onPieceDown(e, d, r), onPointerMove: onPieceMove, onPointerUp: onPieceUp })} />
               <line x1={cx} y1={cy} x2={fx} y2={fy} className="fc-facing" vectorEffect="non-scaling-stroke"
                 style={{ pointerEvents: "none" }} />
             </g>
@@ -267,11 +378,28 @@ function FurnitureCatalogPanel() {
       </svg>
       <div className={`fc-status${issues ? " bad" : ""}`}>
         {issues ? `${issues} issue${issues > 1 ? "s" : ""} (overlap / out of bounds)` : "All clear"}
-        {dirty ? " · unsaved" : ""}
+        {!auto && dirty ? " · unsaved" : ""}
       </div>
 
-      {/* Selected-piece controls */}
-      {selectedKey && (() => {
+      {/* Auto mode: pick the furnish type + re-furnish; the room re-flows on resize. */}
+      {auto && (
+        <div className="fc-auto">
+          <div className="fc-lbl">Furnish as</div>
+          <div className="fc-auto-row">
+            <select value={autoType} onChange={(e) => void changeAutoType(e.target.value)} disabled={busy}>
+              {roomTypes.length === 0 && <option value="">(no templates)</option>}
+              {roomTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <button className="fc-refurnish" disabled={busy} onClick={() => void furnishThisRoom()}>
+              {busy ? "Furnishing…" : "Re-furnish"}
+            </button>
+          </div>
+          <p className="fc-hint">This room is furnished automatically by type and re-flows when its size changes. Switch to <b>Manual</b> to place furniture by hand.</p>
+        </div>
+      )}
+
+      {/* Selected-piece controls (Manual only) */}
+      {!auto && selectedKey && (() => {
         const d = draft.find((p) => p.key === selectedKey);
         if (!d) return null;
         const rot = typeof d.rotation === "number" ? d.rotation : anchorFacing(d.anchor);
@@ -309,30 +437,30 @@ function FurnitureCatalogPanel() {
         );
       })()}
 
-      {/* Catalog browser */}
-      <div className="fc-cat-head">Add furniture</div>
-      <div className="fc-cats">
-        {FURNITURE_CATEGORIES.map((c) => (
-          <button key={c} className={`fc-cat${category === c ? " on" : ""}`} onClick={() => setCategory(c)}>{c}</button>
-        ))}
-      </div>
-      <div className="fc-catalog">
-        {FURNITURE_CATALOG.filter((f) => f.category === category).map((f) => (
-          <button key={f.id} className="fc-item" onClick={() => addAsset(f.id)} title={`Add ${f.name}`}>
-            <span className="fc-item-name">{f.name}</span>
-            <span className="fc-item-dim">{f.dimensions[0]}×{f.dimensions[2]}m</span>
+      {/* Catalog browser + Apply (Manual only) */}
+      {!auto && <>
+        <div className="fc-cat-head">Add furniture</div>
+        <div className="fc-cats">
+          {FURNITURE_CATEGORIES.map((c) => (
+            <button key={c} className={`fc-cat${category === c ? " on" : ""}`} onClick={() => setCategory(c)}>{c}</button>
+          ))}
+        </div>
+        <div className="fc-catalog">
+          {FURNITURE_CATALOG.filter((f) => f.category === category).map((f) => (
+            <button key={f.id} className="fc-item" onClick={() => addAsset(f.id)} title={`Add ${f.name}`}>
+              <span className="fc-item-name">{f.name}</span>
+              <span className="fc-item-dim">{f.dimensions[0]}×{f.dimensions[2]}m</span>
+            </button>
+          ))}
+        </div>
+        <div className="fc-actions">
+          <button className="fc-apply" disabled={!dirty || issues > 0} onClick={apply}>
+            Apply to model
           </button>
-        ))}
-      </div>
-
-      {/* Apply / reset */}
-      <div className="fc-actions">
-        <button className="fc-apply" disabled={!dirty || issues > 0} onClick={apply}>
-          Apply to model
-        </button>
-        <button className="fc-reset" disabled={!dirty} onClick={reset}>Reset</button>
-      </div>
-      {issues > 0 && <div className="fc-warn">Resolve the {issues} issue{issues > 1 ? "s" : ""} before applying.</div>}
+          <button className="fc-reset" disabled={!dirty} onClick={reset}>Reset</button>
+        </div>
+        {issues > 0 && <div className="fc-warn">Resolve the {issues} issue{issues > 1 ? "s" : ""} before applying.</div>}
+      </>}
     </div>
   );
 }
