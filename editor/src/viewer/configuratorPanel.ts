@@ -40,6 +40,12 @@ export function mountConfiguratorPanel(): void {
   const controls = new Map<string, Ctl>();
   const defaults = new Map<string, number>();
   let lastSig = "";
+  // Auto-furnish: any configurator change re-runs the furnish action (debounced), so a room
+  // re-matches a fitting template when a variable resizes it — the planner's live reflow,
+  // now in the studio. `furnishing` guards against overlap with a manual Furnish.
+  let furnishing = false;
+  let autoTimer: ReturnType<typeof setTimeout> | undefined;
+  let statusRef: HTMLElement | null = null;
 
   const store = () => useConfigStore.getState();
 
@@ -49,6 +55,60 @@ export function mountConfiguratorPanel(): void {
     const patch = writeValue(cfg, target, raw);
     if ("variables" in patch && patch.variables) store().updateVariables(patch.variables);
     else if ("points" in patch && patch.points) store().updatePoints(patch.points);
+    scheduleAutoFurnish();
+  }
+
+  // Furnish every furnishable room from the current (resolved) config, writing each room's
+  // updated furniture container back into the store. Returns how many were (re)furnished.
+  // Shared by the manual Furnish button and the debounced auto-furnish.
+  async function furnishNow(): Promise<{ done: number; total: number }> {
+    const cfg0 = store().config as HouseConfig | null;
+    if (!cfg0) return { done: 0, total: 0 };
+    const layouts = await loadRoomLayouts();
+    let done = 0;
+    let total = 0;
+    const floors = (cfg0.floors ?? []) as Array<{ floor_number?: number; objects?: Record<string, unknown>[] }>;
+    for (let fi = 0; fi < floors.length; fi++) {
+      const objs = floors[fi].objects ?? [];
+      for (let oi = 0; oi < objs.length; oi++) {
+        if (!isFurnishable(objs[oi])) continue;
+        total++;
+        const cur = store().config as HouseConfig | null;
+        if (!cur) continue;
+        const name = String(objs[oi].name);
+        const floorNum = floors[fi].floor_number ?? fi + 1;
+        const { config: next, result } = furnishRoom(cur as never, floorNum, name, layouts);
+        if (result.furnished) {
+          const nextRoom = (next.floors as Array<{ objects: Record<string, unknown>[] }>)[fi].objects[oi];
+          store().updateObject({ floor: fi, object: oi }, { furniture: nextRoom.furniture } as Partial<HouseObject>);
+          done++;
+        }
+      }
+    }
+    return { done, total };
+  }
+
+  // Debounced re-furnish after a config change. Only the last change in a burst (a slider drag,
+  // a Reset) actually furnishes. `furnishRoom` skips locked blocks and re-matches by the room's
+  // current size, so this is safe to run on every change; furnishing writes only furniture
+  // (never variables), so it can't re-trigger itself.
+  function scheduleAutoFurnish(): void {
+    const cfg = store().config as HouseConfig | null;
+    if (!cfg || countFurnishable(cfg) === 0) return;
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = setTimeout(async () => {
+      autoTimer = undefined;
+      if (furnishing) { scheduleAutoFurnish(); return; } // a manual furnish is running — retry
+      furnishing = true;
+      try {
+        const { done } = await furnishNow();
+        if (statusRef) statusRef.textContent = done ? `Auto-furnished ${done} room${done === 1 ? "" : "s"}` : "";
+      } catch {
+        /* leave the current furniture in place on failure */
+      } finally {
+        furnishing = false;
+      }
+    }, 350);
   }
 
   // Auto-place furniture in every furnishable room (a native `type` or a `furniture
@@ -56,40 +116,22 @@ export function mountConfiguratorPanel(): void {
   // container. Re-reads the live config between rooms so a room that clones a sibling
   // sees the sibling's furniture placed earlier in this pass.
   async function furnishAll(btn: HTMLButtonElement, status: HTMLElement): Promise<void> {
-    const cfg0 = store().config as HouseConfig | null;
-    if (!cfg0) return;
+    if (furnishing) return;
+    furnishing = true;
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = undefined; } // supersede a pending auto-run
     const label = btn.textContent;
     btn.disabled = true;
     btn.textContent = "Furnishing…";
     status.textContent = "";
     try {
-      const layouts = await loadRoomLayouts();
-      let done = 0;
-      let total = 0;
-      const floors = (cfg0.floors ?? []) as Array<{ floor_number?: number; objects?: Record<string, unknown>[] }>;
-      for (let fi = 0; fi < floors.length; fi++) {
-        const objs = floors[fi].objects ?? [];
-        for (let oi = 0; oi < objs.length; oi++) {
-          if (!isFurnishable(objs[oi])) continue;
-          total++;
-          const cur = store().config as HouseConfig | null;
-          if (!cur) continue;
-          const name = String(objs[oi].name);
-          const floorNum = floors[fi].floor_number ?? fi + 1;
-          const { config: next, result } = furnishRoom(cur as never, floorNum, name, layouts);
-          if (result.furnished) {
-            const nextRoom = (next.floors as Array<{ objects: Record<string, unknown>[] }>)[fi].objects[oi];
-            store().updateObject({ floor: fi, object: oi }, { furniture: nextRoom.furniture } as Partial<HouseObject>);
-            done++;
-          }
-        }
-      }
+      const { done, total } = await furnishNow();
       status.textContent = total ? `Furnished ${done}/${total} room${total === 1 ? "" : "s"}` : "No rooms have a type to furnish";
     } catch {
       status.textContent = "Furnish failed";
     } finally {
       btn.disabled = false;
       btn.textContent = label;
+      furnishing = false;
     }
   }
 
@@ -106,11 +148,12 @@ export function mountConfiguratorPanel(): void {
     const btn = document.createElement("button");
     btn.className = "cfg-furnish";
     btn.textContent = `🛋 Furnish room${count === 1 ? "" : "s"}`;
-    btn.title = "Auto-place furniture in every room that has a type, from the template pack";
+    btn.title = "Auto-place furniture in every room that has a type. Runs automatically when you change a size.";
     btn.style.cssText = "padding:4px 12px;font-size:13px;font-weight:600;color:#0f1729;background:#f5c451;border:none;border-radius:5px;cursor:pointer;";
     const status = document.createElement("span");
     status.className = "cfg-furnish-msg";
     status.style.cssText = "font-size:11px;color:#94a3b8;";
+    statusRef = status; // the auto-furnish writes its result here too
     btn.addEventListener("click", () => { void furnishAll(btn, status); });
     row.appendChild(btn);
     row.appendChild(status);
