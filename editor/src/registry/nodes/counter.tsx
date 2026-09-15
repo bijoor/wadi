@@ -121,11 +121,20 @@ export const counterNode: NodeDefinition = {
     const sinkW = SINK_SCALE * metersToUnits(sd[0], ctx.unitsRef);
     const sinkDp = SINK_SCALE * metersToUnits(sd[2], ctx.unitsRef);
     const sinkDrop = 0.34 * SINK_SCALE * metersToUnits(sd[1], ctx.unitsRef);
-    // Bowl outline in counter-local (x, z): scale the normalised hull to the placed sink
-    // footprint and apply the sink's 180° yaw (which flips X and Z; the bowl lands on -Z),
-    // then offset to the sink position along the run.
+    // ONE yaw drives both the sink GLB and its hole so they always agree. The bowl outline
+    // (SINK_BOWL_HULL) is authored in the model frame: nx = model width (→ local X), ny =
+    // Blender depth (→ local Z with a sign flip). Scale to the placed footprint, rotate by
+    // the sink yaw, and offset to the sink position along the run.
+    const SINK_YAW = 90; // faucet toward the counter back (wall)
+    const yr = (SINK_YAW * Math.PI) / 180;
+    const cyaw = Math.cos(yr);
+    const syaw = Math.sin(yr);
     const holePts = hasSink
-      ? SINK_BOWL_HULL.map(([nx, ny]) => ({ x: sinkOff - nx * sinkW, z: ny * sinkDp }))
+      ? SINK_BOWL_HULL.map(([nx, ny]) => {
+          const xm = nx * sinkW;
+          const zm = -ny * sinkDp;
+          return { x: sinkOff + xm * cyaw + zm * syaw, z: -xm * syaw + zm * cyaw };
+        })
       : undefined;
     // Countertop slab: a bowl-shaped hole (extruded THREE.Shape) when there's a sink, else
     // a plain box. `bottomY` is the slab underside.
@@ -183,7 +192,7 @@ export const counterNode: NodeDefinition = {
       );
     };
     // Sink: rim at the top (drop = rim height), scaled down. Hob: sits on the top.
-    if (obj.sink) parts.push(fixture("kitchen_sink_bare", sinkOff, 180, height - sinkDrop, SINK_SCALE));
+    if (obj.sink) parts.push(fixture("kitchen_sink_bare", sinkOff, SINK_YAW, height - sinkDrop, SINK_SCALE));
     if (obj.hob) parts.push(fixture("cooktop_hob", (obj.hob_offset as number | undefined) ?? 0, 0, height, 1));
 
     return {
