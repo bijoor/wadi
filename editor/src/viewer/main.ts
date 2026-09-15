@@ -90,6 +90,7 @@ import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
 import { writeValue } from "../configurator/spec";
 import { mountConfiguratorPanel, configPanelAvailable } from "./configuratorPanel";
 import { registerLeftTool, mountLeftDock, refreshLeftDock } from "./leftPanels";
+import { wireRoomSelection } from "./roomSelection";
 import { listRooms, useInteriorStore } from "../three/interiorView";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -465,6 +466,10 @@ async function bootViewer(): Promise<void> {
   // entering/leaving a 2D drawing tab.
   (window as unknown as { refreshLeftDock?: () => void }).refreshLeftDock = refreshLeftDock;
 
+  // Room selection from the 2D floor plan (click a room to select it; drives the
+  // furniture-catalog tool + highlight).
+  wireRoomSelection();
+
   // Viewer chrome (embed mode + edit-mode flag). Personas are retired — one mode.
   applyViewerChrome();
 
@@ -752,7 +757,9 @@ function rebuildSvgMap(): void {
   beginDimResolve({ dedup: !!filter.smart?.withinView, overlap: !!filter.smart?.overlap });
   try {
     safe("floor plans", () => {
-      for (const { filename, content } of generateAllFloorPlans(filtered)) {
+      // interactiveRooms=true → each plan carries a clickable room hit layer for
+      // room selection (viewer only; the combined + parity paths stay plain).
+      for (const { filename, content } of generateAllFloorPlans(filtered, true)) {
         svgMap.set(`2d/floor_plans/${filename}`, content);
       }
     });

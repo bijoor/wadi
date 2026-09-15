@@ -65,6 +65,10 @@ export function generateFloorPlanSvg(
   // the code constant when the caller doesn't pass one.
   wallThickness: number = DEFAULT_GLOBAL_CONFIG.wall_thickness,
   gridOverlay?: FloorPlanGridOverlay,
+  // Viewer-only: append a transparent, clickable room hit layer keyed by floor +
+  // room name (for room selection / highlight). Defaults OFF and is NOT passed on
+  // the parity/combined path, so the golden SVG stays byte-identical.
+  interactiveRooms = false,
 ): string {
   const floorNum = floorConfig.floor_number ?? 0;
   const floorName = floorConfig.name ?? `Floor ${floorNum}`;
@@ -804,6 +808,27 @@ export function generateFloorPlanSvg(
   void titleWidthIsFloat;
   const builtUpUnits = floorBuiltUpAreaUnits(floorConfig as { objects?: Array<Record<string, unknown>> });
   const areaLabel = builtUpUnits > 0 ? `  ·  Built-up ${formatArea(builtUpUnits)}` : "";
+
+  // Interactive room hit layer (viewer only) — drawn last so it sits on top and
+  // captures clicks. Transparent rects in model coords (inside the same
+  // translate/scale group), keyed by floor number + room name so the viewer can
+  // map a click back to the room object for selection + highlight.
+  if (interactiveRooms) {
+    const escXml = (s: string) =>
+      s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+    let hits = `<g class="wadi-room-hits">\n`;
+    for (const obj of objects) {
+      if (obj.type !== "room") continue;
+      const x = obj.x as number, y = obj.y as number;
+      const w = obj.width as number, l = obj.length as number;
+      if (![x, y, w, l].every((n) => typeof n === "number" && isFinite(n))) continue;
+      const name = (obj.name as string | undefined) ?? "Room";
+      hits += `  <rect class="wadi-room-hit" data-floor="${floorNum}" data-room="${escXml(name)}" x="${fFloat(x)}" y="${fFloat(y)}" width="${fFloat(w)}" height="${fFloat(l)}" fill="transparent" vector-effect="non-scaling-stroke"/>\n`;
+    }
+    hits += `</g>\n`;
+    svg += hits;
+  }
+
   svg += `</g>
 <text x="${titleXStr}" y="${fFloat(titleY)}" text-anchor="middle" font-size="${titleFont}" font-weight="bold">${floorName}${areaLabel}</text>
 `;

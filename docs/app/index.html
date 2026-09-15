@@ -903,6 +903,12 @@
         .svg-item svg:hover {
             transform: scale(1.02);
         }
+        /* Interactive room selection layer on the floor plans (roomSelection.ts).
+           Transparent hit rects; hover tints, the selected room outlines. Stroke is
+           non-scaling (set on the rect) so it stays crisp at any plan scale. */
+        .wadi-room-hit { fill: transparent; cursor: pointer; transition: fill 0.1s ease; }
+        .wadi-room-hit:hover { fill: rgba(184, 80, 40, 0.10); }
+        .wadi-room-hit.sel { fill: rgba(184, 80, 40, 0.16); stroke: #B85028; stroke-width: 2; }
         .perspective-card {
             background: white;
             padding: 1.5rem;
@@ -2145,7 +2151,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CtjjRjsl.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-0gLl3sCx.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>
@@ -2718,13 +2724,19 @@
 
                     const svg = item.querySelector('svg');
                     if (svg) {
-                        svg.addEventListener('click', () =>
-                            openSvgLightbox(c.filename, c.displayName));
+                        svg.addEventListener('click', (e) => {
+                            // A click on a room hit rect selects the room (handled in
+                            // roomSelection.ts) — don't also open the lightbox.
+                            if (e.target && e.target.closest && e.target.closest('.wadi-room-hit')) return;
+                            openSvgLightbox(c.filename, c.displayName);
+                        });
                     }
                 } catch (error) {
                     console.log(`Floor plan ${c.filename} not found:`, error);
                 }
             }
+            // Restore the selected-room highlight on the freshly injected SVG.
+            if (window.applyRoomHighlight) window.applyRoomHighlight();
 
             if (!loadedAny) {
                 grid.innerHTML = `

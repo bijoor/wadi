@@ -21,7 +21,12 @@ export interface FloorPlanFile {
   content: string;
 }
 
-export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[] {
+export function generateAllFloorPlans(
+  houseConfig: HouseConfig,
+  // Viewer-only: emit a clickable room hit layer per plan (room selection). Off for
+  // disk dumps / parity so their SVGs stay byte-identical.
+  interactiveRooms = false,
+): FloorPlanFile[] {
   const hc = expandRoomWalls(houseConfig, undefined, { lenient: true });
   const houseDefaults = (hc as { defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number } })
     .defaults;
@@ -35,7 +40,7 @@ export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[]
     const filename = `floor_plan_${floorNum}_${floorName.replace(/ /g, "_")}.svg`;
     // Compute a merged v2 roof spec for THIS floor's roof objects only.
     const roofOverlay = computeFloorRoofOverlay(hc, fi, houseDefaults);
-    const content = generateFloorPlanSvg(floor, 2.0, roofOverlay ?? undefined, wallThickness, gridOverlay);
+    const content = generateFloorPlanSvg(floor, 2.0, roofOverlay ?? undefined, wallThickness, gridOverlay, interactiveRooms);
     // Match Python: floors with no bounded 2D objects (e.g. loft with
     // only a hip_roof) return '' and Python skips writing them, so we
     // omit them from the output list too — but with a v2 roof overlay,
