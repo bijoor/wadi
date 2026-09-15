@@ -34,6 +34,20 @@ const CounterFronts = lazy(() =>
 const FurnitureItem = lazy(() =>
   import("../../three/FurnitureItem").then((m) => ({ default: m.FurnitureItem })),
 );
+const CounterTop = lazy(() =>
+  import("../../three/CounterTop").then((m) => ({ default: m.CounterTop })),
+);
+
+// The kitchen_sink_bare bowl RIM outline, derived from the GLB in Blender (convex hull of
+// the bowl, projected to plan), normalised to the model footprint (nx,ny in [-0.5..0.5]
+// relative to the model bbox centre; nx = width, ny = Blender depth). Used to cut a
+// bowl-shaped hole in the countertop that matches the recessed sink.
+const SINK_BOWL_HULL: [number, number][] = [
+  [-0.5, -0.3223], [-0.4786, -0.4112], [-0.4204, -0.4762], [-0.3409, -0.5], [0.3409, -0.5],
+  [0.4204, -0.4762], [0.4786, -0.4112], [0.5, -0.3223], [0.5, -0.0278], [0.4786, 0.0611],
+  [0.4204, 0.1262], [0.2342, 0.2942], [0.1676, 0.2948], [-0.1676, 0.2948], [-0.2342, 0.2942],
+  [-0.4204, 0.1262], [-0.4786, 0.0611], [-0.5, -0.0278],
+];
 
 // The Zod schema (free `counterObject` + nested `roomCounter`) lives in
 // schema/houseConfig.ts, like `item`'s — the node contributes CAPABILITIES only
@@ -95,53 +109,37 @@ export const counterNode: NodeDefinition = {
     // depth → local Z, front/room face = +local Z). Children are placed in that frame.
     const parts: ReactNode[] = [];
 
-    // A sink recesses INTO the top: cut a rectangular hole in the countertop at the sink
-    // position (built from border boxes — the top is procedural, so no CSG needed), then
-    // drop the sink so the bowl sits below the surface with the rim ~flush. The hole is
-    // biased slightly to the front (+Z) to sit under the bowl, not the faucet.
+    // A sink recesses INTO the top: cut a BOWL-SHAPED hole in the countertop (the sink's
+    // rim outline, derived from the GLB), and drop the sink so only the bowl sinks — the
+    // rim sits at the top and the faucet stays above it.
     const hasSink = !!obj.sink;
     const sinkOff = (obj.sink_offset as number | undefined) ?? 0;
-    // The sink GLB is scaled down (SINK_SCALE) to leave a margin on the counter, and the
-    // hole is matched to its scaled bowl footprint. The rim sits AT the counter top: drop
-    // by the rim height only (~34% of the model height), so the faucet stays ABOVE the top
-    // and just the bowl sinks. The bowl is at the front of the model, faucet at the back.
+    // The sink GLB is scaled down (SINK_SCALE) to leave a margin on the counter. The rim
+    // sits AT the counter top: drop by the rim height only (~34% of the model height).
     const SINK_SCALE = 0.8;
     const sd = furnitureAsset("kitchen_sink_bare").dimensions;
     const sinkW = SINK_SCALE * metersToUnits(sd[0], ctx.unitsRef);
     const sinkDp = SINK_SCALE * metersToUnits(sd[2], ctx.unitsRef);
     const sinkDrop = 0.34 * SINK_SCALE * metersToUnits(sd[1], ctx.unitsRef);
-    // The bowl spans nearly the full sink width, so the hole matches the full footprint
-    // width. In the placed sink the BOWL is on the -Z side and the FAUCET on +Z, so the
-    // hole is biased to -Z (under the bowl) and the faucet keeps counter under it.
-    const holeW = sinkW * 1.0;
-    const holeD = sinkDp * 0.72;
-    const holeCz = -sinkDp * 0.15; // bias toward the bowl (−Z), away from the faucet
-    // The countertop slab: one box, or four border boxes around the sink hole.
-    const slab = (topY: number, thickness: number, color: string, rough: number): ReactNode[] => {
-      if (!hasSink) {
-        return [
-          <mesh key="slab" position={[0, topY, 0]} castShadow receiveShadow>
-            <boxGeometry args={[length, thickness, depth]} />
-            <meshStandardMaterial color={color} roughness={rough} />
-          </mesh>,
-        ];
-      }
-      const hx0 = Math.max(-length / 2, sinkOff - holeW / 2);
-      const hx1 = Math.min(length / 2, sinkOff + holeW / 2);
-      const hz0 = Math.max(-depth / 2, holeCz - holeD / 2);
-      const hz1 = Math.min(depth / 2, holeCz + holeD / 2);
-      const mat = () => <meshStandardMaterial color={color} roughness={rough} />;
-      const out: ReactNode[] = [];
-      const lw = hx0 + length / 2; // strip left of the hole
-      if (lw > 0.1) out.push(<mesh key="sl-l" position={[(-length / 2 + hx0) / 2, topY, 0]} castShadow receiveShadow><boxGeometry args={[lw, thickness, depth]} />{mat()}</mesh>);
-      const rw = length / 2 - hx1; // right of the hole
-      if (rw > 0.1) out.push(<mesh key="sl-r" position={[(hx1 + length / 2) / 2, topY, 0]} castShadow receiveShadow><boxGeometry args={[rw, thickness, depth]} />{mat()}</mesh>);
-      const bd = hz0 + depth / 2; // behind the hole (-Z)
-      if (bd > 0.1) out.push(<mesh key="sl-b" position={[(hx0 + hx1) / 2, topY, (-depth / 2 + hz0) / 2]} castShadow receiveShadow><boxGeometry args={[hx1 - hx0, thickness, bd]} />{mat()}</mesh>);
-      const fd = depth / 2 - hz1; // in front of the hole (+Z)
-      if (fd > 0.1) out.push(<mesh key="sl-f" position={[(hx0 + hx1) / 2, topY, (hz1 + depth / 2) / 2]} castShadow receiveShadow><boxGeometry args={[hx1 - hx0, thickness, fd]} />{mat()}</mesh>);
-      return out;
-    };
+    // Bowl outline in counter-local (x, z): scale the normalised hull to the placed sink
+    // footprint and apply the sink's 180° yaw (which flips X and Z; the bowl lands on -Z),
+    // then offset to the sink position along the run.
+    const holePts = hasSink
+      ? SINK_BOWL_HULL.map(([nx, ny]) => ({ x: sinkOff - nx * sinkW, z: ny * sinkDp }))
+      : undefined;
+    // Countertop slab: a bowl-shaped hole (extruded THREE.Shape) when there's a sink, else
+    // a plain box. `bottomY` is the slab underside.
+    const topSlab = (bottomY: number, thickness: number, color: string, rough: number): ReactNode =>
+      holePts ? (
+        <Suspense key="top" fallback={null}>
+          <CounterTop length={length} depth={depth} thickness={thickness} bottomY={bottomY} color={color} roughness={rough} hole={holePts} />
+        </Suspense>
+      ) : (
+        <mesh key="top" position={[0, bottomY + thickness / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[length, thickness, depth]} />
+          <meshStandardMaterial color={color} roughness={rough} />
+        </mesh>
+      );
 
     // Base geometry: the base-cabinet treatment (countertop slab + carcass body + recessed
     // toe-kick plinth) or a single solid block (the masonry otta). The plinth is inset on
@@ -151,7 +149,7 @@ export const counterNode: NodeDefinition = {
       const toe = Math.max(0, (obj.toe_kick as number | undefined) ?? Math.min(8, height * 0.22));
       const toeInset = Math.min(5, depth * 0.25);
       const bodyH = Math.max(0.5, height - topT - toe);
-      parts.push(...slab(height - topT / 2, topT, GRANITE, 0.6));
+      parts.push(topSlab(height - topT, topT, GRANITE, 0.6));
       parts.push(
         <mesh key="body" position={[0, toe + bodyH / 2, 0]} castShadow receiveShadow>
           <boxGeometry args={[length, bodyH, depth]} />
@@ -170,7 +168,7 @@ export const counterNode: NodeDefinition = {
         );
       }
     } else {
-      parts.push(...slab(height / 2, height, GRANITE, 0.7));
+      parts.push(topSlab(0, height, GRANITE, 0.7));
     }
 
     // Fixtures (Phase C): a sink (bowl + faucet) recessed into the top, and/or a gas
