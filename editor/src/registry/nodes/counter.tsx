@@ -20,6 +20,7 @@ import { toThreePos } from "../../three/coords";
 import { defaultLayerFor } from "../../three/layers";
 import { metersToUnits } from "../../three/units";
 import { furnitureUrl, furnitureAsset } from "../../furniture/catalog";
+import { COUNTER_SINK_HOB_FIT } from "./counter.constraints";
 import { uniqueName } from "../../state/naming";
 import { counterToWdl } from "../../../../wadi-dsl/src/generator/fromHouseConfig";
 import type { HouseObject } from "../../schema/houseConfig";
@@ -58,6 +59,7 @@ export const counterNode: NodeDefinition = {
   addable: true,
   layerRole: "structure",
   defaultLayerId: "structure",
+  constraints: [COUNTER_SINK_HOB_FIT], // CT1 — sink + hob must fit the run
 
   emitWdl: (obj) => counterToWdl(obj),
 
@@ -113,7 +115,9 @@ export const counterNode: NodeDefinition = {
     // rim outline, derived from the GLB), and drop the sink so only the bowl sinks — the
     // rim sits at the top and the faucet stays above it.
     const hasSink = !!obj.sink;
-    const sinkOff = (obj.sink_offset as number | undefined) ?? 0;
+    const hasHob = !!obj.hob;
+    const sinkOffRaw = obj.sink_offset as number | undefined;
+    const hobOffRaw = obj.hob_offset as number | undefined;
     // The sink GLB is scaled down (SINK_SCALE) to leave a margin on the counter. The rim
     // sits AT the counter top: drop by the rim height only (~34% of the model height).
     const SINK_SCALE = 0.8;
@@ -121,6 +125,13 @@ export const counterNode: NodeDefinition = {
     const sinkW = SINK_SCALE * metersToUnits(sd[0], ctx.unitsRef);
     const sinkDp = SINK_SCALE * metersToUnits(sd[2], ctx.unitsRef);
     const sinkDrop = 0.34 * SINK_SCALE * metersToUnits(sd[1], ctx.unitsRef);
+    // Fixture positions along the run (local X, 0 = centred). When BOTH a sink and a hob
+    // are present and NEITHER offset was authored, auto-separate them — sink in the left
+    // half, hob in the right half — so they never stack at the centre. Authored offsets
+    // always win.
+    const autoSplit = hasSink && hasHob && sinkOffRaw == null && hobOffRaw == null;
+    const sinkOff = sinkOffRaw ?? (autoSplit ? -length / 4 : 0);
+    const hobOff = hobOffRaw ?? (autoSplit ? length / 4 : 0);
     // ONE yaw drives both the sink GLB and its hole so they always agree. The bowl outline
     // (SINK_BOWL_HULL) is authored in the model frame: nx = model width (→ local X), ny =
     // Blender depth (→ local Z with a sign flip). Scale to the placed footprint, rotate by
@@ -193,7 +204,7 @@ export const counterNode: NodeDefinition = {
     };
     // Sink: rim at the top (drop = rim height), scaled down. Hob: sits on the top.
     if (obj.sink) parts.push(fixture("kitchen_sink_bare", sinkOff, SINK_YAW, height - sinkDrop, SINK_SCALE));
-    if (obj.hob) parts.push(fixture("cooktop_hob", (obj.hob_offset as number | undefined) ?? 0, 0, height, 1));
+    if (obj.hob) parts.push(fixture("cooktop_hob", hobOff, 0, height, 1));
 
     return {
       layerId,

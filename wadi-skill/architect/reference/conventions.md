@@ -412,6 +412,18 @@ Reduce `pole_radius` below `radius` (a pole is typically a small fraction of the
 
 ---
 
+## CT1 — A counter with both a sink and a hob must be long enough for both · **error**
+
+**Statement.** A `counter` that has both a `sink` and a `hob` must have `length` ≥ the combined width of the two fixtures.
+
+**Rationale.** The sink and hob sit side by side along the run (the render auto-separates them). If the counter is shorter than their combined width there is no room for both — they overlap.
+
+**Fix.**
+
+Increase the counter `length`, or drop the sink or the hob.
+
+---
+
 ## Running the checks
 
 ```bash
