@@ -48,6 +48,10 @@ export default defineConfig({
       // planner can hand off editable WDL (and push it to a live co-edit session).
       // Same bare specifier the editor aliases; Vite transpiles the .ts on import.
       'wadi-wdl-emitter': path.resolve(__dirname, '..', 'wadi-dsl', 'src', 'generator', 'fromHouseConfig.ts'),
+      // Wadi's OWN furniture placement engine (headless), so the planner prepopulates the
+      // export by running the SAME engine wadi uses to re-furnish — no divergence between the
+      // pushed file and what wadi computes. Vite transpiles the .ts on import.
+      'wadi-furnish': path.resolve(__dirname, '..', 'editor', 'src', 'furniture', 'furnish.ts'),
     },
   },
   build: {

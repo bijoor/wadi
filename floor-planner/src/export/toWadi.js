@@ -10,9 +10,21 @@
 // with no door is C11's cue to add one (or leave the wall off for an opening).
 
 import { emitWdl } from 'wadi-wdl-emitter'
-import { computeRoomWalls, edgeKindLookup, classifyOpenCorners, roomDoorSides, roomDoorIntervals, roomGapIntervals } from './wallsFromGraph.js'
-import { roomModule } from './roomModules.js'
+import { furnishRoom } from 'wadi-furnish'
+import BUILTIN_LAYOUTS from './roomLayouts.json'
+import { computeRoomWalls, edgeKindLookup, classifyOpenCorners } from './wallsFromGraph.js'
 import { guideUnitLabel, guidesFromRooms, guidesFromModel, roomGridFormulas } from './spanGrid.js'
+
+// Wadi-shaped layouts (its Layout uses `l` for depth; the pack manifest uses `h`) for the
+// prepopulation pass. Built from the SAME rooms.wdl pack wadi loads, so the two agree.
+const WADI_LAYOUTS = (BUILTIN_LAYOUTS.layouts || []).map((l) => ({
+  id: l.id, type: l.type, w: l.w, l: l.h, pieces: l.pieces, ...(l.height != null ? { height: l.height } : {}),
+}))
+// A type's room-level wall height (balcony/terrace parapet) from its template — independent of
+// the placement engine (those types have a single variant), so it needs no furnish run.
+const HEIGHT_BY_TYPE = new Map()
+for (const l of WADI_LAYOUTS) if (l.height != null && !HEIGHT_BY_TYPE.has(l.type)) HEIGHT_BY_TYPE.set(l.type, l.height)
+const layoutHeight = (t) => (t ? HEIGHT_BY_TYPE.get(t) : undefined)
 
 const PER_UNIT = 10 // Wadi feet_inches default: 10 project units = 1 ft
 
@@ -95,23 +107,10 @@ export function modelToWadi(model, opts = {}) {
       if (sf) s.formulas = sf
       return s
     })
-    // Each typed room's prebuilt module: furniture (placed to avoid the walls a door lands on)
-    // plus an optional room-level wall height (a balcony/terrace is authored shorter). Resolve
-    // it up front so a room's height is known while walling its NEIGHBOURS — a shared wall
-    // takes the taller of the two rooms, so a low balcony only lowers its own exterior walls.
-    const furnUnits = { system: unitSystem, per_unit: perUnit }
-    const modById = new Map(
-      floorRooms.map((r) => [r.id, roomModule(r.roomType, {
-        openSides: roomDoorSides(r, floorRooms, edgeKind),
-        w: r.w, h: r.h,
-        // door-position-aware placement (C): the room rect, wall thickness, units, and the
-        // opening intervals per side, so furniture avoids / is carved off the actual doors.
-        room: r, wallT: wallThickness, units: furnUnits,
-        doorIntervals: roomDoorIntervals(r, floorRooms, edgeKind, doorWidth),
-        gapIntervals: roomGapIntervals(r, floorRooms, edgeKind), // soft: prefer to avoid, never carve
-      })]),
-    )
-    const heightById = new Map(floorRooms.map((r) => [r.id, modById.get(r.id).height ?? wallHeight]))
+    // A room-level wall height (a balcony/terrace parapet) comes from the room's template type.
+    // Resolve it up front so a room's height is known while walling its NEIGHBOURS — a shared
+    // wall takes the taller of the two rooms, so a low balcony only lowers its own exterior walls.
+    const heightById = new Map(floorRooms.map((r) => [r.id, layoutHeight(r.roomType) ?? wallHeight]))
     const roomObjs = floorRooms.map((r) => {
       const o = {
         type: 'room',
@@ -128,20 +127,13 @@ export function modelToWadi(model, opts = {}) {
       if (Object.keys(walls).length) o.walls = walls
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
-      const mod = modById.get(r.id)
-      // A typed room becomes an engine-managed `furniture auto type <type>` container,
-      // PREPOPULATED with the layout the planner matched — so the exported house renders the
-      // same furniture immediately AND re-furnishes (re-picks a fitting template) when the room
-      // is resized in the wadi UI, exactly like the planner's live reflow. An untyped room with
-      // stray items (shouldn't happen) keeps them as plain room items.
-      if (r.roomType) {
-        const fb = { auto: true, auto_type: r.roomType }
-        if (mod.items.length) fb.items = mod.items
-        o.furniture = fb
-      } else if (mod.items.length) {
-        o.items = mod.items
-      }
-      if (mod.height != null) o.height = mod.height
+      // A typed room gets an ENGINE-MANAGED, empty `furniture auto type <type>` container. The
+      // furniture is filled by a post-pass that runs WADI'S OWN placement engine on the finished
+      // config (see below `furnishRoom`), so the pushed file equals what wadi computes and stays
+      // stable + reversible when the room is resized in the wadi UI (no engine divergence).
+      if (r.roomType) o.furniture = { auto: true, auto_type: r.roomType }
+      const h = layoutHeight(r.roomType)
+      if (h != null) o.height = h
       return o
     })
     // floor_number 1.. — floor 0 is the Plinth we prepend below.
@@ -165,7 +157,7 @@ export function modelToWadi(model, opts = {}) {
     ],
   }
 
-  const config = {
+  let config = {
     // The planner is NEW authoring, so it emits the current .wadi model version.
     // v2 = room-wall opening offsets anchor to the wall's CLEAR span (inner
     // corner). Kept in sync with editor CURRENT_WADI_VERSION.
@@ -211,6 +203,23 @@ export function modelToWadi(model, opts = {}) {
       : { title: 'Customize sizes', groups: [{ id: 'doors', label: 'Doors' }], inputs: dInputs }
   }
   if (configurator) config.configurator = configurator
+
+  // Prepopulate furniture with WADI'S OWN placement engine: run furnishRoom on the finished
+  // config for every engine-managed room. furnishRoom resolves the config internally
+  // (resolveParametric + expandRoomWalls), so it sees the exact geometry + doors wadi will —
+  // the pushed furniture then equals what wadi re-computes on any change, and stays stable +
+  // reversible on resize. Per-room failures are swallowed so one room never blocks the export.
+  const furnishTargets = []
+  for (const fl of config.floors) {
+    if (!fl.floor_number) continue
+    for (const o of fl.objects || []) {
+      if (o.type === 'room' && o.furniture && o.furniture.auto) furnishTargets.push([fl.floor_number, o.name])
+    }
+  }
+  for (const [fn, name] of furnishTargets) {
+    try { config = furnishRoom(config, fn, name, WADI_LAYOUTS).config }
+    catch { /* leave this room's container empty/auto on any placement error */ }
+  }
   return config
 }
 
