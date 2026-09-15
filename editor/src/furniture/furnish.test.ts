@@ -114,6 +114,37 @@ describe("furnishRoom — nothing fits", () => {
   });
 });
 
+describe("furnishRoom — a shared-wall door owned by the neighbour", () => {
+  // Attic sits directly NORTH of Main and declares a door on the shared wall (its south wall =
+  // Main's north wall). Main's bed is authored top-center → it would land on that door. The
+  // furnish must SEE the neighbour-owned door (not just Main's own openings) and move furniture
+  // off it — the reported "furniture overlaps the door, no error" bug.
+  const mk = (southWall) => `house H {
+    convention center
+    units feet_inches per_unit 10
+    site { plot (400, 400) }
+    defaults { floor_height 120 wall_height 108 slab_thickness 8 wall_thickness 8 }
+    floor 1 "Ground" slab_thickness 0 {
+      room Attic at (0, 0) size (200, 100) {
+        wall north east west
+        ${southWall}
+      }
+      room Main at (0, 100) size (200, 160) type bedroom {
+        wall south east west
+        furniture auto
+      }
+    }
+  }`;
+  it("moves furniture off a door the adjacent room declares on the shared wall", () => {
+    const withDoor = furnishRoom(compileDsl(mk("wall south { door D at 80 size (40, 84) }")) as never, 1, "Main", LAYOUTS).config;
+    const noDoor = furnishRoom(compileDsl(mk("wall south")) as never, 1, "Main", LAYOUTS).config;
+    // With no shared-wall door the bed sits at its authored top-center spot; the neighbour's
+    // door changes the placement (a shift, a rotation, or a drop). Before the fix the two were
+    // identical because the neighbour's door was invisible to Main's furnish.
+    expect(JSON.stringify(furnItems(withDoor, "Main"))).not.toBe(JSON.stringify(furnItems(noDoor, "Main")));
+  });
+});
+
 describe("furnishRoom — clone a sibling room", () => {
   it("reuses a furnished sibling's arrangement, re-fitted to this room", () => {
     // furnish Master first, then Guest clones Master's (now materialised) furniture

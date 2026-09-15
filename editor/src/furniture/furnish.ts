@@ -43,12 +43,23 @@ function roomGeometry(config: Config, roomName: string): { rect: RoomRect; wallT
     return null;
   }
   let room: Obj | undefined;
-  const openings: FlatOpening[] = [];
+  // Collect EVERY opening on the floor (with its owning room), then attribute the ones that
+  // physically lie on this room's walls — including doors OWNED by the adjacent room on a
+  // shared wall. Without this the furnish never sees a neighbour's door and drops furniture
+  // straight on top of it (with no error), which is exactly the reported bug.
+  const allOpenings: Array<{ type: string; x: number; y: number; width: number; direction: FlatOpening["direction"]; own: boolean }> = [];
   for (const f of resolved.floors ?? []) {
     for (const o of f.objects ?? []) {
       if (o.type === "room" && o.name === roomName) room = o;
-      else if ((o.type === "door" || o.type === "gap") && o.room === roomName) {
-        openings.push({ type: o.type as string, x: o.x as number, y: o.y as number, width: o.width as number, direction: o.direction as FlatOpening["direction"] });
+      else if (o.type === "door" || o.type === "gap") {
+        allOpenings.push({
+          type: o.type as string,
+          x: o.x as number,
+          y: o.y as number,
+          width: o.width as number,
+          direction: o.direction as FlatOpening["direction"],
+          own: o.room === roomName,
+        });
       }
     }
   }
@@ -58,6 +69,27 @@ function roomGeometry(config: Config, roomName: string): { rect: RoomRect; wallT
     (typeof room.wall_thickness === "number" ? (room.wall_thickness as number) : undefined) ??
     config.defaults?.wall_thickness ??
     DEFAULT_GLOBAL_CONFIG.wall_thickness;
+  // A neighbour's opening counts when its segment sits on one of this room's four wall lines
+  // (within a wall thickness) and overlaps that wall's span — remapped to THIS room's side.
+  const rx0 = rect.x, ry0 = rect.y, rx1 = rect.x + rect.w, ry1 = rect.y + rect.l;
+  const edgeTol = wallT + 4;
+  const openings: FlatOpening[] = [];
+  for (const op of allOpenings) {
+    if (op.own) {
+      openings.push({ type: op.type, x: op.x, y: op.y, width: op.width, direction: op.direction });
+      continue;
+    }
+    const horiz = op.direction === "north" || op.direction === "south";
+    if (horiz) {
+      if (!(op.x + op.width > rx0 && op.x < rx1)) continue; // no span overlap on this wall
+      if (Math.abs(op.y - ry0) <= edgeTol) openings.push({ type: op.type, x: op.x, y: op.y, width: op.width, direction: "north" });
+      else if (Math.abs(op.y - ry1) <= edgeTol) openings.push({ type: op.type, x: op.x, y: op.y, width: op.width, direction: "south" });
+    } else {
+      if (!(op.y + op.width > ry0 && op.y < ry1)) continue;
+      if (Math.abs(op.x - rx0) <= edgeTol) openings.push({ type: op.type, x: op.x, y: op.y, width: op.width, direction: "west" });
+      else if (Math.abs(op.x - rx1) <= edgeTol) openings.push({ type: op.type, x: op.x, y: op.y, width: op.width, direction: "east" });
+    }
+  }
   const { doorIntervals, gapIntervals } = openingIntervals(openings);
   return { rect, wallT, units: config.units, doors: doorIntervals, gaps: gapIntervals };
 }
