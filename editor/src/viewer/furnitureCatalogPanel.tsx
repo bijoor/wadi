@@ -27,19 +27,36 @@ const ANCHORS = [
   "bottom-left", "bottom", "bottom-right",
 ] as const;
 
-// One furniture piece in the draft. Mirrors a RoomItem (asset + anchor + gaps +
-// rotation) plus a stable React key.
+// One furniture piece in the draft. `kind:"item"` is a GLB RoomItem (asset); a
+// `kind:"counter"` is the parametric kitchen counter (a furniture-capable element,
+// RoomCounter) — length/depth/height + optional cabinet/sink/hob fixtures. Both share
+// the same anchor + gap + rotation placement.
 interface DraftPiece {
   key: string;
-  asset: ItemAsset;
+  kind: "item" | "counter";
+  name: string;
   anchor: string;
   gap_x: number;
   gap_y: number;
   rotation?: number;
+  // item
+  asset?: ItemAsset;
+  // counter
+  length?: number;
+  depth?: number;
+  height?: number;
+  cabinet?: boolean;
+  sink?: boolean;
+  hob?: boolean;
 }
 
 let pieceSeq = 0;
 const newKey = () => `fp${++pieceSeq}`;
+
+// A synthetic asset so a counter Piece has the shape autoplace expects; its footprint
+// override (below) is what actually drives the box, so dimensions are unused.
+const COUNTER_ASSET = { id: "counter", name: "Kitchen counter", dimensions: [0, 0, 0] } as unknown as ItemAsset;
+const COUNTER_CATALOG = [{ id: "counter", name: "Kitchen counter", category: "Kitchen" }];
 
 // The room the current store selection points at, with its resolved geometry.
 interface SelectedRoom {
@@ -81,16 +98,48 @@ function readSelectedRoom(state: Any): SelectedRoom | null {
 // duplicates a piece.
 function seedDraft(room: Any): DraftPiece[] {
   const items: Any[] = [...(room?.furniture?.items ?? []), ...(room?.items ?? [])];
-  return items
+  const counters: Any[] = [...(room?.furniture?.counters ?? []), ...(room?.counters ?? [])];
+  const itemPieces: DraftPiece[] = items
     .filter((it) => it && it.asset && Array.isArray(it.asset.dimensions))
     .map((it) => ({
-      key: newKey(),
+      key: newKey(), kind: "item", name: (it.asset.name as string) ?? "Item",
       asset: it.asset as ItemAsset,
       anchor: (it.anchor as string) ?? "center",
       gap_x: Number(it.gap_x) || 0,
       gap_y: Number(it.gap_y) || 0,
       rotation: typeof it.rotation === "number" ? it.rotation : undefined,
     }));
+  const counterPieces: DraftPiece[] = counters
+    .filter((c) => c && (c.depth != null))
+    .map((c) => ({
+      key: newKey(), kind: "counter", name: (c.name as string) ?? "Kitchen counter",
+      anchor: (c.anchor as string) ?? "top-left",
+      gap_x: Number(c.gap_x) || 0,
+      gap_y: Number(c.gap_y) || 0,
+      rotation: typeof c.rotation === "number" ? c.rotation : undefined,
+      length: typeof c.length === "number" ? c.length : undefined,
+      depth: Number(c.depth), height: Number(c.height) || 36,
+      cabinet: !!c.cabinet, sink: !!c.sink, hob: !!c.hob,
+    }));
+  return [...itemPieces, ...counterPieces];
+}
+
+// Serialize the draft back into a room `furniture` container's items + counters.
+function draftToContainer(draft: DraftPiece[]): { items: Any[]; counters: Any[] } {
+  const items = draft.filter((d) => d.kind === "item").map((d) => ({
+    asset: d.asset, anchor: d.anchor,
+    ...(d.gap_x ? { gap_x: d.gap_x } : {}), ...(d.gap_y ? { gap_y: d.gap_y } : {}),
+    ...(typeof d.rotation === "number" ? { rotation: d.rotation } : {}),
+  }));
+  const counters = draft.filter((d) => d.kind === "counter").map((d) => ({
+    ...(d.name ? { name: d.name } : {}), anchor: d.anchor,
+    ...(d.gap_x ? { gap_x: d.gap_x } : {}), ...(d.gap_y ? { gap_y: d.gap_y } : {}),
+    ...(typeof d.rotation === "number" ? { rotation: d.rotation } : {}),
+    ...(typeof d.length === "number" ? { length: d.length } : {}),
+    depth: d.depth, height: d.height,
+    ...(d.cabinet ? { cabinet: true } : {}), ...(d.sink ? { sink: true } : {}), ...(d.hob ? { hob: true } : {}),
+  }));
+  return { items, counters };
 }
 
 // Best-guess furnish type for a room: its explicit room_type / auto_type, else
@@ -113,15 +162,29 @@ function guessRoomType(room: Any, roomTypes: string[]): string {
   return roomTypes[0] ?? "";
 }
 
-function draftToPieces(draft: DraftPiece[]): Piece[] {
-  return draft.map((d) => ({
-    name: d.asset.name,
-    asset: d.asset as Any,
-    anchor: d.anchor,
-    gap_x: d.gap_x,
-    gap_y: d.gap_y,
-    rotation: d.rotation,
-  }));
+// The clear span of the wall a counter anchor sits on (its auto length fallback).
+function wallSpanFor(anchor: string, rect: { w: number; l: number }, wallT: number): number {
+  const innerW = rect.w - 2 * wallT, innerL = rect.l - 2 * wallT;
+  if (anchor.includes("top") || anchor.includes("bottom")) return innerW;
+  if (anchor.includes("left") || anchor.includes("right")) return innerL;
+  return innerW;
+}
+
+function draftToPieces(draft: DraftPiece[], rect: { w: number; l: number }, wallT: number): Piece[] {
+  return draft.map((d) => {
+    if (d.kind === "counter") {
+      const w = typeof d.length === "number" ? d.length : wallSpanFor(d.anchor, rect, wallT);
+      return {
+        name: d.name, asset: COUNTER_ASSET as Any, anchor: d.anchor,
+        gap_x: d.gap_x, gap_y: d.gap_y, rotation: d.rotation,
+        footprint: { w, l: d.depth ?? 22 }, placement: "wall",
+      };
+    }
+    return {
+      name: d.asset?.name ?? d.name, asset: d.asset as Any,
+      anchor: d.anchor, gap_x: d.gap_x, gap_y: d.gap_y, rotation: d.rotation,
+    };
+  });
 }
 
 function FurnitureCatalogPanel() {
@@ -192,7 +255,7 @@ function FurnitureCatalogPanel() {
   // In Auto mode the container is engine-managed, so render its LIVE items (read-only);
   // in Manual mode render the editable draft.
   const activeDraft = auto ? seedDraft(sel.room) : draft;
-  const pieces = draftToPieces(activeDraft);
+  const pieces = draftToPieces(activeDraft, rect, sel.wallT);
   const validation = validateLayout(pieces, rect, sel.wallT, sel.units);
   const anchors = anchorPoints(rect, sel.wallT);
   const issues = validation.overlaps.length + validation.oob.length;
@@ -204,7 +267,18 @@ function FurnitureCatalogPanel() {
   const addAsset = (id: string) => {
     const asset = furnitureAsset(id);
     const key = newKey();
-    setDraft((d) => [...d, { key, asset, anchor: "center", gap_x: 0, gap_y: 0 }]);
+    setDraft((d) => [...d, { key, kind: "item", name: asset.name ?? "Item", asset, anchor: "center", gap_x: 0, gap_y: 0 }]);
+    setSelectedKey(key);
+    setDirty(true);
+  };
+  const addCounter = () => {
+    const key = newKey();
+    // Default: a full-wall counter on the top wall (auto length), 22-deep, with a cabinet.
+    setDraft((d) => [...d, {
+      key, kind: "counter", name: "Kitchen counter",
+      anchor: "top-left", gap_x: 0, gap_y: 0,
+      length: undefined, depth: 22, height: 36, cabinet: true,
+    }]);
     setSelectedKey(key);
     setDirty(true);
   };
@@ -246,19 +320,16 @@ function FurnitureCatalogPanel() {
   const onPieceUp = () => { dragRef.current = null; };
 
   const apply = () => {
-    const items = draft.map((d) => ({
-      asset: d.asset,
-      anchor: d.anchor,
-      ...(d.gap_x ? { gap_x: d.gap_x } : {}),
-      ...(d.gap_y ? { gap_y: d.gap_y } : {}),
-      ...(typeof d.rotation === "number" ? { rotation: d.rotation } : {}),
-    }));
+    const { items, counters } = draftToContainer(draft);
     const prev = sel.room.furniture ?? {};
     // Hand-composed: mark not-auto and lock so the auto-furnisher leaves it alone.
-    // Preserve any counters already in the container. Clear the room's DIRECT items
-    // (the draft already absorbed them via seedDraft) so they don't double-render.
-    const furniture: Any = { ...prev, auto: false, locked: true, items };
-    useConfigStore.getState().updateObject({ floor: sel.floor, object: sel.object }, { furniture, items: [] });
+    // Clear the room's DIRECT items + counters (the draft already absorbed them via
+    // seedDraft) so nothing double-renders.
+    const furniture: Any = { ...prev, auto: false, locked: true, items, counters };
+    useConfigStore.getState().updateObject(
+      { floor: sel.floor, object: sel.object },
+      { furniture, items: [], counters: [] },
+    );
     setDirty(false);
   };
   const reset = () => { setDraft(seedDraft(sel.room)); setSelectedKey(null); setDirty(false); };
@@ -290,16 +361,11 @@ function FurnitureCatalogPanel() {
   };
   // Switch back to a locked, hand-composed set (freezing whatever is there now).
   const disableAuto = (): void => {
-    const cur = seedDraft(sel.room);
-    const items = cur.map((d) => ({
-      asset: d.asset, anchor: d.anchor,
-      ...(d.gap_x ? { gap_x: d.gap_x } : {}), ...(d.gap_y ? { gap_y: d.gap_y } : {}),
-      ...(typeof d.rotation === "number" ? { rotation: d.rotation } : {}),
-    }));
+    const { items, counters } = draftToContainer(seedDraft(sel.room));
     const prev = sel.room.furniture ?? {};
     useConfigStore.getState().updateObject(
       { floor: sel.floor, object: sel.object },
-      { furniture: { ...prev, auto: false, locked: true, items }, items: [] },
+      { furniture: { ...prev, auto: false, locked: true, items, counters }, items: [], counters: [] },
     );
     setAuto(false);
     setDraft(seedDraft(sel.room));
@@ -406,7 +472,7 @@ function FurnitureCatalogPanel() {
         return (
           <div className="fc-controls">
             <div className="fc-row-head">
-              <span className="fc-piece-name">{d.asset.name}</span>
+              <span className="fc-piece-name">{d.name}</span>
               <button className="fc-x" onClick={() => removePiece(d.key)} title="Remove">✕</button>
             </div>
             <div className="fc-lbl">Anchor</div>
@@ -433,6 +499,29 @@ function FurnitureCatalogPanel() {
               ))}
               <button className="fc-rb" onClick={() => update(d.key, { rotation: undefined })} title="Face by anchor">auto</button>
             </div>
+            {d.kind === "counter" && (
+              <>
+                <div className="fc-lbl">Counter ({gapUnitLabel})</div>
+                <div className="fc-gap">
+                  <label>Len<input type="number" step={gapStep}
+                    placeholder="auto"
+                    value={typeof d.length === "number" ? toGapDisplay(d.length) : ""}
+                    onChange={(e) => update(d.key, { length: e.target.value === "" ? undefined : fromGapDisplay(e.target.value) })} /></label>
+                  <label>Dep<input type="number" step={gapStep}
+                    value={toGapDisplay(d.depth ?? 22)}
+                    onChange={(e) => update(d.key, { depth: fromGapDisplay(e.target.value) })} /></label>
+                  <label>Ht<input type="number" step={gapStep}
+                    value={toGapDisplay(d.height ?? 36)}
+                    onChange={(e) => update(d.key, { height: fromGapDisplay(e.target.value) })} /></label>
+                </div>
+                <div className="fc-fixtures">
+                  {(["cabinet", "sink", "hob"] as const).map((f) => (
+                    <label key={f}><input type="checkbox" checked={!!d[f]}
+                      onChange={(e) => update(d.key, { [f]: e.target.checked })} /> {f}</label>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         );
       })()}
@@ -446,6 +535,13 @@ function FurnitureCatalogPanel() {
           ))}
         </div>
         <div className="fc-catalog">
+          {/* Parametric elements (kitchen counter) — placed as counters, not GLB items. */}
+          {COUNTER_CATALOG.filter((c) => c.category === category).map((c) => (
+            <button key={c.id} className="fc-item fc-item-el" onClick={addCounter} title={`Add ${c.name}`}>
+              <span className="fc-item-name">{c.name}</span>
+              <span className="fc-item-dim">parametric</span>
+            </button>
+          ))}
           {FURNITURE_CATALOG.filter((f) => f.category === category).map((f) => (
             <button key={f.id} className="fc-item" onClick={() => addAsset(f.id)} title={`Add ${f.name}`}>
               <span className="fc-item-name">{f.name}</span>
