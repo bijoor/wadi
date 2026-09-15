@@ -273,11 +273,14 @@ function FurnitureCatalogPanel() {
   };
   const addCounter = () => {
     const key = newKey();
-    // Default: a full-wall counter on the top wall (auto length), 22-deep, with a cabinet.
+    // Default to a modest fixed-length run (a placeable object, not the whole wall),
+    // capped so it fits the wall. The user extends it — or clears Length for the
+    // node's auto = wall-span behaviour.
+    const defLen = Math.min(60, Math.round(wallSpanFor("top-left", rect, sel.wallT)));
     setDraft((d) => [...d, {
       key, kind: "counter", name: "Kitchen counter",
       anchor: "top-left", gap_x: 0, gap_y: 0,
-      length: undefined, depth: 22, height: 36, cabinet: true,
+      length: defLen, depth: 22, height: 36, cabinet: true,
     }]);
     setSelectedKey(key);
     setDirty(true);
