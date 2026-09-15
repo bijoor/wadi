@@ -105,6 +105,10 @@ export function furnishRoom(config: Config, floorNumber: number, roomName: strin
   const geom = roomGeometry(config, roomName);
   if (!geom) return { config: out, result: { furnished: false, reason: "no-geometry" } };
 
+  // Any locked items already in the block are always kept (rule 4).
+  const existing = Array.isArray(fb.items) ? (fb.items as Obj[]) : [];
+  const lockedKept = existing.filter((it) => it.locked);
+
   const res = autoplaceRoom(src.pool, src.roomType, {
     rect: geom.rect,
     wallT: geom.wallT,
@@ -112,12 +116,20 @@ export function furnishRoom(config: Config, floorNumber: number, roomName: strin
     doorIntervals: geom.doors,
     gapIntervals: geom.gaps,
   });
-  if (!res.template && !res.items.length) return { config: out, result: { furnished: false, reason: "no-layout" } };
+  if (!res.template && !res.items.length) {
+    // Nothing fits this room (e.g. it was shrunk below every template's target). CLEAR the
+    // engine-managed items so the room doesn't keep furniture too big for it — but keep any
+    // locked pieces. If there were no auto items to clear, report unchanged (not-furnished),
+    // so callers/counters don't over-report a no-op.
+    if (existing.length > lockedKept.length) {
+      room.furniture = { ...fb, auto: true, items: lockedKept };
+      return { config: out, result: { furnished: true, template: null, kept: lockedKept.length } };
+    }
+    return { config: out, result: { furnished: false, reason: "no-layout" } };
+  }
 
-  // Materialise into the block, KEEPING any locked items already there (rule 4). Mark the
-  // block `auto` so it stays tool-managed.
-  const existing = Array.isArray(fb.items) ? (fb.items as Obj[]) : [];
-  const lockedKept = existing.filter((it) => it.locked);
+  // Materialise into the block, KEEPING any locked items already there. Mark the block `auto`
+  // so it stays tool-managed.
   room.furniture = { ...fb, auto: true, items: [...lockedKept, ...res.items] };
 
   return { config: out, result: { furnished: true, template: res.template, kept: res.items.length } };

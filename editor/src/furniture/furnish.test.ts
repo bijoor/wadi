@@ -80,6 +80,40 @@ describe("furnishRoom — locked", () => {
   });
 });
 
+describe("furnishRoom — nothing fits", () => {
+  // A bedroom smaller than the only layout (bedroom_s 110x120) has no fitting template.
+  const tiny = (body: string) => `house H {
+    convention center
+    units feet_inches per_unit 10
+    site { plot (300, 300) }
+    defaults { floor_height 120 wall_height 108 slab_thickness 8 wall_thickness 8 }
+    floor 1 "Ground" slab_thickness 0 {
+      room Tiny at (0, 0) size (40, 40) type bedroom {
+        wall north east south west
+        ${body}
+      }
+    }
+  }`;
+
+  it("clears the engine-managed items when nothing fits, keeping locked ones", () => {
+    const src = tiny(`furniture auto {
+      item name "old" asset { id "chair" src "c.glb" dims (0.5, 1, 0.5) } anchor center
+      item name "pin" asset { id "lamp" src "l.glb" dims (0.3, 1, 0.3) } anchor top-left locked
+    }`);
+    const { config, result } = furnishRoom(compileDsl(src) as never, 1, "Tiny", LAYOUTS);
+    expect(result.furnished).toBe(true);
+    expect(result.template).toBe(null);
+    const ids = furnItems(config, "Tiny").map((i) => (i.asset as { id?: string }).id);
+    expect(ids).toEqual(["lamp"]); // the stray "chair" is cleared; the locked "lamp" stays
+  });
+
+  it("reports not-furnished when there is nothing to clear", () => {
+    const { result } = furnishRoom(compileDsl(tiny("furniture auto")) as never, 1, "Tiny", LAYOUTS);
+    expect(result.furnished).toBe(false);
+    expect(result.reason).toBe("no-layout");
+  });
+});
+
 describe("furnishRoom — clone a sibling room", () => {
   it("reuses a furnished sibling's arrangement, re-fitted to this room", () => {
     // furnish Master first, then Guest clones Master's (now materialised) furniture
