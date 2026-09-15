@@ -129,7 +129,18 @@ export function modelToWadi(model, opts = {}) {
       const c = conns.get(r.id)
       if (c && c.size) o.connections = [...c]
       const mod = modById.get(r.id)
-      if (mod.items.length) o.items = mod.items
+      // A typed room becomes an engine-managed `furniture auto type <type>` container,
+      // PREPOPULATED with the layout the planner matched — so the exported house renders the
+      // same furniture immediately AND re-furnishes (re-picks a fitting template) when the room
+      // is resized in the wadi UI, exactly like the planner's live reflow. An untyped room with
+      // stray items (shouldn't happen) keeps them as plain room items.
+      if (r.roomType) {
+        const fb = { auto: true, auto_type: r.roomType }
+        if (mod.items.length) fb.items = mod.items
+        o.furniture = fb
+      } else if (mod.items.length) {
+        o.items = mod.items
+      }
       if (mod.height != null) o.height = mod.height
       return o
     })
