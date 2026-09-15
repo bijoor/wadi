@@ -625,12 +625,16 @@
             gap: 8px;
             align-items: flex-start;
             pointer-events: none;
-            transition: left 0.16s ease;
+            transition: left 0.16s ease, transform 0.16s ease;
         }
         /* Open: ride the panel's actual right edge. --left-rail-x is measured from the
            live dock width (288 desktop / up to 320 mobile) by leftPanels.ts, so the tabs
            always hang just OUTSIDE the panel whatever its width. */
         body[data-lefttools="on"][data-left="open"] #viewer-left-rail { left: var(--left-rail-x, 288px); }
+        /* When the WDL editor is full width, its shrink tab drops to the left edge (below
+           centre). Lift the left rail so it bottom-anchors just ABOVE that tab, keeping the
+           WDL tab visible instead of hidden behind the tools. */
+        body[data-wdl="max"] #viewer-left-rail { transform: translateY(calc(-100% - 12px)); }
         body[data-lefttools="on"] #viewer-left-rail { display: flex; }
         /* Each tool is a vertical tab riding the left edge — the SAME look as the WDL tab
            on the right (mirrored): a dark navy card, rounded on the right, soft shadow, a
