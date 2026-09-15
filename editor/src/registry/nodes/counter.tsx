@@ -125,7 +125,7 @@ export const counterNode: NodeDefinition = {
     // (SINK_BOWL_HULL) is authored in the model frame: nx = model width (→ local X), ny =
     // Blender depth (→ local Z with a sign flip). Scale to the placed footprint, rotate by
     // the sink yaw, and offset to the sink position along the run.
-    const SINK_YAW = 90; // faucet toward the counter back (wall)
+    const SINK_YAW = 0; // faucet toward the counter back (wall)
     const yr = (SINK_YAW * Math.PI) / 180;
     const cyaw = Math.cos(yr);
     const syaw = Math.sin(yr);
