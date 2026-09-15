@@ -5310,6 +5310,10 @@ function wireWdlEditor(): void {
       // Cursor inside a room's WDL block → select that room (drives the furniture
       // tool + 2D/3D highlight).
       handle.onCursor((text, offset) => selectRoomFromWdlCursor(text, offset));
+      // Reverse: selecting a room in 2D/3D reveals its block here (only while the
+      // editor is open — handle exists).
+      (window as unknown as { wadiRevealRoomInWdl?: (n: string) => void }).wadiRevealRoomInWdl =
+        (n: string) => handle?.revealRoom(n);
       setStatus("", "");
       syncFromStore(); // adopt anything that changed while loading
       reflectDirty();

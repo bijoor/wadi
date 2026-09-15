@@ -96,6 +96,15 @@ function selectedRoomTag(): { floorNum: number; name: string } | null {
   return { floorNum: (fl?.floor_number as number | undefined) ?? 0, name: (obj.name as string | undefined) ?? "Room" };
 }
 
+// Reveal the currently-selected room's block in the WDL editor (no-op if the editor
+// is closed). Called from the 2D/3D selection paths — NOT the WDL-cursor path, so it
+// never fights the user's own typing position.
+export function revealSelectedRoomInWdl(): void {
+  const tag = selectedRoomTag();
+  if (!tag) return;
+  (window as unknown as { wadiRevealRoomInWdl?: (n: string) => void }).wadiRevealRoomInWdl?.(tag.name);
+}
+
 // Re-apply the `.sel` class to the hit rect matching the current selection. Called
 // on selection change and whenever the plan SVG is (re)injected into the DOM.
 export function applyRoomHighlight(): void {
@@ -127,6 +136,7 @@ export function wireRoomSelection(): void {
     const same = cur && cur.floor === sel.floor && cur.object === sel.object;
     useConfigStore.getState().select(same ? null : sel);
     applyRoomHighlight();
+    if (!same) revealSelectedRoomInWdl();
   });
 
   // Keep the highlight in sync when the selection changes elsewhere.

@@ -11,7 +11,7 @@ import { useConfigStore } from "../state/configStore";
 import { expandRoomWalls } from "../svg2d/expand";
 import { computeFloorZBands, toThreePos, readPlotBounds } from "../three/coords";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
-import { roomSelectionByName } from "./roomSelection";
+import { roomSelectionByName, revealSelectedRoomInWdl } from "./roomSelection";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -80,6 +80,7 @@ export function Room3DPick({ config }: { config: Any }) {
       const cur = useConfigStore.getState().selection;
       const same = cur && cur.floor === sel.floor && cur.object === sel.object;
       useConfigStore.getState().select(same ? null : sel);
+      if (!same) revealSelectedRoomInWdl();
     };
     el.addEventListener("pointerdown", onDown);
     el.addEventListener("pointerup", onUp);

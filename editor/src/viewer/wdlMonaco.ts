@@ -44,6 +44,9 @@ export interface WdlEditorHandle {
   onCursor(cb: (text: string, offset: number) => void): void;
   /** ⌘/Ctrl+Enter inside the editor (Monaco swallows the DOM keydown). */
   onApplyShortcut(cb: () => void): void;
+  /** Scroll to a room's `room <name>` block and drop the cursor inside it (used
+   *  when a room is selected in the 2D/3D views). No-op if the room isn't found. */
+  revealRoom(name: string): void;
   focus(): void;
   layout(): void;
   /** Toggle readOnly (used to make the main editor inert while the module editor
@@ -130,6 +133,20 @@ export function mountWdlMonaco(container: HTMLElement, initialValue: string): Wd
     },
     onApplyShortcut: (cb) => {
       ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => cb());
+    },
+    revealRoom: (name) => {
+      const model = ed.getModel();
+      if (!model) return;
+      const text = model.getValue();
+      const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const m = new RegExp(`room\\s+(?:"${esc}"|${esc})\\b`).exec(text);
+      if (!m) return;
+      // Drop the cursor just inside the room's block (after its `{`) so it reads as
+      // "inside this room"; scroll the declaration line into view.
+      const brace = text.indexOf("{", m.index);
+      const pos = model.getPositionAt(brace >= 0 ? brace + 1 : m.index + m[0].length);
+      ed.setPosition(pos);
+      ed.revealLineInCenterIfOutsideViewport(model.getPositionAt(m.index).lineNumber);
     },
     focus: () => ed.focus(),
     layout: () => ed.layout(),
