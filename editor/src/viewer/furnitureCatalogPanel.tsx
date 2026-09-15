@@ -7,12 +7,12 @@
 // the composed layout matches exactly what auto-placement and 3D render. Editing is
 // a DRAFT: changes stay local until Apply writes them, as one undo step.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useConfigStore } from "../state/configStore";
 import { FURNITURE_CATALOG, FURNITURE_CATEGORIES, furnitureAsset } from "../furniture/catalog";
 import { validateLayout, type Piece } from "../furniture/autoplace";
-import { anchorPoints, anchorFacing } from "../svg2d/furnitureAnchor";
+import { anchorPoints, anchorFacing, gapForCenter } from "../svg2d/furnitureAnchor";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 import type { ItemAsset } from "../schema/houseConfig";
 
@@ -70,10 +70,12 @@ function readSelectedRoom(state: Any): SelectedRoom | null {
   };
 }
 
-// Seed the draft from a room's existing furniture (the `furniture` container first,
-// then any hand-authored `items`).
+// Seed the draft from ALL of a room's existing furniture — both the `furniture`
+// container and any hand-authored direct `items` — so composing then Apply (which
+// moves everything into the container and clears direct items) never drops or
+// duplicates a piece.
 function seedDraft(room: Any): DraftPiece[] {
-  const items: Any[] = room?.furniture?.items ?? room?.items ?? [];
+  const items: Any[] = [...(room?.furniture?.items ?? []), ...(room?.items ?? [])];
   return items
     .filter((it) => it && it.asset && Array.isArray(it.asset.dimensions))
     .map((it) => ({
@@ -108,6 +110,12 @@ function FurnitureCatalogPanel() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [category, setCategory] = useState<string>(FURNITURE_CATEGORIES[0] ?? "");
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  // Active drag: the piece being dragged + its anchor and half-extents + the pointer
+  // and footprint-centre origin, so pointermove can map pixels → a new centre → gaps.
+  const dragRef = useRef<
+    { key: string; anchor: string; halfX: number; halfY: number; px: number; py: number; cx: number; cy: number } | null
+  >(null);
   const roomKey = sel ? `${sel.floor}:${sel.object}` : null;
 
   // Re-seed the draft whenever the selected room changes (not on every edit).
@@ -157,6 +165,32 @@ function FurnitureCatalogPanel() {
     update(key, { anchor, gap_x: 0, gap_y: 0 });
   };
 
+  // Project units per screen pixel (the SVG box scales the viewBox to the panel).
+  const unitsPerPx = (): number => {
+    const svg = svgRef.current;
+    if (!svg) return 1;
+    const r = svg.getBoundingClientRect();
+    return r.width > 0 ? (sel.w + 2 * pad) / r.width : 1;
+  };
+  // Drag a piece: map the pointer delta to a new footprint centre, then back to
+  // gaps via gapForCenter (the exact inverse of the anchor placement math).
+  const onPieceDown = (e: React.PointerEvent, d: DraftPiece, r: { cx: number; cy: number; halfX: number; halfY: number }) => {
+    e.stopPropagation();
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    setSelectedKey(d.key);
+    dragRef.current = { key: d.key, anchor: d.anchor, halfX: r.halfX, halfY: r.halfY, px: e.clientX, py: e.clientY, cx: r.cx, cy: r.cy };
+  };
+  const onPieceMove = (e: React.PointerEvent) => {
+    const dg = dragRef.current;
+    if (!dg) return;
+    const k = unitsPerPx();
+    const cx = dg.cx + (e.clientX - dg.px) * k;
+    const cy = dg.cy + (e.clientY - dg.py) * k;
+    const g = gapForCenter(dg.anchor, cx, cy, dg.halfX, dg.halfY, rect, sel.wallT);
+    update(dg.key, { gap_x: Math.round(g.gap_x), gap_y: Math.round(g.gap_y) });
+  };
+  const onPieceUp = () => { dragRef.current = null; };
+
   const apply = () => {
     const items = draft.map((d) => ({
       asset: d.asset,
@@ -167,9 +201,10 @@ function FurnitureCatalogPanel() {
     }));
     const prev = sel.room.furniture ?? {};
     // Hand-composed: mark not-auto and lock so the auto-furnisher leaves it alone.
-    // Preserve any counters already in the container.
+    // Preserve any counters already in the container. Clear the room's DIRECT items
+    // (the draft already absorbed them via seedDraft) so they don't double-render.
     const furniture: Any = { ...prev, auto: false, locked: true, items };
-    useConfigStore.getState().updateObject({ floor: sel.floor, object: sel.object }, { furniture });
+    useConfigStore.getState().updateObject({ floor: sel.floor, object: sel.object }, { furniture, items: [] });
     setDirty(false);
   };
   const reset = () => { setDraft(seedDraft(sel.room)); setSelectedKey(null); setDirty(false); };
@@ -179,12 +214,21 @@ function FurnitureCatalogPanel() {
   const vb = `${-pad} ${-pad} ${sel.w + 2 * pad} ${sel.l + 2 * pad}`;
   const dot = Math.max(sel.w, sel.l) * 0.018;
 
+  // Gap is stored in project units; show it in the model's length unit (feet /
+  // metres) so the number reads naturally. per_unit = units per foot (or per metre).
+  const perUnit = Number(sel.units?.per_unit) || 10;
+  const metric = sel.units?.system === "metric" || sel.units?.system === "meters";
+  const gapUnitLabel = metric ? "m" : "ft";
+  const gapStep = metric ? 0.1 : 0.5;
+  const toGapDisplay = (u: number) => +(u / perUnit).toFixed(2);
+  const fromGapDisplay = (s: string) => Math.round((Number(s) || 0) * perUnit);
+
   return (
     <div className="fc-root">
       <h4 className="lt-h">Furniture · {sel.name}</h4>
 
       {/* Room composition canvas */}
-      <svg className="fc-canvas" viewBox={vb} preserveAspectRatio="xMidYMid meet">
+      <svg ref={svgRef} className="fc-canvas" viewBox={vb} preserveAspectRatio="xMidYMid meet">
         <rect x={0} y={0} width={sel.w} height={sel.l} className="fc-room" vectorEffect="non-scaling-stroke" />
         <rect x={sel.wallT} y={sel.wallT} width={sel.w - 2 * sel.wallT} height={sel.l - 2 * sel.wallT}
           className="fc-inner" vectorEffect="non-scaling-stroke" />
@@ -211,10 +255,12 @@ function FurnitureCatalogPanel() {
           const fy = cy + Math.cos((rot * Math.PI) / 180) * (r.halfY || dot * 2);
           const on = d.key === selectedKey;
           return (
-            <g key={d.key} onClick={() => setSelectedKey(d.key)} className="fc-piece-g">
+            <g key={d.key} className="fc-piece-g">
               <rect x={r.x0} y={r.y0} width={r.x1 - r.x0} height={r.y1 - r.y0}
-                className={`fc-piece${bad ? " bad" : ""}${on ? " sel" : ""}`} vectorEffect="non-scaling-stroke" />
-              <line x1={cx} y1={cy} x2={fx} y2={fy} className="fc-facing" vectorEffect="non-scaling-stroke" />
+                className={`fc-piece${bad ? " bad" : ""}${on ? " sel" : ""}`} vectorEffect="non-scaling-stroke"
+                onPointerDown={(e) => onPieceDown(e, d, r)} onPointerMove={onPieceMove} onPointerUp={onPieceUp} />
+              <line x1={cx} y1={cy} x2={fx} y2={fy} className="fc-facing" vectorEffect="non-scaling-stroke"
+                style={{ pointerEvents: "none" }} />
             </g>
           );
         })}
@@ -241,6 +287,15 @@ function FurnitureCatalogPanel() {
                 <button key={a} className={`fc-ab${d.anchor === a ? " on" : ""}`}
                   onClick={() => setAnchor(d.key, a)} title={a} />
               ))}
+            </div>
+            <div className="fc-lbl">Gap from anchor ({gapUnitLabel})</div>
+            <div className="fc-gap">
+              <label>X<input type="number" value={toGapDisplay(d.gap_x)} step={gapStep}
+                onChange={(e) => update(d.key, { gap_x: fromGapDisplay(e.target.value) })} /></label>
+              <label>Y<input type="number" value={toGapDisplay(d.gap_y)} step={gapStep}
+                onChange={(e) => update(d.key, { gap_y: fromGapDisplay(e.target.value) })} /></label>
+              <button className="fc-gap-zero" title="Reset gap to the anchor"
+                onClick={() => update(d.key, { gap_x: 0, gap_y: 0 })}>reset</button>
             </div>
             <div className="fc-lbl">Rotation</div>
             <div className="fc-rot">

@@ -696,6 +696,13 @@
         .fc-ab { width: 22px; height: 22px; border: 1px solid #d8c9ba; border-radius: 4px; background: #fff; cursor: pointer; }
         .fc-ab:hover { border-color: #B85028; }
         .fc-ab.on { background: #B85028; border-color: #B85028; }
+        .fc-gap { display: flex; align-items: center; gap: 8px; }
+        .fc-gap label { display: flex; align-items: center; gap: 4px; font-size: 0.76rem; color: #475569; }
+        .fc-gap input { width: 52px; font-size: 0.78rem; padding: 3px 5px; border: 1px solid #d8c9ba; border-radius: 4px;
+            font-variant-numeric: tabular-nums; }
+        .fc-gap-zero { font-size: 0.7rem; padding: 3px 7px; border: 1px solid #d8c9ba; border-radius: 4px;
+            background: #fff; cursor: pointer; color: #475569; }
+        .fc-gap-zero:hover { border-color: #B85028; }
         .fc-rot { display: flex; gap: 4px; flex-wrap: wrap; }
         .fc-rb { font-size: 0.74rem; padding: 3px 7px; border: 1px solid #d8c9ba; border-radius: 4px; background: #fff; cursor: pointer; color: #334155; }
         .fc-rb:hover { border-color: #B85028; }
@@ -717,6 +724,18 @@
         .fc-reset { padding: 7px 10px; border: 1px solid #d8c9ba; border-radius: 6px; background: #fff; color: #475569; font-size: 0.82rem; cursor: pointer; }
         .fc-reset:disabled { opacity: 0.5; cursor: not-allowed; }
         .fc-warn { font-size: 0.72rem; color: #dc2626; }
+        /* Furniture migration banner (furnitureMigration.ts) — a slim offer bar. */
+        #furniture-migrate-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+            z-index: 70; display: flex; align-items: center; gap: 10px; max-width: 92vw;
+            background: #0d1526; color: #dbeafe; border: 1px solid #2a3a5c; border-radius: 10px;
+            padding: 8px 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.28); font-size: 0.82rem; }
+        #furniture-migrate-banner .fmb-msg { font-weight: 600; }
+        #furniture-migrate-banner .fmb-go { background: #B85028; color: #fff; border: none; border-radius: 6px;
+            padding: 5px 11px; font-weight: 700; font-size: 0.78rem; cursor: pointer; white-space: nowrap; }
+        #furniture-migrate-banner .fmb-go:hover { background: #cf5a2d; }
+        #furniture-migrate-banner .fmb-x { background: transparent; color: #93c5fd; border: 1px solid #2a3a5c;
+            border-radius: 6px; padding: 5px 9px; font-size: 0.78rem; cursor: pointer; white-space: nowrap; }
+        #furniture-migrate-banner .fmb-x:hover { background: #14203a; }
         #cfg-dock-title { margin: 0 0 0.5rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
         /* Collapse the retired architect sidebar with data-left. */
         body[data-edit-mode="on"][data-left="closed"] #viewer-sidebar { display: none; }

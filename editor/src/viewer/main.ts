@@ -92,6 +92,7 @@ import { mountConfiguratorPanel, configPanelAvailable } from "./configuratorPane
 import { registerLeftTool, mountLeftDock, refreshLeftDock } from "./leftPanels";
 import { wireRoomSelection } from "./roomSelection";
 import { mountFurnitureCatalog, furnitureToolAvailable } from "./furnitureCatalogPanel";
+import { wireFurnitureMigration } from "./furnitureMigration";
 import { listRooms, useInteriorStore } from "../three/interiorView";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -479,6 +480,9 @@ async function bootViewer(): Promise<void> {
   // Room selection from the 2D floor plan (click a room to select it; drives the
   // furniture-catalog tool + highlight).
   wireRoomSelection();
+
+  // Offer to migrate old-format direct room furniture into containers on load.
+  wireFurnitureMigration();
 
   // Viewer chrome (embed mode + edit-mode flag). Personas are retired — one mode.
   applyViewerChrome();
