@@ -52,6 +52,12 @@ export default defineConfig({
       // export by running the SAME engine wadi uses to re-furnish — no divergence between the
       // pushed file and what wadi computes. Vite transpiles the .ts on import.
       'wadi-furnish': path.resolve(__dirname, '..', 'editor', 'src', 'furniture', 'furnish.ts'),
+      // Wadi's furniture footprint math (the real pipeline anchor), so the planner PREVIEW draws
+      // pieces at the same plan positions wadi renders them.
+      'wadi-autoplace': path.resolve(__dirname, '..', 'editor', 'src', 'furniture', 'autoplace.ts'),
+      // Wadi's parametric resolver, so the preview reads each room's RESOLVED rect (project
+      // units) to place the furnished pieces in — matching how wadi draws them.
+      'wadi-resolve': path.resolve(__dirname, '..', 'editor', 'src', 'param', 'resolve.ts'),
     },
   },
   build: {

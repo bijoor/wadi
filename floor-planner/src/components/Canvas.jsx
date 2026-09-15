@@ -4,39 +4,54 @@ import { roomCenter, sharesWall, rectsOverlap, connectionRoute } from '../model/
 import { PALETTE } from '../store/initialState.js'
 import { fmtLen, unitsOf } from '../utils/physical.js'
 import { syncGuides } from '../model/guides.js'
-import { roomModule } from '../export/roomModules.js'
-import { pieceRect, unitsPerMeter, anchorFacing } from '../export/furnitureFit.js'
-import { edgeKindLookup, roomDoorSides, roomDoorIntervals, roomGapIntervals } from '../export/wallsFromGraph.js'
+import { modelToWadi } from '../export/toWadi.js'
+import { unitsPerMeter, anchorFacing } from '../export/furnitureFit.js'
+import { pieceFootprint } from 'wadi-autoplace'
+import { resolveParametric } from 'wadi-resolve'
 
-// The fitted furniture for every typed room on this floor: the SAME pick the exporter makes
-// (orientation A + door-aware placement C), with the chosen template name. Rects are in project
-// units (multiply by `cell` to draw, like rooms). Pure of React so it memoises cleanly.
-function fittedFurniture(rooms, edges, build) {
-  const u = unitsOf(build)
-  const units = { system: u.system, per_unit: u.perUnit }
-  const wallT = Number(build?.wallThickness) || 8
-  const doorWidth = Number(build?.doorWidth) || 25
-  const edgeKind = edgeKindLookup(edges || [])
+// The fitted furniture for the active floor, computed by WADI'S OWN engine — the SAME
+// modelToWadi runs for the export (autoplace + the real pipeline anchor), so the preview shows
+// exactly what wadi renders. Each piece is placed with wadi's footprint math in its room's
+// RESOLVED rect (project units), then stored as a FRACTION of the room so the overlay can draw
+// it inside the live room at any scale (frame-invariant). Pure of React so it memoises cleanly.
+function fittedFurniture(model, activeFloor) {
+  let resolved
+  try {
+    resolved = resolveParametric(modelToWadi(model)).config
+  } catch {
+    return [] // a mid-edit model that doesn't resolve yet — show nothing this frame
+  }
+  const wallT = resolved.defaults?.wall_thickness ?? 8
+  const units = resolved.units || { system: 'feet_inches', per_unit: 10 }
+  const upm = unitsPerMeter(units)
+  // The active floor's config rooms line up 1:1 (same order) with its planner rooms.
+  const k = (model.floors || []).findIndex((f) => f.id === activeFloor)
+  const fl = (resolved.floors || []).find((f) => f.floor_number === k + 1)
+  if (!fl) return []
+  const cfgRooms = (fl.objects || []).filter((o) => o.type === 'room')
+  const plannerRooms = (model.rooms || []).filter((r) => r.floor === activeFloor)
   const out = []
-  for (const r of rooms) {
-    if (!r.roomType) continue
-    const room = { x: r.x, y: r.y, w: r.w, h: r.h }
-    const mod = roomModule(r.roomType, {
-      openSides: roomDoorSides(r, rooms, edgeKind), w: r.w, h: r.h,
-      room, wallT, units,
-      doorIntervals: roomDoorIntervals(r, rooms, edgeKind, doorWidth),
-      gapIntervals: roomGapIntervals(r, rooms, edgeKind),
-    })
-    if (!mod.template) continue
-    const upm = unitsPerMeter(units)
-    // Keep the piece CENTRE + its true footprint (asset dims) + effective rotation, so the preview
-    // draws a rotated rectangle for any angle (matching the layout editor), not the bounding box.
-    const pieces = mod.items.map((it) => {
-      const rect = pieceRect(it, room, wallT, units)
+  for (let i = 0; i < cfgRooms.length && i < plannerRooms.length; i++) {
+    const o = cfgRooms[i]
+    const pr = plannerRooms[i]
+    const items = (o.furniture && o.furniture.items) || []
+    const W = Number(o.width) || 0
+    const L = Number(o.length) || 0
+    if (!items.length || !W || !L) continue
+    const rect = { x: 0, y: 0, w: W, l: L } // room-local, resolved project units
+    // Store each piece as a fraction of the room: centre + true footprint (asset dims) +
+    // effective rotation, so the overlay draws a rotated rectangle inside the live room.
+    const pieces = items.map((it) => {
+      const fp = pieceFootprint(it, rect, wallT, units)
       const dims = it.asset?.dimensions || [0, 0, 0]
-      return { cx: rect.cx, cy: rect.cy, fw: dims[0] * upm, fd: dims[2] * upm, rot: it.rotation != null ? it.rotation : anchorFacing(it.anchor), name: it.asset?.name || it.asset?.id }
+      return {
+        fx: fp.cx / W, fy: fp.cy / L,
+        fwFrac: (dims[0] * upm) / W, fdFrac: (dims[2] * upm) / L,
+        rot: it.rotation != null ? it.rotation : anchorFacing(it.anchor),
+        name: it.asset?.name || it.asset?.id,
+      }
     })
-    out.push({ id: r.id, template: mod.template, rotated: mod.rotated, pieces })
+    out.push({ id: pr.id, pieces })
   }
   return out
 }
@@ -158,9 +173,16 @@ export default function Canvas({ state, dispatch, showFurniture }) {
 
   // Fitted furniture per typed room (only when the overlay is on), memoised on the room/edge/unit
   // inputs so it doesn't recompute on unrelated renders (pan/zoom/selection).
+  // Computed from the COMMITTED model (not liveRooms) so wadi's engine runs on drop, not every
+  // drag frame; the overlay repositions pieces inside the live room in the meantime.
   const furniture = useMemo(
-    () => (showFurniture ? fittedFurniture(liveRooms, edges, state.build) : []),
-    [showFurniture, liveRooms, edges, state.build],
+    () => (showFurniture
+      ? fittedFurniture(
+          { grid: state.grid, plot: state.plot, floors: state.floors, rooms: state.rooms, edges: state.edges, build: state.build, guides: state.guides },
+          activeFloor,
+        )
+      : []),
+    [showFurniture, state.rooms, state.edges, state.build, state.grid, state.plot, state.floors, state.guides, activeFloor],
   )
   const furnitureById = useMemo(() => new Map(furniture.map((f) => [f.id, f])), [furniture])
 
@@ -949,8 +971,8 @@ function FurnitureOverlay({ fit, cell, room }) {
   return (
     <g className="furn" pointerEvents="none">
       {fit.pieces.map((p, i) => {
-        const cx = p.cx * cell, cy = p.cy * cell
-        const fw = p.fw * cell, fd = p.fd * cell
+        const cx = (room.x + p.fx * room.w) * cell, cy = (room.y + p.fy * room.h) * cell
+        const fw = p.fwFrac * room.w * cell, fd = p.fdFrac * room.h * cell
         const yaw = (((p.rot % 360) + 360) % 360)
         const th = yaw * Math.PI / 180
         const reach = Math.min(fw, fd) * 0.35
@@ -961,9 +983,6 @@ function FurnitureOverlay({ fit, cell, room }) {
           </g>
         )
       })}
-      <text x={(room.x + room.w / 2) * cell} y={(room.y + room.h) * cell - 4} className="furn-label">
-        {fit.template}{fit.rotated ? ' ⟳' : ''}
-      </text>
     </g>
   )
 }
