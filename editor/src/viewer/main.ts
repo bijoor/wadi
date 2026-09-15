@@ -90,7 +90,7 @@ import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
 import { writeValue } from "../configurator/spec";
 import { mountConfiguratorPanel, configPanelAvailable } from "./configuratorPanel";
 import { registerLeftTool, mountLeftDock, refreshLeftDock } from "./leftPanels";
-import { wireRoomSelection } from "./roomSelection";
+import { wireRoomSelection, selectRoomFromWdlCursor } from "./roomSelection";
 import { mountFurnitureCatalog, furnitureToolAvailable } from "./furnitureCatalogPanel";
 import { wireFurnitureMigration } from "./furnitureMigration";
 import { listRooms, useInteriorStore } from "../three/interiorView";
@@ -5307,6 +5307,9 @@ function wireWdlEditor(): void {
       handle = mountWdlMonaco(host, pending);
       handle.onChange(() => { pending = handle!.getValue(); reflectDirty(); });
       handle.onApplyShortcut(() => { if (isDirty()) void apply(); });
+      // Cursor inside a room's WDL block → select that room (drives the furniture
+      // tool + 2D/3D highlight).
+      handle.onCursor((text, offset) => selectRoomFromWdlCursor(text, offset));
       setStatus("", "");
       syncFromStore(); // adopt anything that changed while loading
       reflectDirty();

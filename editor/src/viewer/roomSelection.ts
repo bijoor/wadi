@@ -31,6 +31,58 @@ export function roomSelectionByName(floorNum: number, name: string): Selection |
   return null;
 }
 
+// Find a room by name across all floors (first match) — used by WDL-cursor selection
+// where only the room name is known.
+export function roomSelectionByRoomName(name: string): Selection | null {
+  const cfg = useConfigStore.getState().config as AnyConfig;
+  const floors = cfg?.floors ?? [];
+  for (let fi = 0; fi < floors.length; fi++) {
+    const objs = floors[fi]?.objects ?? [];
+    for (let oi = 0; oi < objs.length; oi++) {
+      if (objs[oi]?.type === "room" && ((objs[oi]?.name as string | undefined) ?? "Room") === name) {
+        return { floor: fi, object: oi };
+      }
+    }
+  }
+  return null;
+}
+
+// The room name whose WDL block encloses `offset`, or null. Walks a brace stack,
+// tagging each block by its header keyword, and returns the nearest `room` block.
+export function enclosingRoomName(text: string, offset: number): string | null {
+  const stack: { isRoom: boolean; name: string | null }[] = [];
+  const end = Math.min(offset, text.length);
+  for (let i = 0; i < end; i++) {
+    const ch = text[i];
+    if (ch === "{") {
+      let j = i - 1;
+      while (j >= 0 && text[j] !== "{" && text[j] !== "}" && text[j] !== "\n") j--;
+      const header = text.slice(j + 1, i).trim();
+      const kw = /^([A-Za-z_]\w*)\b/.exec(header)?.[1];
+      const nm = /^[A-Za-z_]\w*\s+(?:"([^"]+)"|([A-Za-z_][\w-]*))/.exec(header);
+      stack.push({ isRoom: kw === "room", name: nm?.[1] ?? nm?.[2] ?? null });
+    } else if (ch === "}") {
+      stack.pop();
+    }
+  }
+  for (let k = stack.length - 1; k >= 0; k--) if (stack[k].isRoom) return stack[k].name;
+  return null;
+}
+
+let lastWdlRoom: string | null = null;
+// Select the room whose WDL block the cursor sits in (no-op if unchanged / not in a
+// room). Only positively selects — leaving a room block keeps the last selection.
+export function selectRoomFromWdlCursor(text: string, offset: number): void {
+  const name = enclosingRoomName(text, offset);
+  if (!name || name === lastWdlRoom) return;
+  lastWdlRoom = name;
+  const sel = roomSelectionByRoomName(name);
+  if (!sel) return;
+  const cur = useConfigStore.getState().selection;
+  if (cur && cur.floor === sel.floor && cur.object === sel.object) return;
+  useConfigStore.getState().select(sel);
+}
+
 // The (floorNumber, name) of the currently selected room, or null when the current
 // selection is not a room.
 function selectedRoomTag(): { floorNum: number; name: string } | null {

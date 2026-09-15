@@ -39,6 +39,9 @@ export interface WdlEditorHandle {
   /** Replace the text (no-op if unchanged, to avoid stealing the cursor). */
   setValue(v: string): void;
   onChange(cb: () => void): void;
+  /** Fires on cursor move with the full text + the cursor's character offset, so a
+   *  caller can resolve the enclosing block (e.g. select the room under the cursor). */
+  onCursor(cb: (text: string, offset: number) => void): void;
   /** ⌘/Ctrl+Enter inside the editor (Monaco swallows the DOM keydown). */
   onApplyShortcut(cb: () => void): void;
   focus(): void;
@@ -117,6 +120,13 @@ export function mountWdlMonaco(container: HTMLElement, initialValue: string): Wd
     },
     onChange: (cb) => {
       ed.onDidChangeModelContent(() => cb());
+    },
+    onCursor: (cb) => {
+      ed.onDidChangeCursorPosition((e) => {
+        const model = ed.getModel();
+        if (!model) return;
+        cb(model.getValue(), model.getOffsetAt(e.position));
+      });
     },
     onApplyShortcut: (cb) => {
       ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => cb());

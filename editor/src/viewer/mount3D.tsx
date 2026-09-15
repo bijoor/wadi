@@ -18,6 +18,7 @@ import {
 } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { House3D } from "../three/House3D";
+import { Room3DPick } from "./room3DPick";
 import { readPlotBounds } from "../three/coords";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { ViewerLightingPanel } from "./LightingPanel";
@@ -144,6 +145,7 @@ function ViewerScene() {
         frames={1}
       />
       <House3D config={config} />
+      {!interior && <Room3DPick config={config} />}
       <CaptureBridge fit={{ dist: camDist, targetY }} />
       <OrientationGizmo plot={plot} />
       {!interior && (
