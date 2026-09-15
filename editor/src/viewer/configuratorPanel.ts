@@ -8,6 +8,7 @@ import { resolveInputs, writeValue, type ResolvedConfigurator, type ResolvedInpu
 import { useConfigStore } from "../state/configStore";
 import { furnishRoom } from "../furniture/furnish";
 import { loadRoomLayouts } from "../furniture/loadRoomLayouts";
+import { refreshLeftDock } from "./leftPanels";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const fmtVal = (n: number, suffix: string) => (suffix ? `${round2(n)} ${suffix}` : String(round2(n)));
@@ -28,6 +29,16 @@ function countFurnishable(cfg: HouseConfig): number {
     for (const o of fl.objects ?? []) if (isFurnishable(o)) n++;
   }
   return n;
+}
+
+// Whether the configurator tab should be offered: the model declares configurator
+// inputs, OR it has furnishable rooms (the auto-surfaced Furnish action). Read by the
+// left-panel registry (leftPanels.ts) to show/hide the Configure tab.
+export function configPanelAvailable(): boolean {
+  const cfg = useConfigStore.getState().config as HouseConfig | null;
+  if (!cfg) return false;
+  const r = resolveInputs(cfg);
+  return r.inputs.length > 0 || countFurnishable(cfg) > 0;
 }
 
 export function mountConfiguratorPanel(): void {
@@ -343,9 +354,10 @@ export function mountConfiguratorPanel(): void {
     // the simple no-WDL edit surface (the left panel; the WDL editor is the right).
     const furnishable = cfg ? countFurnishable(cfg) : 0;
     const has = r.inputs.length > 0 || furnishable > 0;
-    // The dock shows via CSS on body[data-config="on"][data-left="open"]; the
-    // header ☰ collapses it. Independent of the layers/camera popups.
-    document.body.dataset.config = has ? "on" : "off";
+    // The configurator is a LEFT tool (leftPanels.ts): recompute the dock's tab
+    // availability whenever the config content changes. The dock/tab visibility is
+    // owned by the registry, not a data-config flag here.
+    refreshLeftDock();
     if (!has) {
       list!.innerHTML = "";
       lastSig = "";

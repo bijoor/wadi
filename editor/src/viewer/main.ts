@@ -88,7 +88,8 @@ import {
 } from "../io/templateSource";
 import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
 import { writeValue } from "../configurator/spec";
-import { mountConfiguratorPanel } from "./configuratorPanel";
+import { mountConfiguratorPanel, configPanelAvailable } from "./configuratorPanel";
+import { registerLeftTool, mountLeftDock, refreshLeftDock } from "./leftPanels";
 import { listRooms, useInteriorStore } from "../three/interiorView";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -446,6 +447,24 @@ async function bootViewer(): Promise<void> {
   // the RIGHT panel). Shown whenever the loaded model declares inputs. Drives the
   // same writeValue path window.wadi.setKnob / a WebMCP agent uses.
   mountConfiguratorPanel();
+
+  // Tabbed LEFT panel dock (leftPanels.ts): register the built-in tools and mount the
+  // tab strip. The configurator + the 2D drawing filters are the first two tools; the
+  // furniture catalog will register the same way. One tab visible at a time.
+  registerLeftTool({
+    id: "config", label: "Configure", icon: "⚙",
+    panel: () => document.getElementById("viewer-config-dock"),
+    available: configPanelAvailable,
+  });
+  registerLeftTool({
+    id: "filters", label: "Filters", icon: "▤",
+    panel: () => document.getElementById("viewer-filters-dock"),
+    available: () => document.body.dataset.dim2d === "on",
+  });
+  mountLeftDock();
+  // Exposed so the inline view-switch (viewer.html) can refresh the Filters tab when
+  // entering/leaving a 2D drawing tab.
+  (window as unknown as { refreshLeftDock?: () => void }).refreshLeftDock = refreshLeftDock;
 
   // Viewer chrome (embed mode + edit-mode flag). Personas are retired — one mode.
   applyViewerChrome();
@@ -5033,7 +5052,7 @@ function wireWdlEditor(): void {
     /* Position the control at the pane's inner (left) edge for each width. */
     body[data-wdl="on"] #wdl-ctl { right: min(460px, 46vw); }
     body[data-wdl="max"] #wdl-ctl { right: auto; left: 0; }
-    body[data-wdl="max"][data-config="on"][data-left="open"] #wdl-ctl { left: 288px; }
+    body[data-wdl="max"][data-lefttools="on"][data-left="open"] #wdl-ctl { left: 288px; }
     body[data-embed="1"] #wdl-ctl { display: none; }
     /* Language reference — a 📖 button in the head opens a slide-over cheat-sheet
        over the editor (the in-editor Langium LSP still supplies live completion/
