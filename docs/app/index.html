@@ -605,73 +605,79 @@
             width: 12px; height: 12px; border-radius: 3px;
             border: 1px solid rgba(0,0,0,0.15);
         }
-        /* Configurator (Gharkul owner): a docked, collapsible LEFT panel. */
-        #viewer-config-dock {
+        /* LEFT tool rail + panel (leftPanels.ts): a vertical rail of tool buttons on
+           the far-left edge (one per available tool), plus the active tool's panel
+           beside it. The rail shows when a tool is available; the panel additionally
+           needs data-left="open" (clicking the active tool collapses it). Scales to
+           many tools; each tool is a .left-tool-panel. */
+        /* The rail is a FIXED overlay (it takes no layout width, so the panel sits at the
+           true left edge and the model keeps the rest). It mirrors the WDL tab on the
+           right EXACTLY: a vertically-centred stack of dark-navy edge tabs that rides the
+           panel's OUTER edge and moves WITH the panel. Closed → the stack sits at the
+           screen's left edge (left:0); open → it slides to the panel's right edge
+           (left:288, panel width), so the active tab and the others all hang off the open
+           panel instead of forming a separate strip beside it. Only the buttons take clicks. */
+        #viewer-left-rail {
+            display: none;
+            position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+            z-index: 62;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+            pointer-events: none;
+            transition: left 0.16s ease;
+        }
+        body[data-lefttools="on"][data-left="open"] #viewer-left-rail { left: 288px; }
+        body[data-lefttools="on"] #viewer-left-rail { display: flex; }
+        /* Each tool is a vertical tab riding the left edge — the SAME look as the WDL tab
+           on the right (mirrored): a dark navy card, rounded on the right, soft shadow, a
+           small icon over an UPRIGHT vertical light-blue label. The active tool brightens. */
+        .left-tool-railbtn {
+            pointer-events: auto;
+            appearance: none; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+            width: 24px; padding: 7px 0 6px;
+            border: 1px solid #1e293b; border-left: none; border-radius: 0 10px 10px 0;
+            background: #0d1526; color: #93c5fd;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.25);
+            font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; line-height: 1;
+        }
+        .left-tool-railbtn .rb-icon { font-size: 12px; line-height: 1; }
+        .left-tool-railbtn .rb-lbl {
+            writing-mode: vertical-rl; text-orientation: upright; text-align: center;
+            text-transform: uppercase;
+        }
+        .left-tool-railbtn:hover { background: #14203a; color: #bfdbfe; }
+        .left-tool-railbtn.active { background: #1c2b47; color: #dbeafe; border-color: #2a3a5c; }
+        #viewer-left-dock {
             display: none;
             flex: 0 0 288px;
-            overflow-y: auto;
+            flex-direction: column;
+            min-height: 0;
             background: #faf7f4;
             border-right: 1px solid #e6ddd4;
-            padding: 0.9rem 1.1rem;
             color: #1e293b;
         }
-        /* Visible only for the owner persona with a loaded configurator, unless
-           the left panel is collapsed. main.ts sets data-config + data-left. */
-        body[data-config="on"][data-left="open"] #viewer-config-dock { display: block; }
+        body[data-lefttools="on"][data-left="open"] #viewer-left-dock { display: flex; }
+        #viewer-left-body { flex: 1 1 auto; min-height: 0; }
+        .left-tool-panel { display: none; height: 100%; overflow-y: auto; padding: 0.9rem 1.1rem; box-sizing: border-box; }
+        .left-tool-panel.lt-active { display: block; }
         #cfg-dock-title { margin: 0 0 0.5rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
-        /* Collapse the editor (Nakasha) sidebar with the same header toggle. */
+        /* Collapse the retired architect sidebar with data-left. */
         body[data-edit-mode="on"][data-left="closed"] #viewer-sidebar { display: none; }
-        /* Minimal-chrome / embed mode (?panels=off | ?embed=1). Hides every
-           side panel across BOTH personas — owner config dock, architect edit
-           sidebar + property panel, and the collapse tab — so the model fills
-           the width. Used by the home-architect skill, which drives the config
-           from chat rather than these panels. main.ts sets data-embed. */
-        body[data-embed="1"] #viewer-config-dock,
+        /* Minimal-chrome / embed mode (?panels=off | ?embed=1): hide the left rail +
+           panel + the retired architect sidebar so the model fills the width. */
+        body[data-embed="1"] #viewer-left-rail,
+        body[data-embed="1"] #viewer-left-dock,
         body[data-embed="1"] #viewer-sidebar,
-        body[data-embed="1"] #viewer-property-panel,
-        body[data-embed="1"] #left-toggle { display: none !important; }
-        /* Left-edge collapse tab — a chevron (distinct from the toolbar ☰),
-           on the panel's right edge when open, at the screen edge when closed.
-           Shown only when a left panel exists (owner config OR architect edit). */
-        #left-toggle {
-            display: none;
-            /* Offset ABOVE centre so it never overlaps the WDL editor's edge
-               control (offset BELOW centre) when the WDL is maximised beside the
-               open configurator and both sit at the configurator's right edge. */
-            position: fixed; top: calc(50% - 44px); left: 0; transform: translateY(-50%);
-            z-index: 55;
-            width: 24px; min-height: 54px;
-            border: 1px solid #e0dfda; border-left: none;
-            border-radius: 0 10px 10px 0;
-            background: #fff; color: #B85028;
-            font-size: 1rem; line-height: 1; cursor: pointer; padding: 6px 0;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.10);
-        }
-        #left-toggle:hover { background: #faf3ee; }
-        #left-toggle .tab-lbl { writing-mode: vertical-rl; text-orientation: upright;
-            font-size: 8px; font-weight: 800; letter-spacing: 0; color: #B85028; opacity: .8; line-height: 1; }
-        #left-toggle .lt-arw { font-size: 1rem; line-height: 1; }
-        body[data-config="on"] #left-toggle,
-        body[data-edit-mode="on"] #left-toggle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
-        /* Open: the panel occupies 288px, so the tab sits at its right edge. */
-        body[data-left="open"] #left-toggle { left: 288px; }
-        /* Mobile: the config dock overlays the model instead of squeezing it;
-           the tab rides the overlay's right edge. */
+        body[data-embed="1"] #viewer-property-panel { display: none !important; }
+        /* Mobile: the panel overlays the model from the left edge; the fixed rail (z 62)
+           still floats its tabs above it. */
         @media (max-width: 900px) {
-            body[data-config="on"][data-left="open"] #viewer-config-dock {
+            body[data-lefttools="on"][data-left="open"] #viewer-left-dock {
                 position: absolute; top: 0; left: 0;
-                width: min(88%, 340px); height: 100%;
+                width: min(84%, 320px); height: 100%;
                 z-index: 60; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-            }
-            body[data-config="on"][data-left="open"] #left-toggle { left: min(88%, 340px); z-index: 61; }
-            /* Architect sidebar is a full-width overlay on mobile → tab at the right edge. */
-            body[data-edit-mode="on"][data-left="open"] #left-toggle {
-                left: auto; right: 0;
-                border-radius: 10px 0 0 10px;
-                border: 1px solid #e0dfda; border-right: none;
-                /* The panel now fills the width (z-index 60), so lift the tab
-                   above it — otherwise the opaque panel paints over it. */
-                z-index: 61;
             }
         }
         .cfg-desc { margin: 0 0 0.6rem 0; font-size: 0.78rem; color: #64748b; }
@@ -841,55 +847,10 @@
         #quantities-grid {
             grid-template-columns: 1fr;
         }
-        /* ---- Dimensions/filters DOCK: a left panel matching the configurator
-               (#viewer-config-dock), driving every 2D drawing via the global draw
-               filter. Shown only on the 2D tabs (body[data-dim2d="on"]). --------- */
-        #viewer-filters-dock {
-            display: none;
-            flex: 0 0 288px;
-            overflow-y: auto;
-            background: #faf7f4;
-            border-right: 1px solid #e6ddd4;
-            padding: 0.9rem 1.1rem;
-            color: #1e293b;
-        }
-        body[data-dim2d="on"][data-filters="open"] #viewer-filters-dock { display: block; }
+        /* Dimensions/filters is now a left tool (.left-tool-panel in the tabbed dock),
+           available on the 2D drawing tabs. Only its title + inner control styles
+           remain here; the dock chrome + show logic live in leftPanels.ts. */
         #filters-dock-title { margin: 0 0 0.6rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
-        body[data-embed="1"] #viewer-filters-dock, body[data-embed="1"] #filters-toggle { display: none !important; }
-        /* FILTERS pull-tab — same tabbed look as #left-toggle, sitting just BELOW
-           the CONFIG tab so both can show at once. Only on a 2D drawing tab. */
-        #filters-toggle {
-            display: none;
-            position: fixed; top: calc(50% + 44px); left: 0; transform: translateY(-50%);
-            z-index: 55; width: 24px; min-height: 54px;
-            border: 1px solid #e0dfda; border-left: none; border-radius: 0 10px 10px 0;
-            background: #fff; color: #B85028; cursor: pointer; padding: 6px 0;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.10);
-        }
-        #filters-toggle:hover { background: #faf3ee; }
-        #filters-toggle .tab-lbl { writing-mode: vertical-rl; text-orientation: upright;
-            font-size: 8px; font-weight: 800; color: #B85028; opacity: .8; line-height: 1; }
-        #filters-toggle .lt-arw { font-size: 1rem; line-height: 1; transition: transform 0.15s ease; }
-        body[data-dim2d="on"] #filters-toggle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
-        body[data-filters="open"] #filters-toggle { left: 288px; }
-        body[data-filters="open"] #filters-toggle .lt-arw { transform: rotate(180deg); }
-        /* Desktop only: when BOTH left docks are open (configurator + filters, side
-           by side at 288px each), each collapse tab rides ITS OWN dock's right edge —
-           CONFIG at the shared divider (288px), FILTERS at the outer edge (576px). The
-           CONFIG tab is centred on the divider so its 24px width sits in the two
-           docks' padding gutter, clear of either panel's content. On mobile the docks
-           overlay at the screen edge instead (handled by the media block below). */
-        @media (min-width: 901px) {
-            body[data-left="open"][data-config="on"][data-dim2d="on"][data-filters="open"] #left-toggle { left: 276px; }
-            body[data-left="open"][data-config="on"][data-dim2d="on"][data-filters="open"] #filters-toggle { left: 576px; }
-        }
-        @media (max-width: 900px) {
-            body[data-dim2d="on"][data-filters="open"] #viewer-filters-dock {
-                position: absolute; top: 0; left: 0; width: min(88%, 340px); height: 100%;
-                z-index: 60; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-            }
-            body[data-filters="open"] #filters-toggle { left: min(88%, 340px); z-index: 61; }
-        }
         .dim-group { margin-bottom: 1rem; }
         .dim-group-head { display: flex; justify-content: space-between; align-items: baseline; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.35rem; color: #333; }
         .dim-actions a { font-size: 0.78rem; color: #2c5aa0; text-decoration: none; margin-left: 0.55rem; cursor: pointer; }
@@ -2177,7 +2138,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CFw9NRUu.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-BmIGvrA9.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>
@@ -2287,10 +2248,6 @@
     <!-- Collapse/expand the left panel (Gharkul configurator or Nakasha sidebar).
          A chevron tab on the LEFT EDGE (distinct from the toolbar ☰). Shown by
          main.ts only when a left panel exists; icon flips with the state. -->
-    <button id="left-toggle" type="button" title="Show / hide the configurator" aria-label="Toggle configurator panel"><span class="tab-lbl" aria-hidden="true">CONFIG</span><span class="lt-arw">❯</span></button>
-    <!-- FILTERS pull-tab: same left-edge tabbed look as CONFIG, shown ONLY on the
-         2D drawing tabs (body[data-dim2d="on"]). Toggles the filters dock. -->
-    <button id="filters-toggle" type="button" title="Show / hide the drawing dimensions + filters" aria-label="Toggle dimensions and filters panel" onclick="toggleDimDrawer()"><span class="tab-lbl" aria-hidden="true">FILTERS</span><span class="lt-arw">❯</span></button>
     <div id="viewer-container">
         <!-- Owner welcome / empty state — covers the viewer until a home is
              chosen, so a fresh owner never lands on a model they didn't pick.
@@ -2307,11 +2264,16 @@
                 </div>
             </div>
         </div>
-        <!-- Gharkul (owner) Configurator: a docked, collapsible LEFT panel,
-             tab-independent (works over 3D and every 2D view). Populated by
-             configuratorPanel.ts; shown only for the owner persona with a
-             template that exposes inputs, and collapsed via the header ☰. -->
-        <aside id="viewer-config-dock" aria-label="Configure your home">
+        <!-- LEFT tool rail + panel (editor/src/viewer/leftPanels.ts): a vertical rail
+             of tool buttons on the far-left edge, one per available tool, plus the
+             active tool's panel beside it. The WDL editor is the only RIGHT panel. The
+             rail shows when body[data-lefttools="on"]; the panel also needs data-left="open"
+             (clicking the active tool collapses it). -->
+        <nav id="viewer-left-rail" aria-label="Tools"></nav>
+        <div id="viewer-left-dock" aria-label="Tool panel">
+            <div id="viewer-left-body">
+        <!-- Configurator (owner): a left tool. Populated by configuratorPanel.ts. -->
+        <aside id="viewer-config-dock" class="left-tool-panel" aria-label="Configure your home">
             <h4 id="cfg-dock-title">Configure your home</h4>
             <div id="viewer-config-list"></div>
         </aside>
@@ -2319,7 +2281,7 @@
              the configurator), available only on the 2D drawing tabs. Drives the
              GLOBAL draw filter, so every plan + elevation (and the combined sheets /
              PDF) re-render as its controls change. -->
-        <aside id="viewer-filters-dock" aria-label="Drawing dimensions and filters">
+        <aside id="viewer-filters-dock" class="left-tool-panel" aria-label="Drawing dimensions and filters">
             <h4 id="filters-dock-title">Dimensions &amp; filters</h4>
             <div class="dim-group">
                 <div class="dim-group-head"><span>Dimensions</span></div>
@@ -2357,6 +2319,8 @@
                 <div id="dim-objects-list"></div>
             </div>
         </aside>
+            </div><!-- /#viewer-left-body -->
+        </div><!-- /#viewer-left-dock -->
         <!-- (Form-studio Sidebar + PropertyPanel retired — WDL is the only edit
              surface. Their React mount slots are gone.) -->
         <div id="viewer-content-area">
@@ -2620,20 +2584,13 @@
             const activeTab = document.querySelector(`.tab[onclick*="switchView('${view}')"]`);
             if (activeTab) activeTab.classList.add('active');
 
-            // The Dimensions/filters dock (a left panel, like the configurator) is
-            // ONLY available on the 2D drawing tabs. Its pull-tab shows via
-            // body[data-dim2d="on"]; leaving a 2D tab collapses + hides it.
+            // Dimensions/filters is a LEFT tool (leftPanels.ts), offered ONLY on the
+            // 2D drawing tabs (body[data-dim2d="on"]). Populate its content on entry
+            // and refresh the tabbed dock so the Filters tab appears / disappears.
             const is2d = (view === 'plans' || view === 'elevations');
             document.body.dataset.dim2d = is2d ? 'on' : 'off';
-            if (is2d) {
-                // Default OPEN (like the configurator), remembering a manual collapse.
-                let pref = null; try { pref = localStorage.getItem('wadi:filtersOpen'); } catch (e) { /* ignore */ }
-                const willOpen = pref !== '0';
-                if (willOpen) buildDimDrawer();
-                document.body.dataset.filters = willOpen ? 'open' : 'closed';
-            } else {
-                document.body.dataset.filters = 'closed';
-            }
+            if (is2d) buildDimDrawer();
+            if (window.refreshLeftDock) window.refreshLeftDock();
 
             // Update views
             document.querySelectorAll('.view-container').forEach(container => {
@@ -2964,14 +2921,8 @@
         // window.wadiGetDrawFilter().
         function dimEsc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
-        window.toggleDimDrawer = function (show) {
-            const open = document.body.dataset.filters === 'open';
-            const willShow = (show === undefined) ? !open : !!show;
-            if (willShow) buildDimDrawer();
-            document.body.dataset.filters = willShow ? 'open' : 'closed';
-            try { localStorage.setItem('wadi:filtersOpen', willShow ? '1' : '0'); } catch (e) { /* ignore */ }
-        };
-
+        // (The old Filters pull-tab + toggleDimDrawer were retired: the Filters panel
+        // is now a tab in the left-panel dock, shown via leftPanels.ts.)
         function buildDimDrawer() {
             const f = (window.wadiGetDrawFilter && window.wadiGetDrawFilter()) || {};
             const meta = (window.wadiLayoutMeta && window.wadiLayoutMeta()) || { floors: [], types: [], layers: [], objects: [] };

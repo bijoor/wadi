@@ -610,22 +610,30 @@
            beside it. The rail shows when a tool is available; the panel additionally
            needs data-left="open" (clicking the active tool collapses it). Scales to
            many tools; each tool is a .left-tool-panel. */
+        /* The rail is a FIXED overlay (it takes no layout width, so the panel sits at the
+           true left edge and the model keeps the rest). It mirrors the WDL tab on the
+           right EXACTLY: a vertically-centred stack of dark-navy edge tabs that rides the
+           panel's OUTER edge and moves WITH the panel. Closed → the stack sits at the
+           screen's left edge (left:0); open → it slides to the panel's right edge
+           (left:288, panel width), so the active tab and the others all hang off the open
+           panel instead of forming a separate strip beside it. Only the buttons take clicks. */
         #viewer-left-rail {
             display: none;
-            flex: 0 0 auto;
-            width: 24px;
+            position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+            z-index: 62;
             flex-direction: column;
             gap: 8px;
-            padding: 12px 0;
             align-items: flex-start;
-            background: transparent;
-            overflow-y: auto;
+            pointer-events: none;
+            transition: left 0.16s ease;
         }
+        body[data-lefttools="on"][data-left="open"] #viewer-left-rail { left: 288px; }
         body[data-lefttools="on"] #viewer-left-rail { display: flex; }
         /* Each tool is a vertical tab riding the left edge — the SAME look as the WDL tab
            on the right (mirrored): a dark navy card, rounded on the right, soft shadow, a
            small icon over an UPRIGHT vertical light-blue label. The active tool brightens. */
         .left-tool-railbtn {
+            pointer-events: auto;
             appearance: none; cursor: pointer;
             display: flex; flex-direction: column; align-items: center; gap: 5px;
             width: 24px; padding: 7px 0 6px;
@@ -663,10 +671,11 @@
         body[data-embed="1"] #viewer-left-dock,
         body[data-embed="1"] #viewer-sidebar,
         body[data-embed="1"] #viewer-property-panel { display: none !important; }
-        /* Mobile: the rail stays at the edge; the panel overlays the model beside it. */
+        /* Mobile: the panel overlays the model from the left edge; the fixed rail (z 62)
+           still floats its tabs above it. */
         @media (max-width: 900px) {
             body[data-lefttools="on"][data-left="open"] #viewer-left-dock {
-                position: absolute; top: 0; left: 24px;
+                position: absolute; top: 0; left: 0;
                 width: min(84%, 320px); height: 100%;
                 z-index: 60; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
             }
