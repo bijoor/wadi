@@ -132,6 +132,30 @@ describe("placePieces — door shift / drop", () => {
   });
 });
 
+describe("placePieces — piece-piece overlap drop", () => {
+  it("drops a piece that collides with one already placed", () => {
+    // Two big pieces at the SAME spot (centre, no gap) → their footprints overlap → the
+    // second is dropped, like a door-blocked piece. Better fewer pieces than a collision.
+    const a: Piece = { asset: asset("table", 1.5, 1.5), anchor: "center" };
+    const b: Piece = { asset: asset("stool", 1.5, 1.5), anchor: "center" };
+    expect(placePieces([a, b], ROOM, WALL_T, UNITS, {})).toHaveLength(1);
+  });
+
+  it("keeps the earlier piece and drops the later overlapping one", () => {
+    const first = bed(); // top-center
+    const dupe: Piece = { ...bed(), asset: asset("bed2", 1.5, 2) }; // same wall spot → overlaps
+    const placed = placePieces([first, dupe], ROOM, WALL_T, UNITS, {});
+    expect(placed).toHaveLength(1);
+    expect(placed[0].asset.id).toBe("bed"); // the first survives
+  });
+
+  it("keeps both when their footprints are clear of each other", () => {
+    const a: Piece = { asset: asset("table", 1, 1), anchor: "center", gap_x: -60 };
+    const b: Piece = { asset: asset("stool", 1, 1), anchor: "center", gap_x: 60 };
+    expect(placePieces([a, b], ROOM, WALL_T, UNITS, {})).toHaveLength(2);
+  });
+});
+
 describe("pickLayout — maximise furniture kept, gaps only break ties", () => {
   const wideDoorCtx = {
     rect: ROOM,

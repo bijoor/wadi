@@ -365,9 +365,26 @@ export function placePieces(pieces: Piece[], rect: RoomRect, wallT: number, unit
   for (let i = 0; i < all.length; i++) {
     const others = result.concat(all.slice(i + 1));
     const placed = shiftClear(all[i], others, rect, wallT, units, doorsBySide);
-    if (placed) result.push(placed);
+    if (!placed) continue; // no clear spot on a door wall — dropped
+    // Drop a piece that would COLLIDE with one already placed, the same way a door-blocked
+    // piece is dropped: better to show fewer pieces than furniture overlapping furniture. The
+    // authored/earlier piece wins; since pickLayout scores by placed.length, arrangements that
+    // keep the most non-overlapping pieces are preferred.
+    if (result.some((o) => piecesCollide(placed, o, rect, wallT, units))) continue;
+    result.push(placed);
   }
   return result;
+}
+
+// Do two placed pieces' plan footprints overlap by more than a small margin (in both axes)?
+// Mirrors the planner's validateLayout / check-room-layouts overlap test.
+const OVERLAP_MARGIN = 2; // units of slack: a sliver of touching is not a collision
+export function piecesCollide(a: Piece, b: Piece, rect: RoomRect, wallT: number, units?: Units): boolean {
+  const A = pieceFootprint(a, rect, wallT, units);
+  const B = pieceFootprint(b, rect, wallT, units);
+  const ox = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0);
+  const oy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0);
+  return ox > OVERLAP_MARGIN && oy > OVERLAP_MARGIN;
 }
 
 // True when we have enough context to score/carve by real geometry (else the coarse fallback).
