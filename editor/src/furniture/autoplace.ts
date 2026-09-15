@@ -387,6 +387,54 @@ export function piecesCollide(a: Piece, b: Piece, rect: RoomRect, wallT: number,
   return ox > OVERLAP_MARGIN && oy > OVERLAP_MARGIN;
 }
 
+// Validate a layout for the room-template designer: each piece's footprint, plus pairwise
+// overlaps and pieces poking past the inner wall face (with a small margin). Same test the
+// pack's check-room-layouts gate uses. Returns per-piece flags (for colouring) + detailed
+// overlap/out-of-bounds lists so the editor can spell out what is wrong.
+export interface OobSide { side: "W" | "E" | "N" | "S"; by: number; }
+export interface LayoutValidation {
+  rects: ReturnType<typeof pieceFootprint>[];
+  flags: { overlap: boolean; oob: OobSide[] }[];
+  overlaps: { a: number; b: number; ox: number; oy: number }[];
+  oob: { i: number; sides: OobSide[] }[];
+}
+export function validateLayout(
+  pieces: Piece[],
+  rect: RoomRect,
+  wallT: number,
+  units: Units | undefined,
+  margin: number = OVERLAP_MARGIN,
+): LayoutValidation {
+  const rects = (pieces || []).map((p) => pieceFootprint(p, rect, wallT, units));
+  const ix0 = rect.x + wallT, iy0 = rect.y + wallT, ix1 = rect.x + rect.w - wallT, iy1 = rect.y + rect.l - wallT;
+  const flags = rects.map(() => ({ overlap: false, oob: [] as OobSide[] }));
+  const overlaps: { a: number; b: number; ox: number; oy: number }[] = [];
+  for (let a = 0; a < rects.length; a++) {
+    for (let b = a + 1; b < rects.length; b++) {
+      const A = rects[a], B = rects[b];
+      const ox = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0);
+      const oy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0);
+      if (ox > margin && oy > margin) {
+        flags[a].overlap = true;
+        flags[b].overlap = true;
+        overlaps.push({ a, b, ox: Math.round(ox), oy: Math.round(oy) });
+      }
+    }
+  }
+  const oob: { i: number; sides: OobSide[] }[] = [];
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    const sides: OobSide[] = [];
+    if (r.x0 < ix0 - margin) sides.push({ side: "W", by: Math.round(ix0 - r.x0) });
+    if (r.x1 > ix1 + margin) sides.push({ side: "E", by: Math.round(r.x1 - ix1) });
+    if (r.y0 < iy0 - margin) sides.push({ side: "N", by: Math.round(iy0 - r.y0) });
+    if (r.y1 > iy1 + margin) sides.push({ side: "S", by: Math.round(r.y1 - iy1) });
+    flags[i].oob = sides;
+    if (sides.length) oob.push({ i, sides });
+  }
+  return { rects, flags, overlaps, oob };
+}
+
 // True when we have enough context to score/carve by real geometry (else the coarse fallback).
 // `units` is INTENTIONALLY not required — it is optional metadata (a config with no `units`
 // defaults to feet_inches / per_unit 10, and metersToUnits applies that default), so requiring

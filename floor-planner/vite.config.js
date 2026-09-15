@@ -58,6 +58,10 @@ export default defineConfig({
       // Wadi's parametric resolver, so the preview reads each room's RESOLVED rect (project
       // units) to place the furnished pieces in — matching how wadi draws them.
       'wadi-resolve': path.resolve(__dirname, '..', 'editor', 'src', 'param', 'resolve.ts'),
+      // Wadi's anchor helpers (anchor points + the inverse gapForCenter) + unit scale, so the
+      // room-template designer edits/draws with the SAME math wadi uses.
+      'wadi-anchor': path.resolve(__dirname, '..', 'editor', 'src', 'svg2d', 'furnitureAnchor.ts'),
+      'wadi-units': path.resolve(__dirname, '..', 'editor', 'src', 'three', 'units.ts'),
     },
   },
   build: {

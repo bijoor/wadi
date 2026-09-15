@@ -5,7 +5,9 @@
 import React, { useReducer, useRef, useEffect } from 'react'
 import CATALOG from '../export/furnitureCatalog.json'
 import ROOMS_SOURCE from '../export/roomsSource.js'
-import { pieceRect, anchorPoints, gapForCenter, validateLayout, anchorFacing, unitsPerMeter } from '../export/furnitureFit.js'
+import { validateLayout } from 'wadi-autoplace'
+import { anchorFacing, anchorPoints, gapForCenter } from 'wadi-anchor'
+import { unitsPerMeter } from 'wadi-units'
 import { emitRoomBlock, applyLayoutEdits, layoutName } from '../export/layoutWdl.js'
 import {
   libraryLayouts, libraryState, isLibraryDirty, libraryEdits,
@@ -86,7 +88,7 @@ function reducer(s, a) {
 // A draft is valid when no piece overlaps another or pokes outside the inner wall face — the same
 // check as check-room-layouts. Invalid layouts are never persisted (see flush).
 function draftValid(d) {
-  const room = { x: 0, y: 0, w: Math.max(d.w, 1), h: Math.max(d.h, 1) }
+  const room = { x: 0, y: 0, w: Math.max(d.w, 1), h: Math.max(d.h, 1), l: Math.max(d.h, 1) }
   const { flags } = validateLayout(d.pieces, room, WALLT, UNITS)
   return !flags.some((f) => f.overlap || f.oob.length)
 }
@@ -164,7 +166,7 @@ const VW = 620, VH = 470, PAD = 40
 
 function Editor({ s, dispatch, goLibrary, valid }) {
   const d = s.draft
-  const room = { x: 0, y: 0, w: Math.max(d.w, 1), h: Math.max(d.h, 1) }
+  const room = { x: 0, y: 0, w: Math.max(d.w, 1), h: Math.max(d.h, 1), l: Math.max(d.h, 1) }
   const sc = Math.min((VW - 2 * PAD) / room.w, (VH - 2 * PAD) / room.h)
   const ox = (VW - room.w * sc) / 2, oy = (VH - room.h * sc) / 2
   const X = (u) => ox + u * sc, Y = (u) => oy + u * sc, L = (u) => u * sc

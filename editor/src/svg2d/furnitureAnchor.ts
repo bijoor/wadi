@@ -130,3 +130,45 @@ export function anchorFacing(anchor?: string): number {
   if (h === "right") return 270;
   return 0;
 }
+
+// The nine anchor reference points on a room's inner wall face (where a piece attaches before
+// its gap offsets it), in project units — the layout editor's snap targets.
+export function anchorPoints(rect: RoomRect, wallT: number): Record<string, { x: number; y: number }> {
+  const ix0 = rect.x + wallT;
+  const iy0 = rect.y + wallT;
+  const ix1 = rect.x + rect.w - wallT;
+  const iy1 = rect.y + rect.l - wallT;
+  const mx = (ix0 + ix1) / 2;
+  const my = (iy0 + iy1) / 2;
+  const xs: Record<string, number> = { left: ix0, center: mx, right: ix1 };
+  const ys: Record<string, number> = { top: iy0, center: my, bottom: iy1 };
+  const out: Record<string, { x: number; y: number }> = {};
+  for (const [va, vy] of Object.entries(ys)) {
+    for (const [ha, vx] of Object.entries(xs)) {
+      const name = va === "center" && ha === "center" ? "center" : `${va}-${ha}`;
+      out[name] = { x: vx, y: vy };
+    }
+  }
+  return out;
+}
+
+// The gap that places a piece (at `anchor`, half-extents halfX/halfY) so its footprint CENTRE
+// lands at (cx, cy). Exact inverse of anchorByFootprint; used when a piece is dragged.
+export function gapForCenter(
+  anchor: string | undefined,
+  cx: number,
+  cy: number,
+  halfX: number,
+  halfY: number,
+  rect: RoomRect,
+  wallT: number,
+): { gap_x: number; gap_y: number } {
+  const { h, v } = parseAnchor(anchor);
+  const ix0 = rect.x + wallT;
+  const iy0 = rect.y + wallT;
+  const ix1 = rect.x + rect.w - wallT;
+  const iy1 = rect.y + rect.l - wallT;
+  const gap_x = h === "left" ? cx - ix0 - halfX : h === "right" ? ix1 - halfX - cx : cx - (ix0 + ix1) / 2;
+  const gap_y = v === "top" ? cy - iy0 - halfY : v === "bottom" ? iy1 - halfY - cy : cy - (iy0 + iy1) / 2;
+  return { gap_x, gap_y };
+}
