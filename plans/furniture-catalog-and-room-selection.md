@@ -11,11 +11,21 @@
 - **B1 DONE** — furniture catalog tool (`editor/src/viewer/furnitureCatalogPanel.tsx`),
   a left tool available when a room is selected. Composition canvas on wadi's anchor
   engine (`pieceFootprint`/`anchorPoints`/`validateLayout`), catalog grouped by
-  `FURNITURE_CATEGORIES`, per-piece anchor + rotation, draft → Apply (writes
-  `room.furniture` as not-auto + locked). Apply gated on a valid layout.
-- **NEXT** — B1b: piece DRAG (gap_x/gap_y via `gapForCenter`); B2: kitchen counter as a
-  catalog entry; A2 (WDL cursor → room) / A3 (3D click → room); widen the dock while
-  the furniture tool is active if the canvas feels cramped.
+  `FURNITURE_CATEGORIES`, per-piece anchor + rotation + **gap** (numeric Gap X/Y in
+  ft/m AND drag-to-position via `gapForCenter`), draft → Apply (writes `room.furniture`
+  not-auto + locked, and clears the room's direct `items` so nothing double-renders).
+  Apply gated on a valid layout.
+- **A2 DONE** — WDL cursor → room. Editor handle `onCursor`; `enclosingRoomName`
+  (brace-stack scan) resolves the room block under the cursor and selects it.
+- **A3 DONE** — 3D click → room (`room3DPick.tsx`). Raycasts the scene, maps the hit
+  point to a room footprint (expanded config + floor z-bands), selects it, highlights
+  the room's floor; a drag threshold preserves OrbitControls.
+- **Migration DONE** — on load, `furnitureMigration.ts` offers (a bottom banner) to
+  move old-format direct room `items` into `furniture` containers (locked), fixing the
+  mixed-model duplication at the source.
+- **NEXT** — B2: kitchen counter as a catalog entry (edit length/depth/cabinet/sink/hob);
+  widen the dock while the furniture tool is active if the canvas feels cramped; an
+  "auto-furnishable" toggle vs the current always-lock on Apply.
 
 ---
 
