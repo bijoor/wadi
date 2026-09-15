@@ -14,8 +14,12 @@ export const layoutName = (draft) => `${slug(draft.type) || 'type'}_${slug(draft
 // (balcony/terrace) is emitted as a single headerline with no braces, matching the pack.
 export function emitRoomBlock(draft, at = { x: 0, y: 0 }) {
   const name = layoutName(draft)
+  // The native room `type` keyword (the room CATEGORY) — the explicit source of truth the
+  // pipeline keys layouts on, no longer inferred from the `<type>_<variant>` name. Emitted
+  // for any typed layout; a plain (typeless) room omits it.
+  const type = slug(draft.type) ? ` type ${slug(draft.type)}` : ''
   const height = draft.height != null && draft.height !== '' ? ` height ${r0(draft.height)}` : ''
-  const head = `    room ${name} at (${r0(at.x)}, ${r0(at.y)}) size (${r0(draft.w)}, ${r0(draft.h)})${height}`
+  const head = `    room ${name} at (${r0(at.x)}, ${r0(at.y)}) size (${r0(draft.w)}, ${r0(draft.h)})${type}${height}`
   const items = (draft.pieces || []).map((p) => {
     const anchor = p.anchor || 'center'
     const g = (r0(p.gap_x) || r0(p.gap_y)) ? ` gap (${r0(p.gap_x)}, ${r0(p.gap_y)})` : ''
@@ -28,7 +32,10 @@ export function emitRoomBlock(draft, at = { x: 0, y: 0 }) {
   return items.length ? `${head} {\n${items.join('\n')}\n    }` : head
 }
 
-const HEADER_RE = /^([ \t]*)room[ \t]+([A-Za-z0-9_]+)[ \t]+at[ \t]*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)[ \t]+size[ \t]*\(\s*(\d+)\s*,\s*(\d+)\s*\)(?:[ \t]+height[ \t]+(\d+))?/gm
+// The trailing group captures the room's modifier tokens (native `type`, `height`,
+// `material`) in any order, so an explicit `type <cat>` is parsed and the block boundary
+// (where the optional `{ … }` begins) is still found after them.
+const HEADER_RE = /^([ \t]*)room[ \t]+([A-Za-z0-9_]+)[ \t]+at[ \t]*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)[ \t]+size[ \t]*\(\s*(\d+)\s*,\s*(\d+)\s*\)((?:[ \t]+(?:type[ \t]+[A-Za-z0-9_]+|height[ \t]+\d+|material[ \t]+"[^"]*"))*)/gm
 
 // Every `room …` block in the source, with its name, at-position, size, and char range. A block
 // with a `{` runs to its matching `}`; a headerline-only room ends at its line end.
@@ -54,11 +61,18 @@ export function parseRoomBlocks(source) {
       const nl = source.indexOf('\n', m.index)
       end = nl === -1 ? source.length : nl
     }
-    const type = name.replace(/_[a-z0-9]+$/i, '')
+    const tail = m[7] || ''
+    const tType = (tail.match(/\btype[ \t]+([A-Za-z0-9_]+)/) || [])[1]
+    const tHeight = (tail.match(/\bheight[ \t]+(\d+)/) || [])[1]
+    // The explicit `type` keyword wins; fall back to the `<type>_<variant>` name convention.
+    const nameType = name.replace(/_[a-z0-9]+$/i, '')
+    const type = tType || nameType
+    const variant = name.startsWith(type + '_') ? name.slice(type.length + 1)
+      : name.startsWith(nameType + '_') ? name.slice(nameType.length + 1) : name
     blocks.push({
-      name, type, variant: name.startsWith(type + '_') ? name.slice(type.length + 1) : name,
+      name, type, variant,
       x: Number(m[3]), y: Number(m[4]), w: Number(m[5]), h: Number(m[6]),
-      height: m[7] != null ? Number(m[7]) : null, start, end,
+      height: tHeight != null ? Number(tHeight) : null, start, end,
     })
   }
   return blocks

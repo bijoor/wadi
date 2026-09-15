@@ -40,7 +40,9 @@ const layouts = []
 for (const floor of config.floors || []) {
   for (const o of floor.objects || []) {
     if (o.type !== 'room') continue
-    const type = String(o.name).replace(/_[a-z0-9]+$/i, '') // bedroom_l -> bedroom
+    // The room CATEGORY: the explicit native `type` (room_type) when declared, else the
+    // legacy `<type>_<variant>` id convention (bedroom_l -> bedroom).
+    const type = o.room_type || String(o.name).replace(/_[a-z0-9]+$/i, '')
     const pieces = (o.items || []).map((it) => {
       const p = { asset: it.asset, anchor: it.anchor || 'center' }
       const gx = gapVal(it, 'x'), gy = gapVal(it, 'y')

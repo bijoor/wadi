@@ -1,9 +1,12 @@
 // Furniture layout pack for the floor-planner's prebuilt room modules.
 //
 // Each `room <type>_<variant>` is a fully-furnished layout: contents only (walls stay
-// graph-owned in the planner). The app compiles this pack in the browser
-// (editor/src/furniture/loadRoomLayouts.ts -> configToLayouts) into the placement
-// engine's Layout[]; the LARGEST layout of a room's `type` that still fits is chosen.
+// graph-owned in the planner). This pack is the SOURCE OF TRUTH; two consumers read it: the
+// app compiles it in the browser (editor/src/furniture/loadRoomLayouts.ts -> configToLayouts)
+// into the placement engine's Layout[], and the floor-planner compiles it to its manifest
+// (floor-planner/src/export/roomLayouts.json + roomsSource.js) via
+// floor-planner/scripts/build-room-layouts.mjs (`npm run build-layouts` — re-run after
+// editing this file). Either way the LARGEST layout of a room's `type` that still fits is chosen.
 //
 // ROOM TYPE. Every template declares its category with an explicit `type <type>` (the
 // native room keyword). The loader keys layouts on that type and matches it against a

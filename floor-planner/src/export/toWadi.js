@@ -118,6 +118,9 @@ export function modelToWadi(model, opts = {}) {
         name: nameById.get(r.id),
         x: r.x, y: r.y, width: r.w, length: r.h,
       }
+      // The native room CATEGORY (`type` in WDL) — carried through so the exported house is
+      // self-describing and natively furnishable, matching the template the furniture came from.
+      if (r.roomType) o.room_type = r.roomType
       // Derive x/y/width/length from the guide lines (falls back to the numbers).
       const f = roomGridFormulas(r, guides)
       if (f) o.formulas = f

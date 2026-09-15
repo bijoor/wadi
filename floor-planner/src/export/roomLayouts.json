@@ -193,19 +193,32 @@
       "pieces": [
         {
           "asset": {
-            "id": "bed_double",
-            "src": "https://templates.wadi.house/furniture/bed_double.glb",
+            "id": "bed_single",
+            "src": "https://templates.wadi.house/furniture/bed_single.glb",
             "dimensions": [
-              1.5,
+              0.9,
               0.5,
-              2
+              1.9
             ],
-            "name": "Double bed",
+            "name": "Single bed",
             "category": "Bedroom"
           },
-          "anchor": "top-center",
-          "gap_x": 0,
-          "gap_y": 4
+          "anchor": "center-left",
+          "rotation": 0
+        },
+        {
+          "asset": {
+            "id": "cabinet_wide",
+            "src": "https://templates.wadi.house/furniture/cabinet_wide.glb",
+            "dimensions": [
+              1.6,
+              1,
+              0.4
+            ],
+            "name": "Cabinet",
+            "category": "Living"
+          },
+          "anchor": "center-right"
         }
       ]
     },
@@ -378,8 +391,8 @@
     {
       "id": "living_xs",
       "type": "living",
-      "w": 82,
-      "h": 78,
+      "w": 95,
+      "h": 90,
       "pieces": [
         {
           "asset": {
@@ -395,24 +408,37 @@
           },
           "anchor": "bottom-center",
           "gap_x": 0,
-          "gap_y": 6,
-          "rotation": 180
+          "gap_y": 6
         },
         {
           "asset": {
-            "id": "tv_unit",
-            "src": "https://templates.wadi.house/furniture/tv_unit.glb",
+            "id": "armchair",
+            "src": "https://templates.wadi.house/furniture/armchair.glb",
             "dimensions": [
-              1.5,
-              0.5,
-              0.4
+              0.85,
+              0.8,
+              0.85
             ],
-            "name": "TV unit",
+            "name": "Armchair",
             "category": "Living"
           },
-          "anchor": "top-center",
-          "gap_x": 0,
-          "gap_y": 6
+          "anchor": "top-right",
+          "rotation": 315
+        },
+        {
+          "asset": {
+            "id": "armchair",
+            "src": "https://templates.wadi.house/furniture/armchair.glb",
+            "dimensions": [
+              0.85,
+              0.8,
+              0.85
+            ],
+            "name": "Armchair",
+            "category": "Living"
+          },
+          "anchor": "top-left",
+          "rotation": 45
         }
       ]
     },
