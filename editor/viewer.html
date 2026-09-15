@@ -613,32 +613,34 @@
         #viewer-left-rail {
             display: none;
             flex: 0 0 auto;
-            width: 30px;
+            width: 24px;
             flex-direction: column;
             gap: 8px;
             padding: 12px 0;
+            align-items: flex-start;
             background: transparent;
             overflow-y: auto;
         }
         body[data-lefttools="on"] #viewer-left-rail { display: flex; }
-        /* Each tool is a vertical tab riding the left edge — the same feel as the old
-           CONFIG / FILTERS pull-tabs: a white card, rounded on the right, soft shadow, a
-           small icon over an UPRIGHT vertical label. The active tool fills with the accent. */
+        /* Each tool is a vertical tab riding the left edge — the SAME look as the WDL tab
+           on the right (mirrored): a dark navy card, rounded on the right, soft shadow, a
+           small icon over an UPRIGHT vertical light-blue label. The active tool brightens. */
         .left-tool-railbtn {
             appearance: none; cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; gap: 6px;
-            border: 1px solid #e0dfda; border-left: none; border-radius: 0 10px 10px 0;
-            background: #fff; color: #B85028;
-            padding: 10px 6px 12px; line-height: 1;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.10);
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+            width: 24px; padding: 7px 0 6px;
+            border: 1px solid #1e293b; border-left: none; border-radius: 0 10px 10px 0;
+            background: #0d1526; color: #93c5fd;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.25);
+            font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; line-height: 1;
         }
-        .left-tool-railbtn .rb-icon { font-size: 15px; line-height: 1; }
+        .left-tool-railbtn .rb-icon { font-size: 12px; line-height: 1; }
         .left-tool-railbtn .rb-lbl {
-            writing-mode: vertical-rl; text-orientation: upright;
-            font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+            writing-mode: vertical-rl; text-orientation: upright; text-align: center;
+            text-transform: uppercase;
         }
-        .left-tool-railbtn:hover { background: #faf3ee; }
-        .left-tool-railbtn.active { background: #B85028; color: #fff; border-color: #B85028; }
+        .left-tool-railbtn:hover { background: #14203a; color: #bfdbfe; }
+        .left-tool-railbtn.active { background: #1c2b47; color: #dbeafe; border-color: #2a3a5c; }
         #viewer-left-dock {
             display: none;
             flex: 0 0 288px;
@@ -664,7 +666,7 @@
         /* Mobile: the rail stays at the edge; the panel overlays the model beside it. */
         @media (max-width: 900px) {
             body[data-lefttools="on"][data-left="open"] #viewer-left-dock {
-                position: absolute; top: 0; left: 30px;
+                position: absolute; top: 0; left: 24px;
                 width: min(84%, 320px); height: 100%;
                 z-index: 60; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
             }

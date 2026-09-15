@@ -5009,7 +5009,7 @@ function wireWdlEditor(): void {
     /* Position the control at the pane's inner (left) edge for each width. */
     body[data-wdl="on"] #wdl-ctl { right: min(460px, 46vw); }
     body[data-wdl="max"] #wdl-ctl { right: auto; left: 0; }
-    body[data-wdl="max"][data-lefttools="on"][data-left="open"] #wdl-ctl { left: 318px; }
+    body[data-wdl="max"][data-lefttools="on"][data-left="open"] #wdl-ctl { left: 312px; }
     body[data-embed="1"] #wdl-ctl { display: none; }
     /* Language reference — a 📖 button in the head opens a slide-over cheat-sheet
        over the editor (the in-editor Langium LSP still supplies live completion/
