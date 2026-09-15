@@ -1,13 +1,13 @@
-// Tabbed LEFT panel system. Contextual tools live on the LEFT, one visible at a
-// time, chosen from a small registry; the WDL editor is the only RIGHT panel. Each
-// tool declares when its tab is offered (e.g. 2D-only, owner-with-inputs) and which
-// DOM panel it shows. New tools are one registerLeftTool() call — the configurator
-// and the 2D filters panel are the first two; the furniture catalog will be next.
+// LEFT panel system, presented as a vertical TOOL RAIL on the far-left edge — one
+// icon+label button per tool, like an activity bar — with the active tool's panel
+// beside it. Clicking a tool opens its panel (or switches to it); clicking the active
+// tool again collapses the panel. This scales to many tools (vertical space) and drops
+// the old horizontal tab strip + the single cryptic pull-tab. The WDL editor is the
+// only RIGHT panel. A new tool is one registerLeftTool() call.
 //
-// The dock element (#viewer-left-dock) holds a tab strip (#viewer-left-tabs) and a
-// body region containing each tool's panel; only the active tool's panel carries the
-// `lt-active` class. The dock is shown by CSS when body[data-lefttools="on"] and the
-// left panel is open (data-left="open"); the shared #left-toggle opens/closes it.
+// CSS: the rail (#viewer-left-rail) shows when body[data-lefttools="on"]; the panel
+// (#viewer-left-dock) shows when additionally data-left="open"; each tool's panel
+// carries `lt-active` when it is the current tool.
 
 export interface LeftTool {
   id: string;
@@ -15,17 +15,18 @@ export interface LeftTool {
   icon?: string;
   /** The tool's panel element (already in the DOM), shown when this tool is active. */
   panel: () => HTMLElement | null;
-  /** Whether the tool's tab is currently offered (e.g. 2D-only, owner-only). */
+  /** Whether the tool's rail button is currently offered (e.g. 2D-only, owner-only). */
   available: () => boolean;
-  /** Called when this tool becomes / stops being the active tab. */
+  /** Called when this tool becomes / stops being the active panel. */
   onShow?: () => void;
   onHide?: () => void;
 }
 
 const ACTIVE_KEY = "wadi:left-tool";
+const OPEN_KEY = "wadi:left-panel";
 const tools: LeftTool[] = [];
 let activeId: string | null = null;
-let tabsEl: HTMLElement | null = null;
+let railEl: HTMLElement | null = null;
 
 export function registerLeftTool(tool: LeftTool): void {
   if (!tools.some((t) => t.id === tool.id)) tools.push(tool);
@@ -35,6 +36,15 @@ function availableTools(): LeftTool[] {
   return tools.filter((t) => {
     try { return t.available(); } catch { return false; }
   });
+}
+
+function isOpen(): boolean {
+  return document.body.dataset.left === "open";
+}
+
+function setOpen(open: boolean): void {
+  document.body.dataset.left = open ? "open" : "closed";
+  try { localStorage.setItem(OPEN_KEY, open ? "open" : "closed"); } catch { /* ignore */ }
 }
 
 // Show one tool's panel, hide the rest, and fire onShow/onHide. `id` null hides all.
@@ -52,44 +62,48 @@ function applyActive(id: string | null): void {
   if (id) { try { localStorage.setItem(ACTIVE_KEY, id); } catch { /* ignore */ } }
 }
 
-function renderTabs(): void {
-  if (!tabsEl) return;
+function esc(s: string): string {
+  return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+}
+
+function renderRail(): void {
+  if (!railEl) return;
   const avail = availableTools();
-  tabsEl.innerHTML = "";
-  // A single tool needs no tab strip — the panel just shows.
-  if (avail.length < 2) {
-    tabsEl.hidden = true;
-    return;
-  }
-  tabsEl.hidden = false;
+  railEl.innerHTML = "";
   for (const t of avail) {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "left-tool-tab" + (t.id === activeId ? " active" : "");
-    b.textContent = (t.icon ? t.icon + " " : "") + t.label;
+    b.className = "left-tool-railbtn" + (t.id === activeId && isOpen() ? " active" : "");
     b.title = t.label;
+    b.setAttribute("aria-pressed", String(t.id === activeId && isOpen()));
+    b.innerHTML = `<span class="rb-icon" aria-hidden="true">${t.icon ?? "•"}</span><span class="rb-lbl">${esc(t.label)}</span>`;
     b.addEventListener("click", () => {
-      applyActive(t.id);
-      renderTabs();
+      // Same tool while open → collapse; otherwise switch to it and open.
+      if (activeId === t.id && isOpen()) setOpen(false);
+      else { applyActive(t.id); setOpen(true); }
+      refreshLeftDock();
     });
-    tabsEl.appendChild(b);
+    railEl.appendChild(b);
   }
 }
 
-// Recompute availability + the dock's visibility flag, keep a valid active tool, and
-// redraw the tab strip. Call after anything that changes availability (config load,
-// view switch). Idempotent + cheap.
+// Recompute available tools + the rail's visibility flag, keep a valid active tool,
+// and redraw the rail. Call after anything that changes availability (config load,
+// view switch) or the open state (agent hide/show). Idempotent + cheap.
 export function refreshLeftDock(): void {
   const avail = availableTools();
   document.body.dataset.lefttools = avail.length ? "on" : "off";
-  // Keep the stored/current tool if it's still available, else fall back to the first.
   const keep = activeId && avail.some((t) => t.id === activeId) ? activeId : (avail[0]?.id ?? null);
   applyActive(keep);
-  renderTabs();
+  renderRail();
 }
 
 export function mountLeftDock(): void {
-  tabsEl = document.getElementById("viewer-left-tabs");
+  railEl = document.getElementById("viewer-left-rail");
   try { activeId = localStorage.getItem(ACTIVE_KEY); } catch { /* ignore */ }
+  // Default OPEN unless a stored preference collapsed it (mirrors the old pull-tab).
+  let openPref: string | null = null;
+  try { openPref = localStorage.getItem(OPEN_KEY); } catch { /* ignore */ }
+  document.body.dataset.left = openPref === "closed" ? "closed" : "open";
   refreshLeftDock();
 }

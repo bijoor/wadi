@@ -105,7 +105,6 @@ import { registerServiceWorker, setupInstallPrompt } from "./pwa";
 // hits the network, so only these real-file fetches need the leading "/".
 const CONFIG_URL = "/house_config.json";
 const EAVE_CROSS_SECTION_URL = "/2d/roof/roof-cross-section.svg";
-const LEFT_PANEL_KEY = "wadi:left-panel";
 const WDL_PANEL_KEY = "wadi:wdl-panel";
 
 // State shared with the fetch patch — mutated whenever the config
@@ -485,8 +484,7 @@ async function bootViewer(): Promise<void> {
 
   // Header buttons: Edit toggle, Load, Save, Undo, Redo.
   wireHeaderButtons();
-  // Header ☰ — collapse/expand the left configurator panel.
-  wireLeftToggle();
+  // (Left panel open/close is owned by the tool rail — leftPanels.ts.)
   // Standard keyboard shortcuts (⌘/Ctrl + S / ⇧S / O / N / Z / ⇧Z, ⌘Y).
   wireKeyboardShortcuts();
   // Offer to save unsaved changes before the app/tab closes.
@@ -2425,47 +2423,11 @@ function applyViewerChrome(): void {
   document.body.dataset.editMode = "off";
 }
 
-// Collapse/expand the left panel (Gharkul configurator dock or Nakasha sidebar)
-// via the header ☰. Persisted; defaults collapsed on narrow screens so the
-// model is visible on mobile.
-function wireLeftToggle(): void {
-  const btn = document.getElementById("left-toggle");
-  const setIcon = () => {
-    if (!btn) return;
-    const glyph = document.body.dataset.left === "open" ? "❮" : "❯";
-    const arw = btn.querySelector(".lt-arw");
-    if (arw) arw.textContent = glyph; else btn.textContent = glyph;
-  };
-  let stored: string | null = null;
-  try { stored = localStorage.getItem(LEFT_PANEL_KEY); } catch { /* ignore */ }
-  // Default OPEN so the panel is always visible on first open (on mobile it's a
-  // dismissible overlay); only a stored preference collapses it.
-  document.body.dataset.left = stored === "closed" ? "closed" : "open";
-  setIcon();
-  const narrowMq = window.matchMedia("(max-width: 900px)");
-  btn?.addEventListener("click", () => {
-    // On phones one panel shows at a time: selecting an object swaps the tree
-    // for the property panel. Make the collapse tab step back CONSISTENTLY —
-    // from the property panel back to the tree first, then collapse the tree to
-    // the model — instead of invisibly toggling the already-hidden tree (which
-    // used to strand the user: the tree wouldn't reappear). This is the single
-    // back/collapse control on mobile (the old separate "← Tree" button is gone).
-    if (narrowMq.matches && document.body.dataset.selection === "on") {
-      useConfigStore.getState().select(null); // property panel → tree
-      return;
-    }
-    const next = document.body.dataset.left === "open" ? "closed" : "open";
-    document.body.dataset.left = next;
-    setIcon();
-    try { localStorage.setItem(LEFT_PANEL_KEY, next); } catch { /* ignore */ }
-  });
-}
-
-// Show/hide BOTH side panels (the configurator dock + the WDL code editor) so the
-// 3D model has the whole surface. Used to keep the model visible while an agent
-// edits — the WDL code and knobs would otherwise overlap the model, especially in
-// a small embedded browser (e.g. ChatGPT's). Hiding it is what preserves the
-// "watch the model change" effect; the human toggles (☰ / ❮❯) still work to reopen.
+// Show/hide the left panel + the WDL code editor so the 3D model has the whole
+// surface. Used to keep the model visible while an agent edits — the WDL code and
+// knobs would otherwise overlap the model, especially in a small embedded browser.
+// The tool rail reflects the open/closed state (refreshLeftDock); the human reopens
+// via the rail (or the WDL toggle). Open/close is owned by leftPanels.ts.
 function setViewerPanels(visible: boolean): void {
   if (visible) {
     document.body.dataset.left = "open";
@@ -2473,12 +2435,7 @@ function setViewerPanels(visible: boolean): void {
     document.body.dataset.wdl = "off";
     document.body.dataset.left = "closed";
   }
-  const lbtn = document.getElementById("left-toggle");
-  if (lbtn) {
-    const g = document.body.dataset.left === "open" ? "❮" : "❯";
-    const a = lbtn.querySelector(".lt-arw");
-    if (a) a.textContent = g; else lbtn.textContent = g;
-  }
+  refreshLeftDock();
   // Re-fit the 3D canvas to the freed width.
   window.dispatchEvent(new Event("resize"));
 }
@@ -5052,7 +5009,7 @@ function wireWdlEditor(): void {
     /* Position the control at the pane's inner (left) edge for each width. */
     body[data-wdl="on"] #wdl-ctl { right: min(460px, 46vw); }
     body[data-wdl="max"] #wdl-ctl { right: auto; left: 0; }
-    body[data-wdl="max"][data-lefttools="on"][data-left="open"] #wdl-ctl { left: 288px; }
+    body[data-wdl="max"][data-lefttools="on"][data-left="open"] #wdl-ctl { left: 318px; }
     body[data-embed="1"] #wdl-ctl { display: none; }
     /* Language reference — a 📖 button in the head opens a slide-over cheat-sheet
        over the editor (the in-editor Langium LSP still supplies live completion/

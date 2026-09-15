@@ -605,9 +605,40 @@
             width: 12px; height: 12px; border-radius: 3px;
             border: 1px solid rgba(0,0,0,0.15);
         }
-        /* Tabbed LEFT panel dock (leftPanels.ts): contextual tools, ONE visible at a
-           time. Shown when some tool is available (data-lefttools) and the left panel
-           is open. The dock carries the chrome; each tool is a .left-tool-panel. */
+        /* LEFT tool rail + panel (leftPanels.ts): a vertical rail of tool buttons on
+           the far-left edge (one per available tool), plus the active tool's panel
+           beside it. The rail shows when a tool is available; the panel additionally
+           needs data-left="open" (clicking the active tool collapses it). Scales to
+           many tools; each tool is a .left-tool-panel. */
+        #viewer-left-rail {
+            display: none;
+            flex: 0 0 auto;
+            width: 30px;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px 0;
+            background: transparent;
+            overflow-y: auto;
+        }
+        body[data-lefttools="on"] #viewer-left-rail { display: flex; }
+        /* Each tool is a vertical tab riding the left edge — the same feel as the old
+           CONFIG / FILTERS pull-tabs: a white card, rounded on the right, soft shadow, a
+           small icon over an UPRIGHT vertical label. The active tool fills with the accent. */
+        .left-tool-railbtn {
+            appearance: none; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            border: 1px solid #e0dfda; border-left: none; border-radius: 0 10px 10px 0;
+            background: #fff; color: #B85028;
+            padding: 10px 6px 12px; line-height: 1;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.10);
+        }
+        .left-tool-railbtn .rb-icon { font-size: 15px; line-height: 1; }
+        .left-tool-railbtn .rb-lbl {
+            writing-mode: vertical-rl; text-orientation: upright;
+            font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .left-tool-railbtn:hover { background: #faf3ee; }
+        .left-tool-railbtn.active { background: #B85028; color: #fff; border-color: #B85028; }
         #viewer-left-dock {
             display: none;
             flex: 0 0 288px;
@@ -618,75 +649,24 @@
             color: #1e293b;
         }
         body[data-lefttools="on"][data-left="open"] #viewer-left-dock { display: flex; }
-        #viewer-left-tabs {
-            display: flex; gap: 2px; padding: 6px 6px 0; flex: 0 0 auto;
-            border-bottom: 1px solid #e6ddd4;
-        }
-        #viewer-left-tabs[hidden] { display: none; }
-        .left-tool-tab {
-            appearance: none; border: 1px solid #e6ddd4; border-bottom: none;
-            background: #f0e9e2; color: #7a6a5c; font-size: 0.72rem; font-weight: 700;
-            padding: 5px 9px; border-radius: 7px 7px 0 0; cursor: pointer;
-        }
-        .left-tool-tab:hover { background: #efe4d9; }
-        .left-tool-tab.active { background: #faf7f4; color: #B85028; margin-bottom: -1px; }
         #viewer-left-body { flex: 1 1 auto; min-height: 0; }
         .left-tool-panel { display: none; height: 100%; overflow-y: auto; padding: 0.9rem 1.1rem; box-sizing: border-box; }
         .left-tool-panel.lt-active { display: block; }
         #cfg-dock-title { margin: 0 0 0.5rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
-        /* Collapse the editor (Nakasha) sidebar with the same header toggle. */
+        /* Collapse the retired architect sidebar with data-left. */
         body[data-edit-mode="on"][data-left="closed"] #viewer-sidebar { display: none; }
-        /* Minimal-chrome / embed mode (?panels=off | ?embed=1). Hides every
-           side panel across BOTH personas — owner config dock, architect edit
-           sidebar + property panel, and the collapse tab — so the model fills
-           the width. Used by the home-architect skill, which drives the config
-           from chat rather than these panels. main.ts sets data-embed. */
+        /* Minimal-chrome / embed mode (?panels=off | ?embed=1): hide the left rail +
+           panel + the retired architect sidebar so the model fills the width. */
+        body[data-embed="1"] #viewer-left-rail,
         body[data-embed="1"] #viewer-left-dock,
         body[data-embed="1"] #viewer-sidebar,
-        body[data-embed="1"] #viewer-property-panel,
-        body[data-embed="1"] #left-toggle { display: none !important; }
-        /* Left-edge collapse tab — a chevron (distinct from the toolbar ☰),
-           on the panel's right edge when open, at the screen edge when closed.
-           Shown only when a left panel exists (owner config OR architect edit). */
-        #left-toggle {
-            display: none;
-            /* Offset ABOVE centre so it never overlaps the WDL editor's edge
-               control (offset BELOW centre) when the WDL is maximised beside the
-               open configurator and both sit at the configurator's right edge. */
-            position: fixed; top: calc(50% - 44px); left: 0; transform: translateY(-50%);
-            z-index: 55;
-            width: 24px; min-height: 54px;
-            border: 1px solid #e0dfda; border-left: none;
-            border-radius: 0 10px 10px 0;
-            background: #fff; color: #B85028;
-            font-size: 1rem; line-height: 1; cursor: pointer; padding: 6px 0;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.10);
-        }
-        #left-toggle:hover { background: #faf3ee; }
-        #left-toggle .tab-lbl { writing-mode: vertical-rl; text-orientation: upright;
-            font-size: 8px; font-weight: 800; letter-spacing: 0; color: #B85028; opacity: .8; line-height: 1; }
-        #left-toggle .lt-arw { font-size: 1rem; line-height: 1; }
-        body[data-lefttools="on"] #left-toggle,
-        body[data-edit-mode="on"] #left-toggle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
-        /* Open: the panel occupies 288px, so the tab sits at its right edge. */
-        body[data-left="open"] #left-toggle { left: 288px; }
-        /* Mobile: the config dock overlays the model instead of squeezing it;
-           the tab rides the overlay's right edge. */
+        body[data-embed="1"] #viewer-property-panel { display: none !important; }
+        /* Mobile: the rail stays at the edge; the panel overlays the model beside it. */
         @media (max-width: 900px) {
             body[data-lefttools="on"][data-left="open"] #viewer-left-dock {
-                position: absolute; top: 0; left: 0;
-                width: min(88%, 340px); height: 100%;
+                position: absolute; top: 0; left: 30px;
+                width: min(84%, 320px); height: 100%;
                 z-index: 60; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-            }
-            body[data-lefttools="on"][data-left="open"] #left-toggle { left: min(88%, 340px); z-index: 61; }
-            /* Architect sidebar is a full-width overlay on mobile → tab at the right edge. */
-            body[data-edit-mode="on"][data-left="open"] #left-toggle {
-                left: auto; right: 0;
-                border-radius: 10px 0 0 10px;
-                border: 1px solid #e0dfda; border-right: none;
-                /* The panel now fills the width (z-index 60), so lift the tab
-                   above it — otherwise the opaque panel paints over it. */
-                z-index: 61;
             }
         }
         .cfg-desc { margin: 0 0 0.6rem 0; font-size: 0.78rem; color: #64748b; }
@@ -2255,7 +2235,6 @@
     <!-- Collapse/expand the left panel (Gharkul configurator or Nakasha sidebar).
          A chevron tab on the LEFT EDGE (distinct from the toolbar ☰). Shown by
          main.ts only when a left panel exists; icon flips with the state. -->
-    <button id="left-toggle" type="button" title="Show / hide the tools panel" aria-label="Toggle tools panel"><span class="tab-lbl" aria-hidden="true">TOOLS</span><span class="lt-arw">❯</span></button>
     <div id="viewer-container">
         <!-- Owner welcome / empty state — covers the viewer until a home is
              chosen, so a fresh owner never lands on a model they didn't pick.
@@ -2272,12 +2251,13 @@
                 </div>
             </div>
         </div>
-        <!-- Tabbed LEFT panel dock (editor/src/viewer/leftPanels.ts): contextual
-             tools live here, ONE visible at a time, chosen from #viewer-left-tabs.
-             The WDL editor is the only RIGHT panel. Shown when body[data-lefttools="on"]
-             + data-left="open"; the shared #left-toggle opens/closes it. -->
-        <div id="viewer-left-dock" aria-label="Tools">
-            <div id="viewer-left-tabs" role="tablist"></div>
+        <!-- LEFT tool rail + panel (editor/src/viewer/leftPanels.ts): a vertical rail
+             of tool buttons on the far-left edge, one per available tool, plus the
+             active tool's panel beside it. The WDL editor is the only RIGHT panel. The
+             rail shows when body[data-lefttools="on"]; the panel also needs data-left="open"
+             (clicking the active tool collapses it). -->
+        <nav id="viewer-left-rail" aria-label="Tools"></nav>
+        <div id="viewer-left-dock" aria-label="Tool panel">
             <div id="viewer-left-body">
         <!-- Configurator (owner): a left tool. Populated by configuratorPanel.ts. -->
         <aside id="viewer-config-dock" class="left-tool-panel" aria-label="Configure your home">
