@@ -91,6 +91,7 @@ import { writeValue } from "../configurator/spec";
 import { mountConfiguratorPanel, configPanelAvailable } from "./configuratorPanel";
 import { registerLeftTool, mountLeftDock, refreshLeftDock } from "./leftPanels";
 import { wireRoomSelection } from "./roomSelection";
+import { mountFurnitureCatalog, furnitureToolAvailable } from "./furnitureCatalogPanel";
 import { listRooms, useInteriorStore } from "../three/interiorView";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -460,6 +461,15 @@ async function bootViewer(): Promise<void> {
     id: "filters", label: "Filters", icon: "▤",
     panel: () => document.getElementById("viewer-filters-dock"),
     available: () => document.body.dataset.dim2d === "on",
+  });
+  // Furniture catalog: compose the SELECTED room's furniture container. Available
+  // only while a room is selected (click a room in the 2D plan).
+  const furnitureDock = document.getElementById("viewer-furniture-dock");
+  if (furnitureDock) mountFurnitureCatalog(furnitureDock);
+  registerLeftTool({
+    id: "furniture", label: "Furniture", icon: "🛋",
+    panel: () => document.getElementById("viewer-furniture-dock"),
+    available: furnitureToolAvailable,
   });
   mountLeftDock();
   // Exposed so the inline view-switch (viewer.html) can refresh the Filters tab when

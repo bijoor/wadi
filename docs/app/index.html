@@ -669,6 +669,54 @@
         #viewer-left-body { flex: 1 1 auto; min-height: 0; }
         .left-tool-panel { display: none; height: 100%; overflow-y: auto; padding: 0.9rem 1.1rem; box-sizing: border-box; }
         .left-tool-panel.lt-active { display: block; }
+        /* Furniture catalog tool (furnitureCatalogPanel.tsx). */
+        .fc-root, .fc-empty { color: #1e293b; }
+        .lt-h { margin: 0 0 0.5rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
+        .fc-hint { font-size: 0.82rem; color: #64748b; line-height: 1.4; }
+        .fc-canvas { width: 100%; height: auto; max-height: 230px; background: #fbf8f5;
+            border: 1px solid #e6ddd4; border-radius: 6px; display: block; }
+        .fc-room { fill: #fff; stroke: #94745d; stroke-width: 2; }
+        .fc-inner { fill: none; stroke: #d8c9ba; stroke-width: 1; stroke-dasharray: 4 3; }
+        .fc-anchor { fill: #cbb9a7; opacity: 0.55; cursor: pointer; }
+        .fc-anchor:hover { fill: #B85028; opacity: 0.9; }
+        .fc-piece { fill: rgba(184,80,40,0.16); stroke: #B85028; stroke-width: 1.5; cursor: pointer; }
+        .fc-piece.sel { fill: rgba(184,80,40,0.30); stroke-width: 2.5; }
+        .fc-piece.bad { fill: rgba(220,38,38,0.20); stroke: #dc2626; }
+        .fc-facing { stroke: #7c3a20; stroke-width: 1.5; }
+        .fc-piece-g { cursor: pointer; }
+        .fc-status { font-size: 0.74rem; color: #16794a; margin: 0.35rem 0 0.2rem; font-weight: 600; }
+        .fc-status.bad { color: #dc2626; }
+        .fc-controls { border: 1px solid #e6ddd4; border-radius: 6px; padding: 0.5rem 0.6rem; margin: 0.5rem 0; background: #fbf8f5; }
+        .fc-row-head { display: flex; align-items: center; justify-content: space-between; }
+        .fc-piece-name { font-size: 0.84rem; font-weight: 700; }
+        .fc-x { border: none; background: none; cursor: pointer; color: #94745d; font-size: 0.9rem; padding: 2px 4px; }
+        .fc-x:hover { color: #dc2626; }
+        .fc-lbl { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #94a3b8; margin: 0.5rem 0 0.25rem; }
+        .fc-anchor-grid { display: grid; grid-template-columns: repeat(3, 22px); gap: 4px; }
+        .fc-ab { width: 22px; height: 22px; border: 1px solid #d8c9ba; border-radius: 4px; background: #fff; cursor: pointer; }
+        .fc-ab:hover { border-color: #B85028; }
+        .fc-ab.on { background: #B85028; border-color: #B85028; }
+        .fc-rot { display: flex; gap: 4px; flex-wrap: wrap; }
+        .fc-rb { font-size: 0.74rem; padding: 3px 7px; border: 1px solid #d8c9ba; border-radius: 4px; background: #fff; cursor: pointer; color: #334155; }
+        .fc-rb:hover { border-color: #B85028; }
+        .fc-rb.on { background: #B85028; border-color: #B85028; color: #fff; }
+        .fc-cat-head { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #94a3b8; margin: 0.8rem 0 0.35rem; }
+        .fc-cats { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0.5rem; }
+        .fc-cat { font-size: 0.72rem; padding: 3px 8px; border: 1px solid #e6ddd4; border-radius: 999px; background: #fff; cursor: pointer; color: #475569; }
+        .fc-cat:hover { border-color: #B85028; }
+        .fc-cat.on { background: #B85028; border-color: #B85028; color: #fff; }
+        .fc-catalog { display: flex; flex-direction: column; gap: 4px; max-height: 230px; overflow-y: auto; }
+        .fc-item { display: flex; align-items: center; justify-content: space-between; gap: 6px;
+            padding: 6px 8px; border: 1px solid #e6ddd4; border-radius: 5px; background: #fff; cursor: pointer; text-align: left; }
+        .fc-item:hover { border-color: #B85028; background: #fdf6f2; }
+        .fc-item-name { font-size: 0.8rem; color: #1e293b; }
+        .fc-item-dim { font-size: 0.68rem; color: #94a3b8; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .fc-actions { display: flex; gap: 6px; margin: 0.8rem 0 0.3rem; }
+        .fc-apply { flex: 1; padding: 7px 10px; border: none; border-radius: 6px; background: #B85028; color: #fff; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
+        .fc-apply:disabled { background: #d8c9ba; cursor: not-allowed; }
+        .fc-reset { padding: 7px 10px; border: 1px solid #d8c9ba; border-radius: 6px; background: #fff; color: #475569; font-size: 0.82rem; cursor: pointer; }
+        .fc-reset:disabled { opacity: 0.5; cursor: not-allowed; }
+        .fc-warn { font-size: 0.72rem; color: #dc2626; }
         #cfg-dock-title { margin: 0 0 0.5rem 0; font-size: 1rem; color: #B85028; font-weight: 700; }
         /* Collapse the retired architect sidebar with data-left. */
         body[data-edit-mode="on"][data-left="closed"] #viewer-sidebar { display: none; }
@@ -2151,7 +2199,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-0gLl3sCx.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-tGri8JKr.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>
@@ -2332,6 +2380,10 @@
                 <div id="dim-objects-list"></div>
             </div>
         </aside>
+        <!-- Furniture catalog: a left tool. Compose a selected room's furniture
+             container (browse the catalog + anchor pieces). Mounted as React by
+             furnitureCatalogPanel.tsx; available when a room is selected. -->
+        <aside id="viewer-furniture-dock" class="left-tool-panel" aria-label="Furniture catalog"></aside>
             </div><!-- /#viewer-left-body -->
         </div><!-- /#viewer-left-dock -->
         <!-- (Form-studio Sidebar + PropertyPanel retired — WDL is the only edit

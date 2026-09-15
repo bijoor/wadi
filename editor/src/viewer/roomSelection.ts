@@ -83,6 +83,8 @@ export function wireRoomSelection(): void {
     if (s.selection !== lastSel) {
       lastSel = s.selection;
       requestAnimationFrame(applyRoomHighlight);
+      // A room becoming (un)selected changes the furniture tool's availability.
+      (window as unknown as { refreshLeftDock?: () => void }).refreshLeftDock?.();
     }
   });
 
