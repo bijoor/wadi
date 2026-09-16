@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // FORK dev deployment of the Wadi MCP relay — separate from the frozen main
+  // `wadi-mcp` (mcp.wadi.house). Same code (bundles the fork compiler + docs); its
+  // OWN worker name + durable objects + custom domain so it never touches main.
+  // Deploy: npm run build && wrangler deploy --config wrangler.dev.jsonc
+  "name": "wadi-mcp-dev",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-06-01",
+  // Additive subdomain in the wadi.house zone (does not touch the site or
+  // mcp.wadi.house). Cloudflare auto-creates the DNS record + cert.
+  "routes": [{ "pattern": "mcp-dev.wadi.house", "custom_domain": true }],
+  "containers": [
+    {
+      "class_name": "WadiMcpContainer",
+      "image": "./Dockerfile",
+      "max_instances": 3,
+      "instance_type": "basic"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "class_name": "WadiMcpContainer", "name": "WADI_MCP_CONTAINER" },
+      { "class_name": "SessionRelay", "name": "SESSION_RELAY" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["WadiMcpContainer"] },
+    { "tag": "v2", "new_sqlite_classes": ["SessionRelay"] }
+  ],
+  "observability": { "enabled": true }
+}

@@ -2099,7 +2099,9 @@ const MCP_ORIGIN = ((): string => {
     const v = new URLSearchParams(location.search).get("mcp");
     if (v) return v.trim().replace(/\/$/, "");
   } catch { /* no location */ }
-  return "https://mcp.wadi.house";
+  // FORK build: default to the fork's own relay (mcp-dev.wadi.house), separate from
+  // the frozen main app which uses mcp.wadi.house. `?mcp=` overrides either.
+  return "https://mcp-dev.wadi.house";
 })();
 
 function randomSessionCode(): string {

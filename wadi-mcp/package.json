@@ -40,6 +40,7 @@
     "http": "node dist/http.mjs",
     "cloud:dev": "npm run build && wrangler dev",
     "cloud:deploy": "npm run build && wrangler deploy",
+    "cloud:deploy:dev": "npm run build && wrangler deploy --config wrangler.dev.jsonc",
     "prepublishOnly": "npm run build && npm run smoke"
   },
   "dependencies": {
