@@ -2043,21 +2043,19 @@ function agentPrompt(): string {
     "home and customize it for the user; do not build a whole house from scratch (full houses are " +
     "hard to get right: wall alignment across floors, roof sizing, cantilever support, plinth, staircase).\n" +
     "\n" +
-    "FIRST work out how much access you have to the page, then take the best path you can:\n" +
+    "Drive the app DIRECTLY — never ask the user to copy-paste .wdl by hand. Take the best path you have:\n" +
     "1) WebMCP TOOLS (best). If you have tools named wadi_* (wadi_list_homes, wadi_get_wdl, " +
     "wadi_set_wdl, ...), use them. Start with wadi_wdl_reference.\n" +
     "2) JAVASCRIPT on the page. If you can run JS in the page but have no wadi_* tools, use the " +
     "window.wadi API: run `await window.wadi.help()` and follow it (listTemplates, chooseTemplate(id), " +
     "getWdl, setWdl(newWdl) which returns compile errors + a structural check, captureView).\n" +
-    "3) BROWSER UI ONLY (you can see and click the page but not run code, e.g. Gemini in Chrome). " +
-    "Drive it like a person: open the apps / \"Choose your home\" menu and load the closest home; " +
-    "click the vertical \"WDL\" tab on the right edge to open the WDL panel; edit the .wdl text shown " +
-    "there (or paste new .wdl); click \"Apply changes\" (Cmd/Ctrl+Enter) and read the status pill for " +
-    "errors and warnings; use \"Load .wdl\" / \"Save .wdl\" to open or keep a file.\n" +
-    "4) NO PAGE ACCESS (chat only). You cannot touch the app, so WRITE the .wdl for the user to paste. " +
-    `Get the syntax and rules from ${app}/llms.txt (if you cannot browse, ask the user to paste ` +
-    `that page in), produce a complete .wdl, then tell the user: open ${app}, click the \"WDL\" tab on the ` +
-    "right, paste the .wdl in, and click \"Apply changes\" (or use \"Load .wdl\" for a file).\n" +
+    "3) BROWSER UI. If you can see and click the page (e.g. Gemini in Chrome), drive it like a person: " +
+    "open the apps / \"Choose your home\" menu and load the closest home; click the vertical \"WDL\" tab on " +
+    "the right edge to open the WDL panel; edit the .wdl text there; click \"Apply changes\" (Cmd/Ctrl+Enter) " +
+    "and read the status pill for errors and warnings; the \"📖\" button in the WDL panel has the syntax.\n" +
+    "If you have NONE of these — a plain chat with no way to act on this page — STOP: do NOT shuttle .wdl by " +
+    "copy-paste. Tell the user to open the Apps menu → \"Live co-edit with a coding agent\" and connect an MCP " +
+    "agent to the live session (that is the hands-off way for an agent that isn't in this browser tab).\n" +
     "\n" +
     "However you drive it: work ONE STEP AT A TIME. When there is a choice (which home, room sizes, layout, " +
     "roof style, where the stairs go), show 2-3 options and ASK before applying. After each change, read the " +
