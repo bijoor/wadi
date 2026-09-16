@@ -295,6 +295,9 @@
             text-align: left; cursor: pointer; color: inherit;
         }
         .apps-item:hover { background: rgba(184,80,40,0.09); }
+        /* Section caption grouping the two "work with an AI agent" items. */
+        .apps-group { margin: 8px 4px 2px; padding-top: 8px; border-top: 1px solid rgba(44,42,38,0.09);
+            font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #9a9186; }
         .apps-ico { flex: none; width: 34px; height: 34px; display: grid; place-items: center;
             border-radius: 8px; background: #F5F1E8; color: #2C2A26; border: 1px solid rgba(44,42,38,0.1); }
         .apps-text { display: flex; flex-direction: column; line-height: 1.25; }
@@ -306,6 +309,7 @@
             .apps-text b { color: #ece7df; }
             .apps-text small { color: #b3a99b; }
             .apps-item:hover { background: rgba(184,80,40,0.22); }
+            .apps-group { color: #8a8175; border-top-color: rgba(236,231,223,0.12); }
         }
         /* Group that holds the actual buttons; hamburger toggles it on
            narrow screens. */
@@ -2286,7 +2290,20 @@
                       </span>
                       <span class="apps-text"><b>Staircase explorer</b><small>Live plan + elevation</small></span>
                     </button>
-                    <button id="apps-item-agent" class="apps-item" type="button" role="menuitem" title="Copy a prompt that lets any AI agent design a house here (WebMCP, JavaScript, browser UI, or chat)">
+                    <div class="apps-group" role="presentation">Work with an AI agent</div>
+                    <button id="apps-item-coedit" class="apps-item" type="button" role="menuitem" title="Connect an MCP agent (Antigravity, Claude Desktop, Cursor…) to a live session and watch it edit the design in real time">
+                      <span class="apps-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 3 v4"/>
+                          <circle cx="12" cy="12" r="3.2" fill="#B85028" stroke="none"/>
+                          <path d="M12 12 m-7 0 a7 7 0 1 0 14 0" opacity="0.5"/>
+                          <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+                          <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+                        </svg>
+                      </span>
+                      <span class="apps-text"><b>Live co-edit (MCP agent)</b><small>Antigravity, Claude Desktop, Cursor… connect and build it live while you watch</small></span>
+                    </button>
+                    <button id="apps-item-agent" class="apps-item" type="button" role="menuitem" title="Copy a ready-made prompt to paste into any AI agent — no setup needed (works for browser agents and plain chat)">
                       <span class="apps-ico" aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                           <rect x="4" y="8" width="16" height="11" rx="2.5"/>
@@ -2297,19 +2314,7 @@
                           <line x1="9.5" y1="16.5" x2="14.5" y2="16.5"/>
                         </svg>
                       </span>
-                      <span class="apps-text"><b>Use with your AI agent</b><small id="apps-item-agent-sub">Copy a prompt for any agent: WebMCP, JavaScript, browser, or chat</small></span>
-                    </button>
-                    <button id="apps-item-coedit" class="apps-item" type="button" role="menuitem" title="Start a live session an agent can edit while you watch it render">
-                      <span class="apps-ico" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M12 3 v4"/>
-                          <circle cx="12" cy="12" r="3.2" fill="#B85028" stroke="none"/>
-                          <path d="M12 12 m-7 0 a7 7 0 1 0 14 0" opacity="0.5"/>
-                          <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
-                          <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/>
-                        </svg>
-                      </span>
-                      <span class="apps-text"><b>Co-edit live with an agent</b><small>Watch an agent build the design in real time</small></span>
+                      <span class="apps-text"><b>Copy a prompt (any agent)</b><small id="apps-item-agent-sub">Paste into ChatGPT, Claude, Gemini, or a browser agent — no setup</small></span>
                     </button>
                   </div>
                 </div>
