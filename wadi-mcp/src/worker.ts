@@ -136,6 +136,13 @@ export default {
       return new Response(resp.body, { status: resp.status, headers: h });
     }
     // Everything else → the MCP container (stateless server is one shared instance).
-    return getContainer(env.WADI_MCP_CONTAINER, "singleton").fetch(request);
+    // Tell the container which relay to push session updates to — THIS worker's own
+    // public origin — so each deployment (mcp.wadi.house, mcp-dev.wadi.house) pushes
+    // back to its OWN SessionRelay instead of a hardcoded default. Without this, the
+    // fork container would push to mcp.wadi.house while the fork app waits on
+    // mcp-dev.wadi.house → "0 app viewers connected".
+    const headers = new Headers(request.headers);
+    headers.set("x-wadi-session-base", url.origin);
+    return getContainer(env.WADI_MCP_CONTAINER, "singleton").fetch(new Request(request, { headers }));
   },
 };

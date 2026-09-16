@@ -63,7 +63,12 @@ const httpServer = createServer(async (req, res) => {
     // Stateless: one server + transport per request. enableJsonResponse returns a
     // plain application/json reply (no SSE stream), which suits request/response
     // tools and simple remote clients.
-    const server = createWadiMcpServer({ appBridge: false, fsPaths: false, sessionBaseUrl: SESSION_BASE });
+    // The worker in front sets `x-wadi-session-base` to its own public origin so the
+    // session tools push back to the SAME relay this request came through (main or
+    // fork). Falls back to the env/default for local dev where there is no worker.
+    const hdr = req.headers["x-wadi-session-base"];
+    const sessionBaseUrl = (typeof hdr === "string" && hdr) ? hdr.replace(/\/$/, "") : SESSION_BASE;
+    const server = createWadiMcpServer({ appBridge: false, fsPaths: false, sessionBaseUrl });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
