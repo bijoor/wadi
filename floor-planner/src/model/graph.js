@@ -83,3 +83,19 @@ export function analyze(model) {
     remainingArea: plotArea - roomArea,
   }
 }
+
+// Count the HARD layout errors across every floor: rooms overlapping, and rooms
+// poking outside the plot. Checked PER FLOOR (floorView) so rooms stacked at the
+// same footprint on different floors are not counted as overlaps. Unsatisfied
+// adjacency links are a softer intent warning, not a broken layout, so they do
+// not count here. Used to gate the live push to Wadi — a broken layout should not
+// be broadcast.
+export function layoutErrorCount(model) {
+  const floors = model.floors && model.floors.length ? model.floors : [{ id: undefined }]
+  let n = 0
+  for (const f of floors) {
+    const r = analyze(floorView(model, f.id))
+    n += r.overlaps.length + r.outOfPlot.length
+  }
+  return n
+}

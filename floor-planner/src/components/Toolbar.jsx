@@ -1,7 +1,7 @@
 import React from 'react'
 import { saveModel, saveModelAs, openModel, clearFileHandle, exportSVG } from '../utils/storage.js'
 import { buildSVG, buildSheetsSVG } from '../utils/svgExport.js'
-import { floorView } from '../model/graph.js'
+import { floorView, layoutErrorCount } from '../model/graph.js'
 import { downloadWadi, openInWadi } from '../export/toWadi.js'
 import { broadcastModel, liveSupported, probeWadi } from '../export/livePlanner.js'
 
@@ -18,19 +18,23 @@ export default function Toolbar({ state, dispatch, onAuthor, showFurniture, onTo
   // Live sync to an open Wadi tab (same browser) — no session code, no relay.
   const [live, setLive] = React.useState(false)
   const [wadiUp, setWadiUp] = React.useState(null) // null=unknown, true/false
+  // A layout with overlaps / rooms outside the plot is broken — don't push it to
+  // Wadi. Only broadcast once the layout is clean again.
+  const errors = layoutErrorCount(state)
 
-  // While live, broadcast the WDL to Wadi on every change (debounced).
+  // While live, broadcast the WDL to Wadi on every change (debounced) — but only
+  // while the layout has no errors.
   React.useEffect(() => {
-    if (!live) return
+    if (!live || errors > 0) return
     const t = setTimeout(() => broadcastModel(state), 300)
     return () => clearTimeout(t)
-  }, [live, state])
+  }, [live, state, errors])
 
   function toggleLive() {
     if (!liveSupported()) return
     const next = !live
     setLive(next)
-    if (next) { broadcastModel(state); probeWadi(setWadiUp) } else setWadiUp(null)
+    if (next) { if (errors === 0) broadcastModel(state); probeWadi(setWadiUp) } else setWadiUp(null)
   }
   const VIEW_MODES = [
     ['single', '▭', 'Single', 'Edit one floor'],
@@ -178,8 +182,10 @@ export default function Toolbar({ state, dispatch, onAuthor, showFurniture, onTo
               {live ? '⚡ Live: on' : '⚡ Live to Wadi'}
             </button>
             {live && (
-              <span className="push-msg" style={{ marginLeft: 6, fontSize: 12, opacity: 0.85 }}>
-                {wadiUp === false ? 'open Wadi (/app) to see it' : wadiUp === true ? '● Wadi connected' : 'syncing…'}
+              <span className="push-msg" style={{ marginLeft: 6, fontSize: 12, opacity: 0.85, color: errors > 0 ? '#c0392b' : undefined }}>
+                {errors > 0
+                  ? `${errors} layout error${errors === 1 ? '' : 's'} — fix to push`
+                  : wadiUp === false ? 'open Wadi (/app) to see it' : wadiUp === true ? '● Wadi connected' : 'syncing…'}
               </span>
             )}
           </span>
