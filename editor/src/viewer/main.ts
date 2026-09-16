@@ -2030,45 +2030,55 @@ function wireAppsMenu(): void {
 // clicking the UI like a person, or, with no page access, just writing .wdl for the user
 // to paste). The detailed per-path instructions still come from the app (help() / llms.txt),
 // so the copied text stays short.
-const AGENT_PROMPT =
-  "You are helping someone design a house on wadi.house, a live 3D home designer. " +
-  "Wadi houses are written in a small text design language called .wdl. Start from a ready-made " +
-  "home and customize it for the user; do not build a whole house from scratch (full houses are " +
-  "hard to get right: wall alignment across floors, roof sizing, cantilever support, plinth, staircase).\n" +
-  "\n" +
-  "FIRST work out how much access you have to the page, then take the best path you can:\n" +
-  "1) WebMCP TOOLS (best). If you have tools named wadi_* (wadi_list_homes, wadi_get_wdl, " +
-  "wadi_set_wdl, ...), use them. Start with wadi_wdl_reference.\n" +
-  "2) JAVASCRIPT on the page. If you can run JS in the page but have no wadi_* tools, use the " +
-  "window.wadi API: run `await window.wadi.help()` and follow it (listTemplates, chooseTemplate(id), " +
-  "getWdl, setWdl(newWdl) which returns compile errors + a structural check, captureView).\n" +
-  "3) BROWSER UI ONLY (you can see and click the page but not run code, e.g. Gemini in Chrome). " +
-  "Drive it like a person: open the apps / \"Choose your home\" menu and load the closest home; " +
-  "click the vertical \"WDL\" tab on the right edge to open the WDL panel; edit the .wdl text shown " +
-  "there (or paste new .wdl); click \"Apply changes\" (Cmd/Ctrl+Enter) and read the status pill for " +
-  "errors and warnings; use \"Load .wdl\" / \"Save .wdl\" to open or keep a file.\n" +
-  "4) NO PAGE ACCESS (chat only). You cannot touch the app, so WRITE the .wdl for the user to paste. " +
-  "Get the syntax and rules from https://wadi.house/llms.txt (if you cannot browse, ask the user to paste " +
-  "that page in), produce a complete .wdl, then tell the user: open wadi.house, click the \"WDL\" tab on the " +
-  "right, paste the .wdl in, and click \"Apply changes\" (or use \"Load .wdl\" for a file).\n" +
-  "\n" +
-  "However you drive it: work ONE STEP AT A TIME. When there is a choice (which home, room sizes, layout, " +
-  "roof style, where the stairs go), show 2-3 options and ASK before applying. After each change, read the " +
-  "structural warnings and fix them before telling the user it is ready.";
+// The "copy a prompt" text — built from the LIVE app origin so it points at whichever
+// deployment is open (the fork at wadi-dev.pages.dev, main at wadi.house, or localhost),
+// not a hardcoded host. It is for an agent that can drive THIS browser tab (WebMCP / JS /
+// clicking) or a chat you paste into (it writes the .wdl for you).
+function agentPrompt(): string {
+  let app = "https://wadi.house";
+  try { if (location.origin && /^https?:/.test(location.origin)) app = location.origin; } catch { /* */ }
+  return (
+    `You are helping someone design a house in Wadi, a live 3D home designer (the app is open at ${app}). ` +
+    "Wadi houses are written in a small text design language called .wdl. Start from a ready-made " +
+    "home and customize it for the user; do not build a whole house from scratch (full houses are " +
+    "hard to get right: wall alignment across floors, roof sizing, cantilever support, plinth, staircase).\n" +
+    "\n" +
+    "FIRST work out how much access you have to the page, then take the best path you can:\n" +
+    "1) WebMCP TOOLS (best). If you have tools named wadi_* (wadi_list_homes, wadi_get_wdl, " +
+    "wadi_set_wdl, ...), use them. Start with wadi_wdl_reference.\n" +
+    "2) JAVASCRIPT on the page. If you can run JS in the page but have no wadi_* tools, use the " +
+    "window.wadi API: run `await window.wadi.help()` and follow it (listTemplates, chooseTemplate(id), " +
+    "getWdl, setWdl(newWdl) which returns compile errors + a structural check, captureView).\n" +
+    "3) BROWSER UI ONLY (you can see and click the page but not run code, e.g. Gemini in Chrome). " +
+    "Drive it like a person: open the apps / \"Choose your home\" menu and load the closest home; " +
+    "click the vertical \"WDL\" tab on the right edge to open the WDL panel; edit the .wdl text shown " +
+    "there (or paste new .wdl); click \"Apply changes\" (Cmd/Ctrl+Enter) and read the status pill for " +
+    "errors and warnings; use \"Load .wdl\" / \"Save .wdl\" to open or keep a file.\n" +
+    "4) NO PAGE ACCESS (chat only). You cannot touch the app, so WRITE the .wdl for the user to paste. " +
+    `Get the syntax and rules from ${app}/llms.txt (if you cannot browse, ask the user to paste ` +
+    `that page in), produce a complete .wdl, then tell the user: open ${app}, click the \"WDL\" tab on the ` +
+    "right, paste the .wdl in, and click \"Apply changes\" (or use \"Load .wdl\" for a file).\n" +
+    "\n" +
+    "However you drive it: work ONE STEP AT A TIME. When there is a choice (which home, room sizes, layout, " +
+    "roof style, where the stairs go), show 2-3 options and ASK before applying. After each change, read the " +
+    "structural warnings and fix them before telling the user it is ready."
+  );
+}
 
 async function copyAgentPrompt(): Promise<void> {
   const sub = document.getElementById("apps-item-agent-sub");
   const original = sub?.textContent ?? "";
+  const prompt = agentPrompt();
   let ok = false;
   try {
-    await navigator.clipboard.writeText(AGENT_PROMPT);
+    await navigator.clipboard.writeText(prompt);
     ok = true;
   } catch {
     // Clipboard API can be blocked (permission / insecure context) — fall back to
     // a hidden textarea + execCommand so the copy still works.
     try {
       const ta = document.createElement("textarea");
-      ta.value = AGENT_PROMPT;
+      ta.value = prompt;
       ta.style.position = "fixed";
       ta.style.opacity = "0";
       document.body.appendChild(ta);
@@ -2128,8 +2138,9 @@ interface LiveSession {
 let liveSession: LiveSession | null = null;
 
 const liveSessionPrompt = (code: string): string =>
-  `You are connected to a LIVE Wadi co-editing session (wadi.house). Use the Wadi MCP ` +
-  `server at ${MCP_ORIGIN}/mcp with session code "${code}": call ` +
+  `You are connected to a LIVE Wadi co-editing session. Add the Wadi MCP server at ` +
+  `${MCP_ORIGIN}/mcp (a remote/HTTP MCP server — no install; if your client only takes a ` +
+  `command, use: npx -y mcp-remote ${MCP_ORIGIN}/mcp). Then, with session code "${code}": call ` +
   `wadi_session_get({session:"${code}"}) to read the current model, edit the .wdl, and ` +
   `wadi_session_set({session:"${code}", wdl}) to push each change — I am watching it render ` +
   `live in the Wadi app. To reuse a component, register it with ` +
