@@ -48,7 +48,8 @@ export class SessionRelay {
         try {
           const raw = typeof evt.data === "string" ? evt.data : "";
           const msg = JSON.parse(raw) as { type?: string; wdl?: string; modules?: Record<string, string> };
-          if (msg?.type === "wdl" && typeof msg.wdl === "string") this.setWdl(msg.wdl, server);
+          if (msg?.type === "ping") { try { server.send(JSON.stringify({ type: "pong" })); } catch { /* */ } }
+          else if (msg?.type === "wdl" && typeof msg.wdl === "string") this.setWdl(msg.wdl, server);
           else if (msg?.type === "modules" && msg.modules && typeof msg.modules === "object") this.setModules(msg.modules, server);
         } catch {
           /* ignore malformed frames */

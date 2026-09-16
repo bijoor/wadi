@@ -2114,12 +2114,16 @@ function randomSessionCode(): string {
 
 interface LiveSession {
   code: string;
-  ws: WebSocket;
+  ws: WebSocket | null;
   lastWdl: string; // the last WDL sent OR applied — guards the echo loop
   lastModules: string; // JSON of the last module set sent OR applied — same guard
   updates: number;
   connected: boolean;
   error?: string; // set when an agent's pushed WDL fails to load in the app
+  stopped: boolean; // user pressed Stop → do not reconnect
+  pingTimer?: number; // keepalive interval (prevents idle NAT/edge drops)
+  reconnectTimer?: number; // pending reconnect
+  reconnectAttempts: number; // backoff counter
 }
 let liveSession: LiveSession | null = null;
 
@@ -2135,24 +2139,45 @@ const liveSessionPrompt = (code: string): string =>
 function startLiveSession(): void {
   if (liveSession) return;
   const code = randomSessionCode();
+  liveSession = { code, ws: null, lastWdl: "", lastModules: "{}", updates: 0, connected: false, stopped: false, reconnectAttempts: 0 };
+  connectSession(true);
+  renderLivePanel();
+}
+
+// (Re)open the session WebSocket. `seed` sends the app's current model into a FRESH
+// session (only on the first connect — on a reconnect the relay already holds the
+// latest, so re-seeding would revert an agent edit made while we were away).
+function connectSession(seed: boolean): void {
+  if (!liveSession || liveSession.stopped) return;
+  const code = liveSession.code;
   const ws = new WebSocket(`${MCP_ORIGIN.replace(/^http/, "ws")}/session/${code}/ws`);
-  liveSession = { code, ws, lastWdl: "", lastModules: "{}", updates: 0, connected: false };
+  liveSession.ws = ws;
 
   ws.addEventListener("open", () => {
     if (!liveSession) return;
     liveSession.connected = true;
-    // Seed the session with the current model + its custom modules so the agent reads both.
-    const st = useConfigStore.getState();
-    if (st.wdl) { liveSession.lastWdl = st.wdl; try { ws.send(JSON.stringify({ type: "wdl", wdl: st.wdl })); } catch { /* */ } }
-    const modJson = JSON.stringify(st.modules ?? {});
-    liveSession.lastModules = modJson;
-    if (modJson !== "{}") { try { ws.send(JSON.stringify({ type: "modules", modules: st.modules })); } catch { /* */ } }
+    liveSession.reconnectAttempts = 0;
+    if (seed) {
+      // Seed the session with the current model + its custom modules so the agent reads both.
+      const st = useConfigStore.getState();
+      if (st.wdl) { liveSession.lastWdl = st.wdl; try { ws.send(JSON.stringify({ type: "wdl", wdl: st.wdl })); } catch { /* */ } }
+      const modJson = JSON.stringify(st.modules ?? {});
+      liveSession.lastModules = modJson;
+      if (modJson !== "{}") { try { ws.send(JSON.stringify({ type: "modules", modules: st.modules })); } catch { /* */ } }
+    }
+    // Keepalive: send a ping every 25s so an idle connection isn't dropped by a NAT /
+    // edge timeout (which was leaving the app silently disconnected → "0 viewers").
+    if (liveSession.pingTimer) clearInterval(liveSession.pingTimer);
+    liveSession.pingTimer = window.setInterval(() => {
+      try { ws.send(JSON.stringify({ type: "ping" })); } catch { /* */ }
+    }, 25000);
     renderLivePanel();
   });
   ws.addEventListener("message", (evt) => {
     if (!liveSession) return;
     try {
       const msg = JSON.parse(typeof evt.data === "string" ? evt.data : "") as { type?: string; wdl?: string; wadi_version?: number; modules?: Record<string, string> };
+      if (msg?.type === "pong" || msg?.type === "ping" || msg?.type === "hello") return; // keepalive / greeting
       if (msg?.type === "modules" && msg.modules && typeof msg.modules === "object") {
         const json = JSON.stringify(msg.modules);
         if (json !== liveSession.lastModules) {
@@ -2175,9 +2200,28 @@ function startLiveSession(): void {
       }
     } catch { /* ignore malformed frames */ }
   });
-  ws.addEventListener("close", () => { if (liveSession) { liveSession.connected = false; renderLivePanel(); } });
-  ws.addEventListener("error", () => { if (liveSession) { liveSession.connected = false; renderLivePanel(); } });
-  renderLivePanel();
+  const onDown = (): void => {
+    if (!liveSession || liveSession.ws !== ws) return; // ignore a stale socket
+    liveSession.connected = false;
+    if (liveSession.pingTimer) { clearInterval(liveSession.pingTimer); liveSession.pingTimer = undefined; }
+    renderLivePanel();
+    if (!liveSession.stopped) scheduleReconnect();
+  };
+  ws.addEventListener("close", onDown);
+  ws.addEventListener("error", onDown);
+}
+
+// Reconnect to the SAME session code after a dropped socket, with exponential backoff
+// (1s → 15s). The relay resends the current model on connect, so the app re-syncs.
+function scheduleReconnect(): void {
+  if (!liveSession || liveSession.stopped || liveSession.reconnectTimer) return;
+  const delay = Math.min(1000 * 2 ** liveSession.reconnectAttempts, 15000);
+  liveSession.reconnectAttempts++;
+  liveSession.reconnectTimer = window.setTimeout(() => {
+    if (!liveSession) return;
+    liveSession.reconnectTimer = undefined;
+    connectSession(false);
+  }, delay);
 }
 
 // Apply an agent's pushed WDL to the live model; on a compile/schema failure,
@@ -2209,7 +2253,10 @@ async function applyIncomingModules(modules: Record<string, string>): Promise<vo
 
 function stopLiveSession(): void {
   if (!liveSession) return;
-  try { liveSession.ws.close(); } catch { /* */ }
+  liveSession.stopped = true;
+  if (liveSession.pingTimer) clearInterval(liveSession.pingTimer);
+  if (liveSession.reconnectTimer) clearTimeout(liveSession.reconnectTimer);
+  try { liveSession.ws?.close(); } catch { /* */ }
   liveSession = null;
   const panel = document.getElementById("live-session-panel");
   if (panel) panel.hidden = true;
@@ -2221,7 +2268,7 @@ function pushLiveSession(wdl: string): void {
   if (!liveSession || !liveSession.connected) return;
   if (!wdl || wdl === liveSession.lastWdl) return;
   liveSession.lastWdl = wdl;
-  try { liveSession.ws.send(JSON.stringify({ type: "wdl", wdl })); } catch { /* */ }
+  try { liveSession.ws?.send(JSON.stringify({ type: "wdl", wdl })); } catch { /* */ }
 }
 
 // Push a user- (or agent-) made module change to the session (same echo guard), so the
@@ -2231,7 +2278,7 @@ function pushLiveSessionModules(modules: Record<string, string>): void {
   const json = JSON.stringify(modules ?? {});
   if (json === liveSession.lastModules) return;
   liveSession.lastModules = json;
-  try { liveSession.ws.send(JSON.stringify({ type: "modules", modules })); } catch { /* */ }
+  try { liveSession.ws?.send(JSON.stringify({ type: "modules", modules })); } catch { /* */ }
 }
 
 function renderLivePanel(flash = false): void {
@@ -2239,7 +2286,7 @@ function renderLivePanel(flash = false): void {
   if (!panel || !liveSession) return;
   panel.hidden = false;
   const status = !liveSession.connected
-    ? "connecting…"
+    ? (liveSession.reconnectAttempts > 0 ? "reconnecting…" : "connecting…")
     : liveSession.updates > 0
       ? `agent edited · ${liveSession.updates} update${liveSession.updates === 1 ? "" : "s"}`
       : "waiting for the agent…";
