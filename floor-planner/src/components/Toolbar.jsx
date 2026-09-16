@@ -3,7 +3,7 @@ import { saveModel, saveModelAs, openModel, clearFileHandle, exportSVG } from '.
 import { buildSVG, buildSheetsSVG } from '../utils/svgExport.js'
 import { floorView } from '../model/graph.js'
 import { downloadWadi, openInWadi } from '../export/toWadi.js'
-import { pushModelToSession, getSessionCode, setSessionCode } from '../export/session.js'
+import { broadcastModel, liveSupported, probeWadi } from '../export/livePlanner.js'
 
 function docFrom(state) {
   return {
@@ -15,19 +15,22 @@ function docFrom(state) {
 
 export default function Toolbar({ state, dispatch, onAuthor, showFurniture, onToggleFurniture }) {
   const { tool, history, floors, activeFloor, viewMode } = state
-  const [sessCode, setSessCode] = React.useState(getSessionCode())
-  const [pushMsg, setPushMsg] = React.useState('')
+  // Live sync to an open Wadi tab (same browser) — no session code, no relay.
+  const [live, setLive] = React.useState(false)
+  const [wadiUp, setWadiUp] = React.useState(null) // null=unknown, true/false
 
-  async function handlePush() {
-    setSessionCode(sessCode.trim())
-    setPushMsg('Pushing…')
-    try {
-      const { clients } = await pushModelToSession(docFrom(state), sessCode)
-      setPushMsg(clients > 0 ? `✓ Pushed to ${clients} viewer${clients > 1 ? 's' : ''}` : '✓ Pushed (no viewer connected yet)')
-    } catch (e) {
-      setPushMsg('✖ ' + (e.message || e))
-    }
-    setTimeout(() => setPushMsg(''), 6000)
+  // While live, broadcast the WDL to Wadi on every change (debounced).
+  React.useEffect(() => {
+    if (!live) return
+    const t = setTimeout(() => broadcastModel(state), 300)
+    return () => clearTimeout(t)
+  }, [live, state])
+
+  function toggleLive() {
+    if (!liveSupported()) return
+    const next = !live
+    setLive(next)
+    if (next) { broadcastModel(state); probeWadi(setWadiUp) } else setWadiUp(null)
   }
   const VIEW_MODES = [
     ['single', '▭', 'Single', 'Edit one floor'],
@@ -165,21 +168,22 @@ export default function Toolbar({ state, dispatch, onAuthor, showFurniture, onTo
         >
           Open in Wadi →
         </button>
-        <span className="live-push" title="Push this design's WDL to a live Wadi co-edit session so the 3-D model updates live. Start a live session in the Wadi app and paste its code here.">
-          <input
-            type="text"
-            value={sessCode}
-            onChange={(e) => setSessCode(e.target.value)}
-            placeholder="session code"
-            size={9}
-            spellCheck={false}
-            style={{ width: 78, marginLeft: 6 }}
-          />
-          <button onClick={handlePush} disabled={!sessCode.trim()} title="Push the current design's WDL to the live session">
-            ⚡ Push live
-          </button>
-          {pushMsg && <span className="push-msg" style={{ marginLeft: 6, fontSize: 12, opacity: 0.85 }}>{pushMsg}</span>}
-        </span>
+        {liveSupported() && (
+          <span className="live-push" title="Live-update the 3-D model in an open Wadi tab as you sketch — same browser, no session code needed">
+            <button
+              className={live ? 'primary' : ''}
+              onClick={toggleLive}
+              title={live ? 'Stop live-updating Wadi' : 'Live-update an open Wadi tab as you sketch'}
+            >
+              {live ? '⚡ Live: on' : '⚡ Live to Wadi'}
+            </button>
+            {live && (
+              <span className="push-msg" style={{ marginLeft: 6, fontSize: 12, opacity: 0.85 }}>
+                {wadiUp === false ? 'open Wadi (/app) to see it' : wadiUp === true ? '● Wadi connected' : 'syncing…'}
+              </span>
+            )}
+          </span>
+        )}
         <button
           onClick={() => {
             if (confirm('Reset to the sample apartment? This replaces your current plan.')) {

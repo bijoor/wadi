@@ -484,6 +484,10 @@ async function bootViewer(): Promise<void> {
   // Offer to migrate old-format direct room furniture into containers on load.
   wireFurnitureMigration();
 
+  // Floor-planner live sync (same-origin BroadcastChannel): render WDL the planner
+  // broadcasts as it is sketched, no session/relay/copy-paste.
+  wirePlannerLiveSync();
+
   // Viewer chrome (embed mode + edit-mode flag). Personas are retired — one mode.
   applyViewerChrome();
 
@@ -2249,6 +2253,25 @@ async function applyIncomingWdl(wdl: string, wadiVersion?: number): Promise<void
     ? "the agent's edit didn't load: " + (res.errors?.[0] ?? "compile error")
     : undefined;
   renderLivePanel();
+}
+
+// Floor-planner LIVE sync: the planner (same origin, /planner) broadcasts its WDL on a
+// BroadcastChannel as it is sketched; render it here via the same apply path as a
+// co-edit push — no session code, no relay, no copy-paste. Also answer the planner's
+// "hello" so it can show whether a Wadi tab is listening.
+function wirePlannerLiveSync(): void {
+  let ch: BroadcastChannel;
+  try { ch = new BroadcastChannel("wadi:planner-live"); } catch { return; }
+  let lastWdl = "";
+  ch.onmessage = (e) => {
+    const d = e.data as { type?: string; wdl?: string; wadi_version?: number } | undefined;
+    if (!d) return;
+    if (d.type === "planner-hello") { try { ch.postMessage({ type: "wadi-ack" }); } catch { /* */ } return; }
+    if (d.type === "wdl" && typeof d.wdl === "string" && d.wdl !== lastWdl) {
+      lastWdl = d.wdl;
+      void applyIncomingWdl(d.wdl, d.wadi_version);
+    }
+  };
 }
 
 // Apply an agent's pushed module set: register it and recompile the live model so an
