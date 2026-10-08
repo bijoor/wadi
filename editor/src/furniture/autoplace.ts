@@ -51,6 +51,11 @@ export interface Piece {
   gap_y?: number;
   rotation?: number; // explicit yaw°; absent = anchorFacing(anchor)
   scale?: number;
+  // Height above the floor base (project units, 0 default). A piece lifted clear of
+  // another by its z_offset is STACKED, not colliding (e.g. a TV on a TV unit), so the
+  // overlap tests below ignore a plan overlap when the two pieces' vertical extents are
+  // disjoint. See piecesStacked.
+  z_offset?: number;
   // Optional footprint override in PROJECT UNITS (pre-rotation, scale already baked in),
   // for a PARAMETRIC furniture element (e.g. a `counter` sized from length/depth) that has
   // no metric GLB asset. When present the engine uses it verbatim; when absent it falls
@@ -96,6 +101,7 @@ export interface PlacedItem {
   gap_y?: number;
   rotation?: number;
   scale?: number;
+  z_offset?: number;
 }
 
 // ---- anchors -----------------------------------------------------------------------
@@ -376,10 +382,35 @@ export function placePieces(pieces: Piece[], rect: RoomRect, wallT: number, unit
   return result;
 }
 
+// A piece's vertical extent in PROJECT UNITS: [z0, z1]. z0 = z_offset (0 default); the
+// height comes from the asset's metric height (dimensions[1], scaled). A parametric piece
+// that supplies only a plan footprint (e.g. a counter) has no known height → z1 is null.
+function pieceZSpan(piece: Piece, units?: Units): { z0: number; z1: number | null } {
+  const z0 = piece.z_offset ?? 0;
+  const hM = piece.footprint ? undefined : piece.asset?.dimensions?.[1];
+  if (typeof hM === "number" && hM > 0) return { z0, z1: z0 + metersToUnits(hM, units) * (piece.scale ?? 1) };
+  return { z0, z1: null };
+}
+
+// Are two pieces vertically separated — one stacked clear of the other — so a plan overlap
+// between them is intentional, not a collision (a TV sitting on a TV unit)? With known
+// heights this is the true 3-D test: their [z0,z1] spans don't overlap. When a height is
+// unknown (a parametric piece), fall back to trusting an explicit z_offset DIFFERENCE as the
+// author's stacking intent, so same-level pieces still collide but a lifted one does not.
+const Z_MARGIN = 2; // units of slack, matching OVERLAP_MARGIN
+export function piecesStacked(a: Piece, b: Piece, units?: Units): boolean {
+  const za = pieceZSpan(a, units), zb = pieceZSpan(b, units);
+  if (za.z1 != null && zb.z1 != null) return za.z0 >= zb.z1 - Z_MARGIN || zb.z0 >= za.z1 - Z_MARGIN;
+  return Math.abs(za.z0 - zb.z0) > Z_MARGIN;
+}
+
 // Do two placed pieces' plan footprints overlap by more than a small margin (in both axes)?
-// Mirrors the planner's validateLayout / check-room-layouts overlap test.
+// Mirrors the planner's validateLayout / check-room-layouts overlap test. A pair that is
+// vertically stacked (piecesStacked) never counts as a collision, however much they overlap
+// in plan.
 const OVERLAP_MARGIN = 2; // units of slack: a sliver of touching is not a collision
 export function piecesCollide(a: Piece, b: Piece, rect: RoomRect, wallT: number, units?: Units): boolean {
+  if (piecesStacked(a, b, units)) return false;
   const A = pieceFootprint(a, rect, wallT, units);
   const B = pieceFootprint(b, rect, wallT, units);
   const ox = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0);
@@ -414,7 +445,9 @@ export function validateLayout(
       const A = rects[a], B = rects[b];
       const ox = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0);
       const oy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0);
-      if (ox > margin && oy > margin) {
+      // A plan overlap between two pieces that are vertically stacked (one lifted clear of
+      // the other by its z_offset) is intentional, so it is not flagged.
+      if (ox > margin && oy > margin && !piecesStacked(pieces[a], pieces[b], units)) {
         flags[a].overlap = true;
         flags[b].overlap = true;
         overlaps.push({ a, b, ox: Math.round(ox), oy: Math.round(oy) });
@@ -533,6 +566,7 @@ function piecesToItems(pieces: Piece[]): PlacedItem[] {
     if (p.gap_y != null) it.gap_y = p.gap_y;
     if (p.rotation != null) it.rotation = p.rotation;
     if (p.scale != null) it.scale = p.scale;
+    if (p.z_offset != null) it.z_offset = p.z_offset;
     return it;
   });
 }

@@ -16,6 +16,8 @@ import {
   rotateLayoutCW,
   pieceFootprint,
   openingIntervals,
+  validateLayout,
+  piecesStacked,
   type Layout,
   type Piece,
   type FurnitureAsset,
@@ -244,5 +246,37 @@ describe("autoplaceRoom — end to end", () => {
 
   it("returns an empty result for a plain room (no layout of that type)", () => {
     expect(autoplaceRoom([], "bedroom", {}).items).toEqual([]);
+  });
+});
+
+// A piece lifted by z_offset sits ON another instead of colliding with it (a TV on a TV
+// unit). The overlap tests ignore a plan overlap when the vertical extents are disjoint.
+describe("vertical stacking — z_offset lets furniture overlap in plan", () => {
+  const assetH = (id: string, w: number, h: number, d: number): FurnitureAsset => ({ id, name: id, dimensions: [w, h, d] });
+  // A tv_unit 0.5 m tall and a tv 0.7 m tall, stacked at the same spot (full plan overlap).
+  const unit = (over: Partial<Piece> = {}): Piece => ({ asset: assetH("tv_unit", 1.5, 0.5, 0.4), anchor: "bottom-center", ...over });
+  const tv = (over: Partial<Piece> = {}): Piece => ({ asset: assetH("tv", 1.2, 0.7, 0.1), anchor: "bottom-center", ...over });
+
+  it("piecesStacked: a tv lifted above the unit's top is stacked; at the unit's level it is not", () => {
+    const unitTop = metersToUnits(0.5, UNITS); // ~16 units
+    expect(piecesStacked(unit(), tv({ z_offset: unitTop + 5 }), UNITS)).toBe(true);
+    expect(piecesStacked(unit(), tv({ z_offset: 2 }), UNITS)).toBe(false);
+    expect(piecesStacked(unit(), tv(), UNITS)).toBe(false); // both on the floor
+  });
+
+  it("validateLayout: a lifted, fully-overlapping piece is NOT flagged; at floor level it is", () => {
+    const unitTop = metersToUnits(0.5, UNITS);
+    const stacked = validateLayout([unit(), tv({ z_offset: unitTop + 5 })], ROOM, WALL_T, UNITS);
+    expect(stacked.overlaps).toHaveLength(0);
+    expect(stacked.flags.some((f) => f.overlap)).toBe(false);
+
+    const onFloor = validateLayout([unit(), tv()], ROOM, WALL_T, UNITS);
+    expect(onFloor.overlaps).toHaveLength(1);
+  });
+
+  it("piecesStacked: with unknown heights, a z_offset difference marks a stack", () => {
+    // The default test `asset` has height 0 (unknown) → fall back to the z_offset difference.
+    expect(piecesStacked(bed(), bed(), UNITS)).toBe(false); // both on the floor → collide
+    expect(piecesStacked(bed(), bed({ z_offset: 30 }), UNITS)).toBe(true);
   });
 });

@@ -39,6 +39,9 @@ interface DraftPiece {
   gap_x: number;
   gap_y: number;
   rotation?: number;
+  // Height above the floor base (project units). Lets a piece sit on top of another
+  // (a TV on a TV unit); a lifted piece is stacked, not overlapping (see validateLayout).
+  z_offset?: number;
   // item
   asset?: ItemAsset;
   // counter
@@ -108,6 +111,7 @@ function seedDraft(room: Any): DraftPiece[] {
       gap_x: Number(it.gap_x) || 0,
       gap_y: Number(it.gap_y) || 0,
       rotation: typeof it.rotation === "number" ? it.rotation : undefined,
+      z_offset: typeof it.z_offset === "number" ? it.z_offset : undefined,
     }));
   const counterPieces: DraftPiece[] = counters
     .filter((c) => c && (c.depth != null))
@@ -117,6 +121,7 @@ function seedDraft(room: Any): DraftPiece[] {
       gap_x: Number(c.gap_x) || 0,
       gap_y: Number(c.gap_y) || 0,
       rotation: typeof c.rotation === "number" ? c.rotation : undefined,
+      z_offset: typeof c.z_offset === "number" ? c.z_offset : undefined,
       length: typeof c.length === "number" ? c.length : undefined,
       depth: Number(c.depth), height: Number(c.height) || 36,
       cabinet: !!c.cabinet, sink: !!c.sink, hob: !!c.hob,
@@ -130,11 +135,13 @@ function draftToContainer(draft: DraftPiece[]): { items: Any[]; counters: Any[] 
     asset: d.asset, anchor: d.anchor,
     ...(d.gap_x ? { gap_x: d.gap_x } : {}), ...(d.gap_y ? { gap_y: d.gap_y } : {}),
     ...(typeof d.rotation === "number" ? { rotation: d.rotation } : {}),
+    ...(d.z_offset ? { z_offset: d.z_offset } : {}),
   }));
   const counters = draft.filter((d) => d.kind === "counter").map((d) => ({
     ...(d.name ? { name: d.name } : {}), anchor: d.anchor,
     ...(d.gap_x ? { gap_x: d.gap_x } : {}), ...(d.gap_y ? { gap_y: d.gap_y } : {}),
     ...(typeof d.rotation === "number" ? { rotation: d.rotation } : {}),
+    ...(d.z_offset ? { z_offset: d.z_offset } : {}),
     ...(typeof d.length === "number" ? { length: d.length } : {}),
     depth: d.depth, height: d.height,
     ...(d.cabinet ? { cabinet: true } : {}), ...(d.sink ? { sink: true } : {}), ...(d.hob ? { hob: true } : {}),
@@ -176,13 +183,13 @@ function draftToPieces(draft: DraftPiece[], rect: { w: number; l: number }, wall
       const w = typeof d.length === "number" ? d.length : wallSpanFor(d.anchor, rect, wallT);
       return {
         name: d.name, asset: COUNTER_ASSET as Any, anchor: d.anchor,
-        gap_x: d.gap_x, gap_y: d.gap_y, rotation: d.rotation,
+        gap_x: d.gap_x, gap_y: d.gap_y, rotation: d.rotation, z_offset: d.z_offset,
         footprint: { w, l: d.depth ?? 22 }, placement: "wall",
       };
     }
     return {
       name: d.asset?.name ?? d.name, asset: d.asset as Any,
-      anchor: d.anchor, gap_x: d.gap_x, gap_y: d.gap_y, rotation: d.rotation,
+      anchor: d.anchor, gap_x: d.gap_x, gap_y: d.gap_y, rotation: d.rotation, z_offset: d.z_offset,
     };
   });
 }
@@ -501,6 +508,16 @@ function FurnitureCatalogPanel() {
                   onClick={() => update(d.key, { rotation: r })}>{r}°</button>
               ))}
               <button className="fc-rb" onClick={() => update(d.key, { rotation: undefined })} title="Face by anchor">auto</button>
+            </div>
+            <div className="fc-lbl">Height off floor ({gapUnitLabel})</div>
+            <div className="fc-gap">
+              <label>Z<input type="number" step={gapStep}
+                title="Raise this piece to stack it on another (e.g. a TV on a TV unit). 0 = on the floor."
+                value={d.z_offset ? toGapDisplay(d.z_offset) : ""}
+                placeholder="0"
+                onChange={(e) => update(d.key, { z_offset: e.target.value === "" ? undefined : fromGapDisplay(e.target.value) })} /></label>
+              <button className="fc-gap-zero" title="Reset to the floor"
+                onClick={() => update(d.key, { z_offset: undefined })}>floor</button>
             </div>
             {d.kind === "counter" && (
               <>
