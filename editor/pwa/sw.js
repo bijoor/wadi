@@ -100,9 +100,13 @@ self.addEventListener("fetch", (event) => {
         } catch (_e) {
           /* ignore — the app shows a "couldn't read the shared file" notice */
         }
-        // 303 → the client GETs the shell; boot reads the stashed file.
+        // 303 → the client GETs the shell; boot reads the stashed file. Redirect to the
+        // scope ROOT ("./?shared=1" → /app/?shared=1), NOT "index.html?shared=1": the host
+        // (Cloudflare Pages) canonicalises /app/index.html with a 308 → /app/?shared=1, and
+        // that SW-redirect → server-308 chain fails the navigation inside the installed PWA
+        // on Android ("This site can't be reached"). The clean URL is served 200 directly.
         return Response.redirect(
-          new URL("index.html?shared=1", self.registration.scope).href,
+          new URL("./?shared=1", self.registration.scope).href,
           303,
         );
       })(),

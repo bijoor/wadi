@@ -20,7 +20,7 @@
 // Scope limits which PAGES it controls — not which requests it sees — so it
 // still intercepts the page's root-absolute and cross-origin fetches.
 
-const VERSION = "ccd31c27";
+const VERSION = "d50b20ce";
 const SHELL_CACHE = `wadi-shell-${VERSION}`;
 const RUNTIME_CACHE = `wadi-runtime-${VERSION}`;
 const PRECACHE = ["./","./index.html","./assets/viewer-B3Se60bj.js","./assets/viewer-CNC7AqOf.js","./assets/viewer-CYlZod6Y.css","./assets/viewer-C7OX1cfC.js","./assets/viewer-Dg025PwZ.js","./assets/viewer-1h8G1ACc.js","./assets/viewer-B8YfjKcI.js","./assets/viewer-ZENCLqvS.js","./assets/viewer-DbHEAebu.js","./assets/viewer-C15jy1Jz.js","./assets/viewer-DhgRfCu7.js","./assets/viewer-nhHFz6G2.js","./assets/viewer-ZsUNQkRv.js","./assets/viewer-DK187yTO.css","./assets/viewer-ExEC1PqS.js","./assets/viewer-BBbCiw-H.js","./assets/viewer-Dzzhg3vk.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.wadi","./templates/catalog.json","./templates/family_home.wadi","./templates/five_bedroom_villa.wadi","./templates/large_country_house.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","./templates/tiny_home_single_bedroom.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
@@ -100,9 +100,13 @@ self.addEventListener("fetch", (event) => {
         } catch (_e) {
           /* ignore — the app shows a "couldn't read the shared file" notice */
         }
-        // 303 → the client GETs the shell; boot reads the stashed file.
+        // 303 → the client GETs the shell; boot reads the stashed file. Redirect to the
+        // scope ROOT ("./?shared=1" → /app/?shared=1), NOT "index.html?shared=1": the host
+        // (Cloudflare Pages) canonicalises /app/index.html with a 308 → /app/?shared=1, and
+        // that SW-redirect → server-308 chain fails the navigation inside the installed PWA
+        // on Android ("This site can't be reached"). The clean URL is served 200 directly.
         return Response.redirect(
-          new URL("index.html?shared=1", self.registration.scope).href,
+          new URL("./?shared=1", self.registration.scope).href,
           303,
         );
       })(),
