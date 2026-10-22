@@ -131,14 +131,25 @@ body {
   cursor: pointer;
 }
 
+/* The outer footprint is the WALL band (neutral plaster grey); the coloured .room-floor
+   sits inside it, inset by half the wall thickness, so the walls are visible and the
+   clear internal size reads at a glance. */
 .room {
-  fill-opacity: 0.6;
+  fill: #cfc7b7;
+  fill-opacity: 0.95;
   stroke: #334155;
   stroke-width: 1.5;
   cursor: pointer;
 }
 .room.selected { stroke: var(--accent); stroke-width: 2.5; }
 .room.bad { stroke: var(--danger); stroke-width: 2.5; }
+.room-floor {
+  fill-opacity: 0.6;
+  stroke: #334155;
+  stroke-opacity: 0.3;
+  stroke-width: 1;
+  pointer-events: none;
+}
 
 .room-label {
   text-anchor: middle;

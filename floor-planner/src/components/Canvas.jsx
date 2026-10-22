@@ -130,6 +130,12 @@ export default function Canvas({ state, dispatch, showFurniture }) {
     return best != null ? best : d
   }
   const U = unitsOf(state.build) // display units for on-diagram labels (physical)
+  // Wall thickness in PROJECT UNITS (the same unit as room w/h). Rooms materialize at
+  // `convention center`, so the footprint edge is the wall CENTRELINE: the wall straddles
+  // it by half each side, the clear interior is inset by wallWU/2, and two adjacent rooms'
+  // half-bands meet as one shared wall of full thickness. Drawing this band lets you read
+  // the internal (clear) size instead of only the centreline footprint.
+  const wallWU = Number(state.build?.wallThickness) > 0 ? Number(state.build.wallThickness) : 8
   const svgRef = useRef(null)
   const [interaction, setInteraction] = useState(null)
   const selectedIds = state.selectedIds || []
@@ -664,12 +670,20 @@ export default function Canvas({ state, dispatch, showFurniture }) {
           const sel = selectedSet.has(r.id)
           return (
             <g key={r.id}>
+              {/* Outer footprint = the wall band (the clickable/selectable element). */}
               <rect
                 x={r.x * cell} y={r.y * cell}
                 width={r.w * cell} height={r.h * cell}
                 className={`room ${bad ? 'bad' : ''} ${sel ? 'selected' : ''}`}
-                style={{ fill: r.color }}
                 onPointerDown={(e) => onRoomDown(e, r)}
+              />
+              {/* Clear interior = the usable floor, inset by half the wall thickness so the
+                  wall band shows and the internal dimensions are legible. */}
+              <rect
+                x={(r.x + wallWU / 2) * cell} y={(r.y + wallWU / 2) * cell}
+                width={Math.max(0, r.w - wallWU) * cell} height={Math.max(0, r.h - wallWU) * cell}
+                className="room-floor"
+                style={{ fill: r.color }}
               />
               <text
                 x={(r.x + r.w / 2) * cell}
@@ -683,7 +697,7 @@ export default function Canvas({ state, dispatch, showFurniture }) {
                 y={(r.y + r.h / 2) * cell + 12}
                 className="room-sub"
               >
-                {fmtLen(r.w, U.system, U.perUnit)}×{fmtLen(r.h, U.system, U.perUnit)}
+                {fmtLen(Math.max(0, r.w - wallWU), U.system, U.perUnit)}×{fmtLen(Math.max(0, r.h - wallWU), U.system, U.perUnit)}
               </text>
               {(() => {
                 const pin = pinnedById.get(r.id) || {}
