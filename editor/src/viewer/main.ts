@@ -2144,12 +2144,27 @@ interface LiveSession {
 }
 let liveSession: LiveSession | null = null;
 
+// Connecting an MCP agent is TWO separate things, and the UI keeps them apart:
+//  1. SETUP (one-time): add the Wadi MCP server to the agent's own MCP config. This is
+//     client configuration, not something you paste into a chat. Origin-aware endpoint.
+//  2. PROMPT (per session): the task you paste into the agent's chat once it is connected.
+const MCP_ENDPOINT = `${MCP_ORIGIN}/mcp`;
+const mcpSetupText = (): string =>
+  `Add the Wadi MCP server to your coding agent — this goes in the agent's MCP settings, ` +
+  `not its chat (one-time setup):\n` +
+  `\n` +
+  `• Remote / HTTP MCP URL:  ${MCP_ENDPOINT}\n` +
+  `• Command-only clients (e.g. Claude Desktop):  npx -y mcp-remote ${MCP_ENDPOINT}\n` +
+  `\n` +
+  `Example config:\n` +
+  `{ "mcpServers": { "wadi": { "command": "npx", "args": ["-y", "mcp-remote", "${MCP_ENDPOINT}"] } } }`;
+
+// The PER-SESSION prompt, pasted into the agent's chat AFTER the server is connected. It
+// assumes the wadi_* tools are available (see mcpSetupText) and carries only the task.
 const liveSessionPrompt = (code: string): string =>
-  `You are connected to a LIVE Wadi co-editing session. Add the Wadi MCP server at ` +
-  `${MCP_ORIGIN}/mcp (a remote/HTTP MCP server — no install; if your client only takes a ` +
-  `command, use: npx -y mcp-remote ${MCP_ORIGIN}/mcp). Then, with session code "${code}": call ` +
-  `wadi_session_get({session:"${code}"}) to read the current model, edit the .wdl, and ` +
-  `wadi_session_set({session:"${code}", wdl}) to push each change — I am watching it render ` +
+  `You are connected to a LIVE Wadi co-editing session (session code "${code}"). Using the Wadi ` +
+  `MCP tools: call wadi_session_get({session:"${code}"}) to read the current model, edit the .wdl, ` +
+  `and wadi_session_set({session:"${code}", wdl}) to push each change — I am watching it render ` +
   `live in the Wadi app. To reuse a component, register it with ` +
   `wadi_session_add_module({session:"${code}", ref, wdl}) BEFORE importing it in the main WDL. ` +
   `Call wadi_wdl_reference first if unsure of the syntax.`;
@@ -2331,16 +2346,33 @@ function renderLivePanel(flash = false): void {
     ? `<div class="live-status live-error" id="live-status">${escapeHtml(liveSession.error)}</div>`
     : `<div class="live-status" id="live-status">${status}</div>`;
   panel.innerHTML = `
-    <div class="live-dot${liveSession.error ? " err" : liveSession.connected ? " on" : ""}"></div>
-    <div class="live-body">
-      <div class="live-title">Live session <code>${liveSession.code}</code></div>
-      ${statusHtml}
+    <div class="live-row1">
+      <div class="live-dot${liveSession.error ? " err" : liveSession.connected ? " on" : ""}"></div>
+      <div class="live-body">
+        <div class="live-title">Live session <code>${liveSession.code}</code></div>
+        ${statusHtml}
+      </div>
+      <button type="button" id="live-stop" class="live-btn live-stop" title="End the live session">Stop</button>
     </div>
-    <button type="button" id="live-copy" class="live-btn" title="Copy a prompt for your AI agent">Copy prompt</button>
-    <button type="button" id="live-stop" class="live-btn live-stop" title="End the live session">Stop</button>`;
-  panel.querySelector("#live-copy")?.addEventListener("click", async () => {
+    <div class="live-setup">
+      <div class="live-setup-txt"><b>1.</b> Add the Wadi MCP server to your agent's settings: <code>${escapeHtml(MCP_ENDPOINT)}</code></div>
+      <div class="live-setup-btns">
+        <button type="button" id="live-copy-setup" class="live-btn" title="Copy the MCP server setup (URL, mcp-remote command, config snippet) to add in your agent">Copy setup</button>
+        <button type="button" id="live-copy" class="live-btn" title="Copy the per-session prompt to paste into your agent's chat">2. Copy prompt</button>
+      </div>
+    </div>`;
+  const flashStatus = (msg: string): void => {
     const s = panel.querySelector("#live-status") as HTMLElement | null;
-    try { await navigator.clipboard.writeText(liveSessionPrompt(liveSession!.code)); if (s) { const t = s.textContent; s.textContent = "Prompt copied — paste into your agent"; window.setTimeout(() => { if (s.textContent?.startsWith("Prompt copied")) s.textContent = t ?? ""; }, 2400); } } catch { /* */ }
+    if (!s) return;
+    const t = s.textContent;
+    s.textContent = msg;
+    window.setTimeout(() => { if (s.textContent === msg) s.textContent = t ?? ""; }, 2400);
+  };
+  panel.querySelector("#live-copy-setup")?.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(mcpSetupText()); flashStatus("MCP setup copied — add it in your agent's settings"); } catch { /* */ }
+  });
+  panel.querySelector("#live-copy")?.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(liveSessionPrompt(liveSession!.code)); flashStatus("Prompt copied — paste into your agent's chat"); } catch { /* */ }
   });
   panel.querySelector("#live-stop")?.addEventListener("click", () => stopLiveSession());
   if (flash) { panel.classList.remove("live-flash"); void panel.offsetWidth; panel.classList.add("live-flash"); }

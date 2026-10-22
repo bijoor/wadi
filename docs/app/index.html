@@ -1765,16 +1765,24 @@
             position: fixed;
             bottom: 68px; left: 50%; transform: translateX(-50%);
             z-index: 200;
-            display: flex; align-items: center; gap: 10px;
-            padding: 8px 10px 8px 12px;
+            display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+            padding: 8px 10px 9px 12px;
             border-radius: 12px;
             background: #fff;
             border: 1px solid #dcd3c9;
             box-shadow: 0 8px 28px rgba(40, 30, 20, 0.22);
             font-size: 0.82rem;
-            max-width: min(92vw, 460px);
+            max-width: min(94vw, 520px);
         }
         .live-session-panel[hidden] { display: none; }
+        .live-row1 { display: flex; align-items: center; gap: 10px; }
+        /* Step 2: the MCP server SETUP (one-time client config), kept visibly separate from
+           the per-session prompt so the two are never confused. */
+        .live-setup { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px solid #efe9e1; padding-top: 8px; }
+        .live-setup-txt { color: #7a736a; font-size: 0.74rem; min-width: 0; }
+        .live-setup-txt b { color: #B85028; }
+        .live-setup-txt code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82em; background: #f2ece4; padding: 1px 5px; border-radius: 5px; color: #B85028; }
+        .live-setup-btns { display: flex; gap: 6px; flex: 0 0 auto; }
         .live-session-panel.live-flash { animation: liveFlash 0.6s ease; }
         @keyframes liveFlash { 0% { box-shadow: 0 0 0 3px rgba(184,80,40,0.5), 0 6px 22px rgba(40,30,20,0.16); } 100% { box-shadow: 0 6px 22px rgba(40,30,20,0.16); } }
         .live-dot { width: 9px; height: 9px; border-radius: 50%; background: #c9c2b8; flex: 0 0 auto; }
@@ -2238,7 +2246,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CtCFhQ4y.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-5-JtMvz7.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>
