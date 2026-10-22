@@ -86,15 +86,16 @@ self.addEventListener("fetch", (event) => {
           const file =
             form.get("wadi") ||
             [...form.values()].find((v) => v && typeof v.text === "function");
-          if (file && typeof file.text === "function") {
-            // Read the file to TEXT here (reliable in the SW) and stash the text,
-            // rather than storing the File as a Response body (which some Androids
-            // fail to read back on the app side). Boot reads it via res.text().
-            const text = await file.text();
+          if (file && typeof file.arrayBuffer === "function") {
+            // Read the file to BYTES here (in the SW) and stash the ArrayBuffer, so a binary
+            // `.wadi` ZIP BUNDLE survives intact — text() would corrupt it. Reading the bytes
+            // before caching (not storing the File object) is what stays reliable on Android.
+            // Boot reads it via res.arrayBuffer() and parseWadiBytes magic-sniffs the format.
+            const buf = await file.arrayBuffer();
             const cache = await caches.open(SHARE_INBOX);
             await cache.put(
               SHARE_INBOX_KEY,
-              new Response(text, { headers: { "content-type": "application/json" } }),
+              new Response(buf, { headers: { "content-type": "application/octet-stream" } }),
             );
           }
         } catch (_e) {

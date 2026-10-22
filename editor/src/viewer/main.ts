@@ -86,7 +86,7 @@ import {
   withSource,
   type TemplateSource,
 } from "../io/templateSource";
-import { isWadiBundle, readBundleCoverUrls } from "../io/wadiBundle";
+import { isWadiBundle, readBundleCoverUrls, parseWadiBytes } from "../io/wadiBundle";
 import { writeValue } from "../configurator/spec";
 import { mountConfiguratorPanel, configPanelAvailable } from "./configuratorPanel";
 import { registerLeftTool, mountLeftDock, refreshLeftDock } from "./leftPanels";
@@ -275,16 +275,15 @@ async function bootViewer(): Promise<void> {
           if (!files || files.length === 0) return;
           try {
             const file = await files[0].getFile();
-            const r = readWadiText(await file.text());
-            if (r.data) {
-              useConfigStore.getState().loadConfig(r.data, file.name || "opened file");
-              // The launchQueue fires AFTER boot, so the owner gallery may have
-              // already opened — dismiss it, otherwise the opened design sits
-              // hidden behind it and the app looks like it hung.
-              closeNewHouseModal();
-            } else {
-              showBanner(r.error ?? "Couldn't open that file.");
-            }
+            // Read the BYTES and let parseWadiBytes magic-sniff bundle (zip) / .wdl / legacy
+            // JSON — a `.wadi` is a binary zip bundle now, so text() would corrupt it.
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            const r = await parseWadiBytes(bytes, file.name || "opened file", null);
+            useConfigStore.getState().loadConfig(r.config, r.filename, r.filePath, r.wdl, r.modules);
+            // The launchQueue fires AFTER boot, so the owner gallery may have
+            // already opened — dismiss it, otherwise the opened design sits
+            // hidden behind it and the app looks like it hung.
+            closeNewHouseModal();
           } catch (err) {
             console.warn("viewer: launchQueue file open failed", err);
             showBanner("Couldn't open that file: " + (err instanceof Error ? err.message : String(err)));
@@ -308,12 +307,16 @@ async function bootViewer(): Promise<void> {
       const res = await inbox.match("/__shared_wadi__");
       if (res) {
         await inbox.delete("/__shared_wadi__");
-        const r = readWadiText(await res.text());
-        if (r.data) {
-          useConfigStore.getState().loadConfig(r.data, "shared file");
+        // The SW stashes the raw file BYTES; parseWadiBytes magic-sniffs bundle (zip) /
+        // .wdl / legacy JSON, so a binary bundle shared from WhatsApp/Files loads too.
+        try {
+          const bytes = new Uint8Array(await res.arrayBuffer());
+          const r = await parseWadiBytes(bytes, "shared file", null);
+          useConfigStore.getState().loadConfig(r.config, r.filename, r.filePath, r.wdl, r.modules);
           loadedFromHash = true; // a specific design is loaded — skip the default auto-load
-        } else {
-          shareLinkError = r.error ?? "The shared file couldn't be opened.";
+        } catch (err) {
+          shareLinkError =
+            "The shared file couldn't be opened: " + (err instanceof Error ? err.message : String(err));
         }
       } else {
         // The share opened the app (…?shared=1) but the file never reached the
@@ -1838,33 +1841,6 @@ function reloadActiveTab(): void {
 // A dismissible warning banner pinned top-centre. Used for problems the
 // recipient must notice (e.g. a shared link that failed to load). Auto-hides
 // after a while, or on the ✕.
-// Robustly turn the text of an opened/shared file into a HouseConfig. Handles a
-// leading BOM and stray whitespace (common when files round-trip through
-// messengers / file managers), and a base64-wrapped payload as a fallback. On
-// failure returns an error that INCLUDES the first characters of the content, so
-// a recipient can tell us exactly what arrived instead of a generic "invalid".
-function readWadiText(text: string): { data?: ValidatedHouseConfig; error?: string } {
-  const s = text.replace(/^﻿/, "").trim();
-  const tryParse = (str: string): unknown | undefined => {
-    try { return JSON.parse(str); } catch { return undefined; }
-  };
-  let obj = tryParse(s);
-  if (obj === undefined && s && !/^[[{]/.test(s)) {
-    // Some transfer paths re-encode the file as base64 — try that too.
-    try { obj = tryParse(atob(s.replace(/\s+/g, ""))); } catch { /* not base64 */ }
-  }
-  if (obj === undefined) {
-    // Show the WHOLE content (capped so a pathological blob can't wedge the UI).
-    // A valid design parses above, so anything landing here is small/garbage.
-    const CAP = 2000;
-    const shown = s.length <= CAP ? s : `${s.slice(0, CAP)} …(+${s.length - CAP} more chars)`;
-    return { error: `Couldn't read the file as a Wadi design (not valid JSON). Length ${s.length}. Content: ${JSON.stringify(shown)}` };
-  }
-  const parsed = validate(obj, { tolerant: true });
-  if (parsed.ok && parsed.data) return { data: parsed.data };
-  return { error: "The file is JSON but not a valid Wadi design — it may be from a newer version of Wadi." };
-}
-
 function showBanner(message: string): void {
   const el = document.createElement("div");
   el.setAttribute("role", "alert");

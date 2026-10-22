@@ -20,10 +20,10 @@
 // Scope limits which PAGES it controls — not which requests it sees — so it
 // still intercepts the page's root-absolute and cross-origin fetches.
 
-const VERSION = "d50b20ce";
+const VERSION = "e4c73c5e";
 const SHELL_CACHE = `wadi-shell-${VERSION}`;
 const RUNTIME_CACHE = `wadi-runtime-${VERSION}`;
-const PRECACHE = ["./","./index.html","./assets/viewer-B3Se60bj.js","./assets/viewer-CNC7AqOf.js","./assets/viewer-CYlZod6Y.css","./assets/viewer-C7OX1cfC.js","./assets/viewer-Dg025PwZ.js","./assets/viewer-1h8G1ACc.js","./assets/viewer-B8YfjKcI.js","./assets/viewer-ZENCLqvS.js","./assets/viewer-DbHEAebu.js","./assets/viewer-C15jy1Jz.js","./assets/viewer-DhgRfCu7.js","./assets/viewer-nhHFz6G2.js","./assets/viewer-ZsUNQkRv.js","./assets/viewer-DK187yTO.css","./assets/viewer-ExEC1PqS.js","./assets/viewer-BBbCiw-H.js","./assets/viewer-Dzzhg3vk.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.wadi","./templates/catalog.json","./templates/family_home.wadi","./templates/five_bedroom_villa.wadi","./templates/large_country_house.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","./templates/tiny_home_single_bedroom.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
+const PRECACHE = ["./","./index.html","./assets/viewer-ZlATtqm8.js","./assets/viewer-CNC7AqOf.js","./assets/viewer-CYlZod6Y.css","./assets/viewer-RikwVa5C.js","./assets/viewer-BT0h4RvV.js","./assets/viewer-Das5d4kB.js","./assets/viewer-p-llo_tH.js","./assets/viewer-Bpn92qdP.js","./assets/viewer-wIVWTmvj.js","./assets/viewer-C15jy1Jz.js","./assets/viewer-DrPTDZND.js","./assets/viewer-BSVhzKgT.js","./assets/viewer-ZsUNQkRv.js","./assets/viewer-DK187yTO.css","./assets/viewer-D08d2PpQ.js","./assets/viewer-BBbCiw-H.js","./assets/viewer-CZALgqEf.js","./assets/viewer-DuRL7t6i.js","./manifest.webmanifest","./favicon.svg","./icon-192.png","./icon-512.png","./apple-touch-icon.png","./templates/blank.wadi","./templates/catalog.json","./templates/family_home.wadi","./templates/five_bedroom_villa.wadi","./templates/large_country_house.wadi","./templates/manifest.json","./templates/single_story_cottage.wadi","./templates/tiny_home_single_bedroom.wadi","/house_config.json","/2d/roof/roof-cross-section.svg"];
 
 // Web Share Target inbox: a shared .wadi file is stashed here (UNVERSIONED, so it
 // survives a worker update) for the app to pick up on its next boot.
@@ -86,15 +86,16 @@ self.addEventListener("fetch", (event) => {
           const file =
             form.get("wadi") ||
             [...form.values()].find((v) => v && typeof v.text === "function");
-          if (file && typeof file.text === "function") {
-            // Read the file to TEXT here (reliable in the SW) and stash the text,
-            // rather than storing the File as a Response body (which some Androids
-            // fail to read back on the app side). Boot reads it via res.text().
-            const text = await file.text();
+          if (file && typeof file.arrayBuffer === "function") {
+            // Read the file to BYTES here (in the SW) and stash the ArrayBuffer, so a binary
+            // `.wadi` ZIP BUNDLE survives intact — text() would corrupt it. Reading the bytes
+            // before caching (not storing the File object) is what stays reliable on Android.
+            // Boot reads it via res.arrayBuffer() and parseWadiBytes magic-sniffs the format.
+            const buf = await file.arrayBuffer();
             const cache = await caches.open(SHARE_INBOX);
             await cache.put(
               SHARE_INBOX_KEY,
-              new Response(text, { headers: { "content-type": "application/json" } }),
+              new Response(buf, { headers: { "content-type": "application/octet-stream" } }),
             );
           }
         } catch (_e) {
