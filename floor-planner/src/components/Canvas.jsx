@@ -177,6 +177,30 @@ export default function Canvas({ state, dispatch, showFurniture }) {
   })
   const report = analyze({ plot, rooms: liveRooms, edges })
 
+  // Per-edge wall inset (project units). A side that ABUTS a neighbour is a shared wall on
+  // the centreline, so the floor insets HALF the wall thickness (the two rooms' halves meet
+  // as one wall of full thickness). A side with NO neighbour is an EXTERIOR wall, drawn
+  // fully INSIDE the footprint (inset the whole thickness) so the plot outline stays the
+  // outer face and walls never extend past the plot. Net: every wall is one thickness,
+  // shared walls are never doubled, and nothing pokes outside the plot.
+  const WALL_TOL = 0.5
+  const abuts = (r, side) => liveRooms.some((s) => {
+    if (s.id === r.id) return false
+    const yOv = Math.min(r.y + r.h, s.y + s.h) - Math.max(r.y, s.y) > WALL_TOL
+    const xOv = Math.min(r.x + r.w, s.x + s.w) - Math.max(r.x, s.x) > WALL_TOL
+    if (side === 'left') return yOv && Math.abs((s.x + s.w) - r.x) <= WALL_TOL
+    if (side === 'right') return yOv && Math.abs(s.x - (r.x + r.w)) <= WALL_TOL
+    if (side === 'top') return xOv && Math.abs((s.y + s.h) - r.y) <= WALL_TOL
+    if (side === 'bottom') return xOv && Math.abs(s.y - (r.y + r.h)) <= WALL_TOL
+    return false
+  })
+  const wallInsets = (r) => ({
+    l: abuts(r, 'left') ? wallWU / 2 : wallWU,
+    r: abuts(r, 'right') ? wallWU / 2 : wallWU,
+    t: abuts(r, 'top') ? wallWU / 2 : wallWU,
+    b: abuts(r, 'bottom') ? wallWU / 2 : wallWU,
+  })
+
   // Fitted furniture per typed room (only when the overlay is on), memoised on the room/edge/unit
   // inputs so it doesn't recompute on unrelated renders (pan/zoom/selection).
   // Computed from the COMMITTED model (not liveRooms) so wadi's engine runs on drop, not every
@@ -668,26 +692,28 @@ export default function Canvas({ state, dispatch, showFurniture }) {
         {liveRooms.map((r) => {
           const bad = report.overlapRoomIds.has(r.id) || report.outOfPlotSet.has(r.id)
           const sel = selectedSet.has(r.id)
+          // Per-edge inset (see wallInsets): shared sides half a wall, exterior sides a full
+          // wall drawn inside the footprint. The wall band is the FOOTPRINT itself (never
+          // grown past it), the floor is the inset interior, and the ring between is the wall.
+          const ins = wallInsets(r)
+          const fx = r.x + ins.l, fy = r.y + ins.t
+          const fw = Math.max(0, r.w - ins.l - ins.r), fh = Math.max(0, r.h - ins.t - ins.b)
           return (
             <g key={r.id}>
-              {/* Wall band (the clickable/selectable element). In `center` convention the
-                  footprint edge is the wall CENTRELINE, so the wall straddles it by half
-                  each side: the band is the footprint grown by wallWU/2 all round. Two
-                  rooms share a centreline, so their bands meet to form ONE wall of full
-                  thickness; a lone (exterior) wall is the same full thickness, just with
-                  nothing abutting its outer half. Solid fill so overlapping bands never
-                  darken or double. */}
+              {/* Wall band = the room footprint (the clickable/selectable element). Exterior
+                  faces sit on the footprint edge, so walls stay inside the plot; shared edges
+                  abut the neighbour's band to make one wall. Solid fill, no seam. */}
               <rect
-                x={(r.x - wallWU / 2) * cell} y={(r.y - wallWU / 2) * cell}
-                width={(r.w + wallWU) * cell} height={(r.h + wallWU) * cell}
+                x={r.x * cell} y={r.y * cell}
+                width={r.w * cell} height={r.h * cell}
                 className={`room ${bad ? 'bad' : ''} ${sel ? 'selected' : ''}`}
                 onPointerDown={(e) => onRoomDown(e, r)}
               />
-              {/* Clear interior = the usable floor, inset by half the wall thickness. The
-                  grey between two floors is exactly one wall thick (wallWU/2 from each). */}
+              {/* Clear interior = the usable floor, inset per edge. The grey between two
+                  floors is exactly one wall thick. */}
               <rect
-                x={(r.x + wallWU / 2) * cell} y={(r.y + wallWU / 2) * cell}
-                width={Math.max(0, r.w - wallWU) * cell} height={Math.max(0, r.h - wallWU) * cell}
+                x={fx * cell} y={fy * cell}
+                width={fw * cell} height={fh * cell}
                 className="room-floor"
                 style={{ fill: r.color }}
                 onPointerDown={(e) => onRoomDown(e, r)}
@@ -704,7 +730,7 @@ export default function Canvas({ state, dispatch, showFurniture }) {
                 y={(r.y + r.h / 2) * cell + 12}
                 className="room-sub"
               >
-                {fmtLen(Math.max(0, r.w - wallWU), U.system, U.perUnit)}×{fmtLen(Math.max(0, r.h - wallWU), U.system, U.perUnit)}
+                {fmtLen(fw, U.system, U.perUnit)}×{fmtLen(fh, U.system, U.perUnit)}
               </text>
               {(() => {
                 const pin = pinnedById.get(r.id) || {}
