@@ -131,26 +131,26 @@ body {
   cursor: pointer;
 }
 
-/* The outer footprint is the WALL band (neutral plaster grey); the coloured .room-floor
-   sits inside it, inset by half the wall thickness, so the walls are visible and the
-   clear internal size reads at a glance. The band carries NO outline: two rooms share a
-   wall by abutting footprints, and an outline would paint a line down the middle of the
-   combined band, making one shared wall look like two. The wall FACES are the inset
-   .room-floor edges; the exterior edge is the plot outline. */
+/* .room is the WALL band (neutral plaster grey), grown by half the wall thickness past
+   the footprint so a lone wall is full thickness; .room-floor is the coloured interior,
+   inset by half the wall thickness. Two rooms share a centreline, so their bands meet as
+   ONE wall of full thickness. SOLID fill (no translucency, no outline) so overlapping
+   bands never darken or draw a seam — a shared wall never looks double. The wall FACES are
+   the .room-floor edges. */
 .room {
   fill: #cfc7b7;
-  fill-opacity: 0.95;
+  fill-opacity: 1;
   stroke: none;
   cursor: pointer;
 }
 .room.selected { stroke: var(--accent); stroke-width: 2.5; }
 .room.bad { stroke: var(--danger); stroke-width: 2.5; }
 .room-floor {
-  fill-opacity: 0.6;
+  fill-opacity: 0.85;
   stroke: #334155;
   stroke-opacity: 0.45;
   stroke-width: 1;
-  pointer-events: none;
+  cursor: pointer;
 }
 
 .room-label {

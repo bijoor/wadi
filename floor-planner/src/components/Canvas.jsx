@@ -670,20 +670,27 @@ export default function Canvas({ state, dispatch, showFurniture }) {
           const sel = selectedSet.has(r.id)
           return (
             <g key={r.id}>
-              {/* Outer footprint = the wall band (the clickable/selectable element). */}
+              {/* Wall band (the clickable/selectable element). In `center` convention the
+                  footprint edge is the wall CENTRELINE, so the wall straddles it by half
+                  each side: the band is the footprint grown by wallWU/2 all round. Two
+                  rooms share a centreline, so their bands meet to form ONE wall of full
+                  thickness; a lone (exterior) wall is the same full thickness, just with
+                  nothing abutting its outer half. Solid fill so overlapping bands never
+                  darken or double. */}
               <rect
-                x={r.x * cell} y={r.y * cell}
-                width={r.w * cell} height={r.h * cell}
+                x={(r.x - wallWU / 2) * cell} y={(r.y - wallWU / 2) * cell}
+                width={(r.w + wallWU) * cell} height={(r.h + wallWU) * cell}
                 className={`room ${bad ? 'bad' : ''} ${sel ? 'selected' : ''}`}
                 onPointerDown={(e) => onRoomDown(e, r)}
               />
-              {/* Clear interior = the usable floor, inset by half the wall thickness so the
-                  wall band shows and the internal dimensions are legible. */}
+              {/* Clear interior = the usable floor, inset by half the wall thickness. The
+                  grey between two floors is exactly one wall thick (wallWU/2 from each). */}
               <rect
                 x={(r.x + wallWU / 2) * cell} y={(r.y + wallWU / 2) * cell}
                 width={Math.max(0, r.w - wallWU) * cell} height={Math.max(0, r.h - wallWU) * cell}
                 className="room-floor"
                 style={{ fill: r.color }}
+                onPointerDown={(e) => onRoomDown(e, r)}
               />
               <text
                 x={(r.x + r.w / 2) * cell}
