@@ -2171,6 +2171,10 @@ const liveSessionPrompt = (code: string): string =>
 
 function startLiveSession(): void {
   if (liveSession) return;
+  // The "Choose your home" modal (z-index 2000) sits above the live panel (z-index 200),
+  // so on first load it would hide the panel. Starting a co-edit is choosing the agent
+  // path, so dismiss the modal and show the panel.
+  closeNewHouseModal();
   const code = randomSessionCode();
   liveSession = { code, ws: null, lastWdl: "", lastModules: "{}", updates: 0, connected: false, stopped: false, reconnectAttempts: 0 };
   connectSession(true);

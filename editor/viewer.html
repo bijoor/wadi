@@ -1764,7 +1764,9 @@
         .live-session-panel {
             position: fixed;
             bottom: 68px; left: 50%; transform: translateX(-50%);
-            z-index: 200;
+            /* Above the first-run owner-welcome screen (1500) and the choose-your-home
+               modal (2000) so an active session's panel is always visible. */
+            z-index: 2100;
             display: flex; flex-direction: column; align-items: stretch; gap: 8px;
             padding: 8px 10px 9px 12px;
             border-radius: 12px;

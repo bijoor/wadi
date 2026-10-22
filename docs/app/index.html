@@ -1764,7 +1764,9 @@
         .live-session-panel {
             position: fixed;
             bottom: 68px; left: 50%; transform: translateX(-50%);
-            z-index: 200;
+            /* Above the first-run owner-welcome screen (1500) and the choose-your-home
+               modal (2000) so an active session's panel is always visible. */
+            z-index: 2100;
             display: flex; flex-direction: column; align-items: stretch; gap: 8px;
             padding: 8px 10px 9px 12px;
             border-radius: 12px;
@@ -2246,7 +2248,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-5-JtMvz7.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-B3Se60bj.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/viewer-CNC7AqOf.js">
   <link rel="stylesheet" crossorigin href="./assets/viewer-CYlZod6Y.css">
 </head>
